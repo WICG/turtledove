@@ -174,7 +174,7 @@ Ads are fetched via two requests:
 
 It is the browser's responsibility to keep these two ad requests independent and uncorrelated — that is, to not let any ad network know that these two requests are for the same person.
 
-To prevent timing attacks, the interest-group request can be sent at a different time, and the interest-group-targeted ads in the response can be cached for later use (including use multiple times).  In particular, the interest-group request could be sent in advance of the browser navigating to the web page.  For example, a browser might learn over time which ad networks it regularly encounters, and a few times a day issue any relevant interest-group ad requests to those networks.
+To prevent timing attacks, the interest-group request can be sent at a different time, and the interest-group-targeted ads in the response can be cached for later use (including use multiple times).  In particular, the interest-group request could be sent in advance of the browser navigating to the web page.  For example, a browser might learn over time which ad networks it regularly encounters, and a few times a day issue any relevant interest-group ad requests to those networks.  Sending requests periodocally also offers a chance for advertisers to rotate or update the ad being shown to any interest group.
 
 To prevent correlating requests using IP address, browsers could only allow TURTLEDOVE for ad networks using some IP blinding technique ([Willful IP Blindness](https://github.com/bslassey/ip-blindness), Private Information Retrieval, VPN0, etc).
 
@@ -197,12 +197,13 @@ To address these needs, TURTLEDOVE allows for locally-executed decisions that co
     1.  An object containing arbitrary "contextual signals" for the local bidding logic. 
 1.  The interest-group response includes:
     1.  An ad;
-    1.  Some metadata to control how the ad may be used multiple times, e.g. a cache lifetime and a frequency cap;
+    1.  Some metadata to control how the ad may be used multiple times, e.g. a cache lifetime (after which new ads could be requested) and a frequency cap;
     1.  An object containing arbitrary "ad signals" for the local bidding logic;
     1.  A JS bidding function (probably cacheable / re-used across ads), which:
         1.  takes two arguments: the ad-specific signals delivered with this response and the context-specific signals delivered with the contextual response;
         1.  runs purely locally (e.g. no access to network or other external state);
         1.  returns a bid that can be compared with the contextual response bid.
+
 
 This model can support the use case where an advertiser is unwilling to run their ad on pages about a certain topic, for example: the contextual response signals could include the ad network's analysis of the topics on the page; the interest-group response could contain a signal that is a block-list of disallowed topics; and the JS bidding function could include logic to compare those two signals and in case of a match return a negative value, guaranteeing the interest-group-response ad would not show.
 
