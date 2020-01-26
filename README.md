@@ -176,7 +176,7 @@ Ads are fetched via two requests:
 
 It is the browser's responsibility to keep these two ad requests independent and uncorrelated — that is, to not let any ad network know that these two requests are for the same person.
 
-To prevent timing attacks, the interest-group request can be sent at a different time, and the interest-group-targeted ads in the response can be cached for later use (including use multiple times).  In particular, the interest-group request could be sent in advance of the browser navigating to the web page.  For example, a browser might learn over time which ad networks it regularly encounters, and a few times a day issue any relevant interest-group ad requests to those networks.  Sending requests periodocally also offers a chance for advertisers to rotate or update the ad being shown to any interest group.
+To prevent timing attacks, the interest-group request can be sent at a different time, and the interest-group-targeted ads in the response can be cached for later use (including use multiple times).  In particular, the interest-group request could be sent in advance of the browser navigating to the web page.  For example, a browser might learn over time which ad networks it regularly encounters, and a few times a day issue any relevant interest-group ad requests to those networks.  Sending requests periodically also offers a chance for advertisers to rotate or update the ad being shown to any interest group.
 
 To prevent correlating requests using IP address, browsers could only allow TURTLEDOVE for ad networks using some IP blinding technique ([Willful IP Blindness](https://github.com/bslassey/ip-blindness), Private Information Retrieval, VPN0, etc).
 
