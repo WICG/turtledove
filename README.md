@@ -92,7 +92,7 @@ GET https://first-ad-network.com/.well-known/fetch-ads?interest_group=www.wereal
 ```
 
 
-The response points at a Web Bundle holding an ad, along with some browser-intelligible metadata about when that ad can appear, and some ad network logic and data for later decision-making.
+The response points at a [Web Bundle](https://wicg.github.io/webpackage/draft-yasskin-wpack-bundled-exchanges.html) holding an ad, along with some browser-intelligible metadata about when that ad can appear, and some ad network logic and data for later decision-making.
 
 
 ```
