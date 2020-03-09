@@ -76,10 +76,10 @@ I visit WeReallyLikeShoes.com and spend some time looking at running shoes.  The
 
 ```
 const myGroup = {'owner': 'www.wereallylikeshoes.com',
-               'name': 'athletic-shoes',
-               'readers': ['first-ad-network.com',
-                            'second-ad-network.com']
-              };
+                 'name': 'athletic-shoes',
+                 'readers': ['first-ad-network.com',
+                             'second-ad-network.com']
+                };
 navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
 ```
 
@@ -124,7 +124,7 @@ A while later I visit myLocalNewspaper.com.  An ad network script on the page re
 ```
 const contextualBid = 107;
 const metadata = {'network': 'first-ad-network.com',
-                'auction-signals': {'is_above_the_fold': true}};
+                  'auction-signals': {'is_above_the_fold': true}};
 const rendered = navigator.renderInterestGroupAd(contextualBid, metadata);
 if (!rendered) {
   ...render the contextually-targeted ad...
@@ -145,10 +145,10 @@ There is a straightforward JS API for an advertiser asking a browser to join a p
 
 ```
 const myGroup = {'owner': 'www.wereallylikeshoes.com',
-               'name': 'athletic-shoes',
-               'readers': ['first-ad-network.com',
-                            'second-ad-network.com']
-              };
+                 'name': 'athletic-shoes',
+                 'readers': ['first-ad-network.com',
+                             'second-ad-network.com']
+                };
 window.navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
 ```
 
