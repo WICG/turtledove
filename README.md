@@ -75,9 +75,9 @@ I visit WeReallyLikeShoes.com and spend some time looking at running shoes.  The
 
 
 ```
-var myGroup = {'owner' : 'www.wereallylikeshoes.com',
-               'name' : 'athletic-shoes',
-               'readers' : ['first-ad-network.com',
+const myGroup = {'owner': 'www.wereallylikeshoes.com',
+               'name': 'athletic-shoes',
+               'readers': ['first-ad-network.com',
                             'second-ad-network.com']
               };
 navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
@@ -96,14 +96,14 @@ The response points at a [Web Bundle](https://wicg.github.io/webpackage/draft-ya
 
 
 ```
-[{'group-owner' : 'www.wereallylikeshoes.com',
-  'group-name' : 'athletic-shoes',
-  'ad-cbor-url' : 'https://first-ad-network.com/ads/ad-123456789.wbn',
-  'cache-lifetime-secs' : 21600,
-  'max-times-per-minute' : 1,
-  'max-times-per-hour' : 6,
-  'auction-signals' : {'atf_value' : 250, 'btf_value' : 25},
-  'decision-logic-url' : 'https://first-ad-network.com/js/on-device-bid.js'}]
+[{'group-owner': 'www.wereallylikeshoes.com',
+  'group-name': 'athletic-shoes',
+  'ad-cbor-url': 'https://first-ad-network.com/ads/ad-123456789.wbn',
+  'cache-lifetime-secs': 21600,
+  'max-times-per-minute': 1,
+  'max-times-per-hour': 6,
+  'auction-signals': {'atf_value': 250, 'btf_value': 25},
+  'decision-logic-url': 'https://first-ad-network.com/js/on-device-bid.js'}]
 ```
 
 
@@ -122,10 +122,10 @@ A while later I visit myLocalNewspaper.com.  An ad network script on the page re
 
 
 ```
-var contextualBid = 107;
-var metadata = {'network' : 'first-ad-network.com',
-                'auction-signals' : {'is_above_the_fold' : true}};
-var rendered = navigator.renderInterestGroupAd(contextualBid, metadata);
+const contextualBid = 107;
+const metadata = {'network': 'first-ad-network.com',
+                'auction-signals': {'is_above_the_fold': true}};
+const rendered = navigator.renderInterestGroupAd(contextualBid, metadata);
 if (!rendered) {
   ...render the contextually-targeted ad...
 }
@@ -144,16 +144,16 @@ There is a straightforward JS API for an advertiser asking a browser to join a p
 
 
 ```
-var myGroup = {'owner' : 'www.wereallylikeshoes.com',
-               'name' : 'athletic-shoes',
-               'readers' : ['first-ad-network.com',
+const myGroup = {'owner': 'www.wereallylikeshoes.com',
+               'name': 'athletic-shoes',
+               'readers': ['first-ad-network.com',
                             'second-ad-network.com']
               };
 window.navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
 ```
 
 
-The API must be called from a window (top-level or iframe) whose origin matches the `owner`.  This could be on WeReallyLikeShoes.com, or could be a cross-domain iframe — maybe RunningShoeReviews.com writes articles about shoes sold by WeReallyLikeShoes.com, and the review site has an agreement which lets the retailer add people to an interest group with `'name' : 'reads-reviews'`.  It should also be possible for a site owner to include a cross-domain iframe _without_ giving it this capability.
+The API must be called from a window (top-level or iframe) whose origin matches the `owner`.  This could be on WeReallyLikeShoes.com, or could be a cross-domain iframe — maybe RunningShoeReviews.com writes articles about shoes sold by WeReallyLikeShoes.com, and the review site has an agreement which lets the retailer add people to an interest group with `'name': 'reads-reviews'`.  It should also be possible for a site owner to include a cross-domain iframe _without_ giving it this capability.
 
 The list of `reader` domains indicates the ad networks that WeReallyLikeShoes uses to run their interest-group-targeted ads.  Those ad networks may work with publishers directly, or they may buy ad space from other publisher-affiliated ad platforms.  In the latter case, a URL like `https://first-ad-network.com/.well-known/ad-partners.txt` can list the domain names of other ad networks that first-ad-network buys space from, and a public key that the browser can use to encrypt the interest group information while it is passing through other ad networks.  _(Probably this should be a part of the [IAB ads.txt spec](https://iabtechlab.com/ads-txt/), instead of a new .well-known file; it's similar to their "authorized sellers" — and they can come up with a better name than "ad-partners" for the relationship.)_
 
