@@ -60,7 +60,7 @@ The goal of the API is to support this use case with the following outcomes:
 *   People who wonder "how the ad knew" what they were interested in can get a clear, accurate answer.
 *   People who wish to sever their association with the interest group can do so, and can expect to stop seeing ads targeting the group.
 *   Advertisers cannot learn the browsing habits of any specific people, even ones who have joined multiple interest groups.
-*   Web sites cannot learn the interest groups of the people who visit them.
+*   Web sites cannot learn the interest groups of any specific people who visit them.
 
 All details of the UI would, of course, be up to the browser. The API provides the infrastructure that enables this ad campaign targeting capability while enforcing privacy rules that make privacy, transparency, and control possible.
 
