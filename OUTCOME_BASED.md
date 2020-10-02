@@ -52,7 +52,7 @@ navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);</pre>
 
 Inclusion of these signals would allow ad networks to preserve the accuracy of the current performance bidding systems. Taking other considerations aside (how much computing power is available on the browser, how to train the models using aggregated data), the main difference would be the decentralized nature of the bidding process.
 
-Experiments with our models indicate that this decentralized evaluation model would account for only a minute drop in bidding accuracy - we retained **99.98%** of [AUC](https://developers.google.com/machine-learning/crash-course/classification/roc-and-auc), a metric used to assess our CTR model (a drop from .86751 to .86736). In our experience such a drop is nearly negligible.
+Experiments conducted at RTB House indicate that this decentralized evaluation model would account for only a minute drop in bidding accuracy - we retained **99.98%** of [AUC](https://developers.google.com/machine-learning/crash-course/classification/roc-and-auc), a metric used to assess our CTR model (a drop from .86751 to .86736). In our experience such a drop is nearly negligible.
 
 ## Decoupling of microtargeting prevention and bidding mechanisms
 

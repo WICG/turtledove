@@ -49,13 +49,15 @@ window.navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);</pre>
 
 ## Impact on core metrics
 
+Note: this section describes analysis conducted at [RTB House](https://www.rtbhouse.com/).
+
 How will the adoption of product-level TURTLEDOVE affect recommendation quality?
 
 This is a question we haven't been able to answer for "creative-level" TURTLEDOVE. In product-level TURTLEDOVE, however, we can apply a fairly straightforward and informative analysis.
 
 Methodology:
 * We focus on a period of 28 days, (more than 1.4e8 clicks).
-* The analysis is performed on the entire corpus of our web advertisers. This means 1.5k+ advertisers from around the world, ranging from small businesses to leading ecommerce platforms.
+* The analysis is performed on the entire corpus of RTB House's web advertisers. This means 1.5k+ advertisers from around the world, ranging from small businesses to leading ecommerce platforms.
 * Within that period, for each product, we determine the "product's audience size" - how many distinct users were served an impression with that product.
 * We inspect the impact of product-level minimal audience threshold. For a given threshold, we discard all clicks on products with `product_audience_size < threshold`.
 
