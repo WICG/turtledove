@@ -11,6 +11,7 @@
      * [Frequency Capping, Budgets, Metrics, and Reporting](#frequency-capping-budgets-metrics-and-reporting)
      * [User Interface Controls](#user-interface-controls)
    * [Incremental Adoption Path](#incremental-adoption-path)
+   * [Suggested enhancements](#suggested-enhancements)
    * [Alternatives Considered](#alternatives-considered)
      * [PIGIN](#pigin)
      * [FLoC](#floc)
@@ -273,6 +274,10 @@ There are still lots of tracking work-arounds at this stage: Ad networks can sti
 But adapting to aggregate reporting will require a big change from the ad industry, no two ways about it.
 
 An even more gentle start could begin with a "step 0" where the browser issues the two TURTLEDOVE request at pageload time, one after the other: first send the browser-constructed interest-group request, then run the in-browser auction among the interest-group responses, and then _send the highest bid along with the ad-network-constructed contextual ad request_.  This serial variant carries more latency cost, and the in-browser auction cannot receive contextual signals from the server.  But in exchange it allows a server-side contextual auction to remain certain that the ad it picks "really is the winner".  We should have a conversation with the advertising community about this or any other ways to make the adoption path more accessible.
+
+## Suggested Enhancements
+- [Product-level TURTLEDOVE](PRODUCT_LEVEL.md)
+- [Outcome-based TURTLEDOVE](PRODUCT_LEVEL.md)
 
 
 ## Alternatives Considered

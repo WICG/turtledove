@@ -1,8 +1,8 @@
-# Outcome-based Turtledove
+# Outcome-based TURTLEDOVE
 
 ## Summary
 
-One of the objectives of Turtledove is to prevent the so-called **microtargeting** [[1](https://github.com/WICG/turtledove#browsers-joining-interest-groups)].
+One of the objectives of TURTLEDOVE is to prevent the so-called **microtargeting** [[1](https://github.com/WICG/turtledove#browsers-joining-interest-groups)].
 
 The approach taken so far has been **input based**: analyze and restrict bidding inputs and logic, so that microtargeting is not possible / not practical. The primary restriction is for bidding signals to be identical for all members of an interest group [[2](https://github.com/WICG/turtledove#api-example-flow)], but there are others [[3](https://github.com/WICG/turtledove/issues/5), [4](https://github.com/WICG/turtledove/issues/44)].
 
@@ -20,7 +20,7 @@ The outcome-based approach builds on:
 * Each ad being either "validated" or "not validated".
 * The browser being able to discard a winning bid, if the corresponding ad is not validated. (Let's call such a discarded win a "ghost win".)
 * A server-side privacy infrastructure ("Privacy Infrastructure") that observes the sequence of ghost wins across browser instances for each ad and uses it to implement the validation logic.
-    * // Note that a similar server-side privacy infrastructure was first mentioned in the original (input-based) Turtledove explainer [[1](https://github.com/WICG/turtledove#browsers-joining-interest-groups)], where its role would be to track the membership size of each interest group.
+    * // Note that a similar server-side privacy infrastructure was first mentioned in the original (input-based) TURTLEDOVE explainer [[1](https://github.com/WICG/turtledove#browsers-joining-interest-groups)], where its role would be to track the membership size of each interest group.
 
 Intuitively, if the Privacy Infrastructure sees only a single user for whom an ad wins ghost bids, it would not allow that ad to be shown. Conversely, if there are consistently a lot of users with ghost wins for a specific ad, the Privacy Infrastructure would quickly decide to mark that ad as validated.
 
@@ -28,7 +28,7 @@ In a further section we formalize this intuition with a detailed proof of concep
 
 ## More accurate bidding
 
-Currently Turtledove takes an input-based approach to make microtargeting infeasible - it enforces bidding signals to be identical for each member of an interest group. Effectively, even for ads intended for larger audiences (when microtargeting is not an issue), the bidding accuracy will suffer.
+Currently TURTLEDOVE takes an input-based approach to make microtargeting infeasible - it enforces bidding signals to be identical for each member of an interest group. Effectively, even for ads intended for larger audiences (when microtargeting is not an issue), the bidding accuracy will suffer.
 
 With the outcome-based approach, it is possible to retain bidding accuracy while still protecting against microtargeting. The bidder should be able to calculate precisely how much a bid is worth, and a particular ad should be shown to the users only if enough unique users would win bids for that ad.
 
@@ -36,7 +36,7 @@ In more detail, paying attention to auction outcomes rather than inputs, makes i
 
 * **userSignals**: We propose to allow the Bidder to store custom bidding signals during a call to joinAdInterestGroup.
 
-    We stress that these signals would be kept browser side and used solely for bidding. They would never be shared with publishers or included in network requests, and are in line with the Turtledove's current privacy guarantees.
+    We stress that these signals would be kept browser side and used solely for bidding. They would never be shared with publishers or included in network requests, and are in line with the TURTLEDOVE's current privacy guarantees.
 <pre>
 const myGroup = {'owner': 'www.wereallylikeshoes.com',
                  'name': 'athletic-shoes',
@@ -66,7 +66,7 @@ In the outcome-based approach, bidding and microtargeting prevention mechanisms 
 
 ## Mathematical framework for microtargeting prevention
 
-We present a **proof of concept** algorithm and analyse its microtargeting prevention aspects. The purpose of the algorithm is to show that, within outcome-based Turtledove, it is possible to reason with mathematical precision about microtargeting prevention guarantees.
+We present a **proof of concept** algorithm and analyse its microtargeting prevention aspects. The purpose of the algorithm is to show that, within outcome-based TURTLEDOVE, it is possible to reason with mathematical precision about microtargeting prevention guarantees.
 
 We show how to make sure each ad, if validated, is expected to reach a certain number of users at least once. The browser teams may choose to enforce different properties of the bidding ecosystem (see [Final remarks](#final-remarks)).
 
@@ -77,7 +77,7 @@ Let's focus our attention on the following actors in the bidding ecosystem:
     * A bidder controls the bidding behavior for certain ads for a group of users.
 * Privacy Infrastructure
     * Has a global view of the ecosystem, and decides when an ad becomes "validated".
-    * For example, in input-based Turtledove, the Privacy Infrastructure approves an ad if sufficiently many unique users are assigned to the ad's interest group.
+    * For example, in input-based TURTLEDOVE, the Privacy Infrastructure approves an ad if sufficiently many unique users are assigned to the ad's interest group.
 
 ### Assumptions
 
@@ -132,14 +132,14 @@ Algorithm's properties:
 * After Lth unique user wins a (ghost) bid, the ad is guaranteed to be validated.
 * For highly popular items, the validation will be almost instantaneous.
 
-Note that, in contrast to input-based Turtledove, it is the creative (not the interest group) that is subject to validation. Therefore, if the creative changes (for example due to price / availability change), the ad will have to be validated anew. In order to mitigate this, we may consider a mechanism of **fallback creatives** - upon a ghost win, if a creative has not yet been validated, we may allow an impression of a bidder-chosen fallback creative (that's subject to validation itself).
+Note that, in contrast to input-based TURTLEDOVE, it is the creative (not the interest group) that is subject to validation. Therefore, if the creative changes (for example due to price / availability change), the ad will have to be validated anew. In order to mitigate this, we may consider a mechanism of **fallback creatives** - upon a ghost win, if a creative has not yet been validated, we may allow an impression of a bidder-chosen fallback creative (that's subject to validation itself).
 
 The analysis above applies to a bidding strategy using a single creative. A malicious bidder could try to perform such a bidding strategy multiple times, for multiple creatives (multiple interest groups) in order to increase the chances of reaching a given user. For this reason, the maximal number of interest groups per user should be limited, and it should be taken into account when choosing validation algorithm's parameters (k, L, p(threshold)).
 
 ### Final remarks
-* Note that the algorithm is a proof of concept, and its purpose is to show that we can reason with mathematical precision about microtargeting properties in outcome-based Turtledove.
+* Note that the algorithm is a proof of concept, and its purpose is to show that we can reason with mathematical precision about microtargeting properties in outcome-based TURTLEDOVE.
 * The browser may implement additional validation rules in order to obtain other guarantees. For example: invalidating an ad that hasn't seen enough unique impressions over a period of time.
 * The microtargeting analysis above grants the Bidder much more control than he will have in the real world. Therefore, a more relaxed validation logic may actually be feasible.
 * Thanks to the [Decoupling of microtargeting prevention and bidding mechanisms](#decoupling-of-microtargeting-prevention-and-bidding-mechanisms), the validation policy and implementation may be changed in time, if there is a need to do so.
-* Outcome-based and [product-level](https://github.com/jonasz/product_level_turtledove) proposals are compatible, but we defer a detailed discussion for a later time.
+* Outcome-based and [product-level](PRODUCT_LEVEL.md) proposals are compatible, but we defer a detailed discussion for a later time.
 * In order to keep the PoC algorithm simple, we didn't try to optimize for the additional ad showing latency caused by the need to consult Privacy Infrastructure. In practice, if an ad is validated, we may cache that information in the browser. Further optimizations can be pursued.

@@ -1,5 +1,5 @@
-# Product-level Turtledove\*
-\*We focus on Turtledove for the sake of discussion, a "Product-level [Sparrow](https://github.com/WICG/sparrow)" is also feasible.
+# Product-level TURTLEDOVE\*
+\*We focus on TURTLEDOVE for the sake of discussion, a "Product-level [SPARROW](https://github.com/WICG/sparrow)" is also feasible.
 
 ## Summary
 
@@ -7,24 +7,24 @@ In **ecommerce retargeting**, the majority of creatives consist of a collection 
 
 ![creative mock](assets/creative_mock.png)
 
-[Turtledove](https://github.com/WICG/turtledove) is oblivious to the existence of products in creatives, and imposes minimal audience thresholds on the latter. This introduces a novel, fundamental difficulty in the area of useful product recommendation. Recommendation systems will have to shift from working with a single user to working with sets of users.
+[TURTLEDOVE](https://github.com/WICG/turtledove) is oblivious to the existence of products in creatives, and imposes minimal audience thresholds on the latter. This introduces a novel, fundamental difficulty in the area of useful product recommendation. Recommendation systems will have to shift from working with a single user to working with sets of users.
 
-We argue that in ecommerce it is the **product**, not the creative (a collection of products), that would be the most natural conceptual unit behind Turtledove mechanisms.
+We argue that in ecommerce it is the **product**, not the creative (a collection of products), that would be the most natural conceptual unit behind TURTLEDOVE mechanisms.
 
-If, in Turtledove, we **apply the idea of minimal audience size at product level**, we can:
+If, in TURTLEDOVE, we **apply the idea of minimal audience size at product level**, we can:
 * retain the flexibility and effectiveness of the current state-of-the-art recommendation systems,
-* ease the adoption of Turtledove in ecommerce,
+* ease the adoption of TURTLEDOVE in ecommerce,
 * easily analyze the impact of minimal audience size on revenue, and
     * early research indicates we might be able to retain even **~94.5%** of our current click through rate level with product-level audience threshold of **30**
-* keep Turtledove privacy guarantees.
+* keep TURTLEDOVE privacy guarantees.
 
 In addition, this product-level focus brings greater clarity into areas that need to reason "what's inside the ad":
-* Turtledove UI,
+* TURTLEDOVE UI,
 * publisher brand safety,
 * native ads, and
 * auditability.
 
-The proposed change is an extension of Turtledove, and supports all use cases that were supported originally.
+The proposed change is an extension of TURTLEDOVE, and supports all use cases that were supported originally.
 
 ## Technical details
 
@@ -49,9 +49,9 @@ window.navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);</pre>
 
 ## Impact on core metrics
 
-How will the adoption of product-level Turtledove affect recommendation quality?
+How will the adoption of product-level TURTLEDOVE affect recommendation quality?
 
-This is a question we haven't been able to answer for "creative-level" Turtledove. In product-level Turtledove, however, we can apply a fairly straightforward and informative analysis.
+This is a question we haven't been able to answer for "creative-level" TURTLEDOVE. In product-level TURTLEDOVE, however, we can apply a fairly straightforward and informative analysis.
 
 Methodology:
 * We focus on a period of 28 days, (more than 1.4e8 clicks).
@@ -73,15 +73,15 @@ Results:
 ![impact on advertisers](assets/impact_on_advertisers.png)
 How to read the graph: "90% of advertisers would retain at least 74% of the current CTR level."
 
-## Turtledove adoption in e-commerce
+## TURTLEDOVE adoption in e-commerce
 
-In addition to **core-metric impact estimates**, another important factor in Turtledove adoption is **research and engineering effort required**.
+In addition to **core-metric impact estimates**, another important factor in TURTLEDOVE adoption is **research and engineering effort required**.
 
 The product-focused approach is compatible with many recommender systems employed in ecommerce retargeting today. Many state of the art systems follow the approach of scoring an item's usefulness to a single user. On the other hand, research on recommender systems working on clusters of users is scarce.
 
-Adopting product-level focus will allow us to continue to use the recommender systems of today nearly as-is. There are some details, of course, but conceptually, we just need to get rid of very rare products and then just run the old algorithm. This greatly cuts the amount of effort required to adopt to Turtledove. The current recommender systems are a result of many years of development of teams of engineers and data scientists.
+Adopting product-level focus will allow us to continue to use the recommender systems of today nearly as-is. There are some details, of course, but conceptually, we just need to get rid of very rare products and then just run the old algorithm. This greatly cuts the amount of effort required to adopt to TURTLEDOVE. The current recommender systems are a result of many years of development of teams of engineers and data scientists.
 
-In vanilla, creative-level Turtledove, the recommender systems will likely have to be designed and built from scratch. The minimal audience threshold applied on the creative level is a difficult restriction. So far, no estimate is available on the impact it will have on recommendation quality and CTR, but we believe it would be very high.
+In vanilla, creative-level TURTLEDOVE, the recommender systems will likely have to be designed and built from scratch. The minimal audience threshold applied on the creative level is a difficult restriction. So far, no estimate is available on the impact it will have on recommendation quality and CTR, but we believe it would be very high.
 
 ## Creative construction
 
@@ -100,13 +100,13 @@ Strict approach:
 This way:
 * We prevent ordering-based pranks, like assembling text from individual images.
 * The ad template cannot reason about the user's identity based on the collection of products the user is assigned to.
-* From the privacy perspective, product-level Turtledove shouldn't be much different from seeing multiple single-product ads in creative-level Turtledove. (The latter, however, would be much less effective in terms of core metrics.)
+* From the privacy perspective, product-level TURTLEDOVE shouldn't be much different from seeing multiple single-product ads in creative-level TURTLEDOVE. (The latter, however, would be much less effective in terms of core metrics.)
 
 A more relaxed approach would be valuable for:
 * more flexible creation rendering; and potentially
 * opening up the possibility of serving native ads by structuring and standardizing the format of product assets.
 
-## Turtledove UI
+## TURTLEDOVE UI
 
 On the UI level, showing the product interest groups may be much more understandable to the user.
 * Showing individual products is self explanatory. "wereallylikeshoes.com thought you'd be interested in Nike Air Force 1 Basketball Shoes <picture> <link> when you visited wereallylikeshoes.com/womensneakers.html"
@@ -115,7 +115,7 @@ On the UI level, showing the product interest groups may be much more understand
 
 ## Auditability
 
-Turtledove assumes an audience-size approach to ensuring user privacy and comfort. By bringing more structure to the creative, an additional approach is possible:
+TURTLEDOVE assumes an audience-size approach to ensuring user privacy and comfort. By bringing more structure to the creative, an additional approach is possible:
 
 * Advertiser making all product web_bundles available for public inspection (e.g. via ".well-known" resources)
 * The browser ensuring that each component (products and template) of the ad has been publicly available before an impression
