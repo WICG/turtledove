@@ -11,6 +11,7 @@
      * [Frequency Capping, Budgets, Metrics, and Reporting](#frequency-capping-budgets-metrics-and-reporting)
      * [User Interface Controls](#user-interface-controls)
    * [Incremental Adoption Path](#incremental-adoption-path)
+   * [Suggested enhancements](#suggested-enhancements)
    * [Alternatives Considered](#alternatives-considered)
      * [PIGIN](#pigin)
      * [FLoC](#floc)
@@ -159,8 +160,9 @@ The list of `reader` domains indicates the ad networks that WeReallyLikeShoes us
 
 There is a complementary API `window.navigator.leaveAdInterestGroup(myGroup)` which does what it says on the tin — WeReallyLikeShoes.com probably wants to take you out of its "cart-abandoner" group if you come back and buy the stuff.  Note that there is no way to ask what groups a person is in, so the semantics of `leaveAdInterestGroup()` are "If you're in the group, please leave; if you're already not in the group, do nothing," and there is no return value to indicate which of these just happened.  The value of `readers` should probably be ignored here.
 
-Browsers could also choose to prevent micro-targeting, i.e. disallow interest groups that are too small.  This could be done by communicating with some server-side privacy infrastructure to find out whether a group is large enough.  Or it could be approximated locally in the browser, by limiting the permissible (owner, name) pairs, e.g. owners may only be an eTLD+1 with a record of previous interaction and names may only be 00-99.  Browsers and the industry should reach some consensus on whether there should be a minimum threshold for ad audiences, and on what size any such threshold should be.
+Browsers could also choose to prevent micro-targeting.  This could be done by disallowing interest groups that are too small, e.g. communicating with some server-side privacy infrastructure to find out whether a group is large enough.  Or it could be done by disallowing ads that would be shown to too few people; this alternative is explored in [Outcome-based TURTLEDOVE](OUTCOME_BASED.md)   (There are also browser-local approaches to this problem, e.g. by limiting the permissible (owner, name) pairs, but it seems hard to make such approaches equitable across different scales of advertisers.)  Browsers and the industry should reach some consensus on whether there should be a minimum threshold for ad audiences, and on what size any such threshold should be.
 
+Some formats of ads are commonly constructed out of smaller pieces, e.g. a carousel that displays a set of products.  This use case could be accomodated by the call to `joinAdInterestGroup` also including some metadata about the intended smaller pieces, which could then each be subject to whatever micro-targeting protection is in place.  This refinement is explored in [Product-level TURTLEDOVE](PRODUCT_LEVEL.md)
 
 ### Two Uncorrelated Requests
 
@@ -273,6 +275,10 @@ There are still lots of tracking work-arounds at this stage: Ad networks can sti
 But adapting to aggregate reporting will require a big change from the ad industry, no two ways about it.
 
 An even more gentle start could begin with a "step 0" where the browser issues the two TURTLEDOVE request at pageload time, one after the other: first send the browser-constructed interest-group request, then run the in-browser auction among the interest-group responses, and then _send the highest bid along with the ad-network-constructed contextual ad request_.  This serial variant carries more latency cost, and the in-browser auction cannot receive contextual signals from the server.  But in exchange it allows a server-side contextual auction to remain certain that the ad it picks "really is the winner".  We should have a conversation with the advertising community about this or any other ways to make the adoption path more accessible.
+
+## Suggested Enhancements
+- [Product-level TURTLEDOVE](PRODUCT_LEVEL.md)
+- [Outcome-based TURTLEDOVE](PRODUCT_LEVEL.md)
 
 
 ## Alternatives Considered
