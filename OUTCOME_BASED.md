@@ -27,10 +27,11 @@ Intuitively, if the Privacy Infrastructure sees only a single user for whom an a
 In a further section we formalize this intuition with a detailed proof of concept outcome-based validation algorithm and analyze its microtargeting properties.
 
 ## More accurate bidding
+``
 
-Currently TURTLEDOVE takes an input-based approach to make microtargeting infeasible - it enforces bidding signals to be identical for each member of an interest group. Effectively, even for ads intended for larger audiences (when microtargeting is not an issue), the bidding accuracy will suffer.
+Currently TURTLEDOVE takes an input-based approach to make microtargeting infeasible - it enforces bidding signals to be identical for each member of an interest group. Effectively, even for ads intended for larger audiences (when microtargeting is not an issue), the bidding accuracy will suffer. This is especially true for performance bidders like RTB House who try to leverage all available signals in order to optimize bidding accuracy.
 
-With the outcome-based approach, it is possible to retain bidding accuracy while still protecting against microtargeting. The bidder should be able to calculate precisely how much a bid is worth, and a particular ad should be shown to the users only if enough unique users would win bids for that ad.
+As an analysis performed at RTB House shows, with the outcome-based approach it is possible to retain bidding accuracy - while still protecting against microtargeting. The bidder should be able to calculate precisely how much a bid is worth, and a particular ad should be shown to the users only if enough unique users would win bids for that ad.
 
 In more detail, paying attention to auction outcomes rather than inputs, makes it possible to give the bidder full access to a wider range of bidding signals:
 
@@ -66,7 +67,7 @@ In the outcome-based approach, bidding and microtargeting prevention mechanisms 
 
 ## Mathematical framework for microtargeting prevention
 
-We present a **proof of concept** algorithm and analyse its microtargeting prevention aspects. The purpose of the algorithm is to show that, within outcome-based TURTLEDOVE, it is possible to reason with mathematical precision about microtargeting prevention guarantees.
+We present a **proof of concept** validation algorithm and analyse its microtargeting prevention aspects. The purpose of the algorithm is to show that, within outcome-based TURTLEDOVE, it is possible to reason with mathematical precision about microtargeting prevention guarantees.
 
 We show how to make sure each ad, if validated, is expected to reach a certain number of users at least once. The browser teams may choose to enforce different properties of the bidding ecosystem (see [Final remarks](#final-remarks)).
 

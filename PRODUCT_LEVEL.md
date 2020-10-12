@@ -15,7 +15,7 @@ If, in TURTLEDOVE, we **apply the idea of minimal audience size at product level
 * retain the flexibility and effectiveness of the current state-of-the-art recommendation systems,
 * ease the adoption of TURTLEDOVE in ecommerce,
 * easily analyze the impact of minimal audience size on revenue, and
-    * early research indicates we might be able to retain even **~94.5%** of our current click through rate level with product-level audience threshold of **30**
+    * early research at RTB House indicates it may be possible to retain even **~94.5%** of the current click through rate level with product-level audience threshold of **30**
 * keep TURTLEDOVE privacy guarantees.
 
 In addition, this product-level focus brings greater clarity into areas that need to reason "what's inside the ad":
@@ -49,11 +49,11 @@ window.navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);</pre>
 
 ## Impact on core metrics
 
-Note: this section describes analysis conducted at [RTB House](https://www.rtbhouse.com/).
+<b>Note: this section describes analysis conducted at [RTB House](https://www.rtbhouse.com/).</b>
 
 How will the adoption of product-level TURTLEDOVE affect recommendation quality?
 
-This is a question we haven't been able to answer for "creative-level" TURTLEDOVE. In product-level TURTLEDOVE, however, we can apply a fairly straightforward and informative analysis.
+This is a question we (RTB House) haven't been able to answer for "creative-level" TURTLEDOVE. In product-level TURTLEDOVE, however, we can apply a fairly straightforward and informative analysis.
 
 Methodology:
 * We focus on a period of 28 days, (more than 1.4e8 clicks).
@@ -73,7 +73,7 @@ Results:
 ![clicks retained](assets/clicks_retained.png)
 * How `product_level_threshold = 30` impacts advertisers
 ![impact on advertisers](assets/impact_on_advertisers.png)
-How to read the graph: "90% of advertisers would retain at least 74% of the current CTR level."
+How to read the graph: "90% of RTB House's advertisers would retain at least 74% of the current CTR level."
 
 ## TURTLEDOVE adoption in e-commerce
 
@@ -81,7 +81,7 @@ In addition to **core-metric impact estimates**, another important factor in TUR
 
 The product-focused approach is compatible with many recommender systems employed in ecommerce retargeting today. Many state of the art systems follow the approach of scoring an item's usefulness to a single user. On the other hand, research on recommender systems working on clusters of users is scarce.
 
-Adopting product-level focus will allow us to continue to use the recommender systems of today nearly as-is. There are some details, of course, but conceptually, we just need to get rid of very rare products and then just run the old algorithm. This greatly cuts the amount of effort required to adopt to TURTLEDOVE. The current recommender systems are a result of many years of development of teams of engineers and data scientists.
+At RTB House, adopting product-level focus will allow us to continue to use the recommender systems of today nearly as-is. There are some details, of course, but conceptually, we just need to get rid of very rare products and then just run the old algorithm. This greatly cuts the amount of effort required to adopt to TURTLEDOVE. The current recommender systems are a result of many years of development of teams of engineers and data scientists.
 
 In vanilla, creative-level TURTLEDOVE, the recommender systems will likely have to be designed and built from scratch. The minimal audience threshold applied on the creative level is a difficult restriction. So far, no estimate is available on the impact it will have on recommendation quality and CTR, but we believe it would be very high.
 
