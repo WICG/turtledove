@@ -1,0 +1,241 @@
+#  WICG: TURTLEDOVE, SPARROW, &c
+
+
+## TPAC 2020 Meeting
+
+October 13 15:00 UTC (per [schedule](https://www.w3.org/wiki/TPAC/2020/GroupMeetings#:~:text=TURTLEDOVE)) = 11am US Eastern
+
+Editors: Michael Kleber, Arnaud Blanchard
+
+See registrants here: https://www.w3.org/2002/09/wbs/35125/TPAC2020/registrants#WICG1
+
+
+## Agenda
+
+
+
+*   Overview of problem space
+*   Prototyping and Incremental Adoption
+*   Where bidding happens:
+    *   TURTLEDOVE and its challenges
+    *   SPARROW and its challenges
+    *   Dovekey and its challenges
+*   Discussion
+
+
+## Attendees — please sign yourself in!
+
+
+
+1. Michael Kleber (Google Chrome)
+2. A.J. Spaudie (Ario Living, Inc.)
+3. Pedro Alvarado (Resonate)
+4. Andrew Breza (Cision)
+5. Arnaud Blanchard (Criteo)
+6. Ionel Naftanaila (EDAA) 
+7. Erik Anderson (Microsoft)
+8. Arvind Murching (Microsoft)
+9. Garrett Johnson ( Boston University) 
+10. Paul Bannister (CafeMedia)
+11. Jeff WIeland (Magnite)
+12. Lionel Basdevant (Criteo)
+13. Kenneth Christiansen (Intel Corporation)
+14. Jonasz Pamuła (RTB House)
+15. Ryan Arnold (Procter & Gamble)
+16. Mike Taylor (Google)
+17. Kris Chapman (Salesforce)
+18. Russell Stringham (Adobe)
+19. Nicole Lesko (Meredith)
+20. Mike O’Neill (Baycloud)
+21. Allen Fung (ShareThis Inc.)
+22. David Van Cleve (Google)
+23. Andrew Pascoe (NextRoll)
+24. Ryan Avecilla (Neustar)
+25. Charlie Harrison (Google)
+26. Shigeki Ohtsu (Yahoo JAPAN)
+27. Brad Rodriguez (Magnite)
+28. Joshua Koran (Zeta Global)
+29. Valentino Volonghi (NextRoll)
+30. Simon Pieters (Bocoup)
+31. Raj Belur (Amazon)
+32. Mike Pisula (Xaxis)
+33. Basile Leparmentier (Criteo)
+34. Mike Smith (Hearst)
+35. Lukasz Wlodarczyk (RTB House)
+36. Andy Sharkey (CafeMedia)
+37. Chris Needham (BBC)
+38. Marçal Serrate (Hybrid Theory)
+39. Martin Alvarez-Espinar (Huawei)
+40. Paul Marcilhacy (Criteo)
+41. Wendell Baker (Verizon  Media) 
+42. Jukka Ranta (Comscore)
+43. Ardian Poernomo (Google)
+44. Yijian Bai (Google)
+45. Przemyslaw Iwanczak (RTB House)
+46. Achim Schlosser (netID)
+47. Wendy Seltzer (W3C)
+48. Christa Dickson (Meredith)
+49. Jon Burns (Shopify)
+50. James Rosewell (51Degrees)
+51. Jordan Mitchell (IAB Tech Lab)
+52. Stan Belov (Google)
+53. Phil Eligio (EPC)
+54. Ian Meyers (LiveRamp)
+55. Hong Cai (BBC)
+56. Diarmuid Gill (Criteo)
+57. Sam Weiler (w3c)
+58. Scott Cunningham (independent)
+59. Alex Cone (IAB Tech Lab)
+60. Joel Meyer (OpenX)
+61. Gang Wang (Google)
+62. Brain May (dstillery)
+63. Jeddy Chen (Magnite)
+64. John Sabella (PubMatic)
+65. 
+
+
+## Notes
+
+
+
+*   Michael Kleber: Introduction, TURTLEDOVE & SPARROW part of the privacy sandbox
+    *   Goal of this particular API offer a way for advertisers to show their ads to an audience they create
+    *   Historically done with 3p cookies, enables x-site tracking, but those cookies going away. How to support use case?
+    *   Support the ecosystem of the web, in the world where you can’t join behavior across sites
+    *   Solution framework
+        *   Data ownership is in the browser (flip ownership). Browsers hold information about user interest groups, rather than advertisers / ad-tech company
+        *   Websites can’t learn interest groups of visitors
+        *   Limit microtargeting (via k-anonymity e.g.). Helps with privacy and also user feelings, doesn’t make users feel followed
+    *   How is this possible?
+        *   Sketch of a solution (not a full solution)
+        *   Statue of 3 lies (John Harvard statue)
+        *   How the privacy goal might be achievable. Everything else today is variants on the idea
+    *   High level
+        *   User visits advertiser site, advertiser tells browser about an ad-creative w/ some bidding information, some other metadata like rate limiting
+        *   Browser makes sure the ad is common enough
+        *   Sometimes the user sees the ad
+        *   The ad renders in a [fenced iframe](https://github.com/shivanigithub/fenced-frame/) with no network access (iframe cannot communicate with the embedder)
+        *   At the end of the day, advertiser learns how many times the ad showed up on publisher sites, pays them
+    *   3 big qs we need to answer
+        *   1. How do advertisers construct interest groups?
+        *   2. How does IG targeted ad bundle produce a bid?
+        *   3. What does everyone find out after the fact?
+        *   Lots of questions beyond these, wanted to highlight these key questions, and in particular focus on question 2. How can we produce a bid for an ad auction
+        *   Why question 2? Because of prototyping and incremental adoption. We have OK answers for (1), an imperative write-only API to say to the browser “please join my IG”. Lots of easy ways to extend it too, in various issues. May be clever ways to expand in future (similar audience use-case). Find people like an existing audience. Potential improvements but we have a good place to start.
+        *   Question 3 is a big question, but answers depend on question 2 (how bidding works affects what we need to learn)
+        *   Incremental adoption path -> TURTLEDOVE is a huge change for ads industry. We can start by a first step where we run the auction in the new way, but reporting can happen the old way. As long as we get to that point, we can support IG targeting ads without the need for 3p cookies. It isn’t private enough, we leak things we don’t want to leak (IG to publisher) but it moves us in a better direction for privacy. Buys us time. Say this deliberately because the clock is ticking in Chrome. 3P cookie going away in the near future, been talking about this since January. Need to start implementing in the browser, so people can try and see how it works.
+    *   Where bidding actually happens
+        *   Intent is to go through the three main answers (TURTLEDOVE, SPARROW, DOVEKEY)
+        *   Challenges around those three
+*   Valentino: want to understand the minimum size of a group. What is microtargeting how do we do it. If group is too small, small advertisers cannot advertise products, but also privacy violating potentially
+    *   Michael: agree, it is one aspect, but independent of the other choices. There will be some infrastructure we build that will help us (capability will exist). What policies we the browsers should have is independent but it is a decision we will need to make. Answers we will choose to answer (2) inform the set of possibilities for how microtargeting might work. Privacy leak could be decreased depending on where auction is (e.g. preventing associating IG with IP address)
+    *   User experience part is interesting, we will need UX research to understand how this makes users unhappy, a question for browsers as user agent to answer, but separate from bidding / delivery
+*   Joshua: Is profitable bidding a design requirement? Assume it is there.
+    *   Michael: absolutely, goal of the API is for advertisers to keep spending money on advertising. If the API does not provide a positive return on investment, competitive with other options they have available, then the whole thing is a failure and not worth doing. Yes something that does as good a job of recreating the economics an important part of the web today is a necessary part of the API
+*   James Rosewell: FOllowing from Valentino about small cohorts. If small cohorts prevent a marketer from reaching an audience, issues with discrimination
+    *   Michael: there is a privacy threat with an audience being too small. Something that allows an audience to be too small is a problem for browsers. Answer we come up with to q #2 has some bearing on the privacy implications of small group. Can go into more detail. Ability to handle use-case of “target a small set of people” is something that we can evaluate
+    *   James: very important point
+    *   Michael: easy to say “must have requirement” but all the requirements need to balance with each other. Do you have a threshold that is a bright line? Don’t know of one. An audience of size one seems difficult
+    *   James: lots of factors, one doesn’t necessarily trump. Discrimination / privacy neither trump the other
+    *   Michael: Don’t believe restricting targeting an audience of size 1 is discrimination
+    *   James: if an advertiser needs to smaller threshold vs a bigger marketer, difficult
+    *   Brad: Can you elaborate on the threshold?
+    *   James: Depends on context, e.g. rural vs. urban, number of factors. 
+    *   Rstratto: N is not unknowable
+    *   Michael: discussion of what size N is OK to target from browser privacy needs is a great discussion for us to have. It needs to be part of designing and shipping this API. Not knowing the answer shouldn’t keep us from discussing the other technical aspects we need to. Other qs inform this problem
+*   Diarmuid: Important we take the size of various participants into account when we decide N. If N is large (e.g. hundreds) could be difficult for some participants. Small size participants would be discriminated against. Impairing their ability to do their business
+    *   Michael: we will need lots of participants of various sizes weighing in on discussion
+*   Sam: Does this allow N to be user configurable? Can the user say “I don’t want to be in a cohort of more than 1500 people?”  Do they have enough info re: cohort size?
+    *   Michael: the browser should be able to make such a control possible. Haven’t thought through implications but seems possible
+*   Joshua: following up on Sam’s q, are we saying user won’t have a choice?
+    *   Michael: all qs about UI the browser exposes are interesting qs that we haven’t gotten to yet. They are more browser specific vs web exposed APIs. Something that happens at a later stage, UX research.
+    *   Joshua: agree we should make it easy for users to understand, but important to separate what are w3c standards vs what are browser features
+    *   Sam: I’m not asking about UI - I’m asking about what info is available in the API so different user agents / plugins can expose different UI
+    *   MIchael: Yes, we should be able to make this kind of information available, so should be feasible to support a browser that wanted to make use of size in decision-making
+*   Michael: Moving on to where bidding happens…
+    *   First, there is a contextual ad request, your browser knows what interest groups you are in. At page load time ad tech sees ad request with contextual & 1p data, all of that contextual and 1p data is not affected by the changes today
+    *   These ad reqs don’t say anything about the users IGs (separate cross site and same site data)
+    *   Ad tech companies have the opportunity to send back an ad that competes against IG ads
+*   Approach #1: TURTLEDOVE - entirely on device bidding / competition
+    *   For each IG the user is in, periodically go to fetch ad creatives based on IGs, plus a JS bidding function, happens before the user even navigates to the page. No way to associate the ad request with the render.  Challenging
+    *   The on-device bidding function takes contextual signals, could say things like “how much is this page about topic X” for 1000 X’s, contextual request could send back to the browser the scores, goes into the JS bidding
+    *   Airline can tune score based on whether the page is about Europe vs. plane crashes
+    *   Some ad networks want an ML model involved here, the bidding function can be arbitrarily complex
+    *   Benefit: Privacy, no data leaves the device
+    *   Challenges
+        *   Signals need to meet needs of eerie possible IG targeted ad
+        *   JS is going to be big and expensive. Ad tech companies wouldn’t want to rewrite all this, browsers would prefer not to run it
+        *   Bidding functions would contain sensitive business logic
+        *   Control is much harder, advertisers may want to turn campaigns on/off, hard to do that in short turnaround time
+        *   Risk of downloading ads that neer show
+        *   Fraud - hard to know if the reported bid price was real. Did that bid really come from my JS?
+        *   None are impossible to solve but they are all things we would need to solve
+*   Approach #2: SPARROW - trusted server (Gatekeeper server)
+    *   Server run by an independent third party where the auction take place
+    *   Browsers trust this third party to handle sensitive user data (combine contextual and IG data)
+    *   Ad tech companies trust this server
+    *   Server can be audited for compliance
+    *   Browser tells the gatekeeper contextual + 1p data and user IG (Gatekeeper could use this to tracker you but we trust it not to)
+    *   Gatekeeper evaluates bidding model, etc
+    *   Gatekeeper serves winning ad’s bundle
+    *   Timing attacks OK because Gatekeeper is trusted, don’t have to fetch all the ads in advance
+    *   Benefits
+        *   Centralized control: easy to control spend / turn off campaigns etc
+        *   ML models are OK and stay secret
+    *   Challenges
+        *   Hard to safely run GK, aribraily run code from many ad-techs
+        *   Hard for ad tech to trust GK
+        *   Hard for browsers to trust GK. Malicious GK and unintentional leaks from GK
+*   Approach #3: DOVEKEY just came out a few weeks ago
+    *   Earlier stages, high level synopsis
+    *   GK is much simpler than the one in SPARROW. It doesn’t do computation, it only stores K/V
+        *   Key: contextual signals AND IGs
+        *   Value: the bid
+        *   Ad tech signals can be a combination from the advertiser and publisher (shorthands for parties but there are ad tech companies who enact the jobs for them)
+    *   Auction could run either in GK or in browser
+    *   IF GK is just a cache of KV bids, how is it populated? Several ways
+        *   AD tech could predict which IGs / keys are important. Run hypothetical auctions and push results to servers
+        *   KV server can report on misses (as soon as any key is being looked up), here is a hole we don’t have would you like to provide
+        *   Push and pull approach
+        *   In either case the ML models that figure out the bid get to run on the ad-tech servers. Hard part of computation does not need to move to a different place.
+    *   Benefits
+        *   Bidding keeps running where it does today. Don’t need to know about spec / worried about GK running this code
+        *   Host of CS techniques that are in this arena s.t. KV server doesn’t need to be simply trusted and instead we can have technical solutions
+            *   Secure Enclaves, multi-party computation, etc
+            *   Multiple servers could be involved without even knowing what the key is, the computer hosting the database may not even know what item is being looked up
+            *   Feasible
+        *   KV GK, because there is a range of implementations, we can iterate on a range of options. E.g. launch we can have a fully trusted GK and then later we can move to something like the secure enclave / MPC
+    *   Challenges
+        *   Scalability is difficult since the key space is large
+        *   Coverage for long tail publishers and advertisers
+        *   Private computing research ideas trade away simplicity for privacy
+*   Discussion, we have 10-15 mins left. Want to discuss relative benefits of approaches
+    *   Slides will be made available
+*   Mike O’Neil: are any of these approaches better from fraud detection POV?
+    *   Michael: the possibility of the bid being modified in the browser, TURTLEDOVE is the weakest / hardest to verify. Other approaches have trusted servers that create the bid, could be cryptographically signed so you know the bid did not mutate. Nothing here is the end of the story for invalid traffic / fraud.
+*   James Rosewell: (Option 2 - server why is ad tech less able to securely run a server compared to a web browser? What conditions enable someone to trust one party over another?) Option 2 GK and trust between browsers and GK. Statement about arbitrary code from ad-tech. Question is about trust. How someone using a web browser trusts one party over another, could they trust a publisher over a browser? What are the conditions for trust for the proposal to work
+    *   Michael Kleber: Intent is for it to be not possible for users to be tracked across different web sites. ANything that gives out x-site activity is the privacy risk we are trying to guard against. Letting one trusted server having access to this information imposes a trust risk in that we need to be sure the information will not turn into a x-site profile being built.
+    *   James: web browser is automatically trusted not to do that, but other parties not?
+    *   Miachel: Data on device and stays on device, in a better trust position than data that is on servers in the outside world
+*   Joshua: How does the browser know that a cohort size desired by the marketer is above the minimum n-threshold? Q on the minimum # of people in a cohort to be privacy safe. How would that be calculated?
+    *   How do we know there is a greater # of browsers that possess that cohort?
+    *   Michael: From the mechanics POV, one of the pieces we will need to ship is some aggregate reporting infra that will let the browser answer this question in a sufficiently private way. This is a function of the aggregated reporting API (infra that supports agg conversions). One of these things that is based on secure MPC and CS advances
+    *   Joshua: don’t need to go into detail of the reporting API, but are you saying that the distinct count functionality is supported without sending any unique ID to the trusted server?
+    *   Michael: Yes
+*   BradR: Would there be hope that the count would be cross browser, or Chrome specific / Safari specific / etc.
+    *   Michael: would want the count to be shared, but obviously if browsers decide to be separate it is challenging
+    *   It should certainly be possible
+*   Alex Cone: The proposals here is that publishers weigh purely on price. Ultimately a publisher wants to choose the highest price?
+    *   Michael: the value that comes back from the KV store in the GK world does not need to be the actual price. One of the things coming out of the auction is who pays what to who, but the scale can be up to the publisher ad tech company
+    *   Alex cone: This was the highest bid but here are the others, and I want to evaluate after
+    *   Michael: Isn’t impossible, seems compatible with what we are talking about
+*   Robert Stratton: We are getting to GK conversion via TURTLEDOVE. Assumption is data not leaving browser. Are you saying the assumption holds for all functionality? There will be other cases where GK / off-browser aggregation is inevitable. TURTLEDOVE not the only functionality
+    *   Michael: aggregated measurement proposals also use multi party computation model. Not a model restricted only to TURTLEDOVE, lots of room for talking about other approaches as well.
+    *   Voluntary IP blinding approach for dealing with network fingerprinting e.g.
+    *   Need to understand what the GK can learn and how you can be comfortable with the privacy properties
+*   Arnaud: Encourage everyone in this meeting to look into the proposals, Michael did a good summary but there are many intricacies. Please look and give your opinion at these opinions or contribute something else.
+*   Michale: my goal is to figure out what should be prototyped. Sam has something to say about this
+*   Sam: As a user I am concerned about SPARROW. I can imagine there are parties we can trust. I hope you are prototyping one of the other two. I like exposing knobs to user
+    *   Michael: what about DOVEKEY affects your feelings
+    *   Sam: Don’t understand it as well but more interested in it than sparrow
+*   Michael: apologize we are out of time
