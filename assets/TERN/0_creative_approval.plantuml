@@ -1,0 +1,35 @@
+@startuml
+
+title Auditing mechanism
+
+participant "DSP" as dsp
+participant "SSP" as ssp
+
+rnote over ssp
+Ad network;
+has publishers;
+publishers have ad space to sell;
+joins buyers and sellers via auction.
+end note
+
+rnote over dsp
+Ad space buyer;
+has advertisers;
+show highest utility ads
+among all advertiser ads.
+end note
+
+dsp -> ssp : POST /ad-review {"name": "ad-123456789", ...}
+ssp -> dsp : (approved, "review-token-123879")
+...
+dsp -> ssp : POST /ad-review {"name": "ad-333333333", ...}
+ssp -> dsp : (pending, "review-token-222222")
+...
+dsp -> ssp : POST /check-review {"token": "review-token-222222"}
+alt approved
+  ssp -> dsp : (approved, "review-token-222222")
+else rejected
+  ssp -> dsp : (rejected, "brand safety prohibition")
+end
+
+@enduml
