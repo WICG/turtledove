@@ -28,6 +28,7 @@ TURTLEDOVE Enhancements with Reduced Networking
   - [a. Validate ads](https://github.com/WICG/turtledove/blob/master/TERN.md#a-validate-ads)
   - [b. Download ad web bundles](https://github.com/WICG/turtledove/blob/master/TERN.md#b-download-ad-web-bundles)
   - [c. Fetch ads request](https://github.com/WICG/turtledove/blob/master/TERN.md#c-fetch-ads-request)
+  - [d. Reporting](https://github.com/WICG/turtledove/blob/master/TERN.md#d-reporting)
 - [3. Publisher Data](https://github.com/WICG/turtledove/blob/master/TERN.md#3-publisher-data)
   - [a. The publisher/contextual request](https://github.com/WICG/turtledove/blob/master/TERN.md#a-the-publishercontextual-request)
   - [b. The SSP](https://github.com/WICG/turtledove/blob/master/TERN.md#b-the-ssp)
@@ -724,6 +725,10 @@ validation are covered by [section 2a](https://github.com/WICG/turtledove/blob/m
 significantly reduce network traffic on the internet so requests don't have to go to an SSP only to be
 forwarded to a DSP, and will also reduce computational resources if the DSP chooses to encrypt its data
 as it passes through the SSP.
+
+### d. Reporting
+
+As in [Aggregate Reporting API](https://github.com/csharrison/aggregate-reporting-api).
 
 ----------------
 
