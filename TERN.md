@@ -299,10 +299,13 @@ The pixel produces a JSON object for the `input` of the form:
 }
 ```
 
-`.writeAdvertisementData(input)` should return `true` if the browser accepts this JSON object and
-`false` otherwise. There may be instances where the user is willing to accept a first-party cookie
-from the advertiser but rejects advertising. Receiving this feedback will allow advertisers and
-DSPs to track metrics on trackability.
+`.writeAdvertisementData(input)` should provide the browser a value of  `true` if the browser accepts
+this JSON object and `false` otherwise. There may be instances where the user is willing to accept a
+first-party cookie from the advertiser but rejects advertising. The browser can report back whether it
+accepted advertising from this advertiser through the [Aggregate Reporting API](https://github.com/csharrison/aggregate-reporting-api).
+Receiving this feedback in an aggregate report will allow advertisers and DSPs to track metrics on trackability.
+Advertisers frequently require some high-level metrics on how many of their users are reachable in order
+to plan for budgeting and the like.
 
 This JSON object is significantly more complex than what is required in the `.joinInterestGroup()` call
 in TURTLEDOVE, but it is not without cause. We list the reasons for each object below. However,
