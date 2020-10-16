@@ -880,11 +880,40 @@ At first blush, this may seem like it lacks value: aren't interest groups design
 capture a user's interest for a particular advertiser? Well, we consider this is either
 a replacement or complementary mechanism to [FLoC](https://github.com/jkarlin/floc).
 
-For example, a user may be browsing a page about video games. A games company can target pages
+We find that SSPs are generally responsible for policies on how publisher data may be used by the
+DSP. Accepting this `groups` object can be determined by individual SSPs, which can be coordinated
+with their integrated DSPs. It's also possible that SSPs can more granularly control their policy
+on receiving this object on a per-publisher basis. In short, we find that this mechanism maintains
+the functionality and flexibility that exists today.
+
+The base TURTLEDOVE proposal permits some use like this through a cross-domain iframe:
+
+> The API must be called from a window (top-level or iframe) whose origin matches the owner.
+> This could be on WeReallyLikeShoes.com, or could be a cross-domain iframe — maybe
+> RunningShoeReviews.com writes articles about shoes sold by WeReallyLikeShoes.com, and the
+> review site has an agreement which lets the retailer add people to an interest group with
+> 'name': 'reads-reviews'. It should also be possible for a site owner to include a
+> cross-domain iframe _without_ giving it this capability.
+
+However, this requires a direct coordination between individual publishers and DSPs, which can be
+a tall order for broad interest groups like we see in FLoC.
+
+As an example use case, a user may be browsing a page about video games. A games company can target pages
 about games strictly, but if the user browses away to a news site, it may be desirable to continue
 advertising games to them. They've expressed interest in the topic even though they're no longer
 on a page about games. The browser would be responsible for adding these interest groups to the
 browser storage, and [fetching any additional ads from the DSP](https://github.com/WICG/turtledove/blob/master/TERN.md#c-fetch-ads-request).
+Setting up cross-domain iframes on the set of pages on the web about video games is likely
+intractable. Instead, the set of publishers willing to integrate with an SSP that allows for the
+DSP to set a "video games" interest group in the browser unlocks this capability. And, as previously
+stated, this capability can be managed between the publisher and SSP granularly.
+
+As stated in the section about [`writeAdvertisementData()`](https://github.com/WICG/turtledove/blob/master/TERN.md#1-on-the-advertisers-site),
+these interest groups should be namespaced by the `dsp` field. This will prevent unscrupulous
+actors from mucking around with these interest groups, either for delivering their own ads or
+adding users. We presume that that the SSP has a working relationship with the DSP and would
+not accept a response from the DSP with a non-matching `dsp` field declaration, so there is some
+validation in the chain of requests and responses.
 
 Note that _this is not an opportunity to inject full ad web bundles for these interest groups._
 In this moment, this should only be allowable through pure contextual advertising. We only allow
