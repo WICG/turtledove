@@ -308,7 +308,7 @@ Receiving this feedback in an aggregate report will allow advertisers and DSPs t
 Advertisers frequently require some high-level metrics on how many of their users are reachable in order
 to plan for budgeting and the like.
 
-This JSON object is significantly more complex than what is required in the `.joinInterestGroup()` call
+This JSON object is significantly more complex than what is required in the `.joinAdInterestGroup()` call
 in TURTLEDOVE, but it is not without cause. We list the reasons for each object below. However,
 after receiving the JSON object, the browser proceeds to act as largely described in TURTLEDOVE: it adds
 the browser to all of the interest groups in the object (for auditing by the user and the potential follow-up
@@ -370,7 +370,7 @@ to have its own TTL specified. We also include the timestamp at which the browse
 interest group for signals described later in this document.
 
 TURTLEDOVE appears to allow multiple interest groups to be added to the browser, but it seems to
-require multiple calls to `.joinInterestGroup()`. This is unnecessary.
+require multiple calls to `.joinAdInterestGroup()`. This is unnecessary.
 
 ### e. Multiple ad formats
 
