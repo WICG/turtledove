@@ -1,0 +1,56 @@
+@startuml
+
+title Contextual data flow
+
+actor "User" as user
+box #eeeeee
+participant "UA" as ua
+participant "SSP JS" as ssp_pixel
+end box
+participant "Publisher" as publisher
+participant "SSP" as ssp
+participant "DSP 1" as dsp1
+participant "DSP 2" as dsp2
+participant "DSP 3" as dsp3
+
+user -> ua : navigate(publisher.example/...)
+ua -> publisher : GET /...
+publisher -> ua : load()
+
+ua -> ssp : GET /ssp.js
+ssp -> ssp_pixel : load()
+
+...
+
+hnote over ua
+start publisher-
+directed auction
+end note
+
+ua -> ssp_pixel : execute(\n    ctx={"url": ..,\n     "ad-sizes": [..],\n     "auction-mechanics": {\n       "floor-price": 0.75,\n       "auction-type": "second price",\n       ..},\n    })
+
+activate ssp_pixel
+ssp_pixel -> ssp : publisherRequest(ctx)
+ssp -> dsp1 : solicit(ctx+sspData)
+ssp -> dsp2 : solicit(ctx+sspData)
+ssp -> dsp3 : solicit(ctx+sspData)
+dsp1 --> ssp : [ ads1, signals1 ]
+dsp2 --> ssp : [ [ ], signals2 ]
+dsp3 --> ssp : [ ads3, signals3 ]
+ssp -> ssp_pixel : publisherResponse={\n     dsp1: [ ads1, signals1 ],\n     dsp2: [ [ ], signals2 ],\n    ...\n}
+ssp_pixel -> ua : generate_bids(publisherResponse)
+deactivate ssp_pixel
+
+activate ua
+
+ua -> ua : dsp1_bidding.js:generate_bid(\n    dsp1_adSignals,\n    dsp1_pubSignals,\n    browserSignals\n)
+...
+ua -> ua : dsp3_bidding.js:generate_bid(\n    dsp3_adSignals,\n    dsp3_pubSignals,\n    browserSignals\n)
+...
+ua -> ua : <conduct auction>
+ua --> ua : <winning ad(s)>
+deactivate ua
+
+ua -> user : (rendered page)
+
+@enduml

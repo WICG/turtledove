@@ -1,0 +1,50 @@
+@startuml
+
+title Async/background browser tasks
+
+participant "UA" as ua
+participant "SSP" as ssp
+participant "DSP" as dsp
+participant "ARAPI" as arapi
+
+== VALIDATE ADS ==
+
+ua -> ssp : GET /validation/<hash(dsp-url, ad-cbor-url, dsp-categories, ssp-categories)>
+
+opt re-validate
+ ssp --> dsp : GET ad-cbor-url
+ dsp --> ssp : <ad bundle content>
+end
+
+alt approved
+ ssp -> ua : (approved, "review-token-123879")
+else rejected
+ ssp -> ua : (rejected, "brand safety prohibition")
+else category/url mismatch
+ ssp -> ua : 404
+end
+
+== DOWNLOAD AD WEB BUNDLES ==
+
+ua -> dsp : GET <ad1-cbor-url>
+dsp -> ua : <ad bundle content>
+...
+ua -> dsp : GET <ad2-cbor-url>
+dsp -> ua : <ad bundle content>
+...
+
+opt win-time download - indistinguishable from background requests
+ ua -> dsp : GET <ad3-cbor-url>
+ dsp -> ua : <ad bundle content>
+end
+
+== FETCH ADS REQUEST ==
+
+ua -> dsp : POST /.well-known/fetch-ads {\n        "advertiser": "advertiser1.example,\n        "groups": {"group1": .., ..}\n    }
+dsp --> ua : <updated writeAdvertisementData() input>
+
+== REPORTING ==
+
+ua -> arapi : <aggregated report data>
+
+@enduml

@@ -1,0 +1,81 @@
+@startuml
+
+title Publisher-directed auction
+
+actor "User" as user
+box #eeeeee
+participant "UA" as ua
+participant "Publisher JS" as pub_pixel
+participant "SSP JS" as ssp_pixel
+end box
+
+user -> ua : navigate(publisher.example/...)
+
+...
+
+ua -> pub_pixel : execute()
+
+activate pub_pixel
+
+pub_pixel -> pub_pixel: start publisher-\ndirected auction
+
+pub_pixel -> ssp_pixel : execute(\n    ctx={"url": ..,\n     {"auction-mechanics": ..,\n    ...})
+
+activate ssp_pixel
+
+ssp_pixel ->] : publisherRequest(..)
+ssp_pixel <-] : { dsp1: .., dsp2: .., ...}
+ssp_pixel -> pub_pixel : publisherResponse={..}
+deactivate ssp_pixel
+
+pub_pixel -> ua : generate_bids(publisherResponse)
+
+activate ua
+
+rnote over ua
+UA provides a facility for
+sandboxed evaluation of
+each DSP's bidding.js logic.
+Logic results in bids for both
+contextual and interest group ads.
+end note
+
+ua -> ua : dsp1_bidding.js:generate_bid(\n    dsp1_adSignals,\n    dsp1_pubSignals,\n    browserSignals\n)
+...
+ua -> ua : dsp3_bidding.js:generate_bid(\n    dsp3_adSignals,\n    dsp3_pubSignals,\n    browserSignals\n)
+
+alt any bids were generated
+  ua -> pub_pixel : true
+else no bids generated
+  ua -> pub_pixel : false
+end
+
+deactivate ua
+
+rnote over pub_pixel
+Publisher may trigger
+the final auction.
+end note
+
+pub_pixel -> ua : trigger_auction(privateData)
+
+deactivate pub_pixel
+activate ua
+
+rnote over ua
+UA provides a facility for
+sandboxed evaluation of
+publisher or SSP-provided
+auction.js.
+end note
+ua -> ua : auction.js:evaluate_auction([\n    dsp1_ads,\n    dsp2_ads,\n    ...],\n    privateData\n)
+
+deactivate ua
+
+ua --> ua : <winning ad(s)>
+
+ua --> ua : <render ads>
+
+ua -> user : (rendered page)
+
+@enduml

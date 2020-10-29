@@ -1,0 +1,40 @@
+@startuml
+
+title Writing advertisement data
+
+actor "User" as user
+box #eeeeee
+participant "UA" as ua
+participant "DSP JS" as pixel
+end box
+participant "Advertiser 1" as advertiser1
+participant "DSP" as dsp
+
+user -> ua : navigate(advertiser1.example/product1)
+ua -> advertiser1 : GET /product1
+advertiser1 -> ua : load()
+ua -> dsp : GET /pixel.js
+dsp -> pixel : load()
+
+ua -> pixel : execute()
+activate pixel
+pixel -> ua : writeAdvertisementData(\n        {"advertiser": "Advertiser 1",\n         "dsp": "dsp.example",\n         "groups": {"group1": .., ..},\n         "ssps": ["ssp1.example", ..],\n         "ads": [{..: "ad1", ..} ..],\n         "dsp-categories": [..],\n         "logic": ".../bidding.js",\n        ...})
+
+hnote over ua
+collect trackability metrics
+to report in ARAPI
+end note
+alt ad/trackability accepted
+ ua -> ua : true
+else rejected
+ ua -> ua : false
+end
+...
+pixel -> ua : writeAdvertisementData(\n        {"advertiser": "Advertiser 2",\n        ...})
+ua --> ua : true
+
+deactivate pixel
+
+ua -> user : (rendered page)
+
+@enduml
