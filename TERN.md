@@ -79,7 +79,6 @@ We intend to enhance TURTLEDOVE in the following privacy-preserving ways:
 - Enabling brand safety for both advertisers and publishers
 - Creating a mechanism for trackability metrics
 - Adding a `privateData` object that can never escape the browser, but improve bidding signals (among potential other use cases)
-- Creating a mechanism to create interest groups based on publisher browsing behavior
 - Allowing publishers to retain control of auction dynamics, while encouraging second-price auctions
 - Specifying frequency capping and optimization
 - A monosyllabic acronym that is still thematically avian
