@@ -835,11 +835,11 @@ Given that during the publisher request, there is no access to the interest grou
 ads already in the browser, it is unknown to the SSP, or its integrated DSPs, whether the
 browser is primed to bid on any ads already. This means that 1) the SSP must communicate with
 all of its DSPs for every publisher request, and 2) DSPs will want to respond to every such
-publisher request _even if they don't have a contextual ad to show_. That means the `ad` field
-in each DSP object is optional.
+publisher request _even if they don't have a contextual ad to show_. That means the `ads` field
+in each DSP object can be an empty list.
 
 Each `ad` has a `privateData` object that can provide signals about the ad, campaign, etc. as before.
-However, in addition, even if an ad is not present in the DSP's object, there is a higher level
+However, in addition, even if no ad is present in the DSP's object, there is a higher level
 `publisherSignals` object where the DSP can provide signals that will be passed into its `bidding.js`
 function. This object can contain signals from the `publisherRequest` object or additional signals
 that the SSP chooses to provide the DSP when querying them. The point is to provide additional
@@ -901,7 +901,7 @@ The base TURTLEDOVE proposal permits some use like this through a cross-domain i
 > cross-domain iframe _without_ giving it this capability.
 
 However, this requires a direct coordination between individual publishers and DSPs, which can be
-a tall order for broad interest groups like we see in FLoC.
+a tall order for broad interest groups.
 
 As an example use case, a user may be browsing a page about video games. A games company can target pages
 about games strictly, but if the user browses away to a news site, it may be desirable to continue
@@ -1396,18 +1396,19 @@ the deprecation of third-party cookies?
 
 ### g. [FLoC](https://github.com/jkarlin/floc)
 
-FLoC is a proposed mechanism that allows the browser to collect its own series of interest
-groups based on the user's browsing habits, which would then be reported to DSPs once the
-desired level of k-anonymity is achieved.
+FLoC is a proposed mechanism that allows the browser to bucket users into similar cohorts
+based on the user's browsing habits, to associate a coarse identifier with these, and to
+disclose a user's current cohort identifier to any site on demand.
 
 We are happy with the FLoC proposal, though it is not sufficient to support the online
 advertising ecosystem on its own (and it doesn't claim to do so). It's hard to imagine
 a DSP rejecting the ability to receive additional signals derived from the browser that
 can be useful in machine learning contexts.
 
-However, we [have a mechanism](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups)
-that allows DSPs to define their own cohorts in a privacy-preserving way. This is not
-a replacement of FLoC and can be complementary.
+However, we [have a
+mechanism](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups)
+that allows DSPs to define their own behavior-based groups in a privacy-preserving
+way. This is not a replacement of FLoC and can be complementary.
 
 ----------------
 
