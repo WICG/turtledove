@@ -32,7 +32,6 @@ TURTLEDOVE Enhancements with Reduced Networking
 - [3. Publisher Data](https://github.com/WICG/turtledove/blob/master/TERN.md#3-publisher-data)
   - [a. The publisher/contextual request](https://github.com/WICG/turtledove/blob/master/TERN.md#a-the-publishercontextual-request)
   - [b. The SSP](https://github.com/WICG/turtledove/blob/master/TERN.md#b-the-ssp)
-  - [c. Contextual interest groups](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups)
 - [4. Browser Signals](https://github.com/WICG/turtledove/blob/master/TERN.md#4-browser-signals)
   - [a. Recency](https://github.com/WICG/turtledove/blob/master/TERN.md#a-recency)
   - [b. Frequencies](https://github.com/WICG/turtledove/blob/master/TERN.md#b-frequencies)
@@ -797,11 +796,7 @@ DSPs is responsible for sending back to the browser a `publisherResponse` object
                                                   'privateData': { ... }
                                                 }
                                               ],
-                                       'publisherSignals': { ... },
-                                       'groups': { 'interest-group-1': { 'timestamp': ts,
-                                                                         'ttl': duration },
-                                                   'interest-group-2': { 'timestamp': ts,
-                                                                         'ttl': duration } }
+                                       'publisherSignals': { ... }
                                      },
             'https://dsp-2.example': { 'ads': [ { 'advertiser': 'https://advertiser-2.example',
                                                   'third-parties': {'https://third-party-3.example': 'https://third-party-3.example/js/metrics.js'},
@@ -828,8 +823,6 @@ like a DSP, if it so chooses).
 
 This response is a modified version of what we saw in [section 1](https://github.com/WICG/turtledove/blob/master/TERN.md#1-on-the-advertisers-site).
 The SSP is already known and therefore there's no need for a set of SSP trust tokens within each ad.
-
-Interest groups are no longer required, but can be useful. We explain this in [more detail below](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups).
 
 Given that during the publisher request, there is no access to the interest groups or
 ads already in the browser, it is unknown to the SSP, or its integrated DSPs, whether the
@@ -867,68 +860,6 @@ a list.
 
 Many of these issues are discussed in [TURTLEDOVE Issue #38 - Contextual Bid](https://github.com/WICG/turtledove/issues/38)
 and [TURTLEDOVE Issue #37 - Clarification on Entities](https://github.com/WICG/turtledove/issues/37).
-
-### c. Contextual interest groups
-
-As seen [above](https://github.com/WICG/turtledove/blob/master/TERN.md#b-the-ssp), we allow
-for DSPs to send back interest groups in the `publisherResponse` object:
-
-```
-'groups': { 'interest-group-1': { 'timestamp': ts,
-                                  'ttl': duration },
-            'interest-group-2': { 'timestamp': ts,
-                                  'ttl': duration } }
-```
-
-Note that this is works equivalently to what happens [on the advertiser's site](https://github.com/WICG/turtledove/blob/master/TERN.md#1-on-the-advertisers-site).
-At first blush, this may seem like it lacks value: aren't interest groups designed to
-capture a user's interest for a particular advertiser? Well, we consider this is either
-a replacement or complementary mechanism to [FLoC](https://github.com/jkarlin/floc).
-
-We find that SSPs are generally responsible for policies on how publisher data may be used by the
-DSP. Accepting this `groups` object can be determined by individual SSPs, which can be coordinated
-with their integrated DSPs. It's also possible that SSPs can more granularly control their policy
-on receiving this object on a per-publisher basis. In short, we find that this mechanism maintains
-the functionality and flexibility that exists today.
-
-The base TURTLEDOVE proposal permits some use like this through a cross-domain iframe:
-
-> The API must be called from a window (top-level or iframe) whose origin matches the owner.
-> This could be on WeReallyLikeShoes.com, or could be a cross-domain iframe — maybe
-> RunningShoeReviews.com writes articles about shoes sold by WeReallyLikeShoes.com, and the
-> review site has an agreement which lets the retailer add people to an interest group with
-> 'name': 'reads-reviews'. It should also be possible for a site owner to include a
-> cross-domain iframe _without_ giving it this capability.
-
-However, this requires a direct coordination between individual publishers and DSPs, which can be
-a tall order for broad interest groups.
-
-As an example use case, a user may be browsing a page about video games. A games company can target pages
-about games strictly, but if the user browses away to a news site, it may be desirable to continue
-advertising games to them. They've expressed interest in the topic even though they're no longer
-on a page about games. The browser would be responsible for adding these interest groups to the
-browser storage, and [fetching any additional ads from the DSP](https://github.com/WICG/turtledove/blob/master/TERN.md#c-fetch-ads-request).
-Setting up cross-domain iframes on the set of pages on the web about video games is likely
-intractable. Instead, the set of publishers willing to integrate with an SSP that allows for the
-DSP to set a "video games" interest group in the browser unlocks this capability. And, as previously
-stated, this capability can be managed between the publisher and SSP granularly.
-
-As stated in the section about [`writeAdvertisementData()`](https://github.com/WICG/turtledove/blob/master/TERN.md#1-on-the-advertisers-site),
-these interest groups should be namespaced by the `dsp` field. This will prevent unscrupulous
-actors from mucking around with these interest groups, either for delivering their own ads or
-adding users. We presume that that the SSP has a working relationship with the DSP and would
-not accept a response from the DSP with a non-matching `dsp` field declaration, so there is some
-validation in the chain of requests and responses.
-
-Note that _this is not an opportunity to inject full ad web bundles for these interest groups._
-In this moment, this should only be allowable through pure contextual advertising. We only allow
-these interest groups to have ad web bundles associated with them through the background fetch ads
-mechanism. Recall that this background request to fetch ads is subject to privacy constraints, such
-as k-anonymity, so there's no opportunity for a DSP to learn the user's browsing habits at any
-significant level of granularity.
-
-We believe that this additional mechanism opens up a lot of additional advertising flexibility with
-no sacrifice to user privacy.
 
 ----------------
 
@@ -1404,11 +1335,6 @@ We are happy with the FLoC proposal, though it is not sufficient to support the 
 advertising ecosystem on its own (and it doesn't claim to do so). It's hard to imagine
 a DSP rejecting the ability to receive additional signals derived from the browser that
 can be useful in machine learning contexts.
-
-However, we [have a
-mechanism](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups)
-that allows DSPs to define their own behavior-based groups in a privacy-preserving
-way. This is not a replacement of FLoC and can be complementary.
 
 ----------------
 
