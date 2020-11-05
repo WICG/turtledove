@@ -219,6 +219,8 @@ The contextual request/response need not be implemented as its own HTTP request.
 
 As a possible extension to this idea, the contextual response might _also_ contain a JS bidding function, rather than a fixed bid.  This may be useful if there are any other user-specific signals that are available in the browser but not in the server, which could then be made available to the various on-device bidding functions without compromising privacy.
 
+_Addendum:_ The above description focused on each ad producing a _bid_, and assumed a simple auction in which the winner was the largest bid.  This is probably too simplistic, and instead we will need a mechanism in which (1) each ad can run on-device JS to procuce a bid, and then (2) some on-device JS provided by the publisher or their ad network chooses the winner.  This idea is explored more in the [PARROT](https://github.com/prebid/identity-gatekeeper/blob/master/proposals/PARRROT.md) and [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md#6-the-auction) proposals.
+
 
 ### Rendering the Winning Ad
 
