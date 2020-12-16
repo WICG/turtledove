@@ -28,53 +28,91 @@ ssp_pixel <-] : { dsp1: .., dsp2: .., ...}
 ssp_pixel -> pub_pixel : publisherResponse={..}
 deactivate ssp_pixel
 
-pub_pixel -> ua : generate_bids(publisherResponse)
+rnote over pub_pixel
+Publisher may trigger an
+interest-group auction for some
+ad slots.
+end note
+
+pub_pixel -> ssp_pixel : trigger_auction(adSlots,\n    publisherResponse,\n    privateData)
+
+activate ssp_pixel
+deactivate pub_pixel
+
+group inside SSP helper iframe
+
+ssp_pixel -> ua : activateSandbox(adSlots)
+
+rnote over ua
+In order to access data
+derived from interest groups,
+a caller must pass a one-way
+trapdoor which closes all
+communication channels except
+opaque rendering.
+end note
 
 activate ua
 
+group inside UA private sandbox
+
+ssp_pixel -> ua : matchingAdvertisements(..)
+ua -> ssp_pixel : {"dsp1": [ad1, ..], ...}
+
+ssp_pixel -> ua : generateBids([dsp1ad1, dsp1ad2, ...],\n        dsp1PublisherResponse,\n        true)
+
 rnote over ua
 UA provides a facility for
-sandboxed evaluation of
-each DSP's bidding.js logic.
-Logic results in bids for both
+separate sandboxed evaluation
+of each DSP's bidding.js logic.
+Logic may result in bids for both
 contextual and interest group ads.
+May sometimes also result in
+interest group updates.
 end note
 
-ua -> ua : dsp1_bidding.js:generate_bid(\n    dsp1_adSignals,\n    dsp1_pubSignals,\n    browserSignals\n)
-...
-ua -> ua : dsp3_bidding.js:generate_bid(\n    dsp3_adSignals,\n    dsp3_pubSignals,\n    browserSignals\n)
+ua --> ua : dsp1_bidding.js:update_interest_groups(\n    dsp1_pubSignals,\n    browserSignals\n)
+ua -> ua : dsp1_bidding.js:generate_bid(\n    dsp1ad1,\n    dsp1PublisherResponse,\n    browserSignals\n)
+ua -> ua : dsp1_bidding.js:generate_bid(\n    dsp1ad2,\n    dsp1PublisherResponse,\n    browserSignals\n)
 
-alt any bids were generated
-  ua -> pub_pixel : true
-else no bids generated
-  ua -> pub_pixel : false
+...
+
+ua -> ssp_pixel : [dsp1ad1price, dsp1ad2price, ...]
+
+ssp_pixel -> ua : generateBids([dsp2ad1, dsp2ad2, ...],\n        dsp2PublisherResponse)
+
+...
+
+ssp_pixel -> ua : generateBids([dsp3ad1, dsp3ad2, ...],\n        dsp3PublisherResponse)
+
+...
+
+ua -> ssp_pixel : [dsp3ad1price, dsp3ad2price, ...]
+
+hnote over ua
+Auction conducted inside
+sandbox according to
+SSP/publisher logic
+or agreement.
+Only rendering in fenced
+frame can escape sandbox.
+end note
+
+ssp_pixel -> ssp_pixel : evaluate_auction(submittedAds,\n    privateData)
+ssp_pixel -> ssp_pixel : <winning ads>
+
+ssp_pixel --> ua : render(slot1, dsp1ad1, ...)
+ssp_pixel --> ua : render(slot2, dsp3ad2, ...)
+
+deactivate ssp_pixel
+
+end
 end
 
-deactivate ua
+ua --> ua : (render dsp1ad1 as child of slot1)
+ua --> ua : (render dsp3ad2 as child of slot2)
 
-rnote over pub_pixel
-Publisher may trigger
-the final auction.
-end note
-
-pub_pixel -> ua : trigger_auction(privateData)
-
-deactivate pub_pixel
-activate ua
-
-rnote over ua
-UA provides a facility for
-sandboxed evaluation of
-publisher or SSP-provided
-auction.js.
-end note
-ua -> ua : auction.js:evaluate_auction([\n    dsp1_ads,\n    dsp2_ads,\n    ...],\n    privateData\n)
-
-deactivate ua
-
-ua --> ua : <winning ad(s)>
-
-ua --> ua : <render ads>
+ua --> ua : (collect data for ARAPI)
 
 ua -> user : (rendered page)
 
