@@ -60,7 +60,7 @@ TURTLEDOVE Enhancements with Reduced Networking
     - [iii. Publisher Floors](#iii-publisher-floors)
     - [iv. Competitors in Different Slots](#iv-competitors-in-different-slots)
     - [v. Price Adjustments](#v-price-adjustments)
-    - [vi. Regultary Requirements](#vi-regulatory-requirements)
+    - [vi. Regulatory Requirements](#vi-regulatory-requirements)
 - [Summary of needed platform features](#Summary-of-needed-platform-features)
   - [a. Permissioned siloed shareable objects](#a-permissioned-siloed-shareable-objects)
   - [b. writeAdvertisementData()](#b-writeadvertisementdata)
