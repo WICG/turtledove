@@ -5,69 +5,74 @@ TURTLEDOVE Enhancements with Reduced Networking
 
 ## Table of Contents
 
-- [Introduction](https://github.com/WICG/turtledove/blob/master/TERN.md#introduction)
-- [Operating Principles](https://github.com/WICG/turtledove/blob/master/TERN.md#operating-principles)
-- [Authors](https://github.com/WICG/turtledove/blob/master/TERN.md#authors)
-- [Stakeholder Feedback / Opposition](https://github.com/WICG/turtledove/blob/master/TERN.md#stakeholder-feedback--opposition)
-- [Definitions](https://github.com/WICG/turtledove/blob/master/TERN.md#definitions)
-- [0. Before Advertising Begins](https://github.com/WICG/turtledove/blob/master/TERN.md#0-before-advertising-begins)
-- [1. On the Advertiser's Site](https://github.com/WICG/turtledove/blob/master/TERN.md#1-on-the-advertisers-site)
-  - [a. Faster delivery of ads](https://github.com/WICG/turtledove/blob/master/TERN.md#a-faster-delivery-of-ads)
-  - [b. Elimination of minimum interest group sizes](https://github.com/WICG/turtledove/blob/master/TERN.md#b-elimination-of-minimum-interest-group-sizes)
-  - [c. Reduced networking](https://github.com/WICG/turtledove/blob/master/TERN.md#c-reduced-networking)
-  - [d. Writing multiple interest groups](https://github.com/WICG/turtledove/blob/master/TERN.md#d-writing-multiple-interest-groups)
-  - [e. Multiple ad formats](https://github.com/WICG/turtledove/blob/master/TERN.md#e-multiple-ad-formats)
-  - [f. Ad categories](https://github.com/WICG/turtledove/blob/master/TERN.md#f-ad-categories)
-  - [g. SSP tokens](https://github.com/WICG/turtledove/blob/master/TERN.md#g-ssp-tokens)
-    - [i. Pre-approval](https://github.com/WICG/turtledove/blob/master/TERN.md#i-pre-approval)
-    - [ii. Delayed-approval](https://github.com/WICG/turtledove/blob/master/TERN.md#ii-delayed-approval)
-  - [h. Products](https://github.com/WICG/turtledove/blob/master/TERN.md#h-products)
-  - [i. More refined bidding signals and reporting signals](https://github.com/WICG/turtledove/blob/master/TERN.md#i-more-refined-bidding-signals-and-reporting-signals)
-  - [j. DSPs control bidding](https://github.com/WICG/turtledove/blob/master/TERN.md#j-dsps-control-bidding)
-  - [k. Preserving third-party tag functionality](https://github.com/WICG/turtledove/blob/master/TERN.md#k-preserving-third-party-tag-functionality)
-- [2. In the Background](https://github.com/WICG/turtledove/blob/master/TERN.md#2-in-the-background)
-  - [a. Download ad web bundles](https://github.com/WICG/turtledove/blob/master/TERN.md#b-download-ad-web-bundles)
-  - [b. Fetch ads request](https://github.com/WICG/turtledove/blob/master/TERN.md#c-fetch-ads-request)
-  - [c. Reporting](https://github.com/WICG/turtledove/blob/master/TERN.md#d-reporting)
-- [3. Publisher Data](https://github.com/WICG/turtledove/blob/master/TERN.md#3-publisher-data)
-  - [a. The publisher/contextual request](https://github.com/WICG/turtledove/blob/master/TERN.md#a-the-publishercontextual-request)
-  - [b. The SSP](https://github.com/WICG/turtledove/blob/master/TERN.md#b-the-ssp)
-  - [c. Contextual interest groups](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups)
-- [4. Browser Signals](https://github.com/WICG/turtledove/blob/master/TERN.md#4-browser-signals)
-  - [a. Recency](https://github.com/WICG/turtledove/blob/master/TERN.md#a-recency)
-  - [b. Frequencies](https://github.com/WICG/turtledove/blob/master/TERN.md#b-frequencies)
-  - [c. Impression Recencies](https://github.com/WICG/turtledove/blob/master/TERN.md#c-impression-recencies)
-- [5. Generating Bids](https://github.com/WICG/turtledove/blob/master/TERN.md#5-generating-bids)
-- [6. The Auction](https://github.com/WICG/turtledove/blob/master/TERN.md#6-the-auction)
-  - [a. Triggering the auction](https://github.com/WICG/turtledove/blob/master/TERN.md#a-triggering-the-auction)
-  - [b. Thoughts on dynamics and privacy](https://github.com/WICG/turtledove/blob/master/TERN.md#b-thoughts-on-dynamics-and-privacy)
-- [7. Rendering the Ad](https://github.com/WICG/turtledove/blob/master/TERN.md#7-rendering-the-ad)
-- [Considered Alternatives](https://github.com/WICG/turtledove/blob/master/TERN.md#considered-alternatives)
-  - [a. TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/TERN.md#a-turtledove)
-  - [b. Product-level Turtledove](https://github.com/WICG/turtledove/blob/master/TERN.md#b-product-level-turtledove)
-  - [c. Outcome-based Turtledove](https://github.com/WICG/turtledove/blob/master/TERN.md#c-outcome-based-turtledove)
-  - [d. SPARROW](https://github.com/WICG/turtledove/blob/master/TERN.md#d-sparrow)
-  - [e. PARRROT](https://github.com/WICG/turtledove/blob/master/TERN.md#e-parrrot)
-  - [f. Dovekey](https://github.com/WICG/turtledove/blob/master/TERN.md#f-dovekey)
-  - [g. FLoC](https://github.com/WICG/turtledove/blob/master/TERN.md#g-floc)
-- [FAQ](https://github.com/WICG/turtledove/blob/master/TERN.md#faq)
-  - [a. Where does machine learning fit in?](https://github.com/WICG/turtledove/blob/master/TERN.md#a-where-does-machine-learning-fit-in)
-  - [b. How do I stop a campaign from spending?](https://github.com/WICG/turtledove/blob/master/TERN.md#b-how-do-i-stop-a-campaign-from-spending)
-  - [c. How do I apply frequency caps or optimization?](https://github.com/WICG/turtledove/blob/master/TERN.md#c-how-do-i-apply-frequency-caps-or-optimization)
-  - [d. How does advertiser brand safety work?](https://github.com/WICG/turtledove/blob/master/TERN.md#d-how-does-advertiser-brand-safety-work)
-  - [e. How does publisher brand safety work?](https://github.com/WICG/turtledove/blob/master/TERN.md#e-how-does-publisher-brand-safety-work)
-- [Summary of needed platform features](https://github.com/WICG/turtledove/blob/master/TERN.md#Summary-of-needed-platform-features)
-  - [a. Permissioned siloed shareable objects](https://github.com/WICG/turtledove/blob/master/TERN.md#a-permissioned-siloed-shareable-objects)
-  - [b. writeAdvertisementData()](https://github.com/WICG/turtledove/blob/master/TERN.md#b-writeadvertisementdata)
-  - [c. Awareness of interest-based advertisement objects](https://github.com/WICG/turtledove/blob/master/TERN.md#c-awareness-of-interest-based-advertisement-objects)
-  - [d. matchingAdvertisements()](https://github.com/WICG/turtledove/blob/master/TERN.md#d-matchingadvertisements)
-  - [e. runDecisionLogic()](https://github.com/WICG/turtledove/blob/master/TERN.md#e-rundecisionlogic)
-  - [f. activateSandbox()](https://github.com/WICG/turtledove/blob/master/TERN.md#f-activatesandbox)
-  - [g. render()](https://github.com/WICG/turtledove/blob/master/TERN.md#g-render)
-  - [h. Background ad bundle fetching](https://github.com/WICG/turtledove/blob/master/TERN.md#h-background-ad-bundle-fetching)
-  - [i. Background interest group ad fetching](https://github.com/WICG/turtledove/blob/master/TERN.md#i-background-interest-group-ad-fetching)
-  - [j. Background reporting](https://github.com/WICG/turtledove/blob/master/TERN.md#j-background-reporting)
-  - [k. Verified content rendering](https://github.com/WICG/turtledove/blob/master/TERN.md#k-verified-content-rendering)
+- [Introduction](#introduction)
+- [Operating Principles](#operating-principles)
+- [Authors](#authors)
+- [Stakeholder Feedback / Opposition](#stakeholder-feedback--opposition)
+- [Definitions](#definitions)
+- [0. Before Advertising Begins](#0-before-advertising-begins)
+- [1. On the Advertiser's Site](#1-on-the-advertisers-site)
+  - [a. Faster delivery of ads](#a-faster-delivery-of-ads)
+  - [b. Elimination of minimum interest group sizes](#b-elimination-of-minimum-interest-group-sizes)
+  - [c. Reduced networking](#c-reduced-networking)
+  - [d. Writing multiple interest groups](#d-writing-multiple-interest-groups)
+  - [e. Multiple ad formats](#e-multiple-ad-formats)
+  - [f. Ad categories](#f-ad-categories)
+  - [g. SSP tokens](#g-ssp-tokens)
+    - [i. Pre-approval](#i-pre-approval)
+    - [ii. Delayed-approval](#ii-delayed-approval)
+  - [h. Products](#h-products)
+  - [i. More refined bidding signals and reporting signals](#i-more-refined-bidding-signals-and-reporting-signals)
+  - [j. DSPs control bidding](#j-dsps-control-bidding)
+  - [k. Preserving third-party tag functionality](#k-preserving-third-party-tag-functionality)
+- [2. In the Background](#2-in-the-background)
+  - [a. Download ad web bundles](#b-download-ad-web-bundles)
+  - [b. Fetch ads request](#c-fetch-ads-request)
+  - [c. Reporting](#d-reporting)
+- [3. Publisher Data](#3-publisher-data)
+  - [a. The publisher/contextual request](#a-the-publishercontextual-request)
+  - [b. The SSP](#b-the-ssp)
+  - [c. Contextual interest groups](#c-contextual-interest-groups)
+- [4. Browser Signals](#4-browser-signals)
+  - [a. Recency](#a-recency)
+  - [b. Frequencies](#b-frequencies)
+  - [c. Impression Recencies](#c-impression-recencies)
+- [5. Generating Bids](#5-generating-bids)
+- [6. The Auction](#6-the-auction)
+  - [a. Triggering the auction](#a-triggering-the-auction)
+  - [b. Thoughts on dynamics and privacy](#b-thoughts-on-dynamics-and-privacy)
+- [7. Rendering the Ad](#7-rendering-the-ad)
+- [Considered Alternatives](#considered-alternatives)
+  - [a. TURTLEDOVE](#a-turtledove)
+  - [b. Product-level Turtledove](#b-product-level-turtledove)
+  - [c. Outcome-based Turtledove](#c-outcome-based-turtledove)
+  - [d. SPARROW](#d-sparrow)
+  - [e. PARRROT](#e-parrrot)
+  - [f. Dovekey](#f-dovekey)
+  - [g. FLoC](#g-floc)
+- [FAQ](#faq)
+  - [a. Where does machine learning fit in?](#a-where-does-machine-learning-fit-in)
+  - [b. How do I apply frequency caps or optimization?](#b-how-do-i-apply-frequency-caps-or-optimization)
+  - [c. How does advertiser brand safety work?](#c-how-does-advertiser-brand-safety-work)
+  - [d. Publisher FAQ](#d-publisher-faq)
+    - [i. Brand Safety](#i-brand-safety)
+    - [ii. Publisher Fulfillment](#ii-publisher-fulfillment)
+    - [iii. Publisher Floors](#iii-publisher-floors)
+    - [iv. Competitors in Different Slots](#iv-competitors-in-different-slots)
+    - [v. Price Adjustments](#v-price-adjustments)
+    - [vi. Regultary Requirements](#vi-regulatory-requirements)
+- [Summary of needed platform features](#Summary-of-needed-platform-features)
+  - [a. Permissioned siloed shareable objects](#a-permissioned-siloed-shareable-objects)
+  - [b. writeAdvertisementData()](#b-writeadvertisementdata)
+  - [c. Awareness of interest-based advertisement objects](#c-awareness-of-interest-based-advertisement-objects)
+  - [d. matchingAdvertisements()](#d-matchingadvertisements)
+  - [e. runDecisionLogic()](#e-rundecisionlogic)
+  - [f. activateSandbox()](#f-activatesandbox)
+  - [g. render()](#g-render)
+  - [h. Background ad bundle fetching](#h-background-ad-bundle-fetching)
+  - [i. Background interest group ad fetching](#i-background-interest-group-ad-fetching)
+  - [j. Background reporting](#j-background-reporting)
+  - [k. Verified content rendering](#k-verified-content-rendering)
 
 ----------------
 
@@ -190,7 +195,7 @@ As in TURTLEDOVE, an `owner` is responsible for managing interest groups.  While
 be an individual advertiser, we expect most advertisers will delegate ownership to DSPs.
 
 An owner must provide a `.well-known/fetch-ads` endpoint as described in [c. Fetch ads
-request](https://github.com/WICG/turtledove/blob/master/TERN.md#c-fetch-ads-request), as well as
+request](#c-fetch-ads-request), as well as
 bidding logic when participating in publisher/SSP ecosystem auctions (with special platform support
 as described below).
 
@@ -375,7 +380,7 @@ call in TURTLEDOVE, but it is not without cause. We list the reasons for each co
 below. However, after receiving the object, the browser proceeds to act as largely described in
 TURTLEDOVE: it adds the browser to all of the interest groups in the object (for auditing by the
 user and the potential follow-up [interest group
-requests](https://github.com/WICG/turtledove/blob/master/TERN.md#c-fetch-ads-request) later),
+requests](#c-fetch-ads-request) later),
 caches what it needs from the ad and product web bundles, and so on.
 
 We propose that these objects be namespaced by the value of `(owner, advertiser)`. Browsers are
@@ -406,7 +411,7 @@ The `'readers'` value is similar to the same-named field in TURTLEDOVE, but each
 different role than in TURTLEDOVE.  Here, we are specifying which reader origins (SSPs) may access
 which fields of interest-based advertisement objects created by `owner`.  This is further explained
 in [c. Awareness of interest-based advertisement
-objects](https://github.com/WICG/turtledove/blob/master/TERN.md#c-awareness-of-interest-based-advertisement-objects).
+objects](#c-awareness-of-interest-based-advertisement-objects).
 
 ### a. Faster delivery of ads
 
@@ -431,7 +436,7 @@ thus there is no reduction in privacy.  Microtargeted interest groups are mitiga
 sandboxed rendering and ARAPI.
 
 This is a critical feature for small advertisers and merchants, and also for advertisers that
-wish to perform product recommendation for rare or highly specific products. Refer to [section 0](https://github.com/WICG/turtledove/blob/master/TERN.md#0-before-advertising-begins)
+wish to perform product recommendation for rare or highly specific products. Refer to [section 0](#0-before-advertising-begins)
 for a descriptive example of such an advertiser. A discussion is covered in [TURTLEDOVE Issue #36](https://github.com/WICG/turtledove/issues/36).
 
 ### c. Reduced networking
@@ -465,13 +470,13 @@ compatibly sized.  If the browser itself has or gains awareness of the ad format
 We also note here that the `ads` object can be an empty list `[]`. It is possible that a campaign
 or set of ads have not yet been created in order to target a set of interest groups. Ads can also
 be provided later during the fetch ads request [described
-below](https://github.com/WICG/turtledove/blob/master/TERN.md#2-in-the-background) as in
+below](#2-in-the-background) as in
 TURTLEDOVE.
 
 ### f. Ad categories
 
 As part of the optional validation process described in [section
-0](https://github.com/WICG/turtledove/blob/master/TERN.md#0-before-advertising-begins), ads may
+0](#0-before-advertising-begins), ads may
 declare their categories so publishers can decide whether they would want such an ad on their
 site. However, publishers need to trust that the declared categories are not a lie. This is the
 purpose of the SSP review tokens. SSPs are also able to provide their own list of categories for
@@ -480,7 +485,7 @@ and SSP.  The browser itself can remain mostly unaware of this validation concep
 
 ### g. SSP tokens
 
-During [section 0](https://github.com/WICG/turtledove/blob/master/TERN.md#0-before-advertising-begins),
+During [section 0](#0-before-advertising-begins),
 we described a mechanism through which SSPs can perform a validation process for
 creatives. As the market functions today, there are two ways of doing this: with a pre-approval
 process, and approving some time after the first bid is made (delayed-approval). We consider both
@@ -509,7 +514,7 @@ The auction can then select winning advertisements only after validating their r
 applying brand safety checks, etc).
 
 Later, the SSP/publisher can use a new browser facility (described in [k. Verified content
-rendering](https://github.com/WICG/turtledove/blob/master/TERN.md#k-verified-content-rendering))
+rendering](#k-verified-content-rendering))
 for content-validated rendering of web bundles; e.g,. create
 
 ```
@@ -683,7 +688,7 @@ This largely functions the same as in the TURTLEDOVE proposal. We keep the same 
 TURTLEDOVE with an endpoint `/fetch-ads`, but the response just contains URLs to ad web bundles,
 and the fetch target is the `owner` of the related interest groups, not an intermediary "ad
 network". The actual downloading of the bundles is described above in [section
-2b](https://github.com/WICG/turtledove/blob/master/TERN.md#b-download-ad-web-bundles).  Here, the
+2b](#b-download-ad-web-bundles).  Here, the
 browser queries
 
 ```
@@ -712,14 +717,14 @@ and receives
 ```
 
 Note that the set of groups in this request, in contrast to the set written in [section
-1](https://github.com/WICG/turtledove/blob/master/TERN.md#1-on-the-advertisers-site) would be
+1](#1-on-the-advertisers-site) would be
 subject to privacy guidelines such as k-anonymity and/or differential privacy as discussed in the
 original TURTLEDOVE proposal. Since the browser is off the advertiser's site, first-party data is
 no longer available, and we should not reveal too much about the user.  The browser will only send
 groups in which the user is still a member (i.e., if past a previously-specified TTL for a group,
 that group won't appear here).
 
-The DSP responds with the same object as described in [section 1](https://github.com/WICG/turtledove/blob/master/TERN.md#1-on-the-advertisers-site).
+The DSP responds with the same object as described in [section 1](#1-on-the-advertisers-site).
 This may seem redundant, but we include it for a couple of reasons.
 
 One, the DSP may have a desire to update the object that was supplied on the advertiser's site.
@@ -738,7 +743,7 @@ Another difference from TURTLEDOVE is that this call explicitly goes to the DSP.
 a discussion in [TURTLEDOVE Issue #37 - Clarification on Entities](https://github.com/WICG/turtledove/issues/37).
 Given that these signals are all produced by the DSP, and the DSP has no desire to reveal its
 interest group to SSPs, there is no reason to pass through an SSP first. Any concerns about creative
-validation are covered by [section 2a](https://github.com/WICG/turtledove/blob/master/TERN.md#a-validate-ads). This should
+validation are covered by [section 2a](#a-validate-ads). This should
 significantly reduce network traffic on the internet so requests don't have to go to an SSP only to be
 forwarded to a DSP.
 
@@ -785,8 +790,8 @@ operate, and the `deal-ids` allow DSPs to take advantage of [pre-arranged deals]
 with the publisher. Finally, metadata is a catch-all object where the publisher can declare
 whatever it desires about the page to SSPs; the fields present above are just potential examples.
 
-All of these fields can be used in [generating bids](https://github.com/WICG/turtledove/blob/master/TERN.md#5-generating-bids)
-and [evaluating auctions](https://github.com/WICG/turtledove/blob/master/TERN.md#a-the-auction-js-script).
+All of these fields can be used in [generating bids](#5-generating-bids)
+and [evaluating auctions](#a-the-auction-js-script).
 
 ### b. The SSP
 
@@ -842,11 +847,11 @@ DSPs is responsible for sending back to the browser a `publisherResponse` object
 Clearly, a good chunk of these data come from integrated DSPs (recall that an SSP can function
 like a DSP, if it so chooses).
 
-This response is a modified version of what we saw in [section 1](https://github.com/WICG/turtledove/blob/master/TERN.md#1-on-the-advertisers-site).
+This response is a modified version of what we saw in [section 1](#1-on-the-advertisers-site).
 The SSP is already known and therefore there's no need for a set of SSP trust tokens within each ad.
 
 Interest groups are no longer required, but can be useful. We explain this in [more detail
-below](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups).
+below](#c-contextual-interest-groups).
 
 Given that during the publisher request, there is no access to the interest groups or
 ads already in the browser, it is unknown to the SSP, or its integrated DSPs, whether the
@@ -866,7 +871,7 @@ be an empty object.
 
 To the point that `publisherSignals` can be an empty object, we suggest that it be acceptable that
 a `publisherResponse` is _not_ required (though probably recommended) to [generate a
-bid](https://github.com/WICG/turtledove/blob/master/TERN.md#5-generating-bids). This could cut down
+bid](#5-generating-bids). This could cut down
 on overall network traffic if a DSP is not required to respond, but as stated, it's likely that the
 `publisherSignals` will always be valuable.
 
@@ -888,7 +893,7 @@ and [TURTLEDOVE Issue #37 - Clarification on Entities](https://github.com/WICG/t
 
 ### c. Contextual interest groups
 
-As seen [above](https://github.com/WICG/turtledove/blob/master/TERN.md#b-the-ssp), we allow for
+As seen [above](#b-the-ssp), we allow for
 DSPs to send back ad-specific data as well as general data in `publisherSignals`.
 
 This field could be used to add the user to interest groups based on the context of the current
@@ -917,7 +922,7 @@ by a new platform facility for the evaluation of each DSP's bidding logic.
 
 `update_interest_groups` will only be called based on one of the parameters to the new
 `runDecisionLogic()` platform function (see
-[e. runDecisionLogic()](https://github.com/WICG/turtledove/blob/master/TERN.md#e-rundecisionlogic)).
+[e. runDecisionLogic()](#e-rundecisionlogic)).
 The purpose of this mechanism is to balance the desire of DSPs to use contextual information to
 update user interest groups, while also allowing publishers and SSPs to remain in control of
 whether that may occur (e.g., via a paid service add-on).
@@ -925,7 +930,7 @@ whether that may occur (e.g., via a paid service add-on).
 Setting user interest groups this way can't directly escape back to the SSP or DSP.
 
 Note that this will work equivalently to what happens [on the advertiser's
-site](https://github.com/WICG/turtledove/blob/master/TERN.md#1-on-the-advertisers-site) (via
+site](#1-on-the-advertisers-site) (via
 `writeAdvertisementData()`).
 
 At first blush, this may seem like it lacks value: aren't interest groups designed to
@@ -953,7 +958,7 @@ As an example use case, a user may be browsing a page about video games. A games
 about games strictly, but if the user browses away to a news site, it may be desirable to continue
 advertising games to them. They've expressed interest in the topic even though they're no longer
 on a page about games. The browser would be responsible for adding these interest groups to the
-browser storage, and [fetching any additional ads from the DSP](https://github.com/WICG/turtledove/blob/master/TERN.md#c-fetch-ads-request). Setting up cross-domain iframes on the set of pages on the web about video games is likely
+browser storage, and [fetching any additional ads from the DSP](#c-fetch-ads-request). Setting up cross-domain iframes on the set of pages on the web about video games is likely
 intractable. Instead, the set of publishers willing to integrate with an SSP that allows for the
 DSP to set a "video games" interest group in the browser unlocks this capability. And, as previously
 stated, this capability can be managed between the publisher and SSP granularly.
@@ -1015,7 +1020,7 @@ differential privacy) or attaining a threshold for k-anonymity can be applied to
 avoid identification of the user, while maintaining the signal.
 
 Alternatively, the
-[`generate_bid()`](https://github.com/WICG/turtledove/blob/master/TERN.md#5-generating-bids)
+[`generate_bid()`](#5-generating-bids)
 function itself could compute this (assuming it will have access to the browser's UTC epoch time
 and each group's join time), but we include this as a simple concrete example.
 
@@ -1049,9 +1054,9 @@ been shown:
 
 In addition to being useful as a predictive signal for machine learning models,
 these timestamps can also be used more granularly inside the browser by the
-[`generate_bid()`](https://github.com/WICG/turtledove/blob/master/TERN.md#5-generating-bids) function
+[`generate_bid()`](#5-generating-bids) function
 to obviate the need for the `'max-times-per-minute'` and `'max-times-per-hour'`
-fields in the [advertisement data](https://github.com/WICG/turtledove/blob/master/TERN.md#1-on-the-advertisers-site)
+fields in the [advertisement data](#1-on-the-advertisers-site)
 object. This smoother control will allow for more dynamic pricing a less
 clumped approach to ad delivery. For example, parameters like
 
@@ -1086,7 +1091,7 @@ update_interest_groups(publisherSignals, browserSignals) {
 ```
 
 The `adSignals` object is the exact same object from [section
-1](https://github.com/WICG/turtledove/blob/master/TERN.md#1-on-the-advertisers-site) that is the
+1](#1-on-the-advertisers-site) that is the
 input for `.writeAdvertisementData(input)` (or the similar spec returned in a contextual bid
 response). This ensures that the `generate_bid()` function has as many signals about the ad as
 possible, including the crucial `privateData` object that can contain probability estimates,
@@ -1095,14 +1100,14 @@ already converted). Note that the `groups` object is also passed in, which allow
 "negative targeting" ([TODO: reconcile with contradictory statement in platform features section
 which prohibits access to `groups` except by the UA itself]).
 
-The `publisherSignals` object is extracted from the [`publisherResponse`](https://github.com/WICG/turtledove/blob/master/TERN.md#b-the-ssp)
+The `publisherSignals` object is extracted from the [`publisherResponse`](#b-the-ssp)
 object that comes from the DSP key matching this `generate_bid()` call. This is an opportunity to apply bid
 modifications on whether the ad is above the fold, or if an advertiser has brand safety concerns,
 and doesn't want their ads shown on pages about particular topics (this blocklist for the
 advertiser would be in the `adSignals`' `privateData` object. If there was no `publisherResponse`
 object, the `publisherSignals` object here would be `{}`).
 
-Finally, there's the [`browserSignals`](https://github.com/WICG/turtledove/blob/master/TERN.md#4-browser-signals) object
+Finally, there's the [`browserSignals`](#4-browser-signals) object
 that supplies data for other critical bid modifiers, including frequency capping.
 
 We believe at this point, DSPs will be well-equipped to produce bid prices that maintain as much
@@ -1121,7 +1126,7 @@ and specify that while the browser is responsible for the computation of the auc
 computation's logic is specified by the publisher (or an SSP provides this logic to their
 publisher network). This is to address concerns raised by [PARRROT](https://github.com/prebid/identity-gatekeeper/blob/master/proposals/PARRROT.md).
 We wanted to provide the same functionality as PARRROT, but reserve our critiques of it for
-the [Considered Alternatives](https://github.com/WICG/turtledove/blob/master/TERN.md#considered-alternatives)
+the [Considered Alternatives](#considered-alternatives)
 section.
 
 ![auction sequence diagram](assets/TERN/img/6_auction.png)
@@ -1136,7 +1141,7 @@ was previously specified as a `reader` in some `writeAdvertisementData()` calls.
 
 Eventually, that `reader` context should activate the `auction context` sandbox by calling
 `navigator.advertising.activateSandbox(...)` (see
-[f. activateSandbox()](https://github.com/WICG/turtledove/blob/master/TERN.md#f-activatesandbox)).
+[f. activateSandbox()](#f-activatesandbox)).
 This grants access to browser-private data such as ads matching the interest groups in which the
 user is a member, the calculation of bid prices for them, browser signals, and so on.
 
@@ -1187,7 +1192,7 @@ The `privateData` object is at the publisher's discretion to control any logic w
 are active, how they're priced, whether to execute a first- or second-price auction, etc.
 
 Once the auction is complete, the browser needs to be instructed to [render the
-ad](https://github.com/WICG/turtledove/blob/master/TERN.md#7-rendering-the-ad) and compute any
+ad](#7-rendering-the-ad) and compute any
 reporting metrics necessary.
 
 ### b. Thoughts on dynamics and privacy
@@ -1219,7 +1224,7 @@ modifications, we strongly recommend moving back to second price auctions as the
 industry.
 
 The concern of publishers, of course, is that second price auctions can reduce win prices,
-particularly if purchasers are in collusion. This is why in the [`publisherRequest`](https://github.com/WICG/turtledove/blob/master/TERN.md#a-the-publisher-request)
+particularly if purchasers are in collusion. This is why in the [`publisherRequest`](#a-the-publisher-request)
 object, we specify that the `floor-price` set by the publisher is a required field to be
 sent to the SSP, and consequently, all DSPs. This effectively makes a publisher a bidder
 in its own auction, guaranteeing a minimum second price. Note that this does not alter the
@@ -1265,9 +1270,9 @@ an example; there are likely to be more reasons that the ad web bundle itself sh
 have these data available for it to be rendered as the DSP sees fit.
 
 As described in
-[f. activateSandbox()](https://github.com/WICG/turtledove/blob/master/TERN.md#f-activatesandbox),
+[f. activateSandbox()](#f-activatesandbox),
 rendering an ad (via
-[g. render()](https://github.com/WICG/turtledove/blob/master/TERN.md#g-render)) is the only visible
+[g. render()](#g-render)) is the only visible
 outcome from the `auction context` sandbox.  Any other outcome is visible only via aggregate
 reporting.
 
@@ -1358,7 +1363,7 @@ would work and what party would be responsible for executing it. TERN originally
 lack of clarity, and this is the main criticism PARRROT levies against TERN.
 
 We found the concerns and functionality proposed by PARRROT to be reasonable. Thus, we have updated
-the TERN proposal to incorporate [publisher control of the auction](https://github.com/WICG/turtledove/blob/master/TERN.md#a-the-auction-js-script).
+the TERN proposal to incorporate [publisher control of the auction](#a-the-auction-js-script).
 
 ### f. [Dovekey](https://github.com/google/rtb-experimental/tree/master/proposals/dovekey)
 
@@ -1366,7 +1371,7 @@ Dovekey is an attempt to address some identified issues in [SPARROW](https://git
 It operates over the concept of "materializing" a machine learning model into a set of key-value
 entries, effectively removing the computational and deployment issues in SPARROW. However, we
 find that this introduces a host of problems on its own, while still keeping some of the
-unresolved issues we raise in the [SPARROW section](https://github.com/WICG/turtledove/blob/master/TERN.md#d-sparrow).
+unresolved issues we raise in the [SPARROW section](#d-sparrow).
 
 We mostly take issue with the notion of "materializing" a machine learning model. The power of
 machine learning is its ability to infer on unseen data. Dovekey asks that DSPs predict what is
@@ -1479,7 +1484,7 @@ a DSP rejecting the ability to receive additional signals derived from the brows
 can be useful in machine learning contexts.
 
 However, we [have a
-mechanism](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups)
+mechanism](#c-contextual-interest-groups)
 that allows DSPs to define their own behavior-based groups in a privacy-preserving way. This is not
 a replacement of FLoC and can be complementary.
 
@@ -1490,7 +1495,7 @@ a replacement of FLoC and can be complementary.
 ### a. Where does machine learning fit in?
 
 Before writing the advertisement data object as described in [section
-1](https://github.com/WICG/turtledove/blob/master/TERN.md#1-on-the-advertisers-site), a model can
+1](#1-on-the-advertisers-site), a model can
 be applied server-side to generate predictions which can be packed into the `privateData`
 object. For example:
 
@@ -1499,7 +1504,7 @@ privateData = { 'ad-ctr': 0.0134,
                 'conversion-value': 12.50 }
 ```
 
-Then, in the [`publisherResponse`](https://github.com/WICG/turtledove/blob/master/TERN.md#b-the-ssp), the
+Then, in the [`publisherResponse`](#b-the-ssp), the
 `publisherSignals` object can be used to pass signals related to the page or ad slot:
 
 ```
@@ -1507,36 +1512,12 @@ publisherSignals = { 'ad-slot-ctr': 0.00597,
                      'page-categories': ['news', 'sports'] }
 ```
 
-Both of these objects will be passed into the [`generate_bid()`](https://github.com/WICG/turtledove/blob/master/TERN.md#5-generating-bids)
+Both of these objects will be passed into the [`generate_bid()`](#5-generating-bids)
 function, where arbitrary logic can be used to combine these signals into a final bid price.
 
-### b. How do I stop a campaign from spending?
+### b. How do I apply frequency caps or optimization?
 
-You can use the `publisherSignals` object in the [`publisherResponse`](https://github.com/WICG/turtledove/blob/master/TERN.md#b-the-ssp)
-object to define a blocklist of campaigns:
-
-```
-publisherSignals = { 'stopped_campaigns': ['campaign123', 'campaign456'] }
-```
-
-The [`privateData`](https://github.com/WICG/turtledove/blob/master/TERN.md#i-more-refined-bidding-signals-and-reporting-signals)
-object can contain the campaign ID attached to the particular ad:
-
-```
-privateData = { 'campaign_id': 'campaign456' }
-```
-
-Then, the [`generate_bid()`](https://github.com/WICG/turtledove/blob/master/TERN.md#5-generating-bids) function can contain
-logic like:
-
-```
-if adSignals.privateData.campaign_id in publisherSignals.stopped_campaigns:
-  return 0;
-```
-
-### c. How do I apply frequency caps or optimization?
-
-Inside the [`privateData`](https://github.com/WICG/turtledove/blob/master/TERN.md#i-more-refined-bidding-signals-and-reporting-signals)
+Inside the [`privateData`](#i-more-refined-bidding-signals-and-reporting-signals)
 object, you can specify frequency parameters and/or a frequency cap:
 
 ```
@@ -1548,14 +1529,14 @@ privateData = { 'frequency_optimization': { 0: 1.0,
                 'frequency_cap': 4 }
 ```
 
-The browser supplies the frequency for the ad in [`browserSignals`](https://github.com/WICG/turtledove/blob/master/TERN.md#4-browser-signals),
+The browser supplies the frequency for the ad in [`browserSignals`](#4-browser-signals),
 in the `ad-day-frequency` field:
 
 ```
 browserSignals = { 'ad-day-frequency': 4 }
 ```
 
-Then, the [`generate_bid()`](https://github.com/WICG/turtledove/blob/master/TERN.md#5-generating-bids) function can contain
+Then, the [`generate_bid()`](#5-generating-bids) function can contain
 logic like:
 
 ```
@@ -1566,16 +1547,16 @@ else
   return bid
 ```
 
-### d. How does advertiser brand safety work?
+### c. How does advertiser brand safety work?
 
-Inside the [`privateData`](https://github.com/WICG/turtledove/blob/master/TERN.md#i-more-refined-bidding-signals-and-reporting-signals)
+Inside the [`privateData`](#i-more-refined-bidding-signals-and-reporting-signals)
 object, you can specify a list of sensitive categories for the advertiser:
 
 ```
 privateData = { 'sensitive-categories': ['natural disasters', 'crime'] }
 ```
 
-The [publisher request](https://github.com/WICG/turtledove/blob/master/TERN.md#a-the-publishercontextual-request)
+The [publisher request](#a-the-publishercontextual-request)
 may contain a list of categories:
 
 ```
@@ -1592,7 +1573,7 @@ may contain a list of categories:
 }
 ```
 
-The SSP is responsible for [sending this to DSPs](https://github.com/WICG/turtledove/blob/master/TERN.md#b-the-ssp).
+The SSP is responsible for [sending this to DSPs](#b-the-ssp).
 The DSP can unpack the `page-categories` and pack them into their `publisherSignals` object. Note that
 on the DSP's server side, they may have additional metadata about this publisher and page and can add
 whatever they see fit to their `publisherSignals` object. Perhaps this page is about cats, dogs, _and_
@@ -1602,7 +1583,7 @@ crime, but the publisher didn't declare the `crime` category. The DSP knows this
 publisherSignals = { 'page-categories': ['cats', 'dogs', 'crime'] }
 ```
 
-From here, the [`generate_bid()`](https://github.com/WICG/turtledove/blob/master/TERN.md#5-generating-bids)
+From here, the [`generate_bid()`](#5-generating-bids)
 function can contain logic like:
 
 ```
@@ -1611,21 +1592,37 @@ for sensitive_category in privateData['sensitive-categories']:
     return 0
 ```
 
-### e. How does publisher brand safety work?
+### d. Publisher FAQ
+
+In this section, we aim to address most of the issues raised in the
+[in-browser-auction-publisher-issues](https://github.com/dmarti/in-browser-auction-publisher-issues) repo.
+To that end, we follow the same outline as presented there.
+
+#### i. Brand Safety
+
+> Publishers need to be able to control which ads, including
+> interest-group-based ads, appear on their web
+> properties.  Publishers want to control what content appears
+> on their web property for multiple reasons:
+>
+> 1.  Ad quality/publisher-determined brand safety rules - there are many
+>     categories of content or specific advertising brands, categories of
+>     advertising brands, or specific ads that a given publisher would not
+>     want to appear on their site. (Related issue: [Capabilities of the proposal for publishers · Issue #51 · WICG/turtledove](https://github.com/WICG/turtledove/issues/51))
 
 During the [creative review
-process](https://github.com/WICG/turtledove/blob/master/TERN.md#0-before-advertising-begins), the
+process](#0-before-advertising-begins), the
 ad categories are declared by both the DSP and the SSP. Using review tokens which include these
 categories in a signed hash, along with an SSP public key, the publisher can be assured through
 trust with the SSP that these categories are an [honest
-declaration](https://github.com/WICG/turtledove/blob/master/TERN.md#i-pre-approval).
+declaration](#i-pre-approval).
 
-(Note that [delayed-approval](https://github.com/WICG/turtledove/blob/master/TERN.md#ii-delayed-approval) does
+(Note that [delayed-approval](#ii-delayed-approval) does
 not allow for an SSP to provide categories _a priori._ Necessarily, the SSP has a trusted relationship with
 the DSP to allow their ads through without an initial approval. However, once approval occurs, the SSP has
 an opportunity at this point to declare its categories.)
 
-Then, during the [publisher request](https://github.com/WICG/turtledove/blob/master/TERN.md#a-the-publishercontextual-request),
+Then, during the [publisher request](#a-the-publishercontextual-request),
 the publisher can declare its restricted categories:
 
 ```
@@ -1639,7 +1636,7 @@ the publisher can declare its restricted categories:
 ```
 
 This object goes to the SSP. Perhaps, if desired, the SSP can store the restricted categories
-for the publisher server-side. Regardless, in the [`publisherResponse`](https://github.com/WICG/turtledove/blob/master/TERN.md#b-the-ssp),
+for the publisher server-side. Regardless, in the [`publisherResponse`](#b-the-ssp),
 the SSP has an opportunity to filter out contextual ads that are not allowed to be shown on the page.
 Logic can be as simple as:
 
@@ -1653,12 +1650,280 @@ for restricted_category in publisherRequest['restricted-categories']:
         // remove ad object from publisherRespone
 ```
 
-For interest-based ads, this filtering can be applied in the [logic of the auction](https://github.com/WICG/turtledove/blob/master/TERN.md#6-the-auction)
+For interest-based ads, this filtering can be applied in the [logic of the auction](#6-the-auction)
 instead of on the SSP side.
 
 If a DSP attempts to make false claims or mix-and-match tokens, its ads will simply not render if
 the browser also provides a verified content rendering scheme (see [k. Verified content
-rendering](https://github.com/WICG/turtledove/blob/master/TERN.md#k-verified-content-rendering)).
+rendering](#k-verified-content-rendering)).
+
+As for specific advertisers or specific ads, this is even simpler (there's no SSP verification of ad
+content) and can also be applied in the [logic of the auction](#6-the-auction):
+
+```
+function evaluate_auction(submittedAds, privateData) {
+  for ad in submittedAds:
+    if ad['advertiser'] in privateData['banned-advertisers]:
+      // remove ad object from submittedAds
+    if ad['ad-cbor-url'] in privateDAta['banned-ads']:
+      // remove ad objected from submittedAds
+  // rest of auction logic
+}
+```
+
+> 2.  Malvertising - Some ads may contain (or link to) malware. If this
+>     isn\'t detected prior to a bundle being delivered to the browser,
+>     publishers need a mechanism to block malware from being served to
+>     their sites' users and to take appropriate action against the source
+>     of the malware.
+>
+>     1.  In the event that a malvertising campaign is discovered, publishers
+>         require mechanisms to block an ad from appearing on their sites.
+
+This can be accomplished as above by updating the `privateData` object passed into the `evaluate_auction`
+function.
+
+>     2.  Publishers use third-party malvertising detection services to
+>         prevent malvertising from serving to their users.
+
+Admittedly, TERN doesn't seem to allow for this. A third-party that has direct access to the ads displayed
+to the user, potentially coupled with a user ID, leaks cross-site tracking information.
+
+>     3.  In the event that an ad server or DSP is compromised and may have
+>         served malware, the blocking needs to apply to bundles that may
+>         already have been cached. This could involve the publisher or a
+>         third-party service.
+
+This can also be accomplished with the same mechanism described above with the `privateData` object. In the
+most egregious of circumstances, a publisher can even block an entire DSP from showing ads on their pages.
+
+> 3.  Pausing advertising. - Marketers sometimes choose to rapidly pause
+>     their ads in all media after an adverse news event such as an
+>     airplane crash. Publishers of any web property on which the marketer's ad
+>     might appear will need to support this.
+
+An advertiser can use the `publisherSignals` object in the [`publisherResponse`](#b-the-ssp)
+object to define a blocklist of campaigns:
+
+```
+publisherSignals = { 'stopped_campaigns': ['campaign123', 'campaign456'] }
+```
+
+The [`privateData`](#i-more-refined-bidding-signals-and-reporting-signals)
+object can contain the campaign ID attached to the particular ad:
+
+```
+privateData = { 'campaign_id': 'campaign456' }
+```
+
+Then, the [`generate_bid()`](#5-generating-bids) function can contain
+logic like:
+
+```
+if adSignals.privateData.campaign_id in publisherSignals.stopped_campaigns:
+  return 0;
+```
+
+A publisher can incorporate similar mechanisms, but would instead use the `privateData` object
+that is passed into the `evaluate_auction()` function.
+
+#### ii. Publisher Fulfillment
+
+> 2.  Publishers need to be able to fulfill directly sold ad
+>     placements. Many
+>     publishers often secure higher-revenue advertising based on the
+>     ability to deliver guaranteed impressions. Publishers need to
+>     balance short term optimization of revenue with longer-term
+>     strategic client relationships, which means serving lower priced ads
+>     ahead of higher priced ads in certain cases. Being able to control
+>     this without a time delay is critical to publishers meeting their
+>     contractual and strategic goals.  Publishers can currently make
+>     direct and RTB work together using a variety of techniques.
+
+The TERN [auction logic](#6-the-auction) allows the publisher to provide a script with arbitrary logic for
+selecting winning ads at whatever submitted price.
+
+>    1.  The highest bid should not always win. Publishers need the
+>        flexibility to be able to optimize their revenue and strategic goals
+>        by controlling which ads are delivered for given placements, which
+>        rely on configurable rules that compare direct sold ads, and
+>        indirect sold ads, regardless of why the marketer wants to engage a
+>        particular end user (e.g., contextual or interest-based targeting)
+>        Example rules include only overriding a guaranteed placement if it
+>        is over a target bid. The target amount may change over time. Related issue: [Publisher ad network control over ad eligibility and auction ranking · Issue #70 · WICG/turtledove](https://github.com/WICG/turtledove/issues/70)
+
+This is eminently doable in TERN. For example, logic like:
+
+```
+function evaluate_auction(submittedAds, privateData) {
+  indirect_winner = null
+  direct_winner = null
+  for ad in submittedAds:
+    if ad['deal-ids'] == [] and ad['bid'] > indirect_winner['bid']:
+      indirect_winner = ad
+      continue
+    if ad['deal-ids'] != [] and ad['bid'] > direct_winnder['bid']:
+      direct_winner = ad
+      continue
+  if indirect_winner['bid'] > privateData['indirect-threshold']:
+    winning_price = // calculate winning price here
+    return indirect_winner, winning_price
+  else:
+    return direct_winner, deal_price
+}
+```
+
+Parameters such as `privateData['indirect-threshold']` can be updated on a real-time basis, as the
+publisher is responsible for supplying this object on every impression opportunity.
+
+>        1.  For example, the Google Ad Manager "dynamic allocation" feature (if
+>            a direct deal is pacing correctly, complete at original price, if
+>            pacing falls behind then increase bid CPM to win more often. If the
+>            direct deal is pacing ahead, then cut the bid)
+
+This is dependent on some type of reporting mechanism that can provide this pacing data on a suitably
+real-time basis. Such a mechanism is outside of the scope of TERN, but if such a service is available,
+parameters to adjust a direct deal's bid CPM can be controlled again through the `privateData` object.
+
+>        2.  Direct deals that are pacing behind need to compete in the
+>            TURTLEDOVE auction at a higher effective price, and those that are
+>            pacing ahead need to compete at a lower price. The changes
+>            publishers make to rule sets must be immediately applied by
+>            TURTLEDOVE auctions.
+
+This is similar to the above.
+
+#### iii. Publisher Floors
+
+> 3.  Publishers need to set floor rates based on several criteria. (Related issue: [Capabilities of the proposal for publishers · Issue #51 · WICG/turtledove](https://github.com/WICG/turtledove/issues/51))
+>    1.  A publisher may not want an ad to serve at all, if it is below a
+>        minimum \"floor\" set for that page, section, or site.
+
+Floors can be set in the `privateData` object and enforced in the [auction logic](#6-the-auction),
+which is a script that the publisher controls:
+
+```
+function evaluate_auction(submittedAds, privateData) {
+  for ad in submittedAds:
+    if ad['bid'] < privateData['floor-price']:
+      // remove ad from submittedAds
+  // rest of auction logic continues
+}
+```
+
+>    2.  A publisher may not want an ad from a certain brand,
+>        vertical or campaign unless it is above a minimum floor set for that
+>        brand, vertical, or campaign.
+>
+>        1.  For example, a publisher may set a "floor for automotive"
+>
+>        2.  Publishers choose to protect their direct sales business, by not
+>            allowing marketers to undercut their pricing via indirect sales
+>            channel on the open market.
+
+This is also doable, but requires a more complex `privateData` object that contains a child object
+which contains the category (or advertiser or vertical) floors:
+
+```
+function evaluate_auction(submittedAds, privateData) {
+  for ad in submittedAds:
+    for category in ad['categories']:
+      if ad['bid'] < privateData['category-floors'][category]:
+        // remove ad from submittedAds
+  // rest of auction logic continues
+}
+```
+
+#### iv. Competitors in Different Slots
+
+> 4.  Publishers need to honor contractual terms preventing competitors
+>     from appearing together. If the contextual system serves an ad for one brand in one slot on
+>     the page, the decision process in other ad slots needs to know not
+>     to serve direct competitor ads. The publisher needs to control which
+>     brands are considered competitors. (For example, Amazon.com might be
+>     blocked as a direct competitor of a local bookstore ad on a book
+>     review site, while an IT site might not block Amazon.com for competing with a
+>     database ad.)
+
+Admittedly, TERN does not support this. Speculatively, it may be possible for the [auction logic](#6-the-auction)
+to run separate auctions with the context of the whole page and contain logic to adjudicate between
+competitor placements on the same page.
+
+#### v. Price Adjustments
+
+> 5.  The bid price set by the marketer is not necessarily the price at
+>     which it should compete in the auction. Publishers need to
+>     apply their own weighted prices, not necessarily the bid price. The
+>     \"price\" of a given ad is assigned by the buyer, but that price may
+>     not be what the publisher gets paid. In this case the publisher
+>     needs to apply an adjustment for auction purposes. Adjustment must
+>     be applied by the publisher in a 1st-party context. (Related issue: [Ad Pricing · Issue #14 · WICG/turtledove](https://github.com/WICG/turtledove/issues/14))
+
+The TERN [auction logic](#6-the-auction) provides a mechanism to do this. While the auction script
+is not fully specified here (yet), there isn't any particular reason it couldn't return an object such
+as:
+
+```
+{
+  'ad': ad-object,
+  'dsp-bid': 1.70,
+  'dsp-price': 1.65,
+  'ssp-bid': 1.80,
+  'ssp_price': 1.79
+}
+```
+
+where these prices are derived within the auction logic itself. Further collaboration is almost certainly
+required to flesh this out.
+
+>    1.  VAST errors: If a given ad is known to have VAST errors 20% of the
+>        time (e.g., does not serve) then it needs to have its bid price
+>        reduced by 20%, by the publisher.
+
+In some ways, this may be related to the pacing mentioned in the [publisher fulfillment](#ii-publisher-fulfillment)
+section. While out of scope, if there's an adequate real-time reporting mechanism for VAST errors,
+the publisher can pull that report and apply bid adjustments through the `privateData` object in the
+auction logic.
+
+>    2.  Post-bid brand safety blocking: If a given buyer has brand-safety
+>        controls that prevent an ad from serving on a page, the publisher
+>        ultimately does not get paid. Publishers can currently adjust for
+>        this by reducing the effective bids for impressions from a given
+>        buyer (e.g., if some ads serve, but others do not).
+
+In TERN, the advertiser is responsible for their [own brand safety](#d-how-does-advertiser-brand-safety-work),
+and any ads would be removed before entering the auction.
+
+>    3.  Reporting discrepancies: For many reasons, buyer and seller
+>        reporting (and third parties) does not match, and publishers need to
+>        be able to reduce (or increase) the bid price based on those
+>        discrepancies to ensure the ads compete at a price that is equal to
+>        what the publisher actually gets paid.
+
+This is once again similar to the [publisher fulfillment](#ii-publisher-fulfillment) section. This is doable
+in TERN, but is contingent upon an adequate reporting mechanism, which is out of scope for this document.
+
+
+#### vi. Regulatory Requirements
+
+> 6.  Publishers need to comply with regulatory requirements.
+>
+>    1.  For example, COPPA compliance in the US might forbid a certain
+>        interest-group ad from being served on a given page.
+>
+>    2.  Even if machine learning can classify underage drinkers into a
+>        cohort with legal age drinkers, they still can't get alcohol ads.
+>        How would a site signal to the auction that this given user is not
+>        eligible for alcohol ads?
+
+In TERN, we could make it so that COPPA compliance is a required field for the ad object. If a publisher
+knows that a given user is underaged, it can declare this in the [publisher request](#a-the-publishercontextual-request)
+so no contextual ads are returned by the SSP that would violate COPPA compliance. Similarly, this fact can
+be passed in the `publisherSignals` object (as described in [section 3b](#b-the-ssp)), which becomes an input
+for the DSP's [bidding function](#5-generating-bids). Here, DSPs can opt to not bid for ads which are not
+COPPA-compliant. Finally, the [auction logic](#6-the-auction) controlled by the publisher can remove ads from
+the auction that are not COPPA-compliant as well. In short, TERN can provide a multi-layered protection scheme
+for regulatory concerns provided we enforce the declaration within the ad objects themselves.
 
 ----------------
 
@@ -2004,7 +2269,7 @@ DSP+SSP case, a separate `runDecisionLogic` call should be made for each DSP.
 
 3. A `browserSignals` object containing UA-computed information like recency, frequency, group
 membership, etc.  See [4. Browser
-Signals](https://github.com/WICG/turtledove/blob/master/TERN.md#4-browser-signals).
+Signals](#4-browser-signals).
 
 Within the scope of each `generate_bid` call, calls to `writeAdvertisementData()` are disallowed.
 
@@ -2098,7 +2363,7 @@ interest information from the private on-device auction.
     Optional specification of a content digest and size intended for use in advertising flows
     involving creative approval; UA will not render/activate if content does not match.  See
     [k. Verified content
-    rendering](https://github.com/WICG/turtledove/blob/master/TERN.md#k-verified-content-rendering).
+    rendering](#k-verified-content-rendering).
 
 #### Return values
 
