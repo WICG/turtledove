@@ -81,7 +81,7 @@ That's 11am Boston = 8am California = 5pm Paris time (the winner of the [doodle 
 
 Please use the "Raise My Hand" feature in Google Meet.
 
-[<img src="https://i.insider.com/5fc55f5350e71a00115580e8?width=700" alt="Screenshot showing location of the Raise My Hand button">](https://i.insider.com/5fc55f5350e71a00115580e8?width=700)
+[<img src="https://i.insider.com/5fc55f5350e71a00115580e8?width=700" alt="Screenshot showing location of the Raise My Hand button">](https://www.businessinsider.com/how-to-raise-hand-on-google-meet)
 
 
 # Agenda
