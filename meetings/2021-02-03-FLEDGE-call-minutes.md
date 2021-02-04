@@ -81,7 +81,7 @@ That's 11am Boston = 8am California = 5pm Paris time (the winner of the [doodle 
 
 Please use the "Raise My Hand" feature in Google Meet.
 
-![Screenshot showing location of the Raise My Hand button](https://i.insider.com/5fc55f5350e71a00115580e8?width=700)
+[<img src="https://i.insider.com/5fc55f5350e71a00115580e8?width=700" alt="Screenshot showing location of the Raise My Hand button">](https://i.insider.com/5fc55f5350e71a00115580e8?width=700)
 
 
 # Agenda
@@ -91,7 +91,7 @@ Please use the "Raise My Hand" feature in Google Meet.
 
 
 
-*   Michael Kleber: Welcome. Let’s get started at 11:03. There are 55 of us. There is a notes doc (this doc) attached to the meet link. The doc is editable by everyone. There is a raise hand button, please use that as your queueing mechanism to talk. There are too many people in the call to do introductions today, so I’ll introduce myself. My name is Michael Kleber, I’ve been interacting with many of you for the last year in the web advertising business group to help figure out the future of advertising in the web, in particular in a web in which there aren’t third-party cookies. One of the proposals that we talked about was called Turtledove, which I published a year ago (Jan. 2020). Folks in this call published counter-proposals (such as folks from Criteo). Turtledove and Sparrow moved into WICG together half a year ago. There have been several proposals since to bring together variations for how advertising on-device auctions might work. I tried to tie everything together in a proposal called FLEDGE a couple of weeks ago, and that’s what we’re discussing here. 
+*   Michael Kleber: Welcome. Let’s get started at 11:03. There are 55 of us. There is a notes doc ([this doc](https://docs.google.com/document/d/1Kr0hpfQ_Q1LX1aN00D5k_09yV_a7WE9RSn69nS3nZho/edit)) attached to the meet link. The doc is editable by everyone. There is a raise hand button, please use that as your queueing mechanism to talk. There are too many people in the call to do introductions today, so I’ll introduce myself. My name is Michael Kleber, I’ve been interacting with many of you for the last year in the web advertising business group to help figure out the future of advertising in the web, in particular in a web in which there aren’t third-party cookies. One of the proposals that we talked about was called Turtledove, which I published a year ago (Jan. 2020). Folks in this call published counter-proposals (such as folks from Criteo). Turtledove and Sparrow moved into WICG together half a year ago. There have been several proposals since to bring together variations for how advertising on-device auctions might work. I tried to tie everything together in a proposal called FLEDGE a couple of weeks ago, and that’s what we’re discussing here. 
 
 
 ### Process
