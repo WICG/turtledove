@@ -4,7 +4,7 @@ Calls take place on some Wednesdays, at 4pm UTC.
 
 That's 11am Boston = 8am California = 5pm Paris time (the winner of the [doodle poll](https://doodle.com/poll/eht2imrtvec69hxx?utm_source=poll&utm_medium=link)).
 
-(This notes doc will be editable during the meeting — if you can only comment, hit reload)
+(This [notes doc](https://docs.google.com/document/d/1Kr0hpfQ_Q1LX1aN00D5k_09yV_a7WE9RSn69nS3nZho/edit) will be editable by everyone, during the meeting — if you can only comment, hit reload)
 
 
 # Next meeting: Wednesday Feb 17 2021
