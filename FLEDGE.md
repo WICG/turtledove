@@ -96,7 +96,7 @@ At present an estimates list of players include:
 
 Fledge should allow all adtech players to compete evenly, openly, and transparently. To allow even asingle player special access to data could create a 'privacy backdoor' and allow for that player to have an uneven data sales advantage.
 
-Fledge should draw a distinction between Trusted and Untrusted players as per the Trusted Server paradigm. All Trusted Players should be able to access any data ANY OTHER trusted player should be allowed to access. Untrusted players must have restricted access to any data Fledge defines as resticted for the sake of privacy. 
+Fledge should draw a distinction between Trusted and Untrusted players as per the Trusted Server paradigm. A *Trusted* player is both publisher approved and may send certain data to a Trusted Server. All Trusted Players should be able to access any data ANY OTHER trusted player should be allowed to access. Untrusted players must have restricted access to any data Fledge defines as resticted for the sake of privacy. 
 
 
 #### 0.2 Preventing Privacy Backdoors
@@ -135,7 +135,7 @@ navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
 ```
 
 
-The browser will only allow the `joinAdInterestGroup()` operation with the permission of both the site being visited and the group's owner.  The site can allow or deny permission to any or all third parties via a `Feature-Policy`, where the default policy is to allow all in the top-level page and to deny all in cross-domain iframes.  The group's owner can indicate permission by `joinAdInterestGroup()` running in a page or iframe in the owner's domain, and can delegate that permission to any other domains via a list at a `.well-known` URL.  These can be combined, to allow a DSP to add a person to one of its interest groups based on publisher context, as discussed in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups) — provided the publisher's `Feature-Policy` permits interest group additions by its SSP, and the DSP gives this SSP this ability.  If some permission is missing, `joinAdInterestGroup()` will raise an `Error` describing the reason for failure.
+The browser will only allow the `joinAdInterestGroup()` operation with the permission of both the site being visited and the group's owner.  The site can allow or deny permission to any or all third parties via a `Feature-Policy`, where the default policy is to allow all in the top-level page and to deny all in cross-domain iframes.  The group's owner can indicate permission by `joinAdInterestGroup()` running in a page or iframe in the owner's domain, and can delegate that permission to any other domains via a list at a `.well-known` URL.  These can be combined, to allow any trusted server to grant access to a downstream partner. For example a DSP can add a person to one of its interest groups based on publisher context, as discussed in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups) — provided the publisher's `Feature-Policy` permits interest group additions by its SSP, and the DSP gives this SSP this ability.  If some permission is missing, `joinAdInterestGroup()` will raise an `Error` describing the reason for failure.
 
 There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which looks only at `myGroup.name` and `myGroup.owner`.  As a special case to support in-ad UIs, invoking `navigator.leaveAdInterestGroup({})` from inside an ad that is being targeted at a particular interest group will cause the browser to leave that group, irrespective of permission policies.
 
@@ -187,7 +187,7 @@ const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
 ```
 
 
-This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auction_signals`, `seller_signals`, and `per_buyer_signals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auction_signals` are made available to everyone, while the other signals are given only to one party.
+This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auction_signals`, `seller_signals`, and `per_buyer_signals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auction_signals` are made available to everyone, while the other signals are given only to any 'trusted' party. No party will be allowed to hide data excepting proprietary decision making code, but the buyer and price will be avaibile not just to the dsp/ssp, but any trusted system leading to a trusted server. This will allow for transparency, fraud detection, and publisher-approved analytics. It will also not violate user's privacy as the fraud detect and analytics would be beholden to the same rules as the dsp/ssp.
 
 The returned `auctionResultPromise` object is _opaque_: it is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents, but it can be passed to a Fenced Frame for rendering.  (The [Fenced Frame Opaque Source explainer](https://github.com/shivanigithub/fenced-frame/blob/master/OpaqueSrc.md) has initial thoughts about how this could be implemented.)  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
@@ -344,7 +344,7 @@ The TURTLEDOVE privacy goals mean that this cannot be the long-term solution.  R
 
 ### 5. Event-Level Reporting (for now)
 
-Once the winning ad has rendered in its Fenced Frame, the seller and the winning buyer each have an opportunity to perform logging and reporting on the auction outcome.  The browser will call one reporting function in the seller's auction worklet and one in the winning buyer's bidding worklet.
+Once the winning ad has rendered in its Fenced Frame, the seller and the winning buyer and any other truster, publisher-authorized party, each have an opportunity to perform logging and reporting on the auction outcome.  The browser will call one reporting function in the seller's auction worklet and one in the winning buyer's bidding worklet, and one in any other relevant worklet.
 
 _As a temporary mechanism,_ these reporting functions will be able to send event-level reports to their servers.  These reports can include contextual information, and can include information about the winning interest group if it is over an anonymity threshold.  This reporting will happen synchronously, while the page with the ad is still open in the browser.
 
@@ -408,7 +408,7 @@ The arguments to this function are:
 
 The `report_win()` function's reporting happens by calling browser-provided aggregate reporting APIs or, temporarily, directly calling network APIs.
 
-Ads often need to report on events that happen once the ad is rendered.  One common example is reporting on whether an ad became viewable on-screen.  We will need a communications channel to allow the publisher page or the Fenced Frame to pass such information into the worklet responsible for reporting.  Some additional design work is needed here.
+Ads often need to report on events that happen once the ad is rendered.  One common example is reporting on whether an ad became viewable on-screen.  We will need a communications channel to allow the publisher page or the Fenced Frame to pass such information into the worklet responsible for reporting.  Some additional design work is needed here. The channel hould be able to pass this data to all trusted and publisher-approved parties.
 
 
 #### 5.3 Losing Bidder Reporting
