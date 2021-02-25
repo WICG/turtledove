@@ -81,6 +81,18 @@ The on-device bidding flow includes a way that the worklets can use some data lo
 
 ### 0. All Players Will Have Equal Access to Data
 
+At present an estimates list of players include:
+
+* The OS (To be covered in later version?)
+* The Browser
+* The Website/Publisher
+* Third Parties used but not trusted by the Website/Publisher (i.e. widgets)
+* Third Parties used and Trusted by the Website/Publisher (Privacy-Respecting Analytics Companies, Anti-Fraud, etc)
+* SSPs
+* DSPs
+* Other Downstream Partners of the above
+
+
 #### 0.1 Preventing Privacy Backdoors
 
 One of the biggest issue with protecting privacy in adtech has been 'privacy backdoors.' These come about when a measure meant to protect user's privacy merely restricts data for one particular adtech player type, or group of player types, while allowing others to access it. If 3 pieces of data exist on a webpage that are considered personal data for a user, and 3 companies exist that collect the data, blocking 2 companies from accessing 3 peices of data does functionally nothing for the user, as all 3 peices of data still leak and can be sold. 
@@ -96,20 +108,9 @@ Some IP issues exist on all sides, for example adtech may not wish to reveal IP 
 
 #### 0.2 Keeping Open Competition
 
-Fledge should allow all adtech players to compete evenly, openly, and transparently. To allow even asingle player 
+Fledge should allow all adtech players to compete evenly, openly, and transparently. To allow even asingle player special access to data could create a 'privacy backdoor' and allow for that player to have an uneven data sales advantage.
 
-At present an estimates list of players include:
-
-* The OS
-* The Browser
-* The Website/Publisher
-* Third Parties used but not trusted by the Website/Publisher (i.e. widgets)
-* Third Parties used and Trusted by the Website/Publisher (Privacy-Respecting Analytics Companies, Anti-Fraud, etc)
-* SSPs
-* DSPs
-* Other Downstream Partners of the above
-
-Fledge should draw a distinction between Trusted and Untrusted players as per the Trusted Server paradigm (discussed below). All Trusted Players should be able to access any data any other trusted player should be allwoed to access. Untrusted players must have restricted access to any data Fledge defines as resticted for the sake of privacy. 
+Fledge should draw a distinction between Trusted and Untrusted players as per the Trusted Server paradigm (discussed below). All Trusted Players should be able to access any data any other trusted player should be allowed to access. Untrusted players must have restricted access to any data Fledge defines as resticted for the sake of privacy. 
 
 ### 1. Browsers Record Interest Groups
 
