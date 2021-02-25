@@ -81,7 +81,7 @@ The on-device bidding flow includes a way that the worklets can use some data lo
 
 ### 0. All Players Will Have Equal Access to Data
 
-At present an estimates list of players include:
+At present a list of adtech players include:
 
 * The OS (To be covered in later version?)
 * The Browser
@@ -94,16 +94,18 @@ At present an estimates list of players include:
 
 #### 0.1 Keeping Open Competition
 
-Fledge should allow all adtech players to compete evenly, openly, and transparently. To allow even asingle player special access to data could create a 'privacy backdoor' and allow for that player to have an uneven data sales advantage.
+Fledge should allow all adtech players to compete evenly, openly, and transparently. To allow even a single player special access to data could create a 'privacy backdoor' and allow for that player to have an uneven data sales advantage.
 
-Fledge should draw a distinction between Trusted and Untrusted players as per the Trusted Server paradigm. A *Trusted* player is both publisher approved and may send certain data to a Trusted Server. All Trusted Players should be able to access any data ANY OTHER trusted player should be allowed to access. Untrusted players must have restricted access to any data Fledge defines as resticted for the sake of privacy. 
+Fledge should draw a distinction between Trusted and Untrusted players as per the Trusted Server paradigm. A *Trusted* player is both publisher approved and may send certain data to a Trusted Server. All Trusted Players should be able to access any data ANY OTHER trusted player should be allowed to access. Untrusted players must have restricted access to any data Fledge defines as restricted for the sake of privacy. 
 
 
 #### 0.2 Preventing Privacy Backdoors
 
-One of the biggest issue with protecting privacy in adtech has been 'privacy backdoors.' These come about when a measure meant to protect user's privacy merely restricts data for one particular adtech player type, or group of player types, while allowing others to access it. If 3 pieces of data exist on a webpage that are considered personal data for a user, and 3 companies exist that collect the data, blocking 2 companies from accessing 3 pieces of data does functionally nothing for the user, as all 3 peices of data still leak and can be sold. 
+One of the biggest issues with protecting privacy in adtech has been 'Privacy Backdoors.' These come about when a measure meant to protect user's privacy merely restricts data for one particular adtech player type, while allowing others to access it. 
 
-Given that the browser itself contains uniquly identifying information, including the user's browser history for example, the browser itself needs new restrictions to protect user data. Otherwise personal data could escape via browser-initiatived server calls. As part of Fledge, every implementing browser must commit to a rigorous set of restrictions on what data it can send to a friendly or 3rd party server by its own initiative. These restrictions would require every browser-initiatied server call to abide by the following:
+For example, if 3 pieces of data exist on a webpage that are considered personal data, and 3 companies exist that collect the data, blocking 2 companies from accessing 3 pieces of data does functionally nothing for the user, as all 3 peices of data still leak and can be sold by the last company type. 
+
+Given that the browser itself contains uniquly identifying information, including the user's browser history for example, the browser itself needs new restrictions to protect user data. Otherwise personal data could escape via browser-initiatived (as opposed to publisher-initiated) server calls. As part of Fledge, every implementing browser must commit to a rigorous set of restrictions on what data it can send to a friendly or 3rd party server by its own initiative. These restrictions would require every browser-initiatied server call to abide by the following:
 
 1. The server must be a 'Trusted Server'
 2. The data sent to the server must be accessible by any other trusted player
