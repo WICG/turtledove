@@ -165,7 +165,7 @@ Sellers have three basic jobs in the on-device ad auction:
 
 1. Sellers decide (a) which buyers may participate, and (b) which of the bids from those buyers' interest groups are eligible to enter the auction.  This lets the seller enforce the site's rules for what ads are allowed to appear on the page.
 2. Sellers are responsible for the business logic of the auction: javascript code which considers each bid's price and metadata, and calculates a "desirability" score.  The bid with the highest desirability score wins the auction.
-3. Sellers perform reporting on the auction outcome, including information about clearing price and any other pay-outs.  (The winning and losing buyers also get to do their own reporting; see below for buyer jobs.)
+3. Sellers perform reporting on the auction outcome, including information about clearing price and any other pay-outs.  (The winning and losing buyers also get to do their own reporting; see below for buyer jobs.) The seller must report the clearing price and other necessary information accurately and is not permitted to hide information. 
 
 
 #### 2.1 Initiating an On-Device Auction
@@ -189,7 +189,7 @@ const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
 ```
 
 
-This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auction_signals`, `seller_signals`, and `per_buyer_signals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auction_signals` are made available to everyone, while the other signals are given only to any 'trusted' party. No party will be allowed to hide data excepting proprietary decision making code, but the buyer and price will be availible not just to the dsp/ssp, but any trusted system leading to a trusted server. This will allow for transparency, fraud detection, and publisher-approved analytics. It will also not violate user's privacy as the fraud detect and analytics would be beholden to the same rules as the dsp/ssp.
+This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auction_signals`, `seller_signals`, and `per_buyer_signals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auction_signals` are made available to everyone, while the other signals are given to any 'trusted' party. No party will be allowed to hide data excepting proprietary decision making code, but the buyer and price will be availible not just to the dsp/ssp, but any trusted system leading to a trusted server. This will allow for transparency, fraud detection, and publisher-approved analytics. It will also not violate user's privacy as the fraud detect and analytics would be beholden to the same rules as the dsp/ssp.
 
 The returned `auctionResultPromise` object is _opaque_: it is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents, but it can be passed to a Fenced Frame for rendering.  (The [Fenced Frame Opaque Source explainer](https://github.com/shivanigithub/fenced-frame/blob/master/OpaqueSrc.md) has initial thoughts about how this could be implemented.)  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
@@ -346,7 +346,7 @@ The TURTLEDOVE privacy goals mean that this cannot be the long-term solution.  R
 
 ### 5. Event-Level Reporting (for now)
 
-Once the winning ad has rendered in its Fenced Frame, the seller and the winning buyer and any other truster, publisher-authorized party, each have an opportunity to perform logging and reporting on the auction outcome.  The browser will call one reporting function in the seller's auction worklet and one in the winning buyer's bidding worklet, and one in any other relevant worklet.
+Once the winning ad has rendered in its Fenced Frame, the seller and the winning buyer and any other trusted and publisher-authorized party, each have an opportunity to perform logging and reporting on the auction outcome.  The browser will call one reporting function in the seller's auction worklet and one in the winning buyer's bidding worklet, and one in any other relevant worklet.
 
 _As a temporary mechanism,_ these reporting functions will be able to send event-level reports to their servers.  These reports can include contextual information, and can include information about the winning interest group if it is over an anonymity threshold.  This reporting will happen synchronously, while the page with the ad is still open in the browser.
 
