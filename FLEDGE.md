@@ -101,7 +101,7 @@ Fledge should draw a distinction between Trusted and Untrusted players as per th
 
 #### 0.2 Preventing Privacy Backdoors
 
-One of the biggest issue with protecting privacy in adtech has been 'privacy backdoors.' These come about when a measure meant to protect user's privacy merely restricts data for one particular adtech player type, or group of player types, while allowing others to access it. If 3 pieces of data exist on a webpage that are considered personal data for a user, and 3 companies exist that collect the data, blocking 2 companies from accessing 3 peices of data does functionally nothing for the user, as all 3 peices of data still leak and can be sold. 
+One of the biggest issue with protecting privacy in adtech has been 'privacy backdoors.' These come about when a measure meant to protect user's privacy merely restricts data for one particular adtech player type, or group of player types, while allowing others to access it. If 3 pieces of data exist on a webpage that are considered personal data for a user, and 3 companies exist that collect the data, blocking 2 companies from accessing 3 pieces of data does functionally nothing for the user, as all 3 peices of data still leak and can be sold. 
 
 Given that the browser itself contains uniquly identifying information, including the user's browser history for example, the browser itself needs new restrictions to protect user data. Otherwise personal data could escape via browser-initiatived server calls. As part of Fledge, every implementing browser must commit to a rigorous set of restrictions on what data it can send to a friendly or 3rd party server by its own initiative. These restrictions would require every browser-initiatied server call to abide by the following:
 
