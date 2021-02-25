@@ -11,8 +11,8 @@ We plan to hold regular meetings under the auspices of the WICG to go through th
 - [Background](#background)
 - [Design Elements](#design-elements)
   - [0. Parity For All Players](#0-all-players-will-have-equal-access-to-data)
-    - [0.1 Preventing Privacy Backdoors](#01-preventing-privacy-backdoors)
-    - [0.2 Keeping Open Competition](#02-keeping-open-competition)
+    - [0.1 Keeping Open Competition](#01-keeping-open-competition)
+    - [0.2 Preventing Privacy Backdoors](#02-preventing-privacy-backdoors)
   - [1. Browsers Record Interest Groups](#1-browsers-record-interest-groups)
     - [1.1 Joining Interest Groups](#11-joining-interest-groups)
     - [1.2 Interest Group Attributes](#12-interest-group-attributes)
@@ -92,25 +92,25 @@ At present an estimates list of players include:
 * DSPs
 * Other Downstream Partners of the above
 
-
-#### 0.1 Preventing Privacy Backdoors
-
-One of the biggest issue with protecting privacy in adtech has been 'privacy backdoors.' These come about when a measure meant to protect user's privacy merely restricts data for one particular adtech player type, or group of player types, while allowing others to access it. If 3 pieces of data exist on a webpage that are considered personal data for a user, and 3 companies exist that collect the data, blocking 2 companies from accessing 3 peices of data does functionally nothing for the user, as all 3 peices of data still leak and can be sold. 
-
-Given that the browser itself contains uniquly identifying information, including the user's browser history for example, the browser itself needs new restrictions to protect user data. Otherwise personal data could escape via browser-initiatived server calls. As part of Fledge, every implementing browser must commit to a rigorous set of restrictions on what data it can send to a friendly or 3rd party server by its own initiative. These restrictions would require every browser-initiatied server call (i.e. a server call not initiatied by a code on a website) to be:
-1. Publicly Auditable
-2. The server must be a 'trusted server'
-3. The browser may not phone home with information that, for example, a publisher's website would not be able to know or phone home with, as this would allow for a 'Privacy backdoor' out of the sandbox.
-
-Some IP issues exist on all sides, for example adtech may not wish to reveal IP to the browsers, and browser servers (such as the mini rendering servers of Opera Mini) may not wish to reveal IP to adtech. Thes issues should be resolved in the Trusted Server paradigm.
-
-
-
-#### 0.2 Keeping Open Competition
+#### 0.1 Keeping Open Competition
 
 Fledge should allow all adtech players to compete evenly, openly, and transparently. To allow even asingle player special access to data could create a 'privacy backdoor' and allow for that player to have an uneven data sales advantage.
 
-Fledge should draw a distinction between Trusted and Untrusted players as per the Trusted Server paradigm (discussed below). All Trusted Players should be able to access any data any other trusted player should be allowed to access. Untrusted players must have restricted access to any data Fledge defines as resticted for the sake of privacy. 
+Fledge should draw a distinction between Trusted and Untrusted players as per the Trusted Server paradigm. All Trusted Players should be able to access any data ANY OTHER trusted player should be allowed to access. Untrusted players must have restricted access to any data Fledge defines as resticted for the sake of privacy. 
+
+
+#### 0.2 Preventing Privacy Backdoors
+
+One of the biggest issue with protecting privacy in adtech has been 'privacy backdoors.' These come about when a measure meant to protect user's privacy merely restricts data for one particular adtech player type, or group of player types, while allowing others to access it. If 3 pieces of data exist on a webpage that are considered personal data for a user, and 3 companies exist that collect the data, blocking 2 companies from accessing 3 peices of data does functionally nothing for the user, as all 3 peices of data still leak and can be sold. 
+
+Given that the browser itself contains uniquly identifying information, including the user's browser history for example, the browser itself needs new restrictions to protect user data. Otherwise personal data could escape via browser-initiatived server calls. As part of Fledge, every implementing browser must commit to a rigorous set of restrictions on what data it can send to a friendly or 3rd party server by its own initiative. These restrictions would require every browser-initiatied server call to abide by the following:
+
+1. The server must be a 'Trusted Server'
+2. The data sent to the server must be accessible by any other trusted player
+3. The data sent to the server must be auditable to ensure compliance (to prevent browsers from hiding or obscuring calls form their own debugging tools)
+
+Some IP issues exist on all sides, for example adtech may not wish to reveal IP to the browsers, and browser servers (such as the mini rendering servers of Opera Mini) may not wish to reveal IP to adtech. These issues should be resolved in the Trusted Server paradigm.
+
 
 ### 1. Browsers Record Interest Groups
 
