@@ -98,18 +98,19 @@ Fledge should allow all adtech players to compete evenly, openly, and transparen
 
 Fledge should draw a distinction between Trusted and Untrusted players as per the Trusted Server paradigm. A *Trusted* player is both publisher approved and may send certain data to a Trusted Server. All Trusted Players should be able to access any data ANY OTHER trusted player should be allowed to access. Untrusted players must have restricted access to any data Fledge defines as restricted for the sake of privacy. 
 
+Further discussion must occur around proprietary information such as interest groups (i.e. interest group plagiarism prevention) though this should be resolved in the Trusted Server Paradigm.
 
 #### 0.2 Preventing Privacy Backdoors
 
 One of the biggest issues with protecting privacy in adtech has been 'Privacy Backdoors.' These come about when a measure meant to protect user's privacy merely restricts data for one particular adtech player type, while allowing others to access it. 
 
-For example, if 3 pieces of data exist on a webpage that are considered personal data, and 3 companies exist that collect the data, blocking 2 companies from accessing 3 pieces of data does functionally nothing for the user, as all 3 peices of data still leak and can be sold by the last company type. 
+For example, if 3 pieces of data exist on a webpage that are considered personal data, and 3 companies exist that collect the data, blocking 2 companies from accessing 3 pieces of data does functionally nothing for the user, as all 3 pieces of data still leak and can be sold by the last company type. 
 
 Given that the browser itself contains uniquly identifying information, including the user's browser history for example, the browser itself needs new restrictions to protect user data. Otherwise personal data could escape via browser-initiatived (as opposed to publisher-initiated) server calls. As part of Fledge, every implementing browser must commit to a rigorous set of restrictions on what data it can send to a friendly or 3rd party server by its own initiative. These restrictions would require every browser-initiatied server call to abide by the following:
 
 1. The server must be a 'Trusted Server'
 2. The data sent to the server must be accessible by any other trusted player
-3. The data sent to the server must be auditable to ensure compliance (to prevent browsers from hiding or obscuring calls form their own debugging tools)
+3. The data sent to the server must be auditable to ensure compliance (to prevent browsers from hiding or obscuring calls from their own debugging tools)
 
 Some IP issues exist on all sides, for example adtech may not wish to reveal IP to the browsers, and browser servers (such as the mini rendering servers of Opera Mini) may not wish to reveal IP to adtech. These issues should be resolved in the Trusted Server paradigm.
 
