@@ -17,6 +17,7 @@ We plan to hold regular meetings under the auspices of the WICG to go through th
     - [2.1 Initiating an On-Device Auction](#21-initiating-an-on-device-auction)
     - [2.2 Auction Participants](#22-auction-participants)
     - [2.3 Scoring Bids](#23-scoring-bids)
+    - [2.4 Expensive Validation Operations](#24-expensive-validation-operations)
   - [3. Buyers Provide Ads and Bidding Functions (BYOS for now)](#3-buyers-provide-ads-and-bidding-functions-byos-for-now)
     - [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server)
     - [3.2 On-Device Bidding](#32-on-device-bidding)
@@ -206,6 +207,27 @@ The logic in `score_ad()` has access to the full auction configuration object, w
 *   Checking whether the creative contents have been pre-approved by the seller.  This could be implemented by an out-of-band creative review process leading to the seller handing the buyer a cryptographically-signed token, which the buyer then includes in the ad's metadata.  See [TERN's Section 0](https://github.com/WICG/turtledove/blob/master/TERN.md#0-before-advertising-begins) for more discussion of this possibility.  The browser signals include an ad\_render\_fingerprint value, which can be checked against a pre-approved fingerprint here as well.  (Eventually this fingerprint can be a hash of the ad web bundle, but while rendering still uses the network, it should just be a hash of the rendering URL.)
 
 Note that `score_ad()` does not have any way to _store_ information for use later on a different page.  In particular, if the ad scoring logic on day 1 observes a bid from a particular interest group, and then on day 2 the browser interest group membership expires, there is no way for the ad scoring logic on day 3 to "remember" the pre-expiration membership information.
+
+
+#### 2.4 Expensive Validation Operations
+
+
+The seller might wish to authenticate the creative metadata used by their ranking function to determine an ad’s eligibility.  Doing so for each interest group ad candidate in the `score_ad()` function may be expensive, so a final `validate_ad()` offers the seller an opportunity to perform additional computation on the winner of the auction prior to rendering.
+
+
+```
+validate_ad(ad_metadata, bid, auction_config, browser_signals) {
+  if (!test1(ad_metadata)) {return false;}
+  ...
+  return true;
+}
+```
+
+Inputs are the same as to `score_ad()`.  The validation function can access standard browser cryptography tools, and can send aggregated reports.
+
+After `score_ad()` is run on the ad from each interest group, `validate_ad()` is run on the highest-scored ad.  If `validate_ad()` returns false, the ad is disqualified, and the second-highest-ranked ad is validated instead.  This happens at most three times; if the second and third ads also fail to validate, then no ad wins the auction.
+
+
 
 
 ### 3. Buyers Provide Ads and Bidding Functions (BYOS for now)
