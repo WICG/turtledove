@@ -138,8 +138,9 @@ A seller initiates an auction by invoking a javascript API inside the publisher'
 const myAuctionConfig = {
   'seller': 'www.example-ssp.com',
   'decision_logic_url': ...,
+  'trusted_scoring_signals_url': ...,
   'interest_group_buyers': ['www.example-dsp.com', 'buyer2.com', ...],
-  'additional_bids': [other_source_ad1, other_source_ad2, ...]
+  'additional_bids': [other_source_ad1, other_source_ad2, ...],
   'auction_signals': {...},
   'seller_signals': {...},
   'per_buyer_signals': {'www.example-dsp.com': {...},
@@ -170,7 +171,7 @@ Once the bids are known, the seller runs code inside an _auction worklet_.  With
 
 
 ```
-score_ad(ad_metadata, bid, auction_config, browser_signals) {
+score_ad(ad_metadata, bid, auction_config, trusted_scoring_signals, browser_signals) {
   ...
   return desirabilityScoreForThisAd;
 }
@@ -184,6 +185,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   ad\_metadata: Arbitrary metadata provided by the buyer
 *   bid: A numerical bid value
 *   auction\_config: the auction configuration object passed to navigator.runAdAuction()
+*   trusted\_scoring\_signals: A value retrieved from a real-time trusted server chosen by the seller and reflecting the seller's opinion of this particular creative, as further described in [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) below.  (In the case of [ads composed of multiple pieces](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces) this should instead be some collection of values, structure TBD.)
 *   browser\_signals: an object constructed by the browser, containing information that the browser knows and which the seller's auction script might want to verify:
     ```
     { 'top_window_hostname': 'www.example-publisher.com',
@@ -233,7 +235,11 @@ Buyers may want to make on-device decisions that take into account real-time dat
 
 The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trusted_bidding_signals_url`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, and `keys` is a list of `trusted_bidding_signals_keys` strings, perhaps coalesced (for efficiency) across any number of interest groups that share a `trusted_bidding_signals_url`.  The response from the server should be a JSON object whose keys are key1, key2, etc., and whose values will be made available to the buyer's bidding functions (un-coalesced).
 
-_As a temporary mechanism_ during the First Experiment timeframe, the buyer can fetch these bidding signals from any server, including one operated by the buyer themselves (a "Bring Your Own Server" model).  However, in the final version after the removal of third-party cookies, the request will only be sent to a trusted key-value-type server.  Because the server is trusted, there is no k-anonymity constraint on this request.  The browser needs to trust that the server's return value for each key will be based only on that key and the hostname, and that the server does no event-level logging and has no other side effects based on these requests. 
+
+Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in the same way, with the base URL coming from the `trusted_scoring_signals_url` property of the seller's auction configuration object, and the keys being the `render_url` fields of all the ads in the `ads` fields of all interest groups in the auction.  The value associated with a `render_url` key is provided as the `trusted_scoring_signals` parameter to the seller's `score_ad()` function.
+
+
+_As a temporary mechanism_ during the First Experiment timeframe, the buyer and seller can fetch these bidding signals from any server, including one they operate  themselves (a "Bring Your Own Server" model).  However, in the final version after the removal of third-party cookies, the request will only be sent to a trusted key-value-type server.  Because the server is trusted, there is no k-anonymity constraint on this request.  The browser needs to trust that the server's return value for each key will be based only on that key and the hostname, and that the server does no event-level logging and has no other side effects based on these requests. 
 
 
 #### 3.2 On-Device Bidding
