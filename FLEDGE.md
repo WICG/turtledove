@@ -185,7 +185,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   ad\_metadata: Arbitrary metadata provided by the buyer
 *   bid: A numerical bid value
 *   auction\_config: the auction configuration object passed to navigator.runAdAuction()
-*   trusted\_scoring\_signals: A value retrieved from a real-time trusted server chosen by the seller and reflecting the seller's opinion of this particular creative, as further described in [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) below.
+*   trusted\_scoring\_signals: A value retrieved from a real-time trusted server chosen by the seller and reflecting the seller's opinion of this particular creative, as further described in [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) below.  (In the case of [ads composed of multiple pieces](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces) this should instead be some collection of values, structure TBD.)
 *   browser\_signals: an object constructed by the browser, containing information that the browser knows and which the seller's auction script might want to verify:
     ```
     { 'top_window_hostname': 'www.example-publisher.com',
