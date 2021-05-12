@@ -87,7 +87,7 @@ Browsers keep track of the set of interest groups that they have joined.  For ea
 const myGroup = {
   'owner': 'www.example-dsp.com',
   'name': 'womens-running-shoes',
-  'biddingLogiUurl': ...,
+  'biddingLogicUrl': ...,
   'dailyUpdateUrl': ...,
   'trustedBiddingSignalsUrl': ...,
   'trustedBiddingSignalsKeys': ['key1', 'key2'],
