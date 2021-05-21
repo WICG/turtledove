@@ -90,9 +90,19 @@ const myGroup = {
   'biddingLogicUrl': ...,
   'dailyUpdateUrl': ...,
   'trustedBiddingSignalsUrl': ...,
-  'trustedBiddingSignalsKeys': ['key1', 'key2'],
+  'trustedBiddingSignalsKeys': {
+      'productKeys': ['key1', 'key2'],
+      'campaignKeys': ['key3', 'key4'],
+      ...
+  },
   'userBiddingSignals': {...},
-  'ads': [shoesAd1, shoesAd2, shoesAd3],
+  'adComponents': {
+      'interestBasedAds': [shoesAd1, shoesAd2, shoesAd3],
+      'temporaryPromotionAds': [shoesAd4, shoesAd5],
+      'newReleases': [runningShoes1, runningShoes2, gymShoes],
+      'interestBasedProducts': [gymTrainers1, gymTrainers2],
+      ...
+  },
 };
 navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
 ```
@@ -109,9 +119,15 @@ The browser will remain in an interest group for only a limited amount of time. 
 
 The `userBiddingSignals` is for storage of additional metadata that the owner can use during on-device bidding, and the `trustedBiddingSignals*` attributes provide another mechanism for making real-time data available for use at bidding time.
 
-The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically update the attributes of the interest group: any new values returned in this way overwrite the values previously stored (except that the `name` and `owner` cannot be changed).  However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateUrl` , e.g. at least 100 browsers with the same update url. This will not include any metadata, so data such as the interest group `name` should be included within the url, so long as url exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
+The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically update the attributes of the interest group. An `updatedInterestGroup` object obtained in this way will be used to update the current `interestGroup` in the following way:
+- `name` and `owner` fields cannot be changed
+- `adComponents` will be "shallowly merged": each key and value in `updatedInterestGroup.adComponents` will overwrite the previous value in `interestGroup.adComponents` (or set it, if it was not present previously). This way the owner has the flexibility to update some ads / products without overwriting others, for example to advertise a newly released product. (See issue #160.)
+- A "shallow merge" will also be applied to 'userBiddingSignals' and 'trustedBiddingSignalKeys'. (This way, when updating the list of `adComponents`, the owner may add corresponding keys to `trustedBiddingSignalKeys`, so that it's possible to retrieve most recent prices and availability information.)
+- all other fields present in `updatedInterestGroup` will overwrite the previous values of the corresponding fields in `interestGroup`.
 
-The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time.
+However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateUrl` , e.g. at least 100 browsers with the same update url. This will not include any metadata, so data such as the interest group `name` should be included within the url, so long as url exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
+
+The `adComponents` field contains the various ad components (ads and products, see "Ads Composed of Multiple Pieces") that the interest group might show.  To provide greater flexibility of daily updates, this field is a dictionary from custom owner-specified strings to lists of components (see the specification of `dailyUpdateUrl` above).  Each component is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time.
 
 The browser will provide protection against microtargeting, by only rendering an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 100 people would have seen the ad, if it were allowed to show).  As discussed in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal, this threshold applies only to the rendered creative; all of the metadata associated with ad bidding is not under any such restriction.  Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold.  This means that a small, specialized interest group that is still below the daily-update threshold could still choose to participate in auctions, bidding with a more-generic ad until the group becomes large enough.
 
@@ -233,10 +249,13 @@ Buyers may want to make on-device decisions that take into account real-time dat
 
     https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, and `keys` is a list of `trustedBiddingSignalsKeys` strings, perhaps coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl`.  The response from the server should be a JSON object whose keys are key1, key2, etc., and whose values will be made available to the buyer's bidding functions (un-coalesced).
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, and `keys` is a list of all keys specified in `trustedBiddingSignalsKeys` dictionary, perhaps coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl`.  The response from the server should be a JSON object whose keys are key1, key2, etc., and whose values will be made available to the buyer's bidding functions (un-coalesced).
+
+Note that `trustedBiddingSignalsKeys` is a dictionary from custom owner-specified strings, to lists of string keys. The purpose of this structure is to enable a more flexible daily update mechanism (see the specification of `dailyUpdateUrl` for more details). To derive the `&keys` parameter used in the HTTP query, all values in the dictionary are concatenated.
 
 
-Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object, and the keys being the `renderUrl` fields of all the ads in the `ads` fields of all interest groups in the auction.  The value associated with a `renderUrl` key is provided as the `trustedScoringSignals` parameter to the seller's `scoreAd()` function.
+
+Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object, and the keys being the `renderUrl` fields of all the ad components in the `adComponents` fields of all interest groups in the auction.  The value associated with a `renderUrl` key is provided as the `trustedScoringSignals` parameter to the seller's `scoreAd()` function.
 
 
 _As a temporary mechanism_ during the First Experiment timeframe, the buyer and seller can fetch these bidding signals from any server, including one they operate  themselves (a "Bring Your Own Server" model).  However, in the final version after the removal of third-party cookies, the request will only be sent to a trusted key-value-type server.  Because the server is trusted, there is no k-anonymity constraint on this request.  The browser needs to trust that the server's return value for each key will be based only on that key and the hostname, and that the server does no event-level logging and has no other side effects based on these requests. 
@@ -270,8 +289,11 @@ The arguments to `generateBid()` are:
       'joinCount': 3,
       'bidCount': 17,
       'prevWins': [[time1,ad1],[time2,ad2],...],
+      ],
     }
     ```
+The `prevWins` field contains a list of previously won auctions. Each entry is a timestamp and an ad object as
+returned by the relevant call to generateBid. (Consequently, the ad object may contain information on multiple ad components.)
 
 The output of `generateBid()` contains three fields:
 
