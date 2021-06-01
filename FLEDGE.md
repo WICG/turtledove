@@ -102,7 +102,7 @@ The browser will only allow the `joinAdInterestGroup()` operation with the permi
 
 There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which looks only at `myGroup.name` and `myGroup.owner`.  As a special case to support in-ad UIs, invoking `navigator.leaveAdInterestGroup({})` from inside an ad that is being targeted at a particular interest group will cause the browser to leave that group, irrespective of permission policies.
 
-The browser will remain in an interest group for only a limited amount of time.  The duration is specified in the call to `joinAdInterestGroup()`, and will be capped at 30 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's user\_bidding\_signals or list of ads.
+The browser will remain in an interest group for only a limited amount of time.  The duration is specified in the call to `joinAdInterestGroup()`, and will be capped at 30 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's userBiddingSignal or list of ads.
 
 
 #### 1.2 Interest Group Attributes
@@ -186,7 +186,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   bid: A numerical bid value
 *   auctionConfig: the auction configuration object passed to navigator.runAdAuction()
 *   trustedScoringSignals: A value retrieved from a real-time trusted server chosen by the seller and reflecting the seller's opinion of this particular creative, as further described in [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) below.  (In the case of [ads composed of multiple pieces](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces) this should instead be some collection of values, structure TBD.)
-*   browser\_signals: an object constructed by the browser, containing information that the browser knows and which the seller's auction script might want to verify:
+*   browserSignals: an object constructed by the browser, containing information that the browser knows and which the seller's auction script might want to verify:
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
       'interestGroupOwner': 'www.example-dsp.com',
@@ -229,7 +229,7 @@ Buyers have three basic jobs in the on-device ad auction:
 #### 3.1 Fetching Real-Time Data from a Trusted Server
 
 
-Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trusted_bidding_signals_url` and `trusted_bidding_signals_keys` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
+Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsUrl` and `trustedBiddingSignalsKeys` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
 
     https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2
 
@@ -248,7 +248,7 @@ Once the trusted bidding signals are fetched, each interest group's bidding func
 
 
 ```
-generate_bid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
+generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
   ...
   return {'ad': adObject, 'bid': bidValue, 'render': renderUrl};
 }
