@@ -23,10 +23,11 @@ We plan to hold regular meetings under the auspices of the WICG to go through th
     - [3.3 Metadata with the Ad Bid](#33-metadata-with-the-ad-bid)
     - [3.4 Ads Composed of Multiple Pieces](#34-ads-composed-of-multiple-pieces)
   - [4. Browsers Render the Winning Ad](#4-browsers-render-the-winning-ad)
-  - [5. Event-Level Reporting (for now)](#5-event-level-reporting-for-now)
-    - [5.1 Seller Reporting on Render](#51-seller-reporting-on-render)
-    - [5.2 Buyer Reporting on Render and Ad Events](#52-buyer-reporting-on-render-and-ad-events)
-    - [5.3 Losing Bidder Reporting](#53-losing-bidder-reporting)
+  - [5. Reporting](#5-reporting)
+    - [5.1 Event-Level Reporting (for now)](#51-event-level-reporting-for-now)
+      - [5.1.1 Seller Reporting on Render](#511-seller-reporting-on-render)
+      - [5.1.2 Buyer Reporting on Render and Ad Events](#512-buyer-reporting-on-render-and-ad-events)
+    - [5.2 Aggregate Reporting](#52-aggregate-reporting)
 
 
 ## Summary
@@ -40,7 +41,11 @@ During 2021, Chrome plans to run an Origin Trial for a first experiment which in
 *   On-device bidding by buyers (DSPs or advertisers), based on interest-group metadata and on data loaded from a trusted server at the time of the on-device auction — with a _temporary and untrusted_ "Bring Your Own Server" model, until a trusted-server framework is settled and in place.
 *   On-device ad selection by the seller (an SSP or publisher), based on bids and metadata entered into the auction by the buyers.
 *   Microtargeting protection based on the browser ensuring that the same ad or ad component is being shown to at least some minimum number of people.
-*   Ad rendering in a temporarily relaxed version of Fenced Frames that prevents interaction with the surrounding page — but that does allow _normal network access for rendering the ad, and for logging and reporting some event-level outcomes_, as a temporary model until both a trusted-server reporting framework and ad delivery via web bundles are settled and in place.
+*   Ad rendering in a temporarily relaxed version of Fenced Frames that prevents interaction with the surrounding page — but that does allow _normal network access for rendering the ad_, as a temporary model until ad delivery via web bundles is settled and in place.
+*   Two reporting mechanisms, until a unified, trusted reporting framework is in place:
+    * _a temporary event-level reporting mechanism_ (see [5.1 Event-Level Reporting (for now)](#51-event-level-reporting-for-now));
+    * an aggregate reporting mechanism with access to all bidding signals (see [5.2 Aggregate Reporting](#52-aggregate-reporting)).
+
 
 Most of these ideas are drawn from the past year's ongoing discussion of variants on the [original TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/Original-TURTLEDOVE.md) idea.  Interest group metadata, and applying k-anonymity thresholds only to network updates and rendered ads, come from [Outcome-based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) and [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md).  The separation and clarification of the DSP and SSP roles are along the lines described in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md) and [PARRROT](https://github.com/prebid/identity-gatekeeper/blob/master/proposals/PARRROT.md).  The trusted servers to support bidding, rendering, and reporting come from the [SPARROW](https://github.com/WICG/sparrow) Gatekeeper and [Dovekey](https://github.com/google/ads-privacy/tree/master/proposals/dovekey) Key-Value server.
 
@@ -223,7 +228,7 @@ Buyers have three basic jobs in the on-device ad auction:
 
 1. Buyers choose whether or not they want to participate in an auction.
 2. Buyers pick a specific ad, and enter it in the auction along with a bid price and whatever metadata the seller expects.
-3. Buyers perform reporting on the auction outcome.  All buyers have a mechanism for aggregate reporting.  _As a temporary mechanism_, the buyer who wins the auction has a way to do event-level reporting alongside their ad rendering; see the "Event-Level Reporting (for now)" section.
+3. Buyers perform reporting on the auction outcome.  All buyers have a mechanism for aggregate reporting (see [5.2 Aggregate Reporting](#52-aggregate-reporting)).  _As an additional temporary mechanism_, the buyer who wins the auction has a way to do event-level reporting alongside their ad rendering; see the "Event-Level Reporting (for now)" section.
 
 
 #### 3.1 Fetching Real-Time Data from a Trusted Server
@@ -250,7 +255,8 @@ Once the trusted bidding signals are fetched, each interest group's bidding func
 ```
 generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
   ...
-  return {'ad': adObject, 'bid': bidValue, 'render': renderUrl};
+  return {'ad': adObject, 'bid': bidValue, 'render': renderUrl,
+          'histogramContributionsMap': histogramContributionsMap};
 }
 ```
 
@@ -273,13 +279,14 @@ The arguments to `generateBid()` are:
     }
     ```
 
-The output of `generateBid()` contains three fields:
+The output of `generateBid()` contains four fields:
 
 
 
 *   ad: Arbitrary metadata about the ad which this interest group wants to show.  The seller uses this information in its auction and decision logic.
 *   bid: a numerical bid that will enter the auction.  The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand").  If the bid is zero or negative, then this interest group will not participate in the seller's auction at all.  With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear.
 *   render: A URL, or a list of URLs, which will be rendered to display the creative if this bid wins the auction.  (See "Ads Composed of Multiple Pieces" below.)
+*   histogramContributionsMap: an object used to trigger aggregate reports. See [5.2 Aggregate Reporting](#52-aggregate-reporting) for more details.
 
 
 #### 3.3 Metadata with the Ad Bid
@@ -310,17 +317,35 @@ _As a temporary mechanism, we will still allow network access,_ rendering the wi
 
 The TURTLEDOVE privacy goals mean that this cannot be the long-term solution.  Rendering ads from previously-downloaded web bundles, as originally proposed, is one way to mitigate this leakage.  Another possibility is ad rendering in which all network-loaded resources come from a trusted CDN that does not keep logs of the resources it serves.  As with servers involved in providing the trusted bidding signals, the privacy model and browser trust mechanism for such a CDN would require further work.
 
+### 5. Reporting
 
-### 5. Event-Level Reporting (for now)
+Reporting is important for a number of use cases:
+- a) billing (how much does the buyer owe the seller?)
+- b) budget monitoring (how much money did my campaign spend today?)
+- c) manual optimization of campaign parameters
+- d) machine optimization of bidding models
+- e) (...)
+
+These use cases typically have different characteristics:
+- a) and b) need a **highly reliable, real-time** reporting mechanism, and will work fine on a restricted set of signals (most notably: interest group name, winning price).
+- c) and d) may tolerate a higher level of noise and delay, but **require access to all information available during `generateBid`** (including `userBiddingSignals`, `browserSignals`, `perBuyerSignals`, and more.).
+
+As we don't have a mechanism yet that would satisfy requirements of all use cases, the FLEDGE experiment will include two kinds of reporting mechanisms, each supporting a different set of use cases:
+- Event level reporting for use cases a) and b)
+- Aggregate reporting for use cases c) and d)
+
+In future these two mechanisms are expected to evolve into a single solution that covers all important use cases in a privacy preserving way.
+
+#### 5.1 Event-Level Reporting (for now)
 
 Once the winning ad has rendered in its Fenced Frame, the seller and the winning buyer each have an opportunity to perform logging and reporting on the auction outcome.  The browser will call one reporting function in the seller's auction worklet and one in the winning buyer's bidding worklet.
 
 _As a temporary mechanism,_ these reporting functions will be able to send event-level reports to their servers.  These reports can include contextual information, and can include information about the winning interest group if it is over an anonymity threshold.  This reporting will happen synchronously, while the page with the ad is still open in the browser.
 
-In the long term, we need a mechanism to ensure that the after-the-fact reporting cannot be used to learn the advertising interest group of individual visitors to the publisher's site — the same privacy goal that led to Fenced Frame rendering.  Therefore event-level reporting is just a temporary model until an adequate trusted-server reporting framework is settled and in place.  (Once we have a trusted reporting mechanism, we can consider allowing the reports to be influenced by the interest group's userBiddingSignals.)
+In the long term, we need a mechanism to ensure that the after-the-fact reporting cannot be used to learn the advertising interest group of individual visitors to the publisher's site — the same privacy goal that led to Fenced Frame rendering.  Therefore event-level reporting is just a temporary model until an adequate trusted-server reporting framework is settled and in place.  (Once we have a trusted reporting mechanism, we can consider allowing the reports to be influenced by the interest group's userBiddingSignals. For now, these can be handled by aggregate reporting from [section 5.2](#52-aggregate-reporting).)
 
 
-#### 5.1 Seller Reporting on Render
+##### 5.1.1 Seller Reporting on Render
 
 The seller's JS (i.e. the same script, loaded from `decisionLogicUrl`, that provided the `scoreAd()` function) can also expose a `reportResult()` function:
 
@@ -355,7 +380,7 @@ The browserSignals argument must be handled carefully to avoid tracking.  It cer
 The `reportResult()` function's reporting happens by calling browser-provided aggregate reporting APIs or, temporarily, directly calling network APIs.  The output of this function is not used for reporting, but rather as an input to the buyer's reporting function.
 
 
-#### 5.2 Buyer Reporting on Render and Ad Events
+##### 5.1.2 Buyer Reporting on Render and Ad Events
 
 The buyer's JS (i.e. the same script, loaded from `biddingLogicUrl`, that provided the `generateBid()` function) can also expose a `reportWin()` function:
 
@@ -380,10 +405,39 @@ The `reportWin()` function's reporting happens by calling browser-provided aggre
 Ads often need to report on events that happen once the ad is rendered.  One common example is reporting on whether an ad became viewable on-screen.  We will need a communications channel to allow the publisher page or the Fenced Frame to pass such information into the worklet responsible for reporting.  Some additional design work is needed here.
 
 
-#### 5.3 Losing Bidder Reporting
+#### 5.2 Aggregate reporting
 
-We also need to provide a mechanism for the _losing_ bidders in the auction to learn aggregate outcomes.  Certainly they should be able to count the number of times they bid, and losing ads should also be able to learn (in aggregate) some seller-provided information about e.g. the auction clearing price.  Likewise, a reporting mechanism should be available to buyers who attempted to bid with a creative that had not yet reached the k-anonymity threshold.
+To protect user privacy, the temporary mechanism outlined in section 5.1 can only create reports based on a restricted set of signals (for example, it has no access to `userBiddingSignals`).
 
-This could be handled by yet another `reportLoss()` function running in the worklet.  Alternatively, the model of [SPURFOWL](https://github.com/AdRoll/privacy/blob/main/SPURFOWL.md) (an append-only datastore and later aggregate log processing) could be a good fit for this use case.  The details here are yet to be determined.
+As described at the beginning of section 5., we also need a reporting mechanism that can access all bidding signals. (See also issues #93, #177, #164, #172.)
 
+To this end, FLEDGE will work with a solution proposed in [Attribution Reporting API with Aggregate Reports](https://github.com/WICG/conversion-measurement-api/blob/main/AGGREGATE.md).  More concretely, the `generateBid` may return a `histogramContributionsMap` object:
+```
+histogramContributionsMap = {
+	'win': winHistogramContributions,
+	'imp': impressionHistogramContributions,
+	'click': clickHistogramContributions,
+	'loss': lossHistogramContributions,
+}
+```
 
+Each of the values in the map is a `histogramContributions` object, as described in Attribution Reporting API with Aggregate Reports. The purpose of having different objects for various keys is for the buyer to be able to construct reports for different events. The browser will ensure that:
+- `winHistogramContributions` will only be triggered after an auction is won, otherwise `lossHistogramContributions` will be triggered
+- `impressionHistogramContributions` will only be triggered when the ad is actually displayed in user's viewport
+- `clickHistogramContributions` will only be triggered after a user clicks on the ad
+
+It is also desired for the buyer to be able to produce aggregate reports based on impression-level data joined with conversion-level data. To that end, the buyer should be able to produce, from within `generateBid`, the `attributionsourcecontext` value for the anchor tag (see [Attribution source registration](https://github.com/WICG/conversion-measurement-api/blob/main/AGGREGATE.md#attribution-source-registration)), which would be passed to [processAggregate](https://github.com/WICG/conversion-measurement-api/blob/main/AGGREGATE.md#attribution-trigger-registration) at conversion time.
+- However, we need to be careful not to inadvertently create an information channel from `generateBid` to the fenced frame rendering context. (I.e. the browser should be able to store the value of `attributionsourcecontext` and supply it during attribution source registration without passing it to the rendering context.)
+
+The buyer shall also be able to specify the necessary configuration, like `aggregationServices`, but details are left out for brevity.
+
+With feedback from buyers taking part in the FLEDGE experiment, we expect to iterate on the specific parameters of this approach (see e.g. parameters described in [Privacy Budgeting](https://github.com/WICG/conversion-measurement-api/blob/main/AGGREGATE.md#privacy-budgeting)), to satisfy use cases c) and d) from section 5. before third party cookies are deprecated.
+
+As this mechanism may silently drop reports (see [Privacy Budgeting](https://github.com/WICG/conversion-measurement-api/blob/main/AGGREGATE.md#privacy-budgeting)), it is a non-goal to support use cases a) and b) for now (hence the need for a temporary event-level reporting mechanism from section 5.1).
+
+An analogous mechanism for gathering aggregate reports can also be provided for the seller side, if desired.
+
+In next steps, a couple extensions to this mechanism could be considered:
+- Enabling the buyer to compute `histogramContributionsMap` based on additional metadata, like auction winning price, CPU time used by generateBid, whether the ad passed k-anonimity threshold, and others.
+To this end, `generateBid` would have to return a temporary object, which would later on be processed by the buyer together with the additional information to produce the final `histogramContributionsMap`.
+- Allowing the computation of `histogramContributionsMap` on a wider set of events, as explored in [SPURFOWL](https://github.com/AdRoll/privacy/blob/main/SPURFOWL.md).
