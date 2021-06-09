@@ -15,6 +15,8 @@ From a privacy perspective, it is also important to note that the information th
 
 The following summarizes the sequence of events for the buyer and seller. Distinguishing these flows here, since in principle, one should be able to report without the help of the other.
 
+![high level diagram](assets/FencedFramesReporting.png)
+
 
 ## Seller (SSP) flow of events
 
