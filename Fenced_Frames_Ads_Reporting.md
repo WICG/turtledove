@@ -32,7 +32,7 @@ The following summarizes the sequence of events for the buyer and seller. Distin
 
 
 
-1. DSP will generate an event identifier, say buyerEventId, at contextual ad request/response time which is returned to the SSP as part of the perBuyerSignals, which the SSP in turn would specify in navigator.runAdAuction call.
+1. If the DSP participates in the contextual ad request, it will generate an event identifier, say buyerEventId, at contextual ad request/response time which is returned to the SSP as part of the perBuyerSignals, which the SSP in turn would specify in navigator.runAdAuction call. For DSPs that do not participate, buyerEventId could just be an ID that the worklet creates.
 2. Browser will provide the buyerEventId to the reporting worklet for the DSP via reportWin() as part of the perBuyerSignals. This enables the result to be joined with the corresponding contextual query. 
 3. Fenced frame can also communicate other events to the browser e.g. a click happened along with click coordinates.  
 4. The solution proposed in this document allows the buyer’s reporting worklet to register a url in reportWin(), to which data should be sent, when events happen in the fenced frame.
