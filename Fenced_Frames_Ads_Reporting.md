@@ -54,7 +54,7 @@ Browser will process this similar to how the existing [navigator.sendBeacon](htt
 
 **Event type and data:** Includes the event type and data associated with an event. When an event type e.g. click matches to the event type registered in registerAdBeacon, the data will be used by the browser as the data sent in the beacon sent to the registered URL.
 
-**Destination type: **List of** **values to determine whether this event needs to be reported to both buyer and seller, only buyer or only seller.
+**Destination type:** List of values to determine whether this event needs to be reported to both buyer and seller, only buyer or only seller.
 
 
 ### Example
