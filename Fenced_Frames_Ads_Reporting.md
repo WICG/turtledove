@@ -63,7 +63,7 @@ Browser will process this similar to how the existing [navigator.sendBeacon](htt
 ```
 navigator.reportEvent({
   'eventType': 'click',
-  'eventData': 'click_x': '123', 'click_y': '456',
+  'eventData': {'clickX': '123', 'clickY': '456'},
   'destination':['buyer', 'seller']
 });
 ```
