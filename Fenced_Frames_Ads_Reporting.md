@@ -26,7 +26,7 @@ The following summarizes the sequence of events for the buyer and seller. Distin
 2. SSP will provide the sellerEventId to the auction via auctionConfig, which will be available in the reporting worklet for the SSP.
 3. In reportResult(), the sellerEventId, along with any other contextual response fields relevant for reporting, will be available so that the result can be joined to the corresponding contextual query.
 4. Once the winning ad is rendered in the fenced frame, the fenced frame can also communicate other events to the browser e.g. what user interaction happened. Since the fenced frames run the buyer’s scripts, the buyer can also decide what information to be volunteered to the seller via the reportEvent API.
-5. The solution proposed in this document is that the seller’s reporting worklet can register a url to which data should be sent for events reported by the fenced frame.
+5. The solution proposed in this document allows the seller’s reporting worklet to register a url to which data should be sent for events reported by the fenced frame.
 
 ## Buyer (DSP) flow of events
 
@@ -34,28 +34,27 @@ The following summarizes the sequence of events for the buyer and seller. Distin
 
 1. DSP will generate an event identifier, say buyerEventId, at contextual ad request/response time which is returned to the SSP as part of the perBuyerSignals, which the SSP in turn would specify in navigator.runAdAuction call.
 2. Browser will provide the buyerEventId to the reporting worklet for the DSP via reportWin() as part of the perBuyerSignals. This enables the result to be joined with the corresponding contextual query. 
-3. Fenced frame can also communicate other events to the browser e.g. a click happened along with click coordinates. 
-4. Some events like visibility of the fenced frame in the publisher cannot be directly observed in the fenced frame as it will lead to a channel from publisher to the fenced frame. 
-5. The solution proposed in this document is that the buyer’s reporting worklet can register a url in reportWin(), to which data should be sent, when events happen in the fenced frame.
+3. Fenced frame can also communicate other events to the browser e.g. a click happened along with click coordinates.  
+4. The solution proposed in this document allows the buyer’s reporting worklet to register a url in reportWin(), to which data should be sent, when events happen in the fenced frame.
 
 
 # APIs   
 
-The following new APIs will be added to the platform for achieving this.
+The following new APIs will be added for achieving this.
 
 
 ## reportEvent
 
 Fenced frame can invoke this API for the browser to be able to send a beacon with the data in this API, to the URL registered by the worklet in registerAdBeacon (see below). Depending on the ‘destination type’ present here, the beacon will be sent to either the buyer’s or the seller’s registered URL. Examples of such events are mouse hovers, clicks that may or may not lead to navigation e.g. video player control element clicks etc.
 
-Browser will internally process this similar to how the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon) works via sending an HTTP POST request.
+Browser will process this similar to how the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon) works via sending an HTTP POST request.
 
 
 ### Parameters
 
-**Event type and data:** Includes the event type and data associated with an event. The event type e.g. click. This corresponds to the event type in registerAdBeacon. The data will be used by the browser as the data sent in the beacon sent to the registered URL.
+**Event type and data:** Includes the event type and data associated with an event. When an event type e.g. click matches to the event type registered in registerAdBeacon, the data will be used by the browser as the data sent in the beacon sent to the registered URL.
 
-**Destination type: **List of** **values to determine whether this event needs to be reported to both buyer and seller reporting scripts, only buyer or only seller.
+**Destination type: **List of** **values to determine whether this event needs to be reported to both buyer and seller, only buyer or only seller.
 
 
 ### Example
@@ -65,22 +64,21 @@ Browser will internally process this similar to how the existing [navigator.send
 navigator.reportEvent({
   'eventType': 'click',
   'eventData': 'click_x': '123', 'click_y': '456',
-  'destination':['buyer']
+  'destination':['buyer', 'seller']
 });
 ```
 
 ## registerAdBeacon
 
-This API was initially discussed here: https://github.com/WICG/turtledove/issues/99 for reporting clicks. The idea is that the buyer and seller side worklets are able to register a URL with the browser in their reportWin and reportResult APIs and a beacon will be sent to that URL when events are reported by the fenced frame via reportEvent.
+A similar API was initially discussed here: https://github.com/WICG/turtledove/issues/99 for reporting clicks. The idea is that the buyer and seller side worklets are able to register a URL with the browser in their reportWin and reportResult APIs. A beacon will be sent to the registered URL when events are reported by the fenced frame via reportEvent.
 
 
 ### Parameters
 
 **Event type:** E.g. click. This corresponds to the event type in reportEvent. This is for enabling buyers/ sellers to register distinct beacon URLs for different event types.
 
-**URL:** The URL to which a beacon will be sent by the browser on receiving events from the fenced frame via reportEvent (or the TBD intersection observer API)
-
-The worklet is able to add the buyerEventId/sellerEventId any other relevant information in the URL itself.
+**URL:** The URL to which a beacon will be sent by the browser on receiving events from the fenced frame via reportEvent
+The worklet is able to add the buyerEventId/sellerEventId and any other relevant information via this API.
 
 
 ### Example
