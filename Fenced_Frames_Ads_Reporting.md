@@ -8,7 +8,7 @@ Seller ad-tech reports the auction result via [reportResult()](https://github.co
 
 An ID provided to runAdAuction to identify a contextual query/ad cannot be passed on to the fenced frame because the reporting worklet has publisher information and that could be encoded and passed to the fenced frame defeating the [fenced frame’s privacy guarantees](https://github.com/shivanigithub/fenced-frame#goals). Therefore the higher level idea is for the browser to take the signals provided by the fenced frame and correlate it with the ID passed to it by the reporting worklet and send out the correlated data to the ad-tech server.
 
-From a privacy perspective, it is also important to note that the information that the fenced frame is sending to the browser is not user-identifying since the fenced frame does not have access to cookies/unpartitioned storage.
+From a privacy perspective, it is also important to note that the additional information (from what the worklet already knows) that the fenced frame is sending to the browser and eventually to the ad-tech server, cannot contribute to identifying the user since the fenced frame does not have access to cookies/unpartitioned storage.
 
 
 # Design
