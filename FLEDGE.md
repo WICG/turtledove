@@ -122,7 +122,7 @@ The `userBiddingSignals` is for storage of additional metadata that the owner ca
 The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically update the attributes of the interest group. An `updatedInterestGroup` object obtained in this way will be used to update the current `interestGroup` in the following way:
 - `name` and `owner` fields cannot be changed
 - `adComponents` will be "shallowly merged": each key and value in `updatedInterestGroup.adComponents` will overwrite the previous value in `interestGroup.adComponents` (or set it, if it was not present previously). This way the owner has the flexibility to update some ads / products without overwriting others, for example to advertise a newly released product. (See issue #160.)
-- A "shallow merge" will also be applied to 'userBiddingSignals' and 'trustedBiddingSignalKeys'. (This way, when updating the list of `adComponents`, the owner may add corresponding keys to `trustedBiddingSignalKeys`, so that it's possible to retrieve most recent prices and availability information.)
+- A "shallow merge" will also be applied to 'userBiddingSignals' and 'trustedBiddingSignalsKeys'. (This way, when updating the list of `adComponents`, the owner may add corresponding keys to `trustedBiddingSignalsKeys`, so that it's possible to retrieve most recent prices and availability information.)
 - all other fields present in `updatedInterestGroup` will overwrite the previous values of the corresponding fields in `interestGroup`.
 
 However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateUrl` , e.g. at least 100 browsers with the same update url. This will not include any metadata, so data such as the interest group `name` should be included within the url, so long as url exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
@@ -249,9 +249,17 @@ Buyers may want to make on-device decisions that take into account real-time dat
 
     https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, and `keys` is a list of all keys specified in `trustedBiddingSignalsKeys` dictionary, perhaps coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl`.  The response from the server should be a JSON object whose keys are key1, key2, etc., and whose values will be made available to the buyer's bidding functions (un-coalesced).
+This URL is constructed in the following way:
+- The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`.
+- The hostname of the top-level webpage where the ad will appear is provided by the browser as `?hostname=publisher.com`.
+- To derive the `keys` parameter, all values in the `trustedBiddingSignalsKeys` dictionary are concatenated.
+  - For example: `trustedBiddingSignalsKeys={'product_keys': ['key1, 'key2'], 'campaign_keys': ['key3', 'key4', 'key5']}`
+    would result in `&keys=key1,key2,key3,key4,key5` being added to the URL.
+  - `keys` may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl`.
+  - Note that `trustedBiddingSignalsKeys` is a dictionary from custom owner-specified strings, to lists of string keys. The purpose of this structure is to enable a more flexible daily update mechanism (see the specification of `dailyUpdateUrl` for more details).
 
-Note that `trustedBiddingSignalsKeys` is a dictionary from custom owner-specified strings, to lists of string keys. The purpose of this structure is to enable a more flexible daily update mechanism (see the specification of `dailyUpdateUrl` for more details). To derive the `&keys` parameter used in the HTTP query, all values in the dictionary are concatenated.
+The response from the server should be a JSON object whose keys are key1, key2, etc., and whose values will be made available to the buyer's bidding functions (un-coalesced).
+
 
 
 
