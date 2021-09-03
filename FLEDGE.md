@@ -275,8 +275,6 @@ The arguments to `generateBid()` are:
       'prevWins': [[time1,ad1],[time2,ad2],...],
     }
     ```
-The `prevWins` field contains a list of previously won auctions. Each entry is a timestamp and an ad object as
-returned by the relevant call to generateBid. (Consequently, the ad object may contain information on multiple ad components.)
 
 The output of `generateBid()` contains three fields:
 
