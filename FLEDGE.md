@@ -253,7 +253,7 @@ Once the trusted bidding signals are fetched, each interest group's bidding func
 ```
 generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
   ...
-  return {'ad': adObject, 'bid': bidValue, 'render': renderUrl};
+  return {'ad': adObject, 'bid': bidValue, 'render': renderUrl, 'adComponents': [adComponent1, adComponent2, ...]};
 }
 ```
 
@@ -276,13 +276,14 @@ The arguments to `generateBid()` are:
     }
     ```
 
-The output of `generateBid()` contains three fields:
+The output of `generateBid()` contains four fields:
 
 
 
 *   ad: Arbitrary metadata about the ad which this interest group wants to show.  The seller uses this information in its auction and decision logic.
 *   bid: a numerical bid that will enter the auction.  The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand").  If the bid is zero or negative, then this interest group will not participate in the seller's auction at all.  With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear.
 *   render: A URL, or a list of URLs, which will be rendered to display the creative if this bid wins the auction.  (See "Ads Composed of Multiple Pieces" below.)
+*   adComponents: An optional list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent exactly. It is valid for this field not to be present even when adComponents is present.
 
 
 #### 3.3 Metadata with the Ad Bid
