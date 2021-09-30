@@ -283,7 +283,7 @@ The output of `generateBid()` contains four fields:
 *   ad: Arbitrary metadata about the ad which this interest group wants to show.  The seller uses this information in its auction and decision logic.
 *   bid: a numerical bid that will enter the auction.  The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand").  If the bid is zero or negative, then this interest group will not participate in the seller's auction at all.  With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear.
 *   render: A URL, or a list of URLs, which will be rendered to display the creative if this bid wins the auction.  (See "Ads Composed of Multiple Pieces" below.)
-*   adComponents: An optional list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent exactly. It is valid for this field not to be present even when adComponents is present.
+*   adComponents: An optional list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent renderUrl exactly. This field must not be present if the InterestGroup has no adComponent field. It is valid for this field not to be present even when adComponents is present.
 
 
 #### 3.3 Metadata with the Ad Bid
@@ -299,9 +299,7 @@ If `generateBid()` picks an ad whose rendering URL is not yet above the browser-
 
 The [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md) proposal describes a use case in which the rendered ad is composed of multiple pieces — a top-level ad template "container" which includes some slots that can be filled in with specific "products".  This is useful because the browser's microtargeting threshold can be applied to each individual component of the ad without compromising on tracking protections.
 
-The output of `generateBid()` can use the on-device ad composition flow by returning a list of URLs as its render attribute.  The first item in the list should be the rendering URL for the container, and later items in the list should be rendering URLs for products which the container wraps, each of which will render inside its own nested Fenced Frame.  (This will require some extension of the mechanism described in the [Fenced Frame Opaque Source](https://github.com/shivanigithub/fenced-frame/blob/master/OpaqueSrc.md) doc, and maybe a flat list of URLs will turn out to be too simplistic here and we'll need more of a tree structure.  Further investigation is needed.)
-
-If an interest group's creative is composed of multiple components, then the logic in `generateBid()` also has the responsibility of constructing the returned ad metadata, by appropriately combining the metadata of the various components included.
+The output of `generateBid()` can use the on-device ad composition flow through an optional adComponents field, listing addition URLs made available to the fenced frame the container URL is loaded in. The component URLs may be retrieved by calling navigator.adAuctionComponents(numComponents), when numComponents is at most 20. To prevent bidder worklets from using this as a sidechannel to leak additional data to the fenced frame, exactly numComponents obfuscated URLs will be returned by this method, regardless of how many adComponent URLs were actually in the bid, even if the bid contained no adComponents, and the Interest Group itself had no adComponents either.
 
 
 ### 4. Browsers Render the Winning Ad
