@@ -147,8 +147,9 @@ const myAuctionConfig = {
   'perBuyerSignals': {'www.example-dsp.com': {...},
                         'www.another-buyer.com': {...},
                         ...},
-  'perBuyerTimeouts': {'www.example-dsp.com': 100,
+  'perBuyerTimeouts': {'www.example-dsp.com': 50,
                         'www.another-buyer.com': 200,
+                        '*': 150,
                         ...},
 };
 const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
@@ -159,7 +160,7 @@ This will cause the browser to execute the appropriate bidding and auction logic
 
 The returned `auctionResultPromise` object is _opaque_: it is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents, but it can be passed to a Fenced Frame for rendering.  (The [Fenced Frame Opaque Source explainer](https://github.com/shivanigithub/fenced-frame/blob/master/OpaqueSrc.md) has initial thoughts about how this could be implemented.)  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
-Optionally, `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's bidding scripts. If no value is specificed for a particular buyer, a default timeout of 100 ms will be selected. Any `perBuyerTimeouts` higher than 500 ms will be clamped to 500 ms.
+Optionally, `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's bidding scripts. If no value is specificed for a particular buyer, a default timeout of 100 ms will be selected. Any `perBuyerTimeouts` higher than 500 ms will be clamped to 500 ms. A key of `'*'` is used to change the default of unspecififed buyers.
 
 
 #### 2.2 Auction Participants
