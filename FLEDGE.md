@@ -236,12 +236,12 @@ Similarly, sellers may want to fetch information about a specific creative, e.g.
 
     ```
     { 'renderUrls': {
-          'https://cdn.com/render_url_of_some_bid': arbitraty_json,
-          'https://cdn.com/render_url_of_some_other_bid': arbitraty_json,
+          'https://cdn.com/render_url_of_some_bid': arbitrary_json,
+          'https://cdn.com/render_url_of_some_other_bid': arbitrary_json,
     },
     { 'adComponentRenderUrls': {
-          'https://cdn.com/ad_component_of_a_bid': arbitraty_json,
-          'https://cdn.com/another_ad_component_of_a_bid': arbitraty_json,
+          'https://cdn.com/ad_component_of_a_bid': arbitrary_json,
+          'https://cdn.com/another_ad_component_of_a_bid': arbitrary_json,
           ...
     }
     ```
