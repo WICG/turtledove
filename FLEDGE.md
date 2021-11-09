@@ -195,7 +195,10 @@ The function gets called once for each candidate ad in the auction.  The argumen
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
       'interestGroupOwner': 'www.example-dsp.com',
-      'interestGroupName': 'womens-running-shoes',
+      'renderUrl': 'https://cdn.com/render_url_of_bid',
+      'adComponents': ['https://cdn.com/ad_component_of_bid',
+                       'https://cdn.com/next_ad_component_of_bid',
+                       ...],
       'adRenderFingerprint': 'M0rNy1D5RVowjnpa',
       'biddingDurationMsec': 12
     }
