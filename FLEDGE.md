@@ -199,7 +199,6 @@ The function gets called once for each candidate ad in the auction.  The argumen
       'adComponents': ['https://cdn.com/ad_component_of_bid',
                        'https://cdn.com/next_ad_component_of_bid',
                        ...],
-      'adRenderFingerprint': 'M0rNy1D5RVowjnpa',
       'biddingDurationMsec': 12
     }
     ```
@@ -211,7 +210,7 @@ The logic in `scoreAd()` has access to the full auction configuration object, wh
 *   Calculation of a publisher pay-out, based on the ad bid along with arbitrary seller data and arbitrary metadata included in the `adObject`.  This pay-out could influence both the ad's desirability and the post-auction reporting used for moving money around.
 *   Honoring publisher deals that promote certain ads over others irrespective of a per-page auction price.
 *   Disqualifying some ads, by returning a desirability score of 0 (which means the ad will not win).  This could, for example, be based on comparing ad metadata (e.g. advertiser or topic) to the publisher site's rules for what ads are allowed to appear on the page, or based on the bidder being slow (as revealed by `biddingDurationMsec`).
-*   Checking whether the creative contents have been pre-approved by the seller.  This could be implemented by an out-of-band creative review process leading to the seller handing the buyer a cryptographically-signed token, which the buyer then includes in the ad's metadata.  See [TERN's Section 0](https://github.com/WICG/turtledove/blob/master/TERN.md#0-before-advertising-begins) for more discussion of this possibility.  The browser signals include an `adRenderFingerprint` value, which can be checked against a pre-approved fingerprint here as well.  (Eventually this fingerprint can be a hash of the ad Web Bundle, but while rendering still uses the network, it should just be a hash of the rendering URL.)
+*   Checking whether the creative contents have been pre-approved by the seller.  This could be implemented by an out-of-band creative review process leading to the seller handing the buyer a cryptographically-signed token, which the buyer then includes in the ad's metadata.  See [TERN's Section 0](https://github.com/WICG/turtledove/blob/master/TERN.md#0-before-advertising-begins) for more discussion of this possibility.
 
 Note that `scoreAd()` does not have any way to _store_ information for use later on a different page.  In particular, if the ad scoring logic on day 1 observes a bid from a particular interest group, and then on day 2 the browser interest group membership expires, there is no way for the ad scoring logic on day 3 to "remember" the pre-expiration membership information.
 
