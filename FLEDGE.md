@@ -83,7 +83,7 @@ Browsers keep track of the set of interest groups that they have joined.  For ea
 
 ```
 const myGroup = {
-  'owner': 'www.example-dsp.com',
+  'owner': 'https://www.example-dsp.com',
   'name': 'womens-running-shoes',
   'biddingLogicUrl': ...,
   'dailyUpdateUrl': ...,
@@ -137,18 +137,18 @@ A seller initiates an auction by invoking a JavaScript API inside the publisher'
 
 ```
 const myAuctionConfig = {
-  'seller': 'www.example-ssp.com',
+  'seller': 'https://www.example-ssp.com',
   'decisionLogicUrl': ...,
   'trustedScoringSignalsUrl': ...,
-  'interestGroupBuyers': ['www.example-dsp.com', 'buyer2.com', ...],
+  'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
   'additionalBids': [otherSourceAd1, otherSourceAd2, ...],
   'auctionSignals': {...},
   'sellerSignals': {...},
-  'perBuyerSignals': {'www.example-dsp.com': {...},
-                        'www.another-buyer.com': {...},
+  'perBuyerSignals': {'https://www.example-dsp.com': {...},
+                        'https://www.another-buyer.com': {...},
                         ...},
-  'perBuyerTimeouts': {'www.example-dsp.com': 50,
-                        'www.another-buyer.com': 200,
+  'perBuyerTimeouts': {'https://www.example-dsp.com': 50,
+                        'https://www.another-buyer.com': 200,
                         '*': 150,
                         ...},
 };
@@ -194,7 +194,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   browserSignals: An object constructed by the browser, containing information that the browser knows and which the seller's auction script might want to verify:
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
-      'interestGroupOwner': 'www.example-dsp.com',
+      'interestGroupOwner': 'https://www.example-dsp.com',
       'renderUrl': 'https://cdn.com/render_url_of_bid',
       'adComponents': ['https://cdn.com/ad_component_of_bid',
                        'https://cdn.com/next_ad_component_of_bid',
@@ -292,7 +292,7 @@ The arguments to `generateBid()` are:
 *   browserSignals: An object constructed by the browser, containing information that the browser knows, and which the buyer's auction script might want to use or verify.  This can include information about both the context (e.g. the true hostname of the current page, which the seller could otherwise lie about) and about the interest group itself (e.g. times when it previously won the auction, to allow on-device frequency capping).
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
-      'seller': 'www.example-ssp.com',
+      'seller': 'https://www.example-ssp.com',
       'joinCount': 3,
       'bidCount': 17,
       'prevWins': [[time1,ad1],[time2,ad2],...],
@@ -365,10 +365,8 @@ The arguments to this function are:
 
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
-      'interestGroupOwner': 'www.example-dsp.com',
-      'interestGroupName': 'womens-running-shoes',
+      'interestGroupOwner': 'https://www.example-dsp.com/',
       'renderUrl': 'https://cdn.com/url-of-winning-creative.wbn',
-      'adRenderFingerprint': 'M0rNy1D5RVowjnpa',
       'bid:' bidValue,
       'desirability': desirabilityScoreForWinningAd,
     }
@@ -395,7 +393,7 @@ The arguments to this function are:
 
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer.
-*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score.  This could also include some buyer-specific signal like the second-highest bid from that particular buyer.
+*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with an additional `interestGroupName` field.  This could also include some buyer-specific signal like the second-highest bid from that particular buyer.
 
 The `reportWin()` function's reporting happens by calling browser-provided aggregate reporting APIs or, temporarily, directly calling network APIs.
 
