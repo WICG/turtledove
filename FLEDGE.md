@@ -393,7 +393,7 @@ The arguments to this function are:
 
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer.
-*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score.  This could also include some buyer-specific signal like the second-highest bid from that particular buyer.
+*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with an additional `interestGroupName` field.  This could also include some buyer-specific signal like the second-highest bid from that particular buyer.
 
 The `reportWin()` function's reporting happens by calling browser-provided aggregate reporting APIs or, temporarily, directly calling network APIs.
 
