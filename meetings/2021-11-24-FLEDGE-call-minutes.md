@@ -140,6 +140,8 @@ Don Marti: I think there's also a performance consideration: if IGs can check fo
 
 Michael: Yes, lots of resource discussions.  7 mins left.  Reviewing agenda.
 
+*   (Andrew Pascoe) FLEDGE debug API?
+
 Andrew: Engineer playing with FLEDGE APIs.  Pass in flag to start using FLEDGE APIs.  Would like another flag to enable debug mode to dump everything into browser, at least until UI developed.
 
 Michael: No privacy concern with developers investigating their machines.
