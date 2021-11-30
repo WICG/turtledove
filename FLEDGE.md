@@ -160,7 +160,7 @@ This will cause the browser to execute the appropriate bidding and auction logic
 
 The returned `auctionResultPromise` object is _opaque_: it is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents, but it can be passed to a Fenced Frame for rendering.  (The [Fenced Frame Opaque Source explainer](https://github.com/shivanigithub/fenced-frame/blob/master/OpaqueSrc.md) has initial thoughts about how this could be implemented.)  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
-Optionally, `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's bidding scripts. If no value is specificed for a particular buyer, a default timeout of 50 ms will be selected. Any `perBuyerTimeouts` higher than 500 ms will be clamped to 500 ms. A key of `'*'` is used to change the default of unspecififed buyers.
+Optionally, `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's bidding scripts. If no value is specified for a particular buyer, a default timeout of 50 ms will be selected. Any `perBuyerTimeouts` higher than 500 ms will be clamped to 500 ms. A key of `'*'` is used to change the default of unspecified buyers.
 
 
 #### 2.2 Auction Participants
@@ -322,7 +322,7 @@ If `generateBid()` picks an ad whose rendering URL is not yet above the browser-
 
 The [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md) proposal describes a use case in which the rendered ad is composed of multiple pieces — a top-level ad template "container" which includes some slots that can be filled in with specific "products".  This is useful because the browser's microtargeting threshold can be applied to each individual component of the ad without compromising on tracking protections.
 
-The output of `generateBid()` can use the on-device ad composition flow through an optional adComponents field, listing addition URLs made available to the fenced frame the container URL is loaded in. The component URLs may be retrieved by calling `navigator.adAuctionComponents(numComponents)`, where numComponents is at most 20. To prevent bidder worklets from using this as a sidechannel to leak additional data to the fenced frame, exactly numComponents obfuscated URLs will be returned by this method, regardless of how many adComponent URLs were actually in the bid, even if the bid contained no adComponents, and the Interest Group itself had no adComponents either.
+The output of `generateBid()` can use the on-device ad composition flow through an optional adComponents field, listing additional URLs made available to the fenced frame the container URL is loaded in. The component URLs may be retrieved by calling `navigator.adAuctionComponents(numComponents)`, where numComponents is at most 20. To prevent bidder worklets from using this as a sidechannel to leak additional data to the fenced frame, exactly numComponents obfuscated URLs will be returned by this method, regardless of how many adComponent URLs were actually in the bid, even if the bid contained no adComponents, and the Interest Group itself had no adComponents either.
 
 
 ### 4. Browsers Render the Winning Ad
