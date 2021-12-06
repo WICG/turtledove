@@ -267,6 +267,7 @@ The value of `trustedScoringSignals` passed to the seller's `scoreAd()` function
 
 _As a temporary mechanism_ during the First Experiment timeframe, the buyer and seller can fetch these bidding signals from any server, including one they operate  themselves (a "Bring Your Own Server" model).  However, in the final version after the removal of third-party cookies, the request will only be sent to a trusted key-value-type server.  Because the server is trusted, there is no k-anonymity constraint on this request.  The browser needs to trust that the server's return value for each key will be based only on that key and the hostname, and that the server does no event-level logging and has no other side effects based on these requests. 
 
+The server may optionally include a numeric `Data-Version` header on the response to indicate the state of the data that generated this response, which will then be available in reporting.  This version number should not depend on any properties of the request, only the state of the server.  Ideally, the number would only increment and at any time would be identical across all servers in a fleet.  In practice a small amount of skew is permitted for operational reasons, including propagation delays, staged rollouts, and emergency rollbacks.
 
 #### 3.2 On-Device Bidding
 
@@ -369,6 +370,7 @@ The arguments to this function are:
       'renderUrl': 'https://cdn.com/url-of-winning-creative.wbn',
       'bid:' bidValue,
       'desirability': desirabilityScoreForWinningAd,
+      'dataVersion': versionFromKeyValueResponse,
     }
     ```
 
