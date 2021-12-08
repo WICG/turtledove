@@ -299,7 +299,7 @@ The arguments to `generateBid()` are:
       'prevWins': [[time1,ad1],[time2,ad2],...],
     }
     ```
-* sameSiteInterestGroups: if the user is added to `interestGroup` on a single site, this argument contains a list of all other interest group objects added by that site; if the user is added to `interestGroup` on mutliple sites, this argument will be a empty list.
+* sameSiteInterestGroups: If the user is added to `interestGroup` on a single site, this argument contains a list of all other interest group objects added on that site; Otherwise, this argument will be an empty list.
 
 The output of `generateBid()` contains four fields:
 
