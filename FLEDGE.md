@@ -162,7 +162,7 @@ The returned `auctionResultPromise` object is _opaque_: it is not possible for a
 
 Optionally, `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's bidding scripts. If no value is specified for a particular buyer, a default timeout of 50 ms will be selected. Any `perBuyerTimeouts` higher than 500 ms will be clamped to 500 ms. A key of `'*'` is used to change the default of unspecified buyers.
 
-A Permissions-Policy directive named "run-ad-auction" controls access to the navigator.runAdAuction() API.
+A `Permissions-Policy` directive named "run-ad-auction" controls access to the navigator.runAdAuction() API.
 
 
 #### 2.2 Auction Participants
