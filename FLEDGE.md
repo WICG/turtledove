@@ -102,7 +102,7 @@ The browser will only allow the `joinAdInterestGroup()` operation with the permi
 There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which looks only at `myGroup.name` and `myGroup.owner`.  As a special case to support in-ad UIs, invoking `navigator.leaveAdInterestGroup({})` from inside an ad that is being targeted at a particular interest group will cause the browser to leave that group, irrespective of permission policies.
 
 The browser will remain in an interest group for only a limited amount of time.  The duration is specified in the call to `joinAdInterestGroup()`, and will be capped at 30 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's `userBiddingSignal` or list of ads.
-`
+
 
 #### 1.2 Interest Group Attributes
 
