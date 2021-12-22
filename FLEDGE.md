@@ -97,7 +97,7 @@ navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
 ```
 
 
-The browser will only allow the `joinAdInterestGroup()` operation with the permission of both the site being visited and the group's owner.  The site can allow or deny permission to any or all third parties via a `Permissions-Policy` (policy-controlled feature "join-ad-interest-group"), where the default policy is to allow all in the top-level page and to deny all in cross-domain iframes.  The group's owner can indicate permission by `joinAdInterestGroup()` running in a page or iframe in the owner's domain, and can delegate that permission to any other domains via a list at a `.well-known` URL.  These can be combined, to allow a DSP to add a person to one of its interest groups based on publisher context, as discussed in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups) — provided the publisher's `Permissions-Policy` permits interest group additions by its SSP, and the DSP gives this SSP this ability.  If some permission is missing, `joinAdInterestGroup()` will raise an `Error` describing the reason for failure.
+The browser will only allow the `joinAdInterestGroup()` operation with the permission of both the site being visited and the group's owner.  The site can allow or deny permission to any or all third parties via a `Permissions-Policy` (directive named "join-ad-interest-group"), where the default policy is to allow all in the top-level page and to deny all in cross-domain iframes.  The group's owner can indicate permission by `joinAdInterestGroup()` running in a page or iframe in the owner's domain, and can delegate that permission to any other domains via a list at a `.well-known` URL.  These can be combined, to allow a DSP to add a person to one of its interest groups based on publisher context, as discussed in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups) — provided the publisher's `Permissions-Policy` permits interest group additions by its SSP, and the DSP gives this SSP this ability.  If some permission is missing, `joinAdInterestGroup()` will raise an `Error` describing the reason for failure.
 
 There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which looks only at `myGroup.name` and `myGroup.owner`.  As a special case to support in-ad UIs, invoking `navigator.leaveAdInterestGroup({})` from inside an ad that is being targeted at a particular interest group will cause the browser to leave that group, irrespective of permission policies.
 
@@ -162,7 +162,7 @@ The returned `auctionResultPromise` object is _opaque_: it is not possible for a
 
 Optionally, `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's bidding scripts. If no value is specified for a particular buyer, a default timeout of 50 ms will be selected. Any `perBuyerTimeouts` higher than 500 ms will be clamped to 500 ms. A key of `'*'` is used to change the default of unspecified buyers.
 
-A policy-controlled feature "run-ad-auction" controls access to API navigator.runAdAuction().
+A Permissions Policy directive named "run-ad-auction" controls access to API navigator.runAdAuction().
 
 
 #### 2.2 Auction Participants
