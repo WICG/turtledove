@@ -161,7 +161,7 @@ const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
 ```
 
 
-This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auctionSignals`, `sellerSignals`, and `perBuyerSignals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auctionSignals` are made available to everyone, while the other signals are given only to one party. `componentAuctions` optionally contains additional auction configurations whose results are fed into the main auction. Auctions listed in `componentAuctions` fields will referred to as `component auctions`. Component auctions may not have componentAuctions themselves.
+This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auctionSignals`, `sellerSignals`, and `perBuyerSignals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auctionSignals` are made available to everyone, while the other signals are given only to one party. `componentAuctions` optionally contains additional auction configurations whose results are fed into the main auction. Auctions listed in `componentAuctions` fields will referred to as `component auctions`. Component auctions may not have their own component auctions.
 
 The returned `auctionResultPromise` object is _opaque_: it is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents, but it can be passed to a Fenced Frame for rendering.  (The [Fenced Frame Opaque Source explainer](https://github.com/shivanigithub/fenced-frame/blob/master/OpaqueSrc.md) has initial thoughts about how this could be implemented.)  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
@@ -224,12 +224,12 @@ Note that `scoreAd()` does not have any way to _store_ information for use later
 
 #### 2.4 Component Auctions
 
-The seller worklets contained in the `componentAuctions` array behave a little differently.  They still expose a scoreAd() funcion to score each bid from the component auction, but with a few differences. All of its arguments come from the component auction, including `auctionConfig`. `browserSignals` has an additional `topLevelSeller` field, which contains the seller of the top-level auction. Instead of returning just a bid, scoreAd returns an object with the following fields:
+Seller worklets running in component auctions behave a little differently.  They still expose a scoreAd() funcion to score each bid from the component auction's buyers, however all of its arguments come from the component auction, including `auctionConfig`. `browserSignals` has an additional `topLevelSeller` field, which contains the seller of the top-level auction. Instead of returning just a bid, `scoreAd()` returns an object with the following fields:
 
 * ad: Arbitrary metada to pass to the top-level seller.
 * desirability: Numeric score of the bid. Must be positive or the ad will be rejected.
 
-Once all the bids passed to the component auction's seller worklet have been scored, the bid with the highest score will be passed to the top-level seller worklet. In the case of a tie, a random bid will be chosen. For that bid, the top-level seller is passed the `bid` value from the buyer worklet, the `ad` value from the component seller worklet instead of the one from the buyer's worklet, and there is an an additional `componentSeller` field in the `browserSignals`, which has the seller for the component auction.
+Once all the bids passed to the component auction's seller worklet have been scored, the bid with the highest score will be passed to the top-level seller worklet. In the case of a tie, one of the highest scoring bids will be chosen randomly. For that bid, the top-level seller's worklet is passed the `ad` value from the component auction seller worklet, and there is an an additional `componentSeller` field in the `browserSignals`, which has the seller for the component auction. All other values are the same as if the bid had come from an interset group participating directly in the top-level auction.
 
 
 ### 3. Buyers Provide Ads and Bidding Functions (BYOS for now)
@@ -325,7 +325,7 @@ The output of `generateBid()` contains four fields:
 *   render: A URL, or a list of URLs, which will be rendered to display the creative if this bid wins the auction.  (See "Ads Composed of Multiple Pieces" below.)
 *   adComponents: An optional list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent renderUrl exactly. This field must not be present if the InterestGroup has no adComponent field. It is valid for this field not to be present even when adComponents is present.
 
-In auctions with component auctions, an interest group's worklet may bids in all auctions for which it qualifies, though the `bidCount` value passed to future auctions will only be incremented by one for participation in that auction as a whole.
+For auctions with component auctions, an interest group's worklet may bids in all auctions for which it qualifies, though the `bidCount` value passed to future auctions will only be incremented by one for participation in that auction as a whole.
 
 
 #### 3.3 Metadata with the Ad Bid
@@ -366,7 +366,7 @@ In the long term, we need a mechanism to ensure that the after-the-fact reportin
 
 #### 5.1 Seller Reporting on Render
 
-The seller's JavaScript (i.e. the same script, loaded from `decisionLogicUrl`, that provided the `scoreAd()` function) can also expose a `reportResult()` function, which is called for both top-level sellers and the component auction worklet with the winning bid, if applicable:
+The seller's JavaScript (i.e. the same script, loaded from `decisionLogicUrl`, that provided the `scoreAd()` function) can also expose a `reportResult()` function, which is called for both top-level seller worklets and the component auction worklet with the winning bid, if applicable:
 
 
 ```
