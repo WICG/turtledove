@@ -226,7 +226,7 @@ Note that `scoreAd()` does not have any way to _store_ information for use later
 
 Seller worklets running in component auctions behave a little differently.  They still expose a scoreAd() funcion to score each bid from the component auction's buyers, however all of its arguments come from the component auction, including `auctionConfig`. `browserSignals` has an additional `topLevelSeller` field, which contains the seller of the top-level auction. Instead of returning just a bid, `scoreAd()` returns an object with the following fields:
 
-* ad: Arbitrary metada to pass to the top-level seller.
+* ad: Arbitrary metadata to pass to the top-level seller.
 * desirability: Numeric score of the bid. Must be positive or the ad will be rejected.
 
 Once all the bids passed to the component auction's seller worklet have been scored, the bid with the highest score will be passed to the top-level seller worklet. In the case of a tie, one of the highest scoring bids will be chosen randomly. For that bid, the top-level seller's worklet is passed the `ad` value from the component auction seller worklet, and there is an an additional `componentSeller` field in the `browserSignals`, which has the seller for the component auction. All other values are the same as if the bid had come from an interset group participating directly in the top-level auction.
