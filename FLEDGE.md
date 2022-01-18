@@ -219,7 +219,7 @@ The logic in `scoreAd()` has access to the full auction configuration object, wh
 Note that `scoreAd()` does not have any way to _store_ information for use later on a different page.  In particular, if the ad scoring logic on day 1 observes a bid from a particular interest group, and then on day 2 the browser interest group membership expires, there is no way for the ad scoring logic on day 3 to "remember" the pre-expiration membership information.
 
 
-#### 2.4 Component Auctions
+#### 2.4 Scoring Bids in Component Auctions
 
 Seller worklets running in component auctions behave a little differently.  They still expose a scoreAd() funcion to score each bid from the component auction's buyers, however all of its arguments come from the component auction, including `auctionConfig`. `browserSignals` has an additional `topLevelSeller` field, which contains the seller of the top-level auction. Instead of returning just a bid, `scoreAd()` returns an object with the following fields:
 
