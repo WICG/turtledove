@@ -141,7 +141,6 @@ const myAuctionConfig = {
   'decisionLogicUrl': ...,
   'trustedScoringSignalsUrl': ...,
   'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
-  'additionalBids': [otherSourceAd1, otherSourceAd2, ...],
   'auctionSignals': {...},
   'sellerSignals': {...},
   'perBuyerSignals': {'https://www.example-dsp.com': {...},
@@ -175,8 +174,6 @@ A `Permissions-Policy` directive named "run-ad-auction" controls access to the `
 Each interest group the browser has joined and whose owner is in the list of `interestGroupBuyers` will have an opportunity to bid in the auction.  See the "Buyers Provide Ads and Bidding Functions" section, below, for how interest groups bid.
 
 The seller may instead specify `'interestGroupBuyers': '*'` to permit all interest groups into the auction, and decide ad admissibility later in the process, based on criteria other than the interest group owner.  For example, a seller with an out-of-band creative review process might decide admissibility solely based on the creative, not the buyer.
-
-The auction configuration's list of `additionalBids` is meant to allow a second way for ads to participate in this on-device auction.  More design work is needed to figure out how to support buyers' and sellers' needs in the multi-level decision-making use cases like those discussed in Issues [#59](https://github.com/WICG/turtledove/issues/59) or [#73](https://github.com/WICG/turtledove/issues/73) — a simple approach like putting one auction's `auctionResultPromise` into another auction's `additionalBids` is probably not sufficient.  This field may not be usable yet in the First Experiment stage, depending on how much new complexity it adds to the design.
 
 
 #### 2.3 Scoring Bids
