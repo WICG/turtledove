@@ -365,7 +365,7 @@ In the long term, we need a mechanism to ensure that the after-the-fact reportin
 
 #### 5.1 Seller Reporting on Render
 
-The seller's JavaScript (i.e. the same script, loaded from `decisionLogicUrl`, that provided the `scoreAd()` function) can also expose a `reportResult()` function, which is called for both the top-level seller worklet and the component auction worklet with the winning bid, if applicable:
+The seller's JavaScript (i.e. the same script, loaded from `decisionLogicUrl`, that provided the `scoreAd()` function) can also expose a `reportResult()` function, which is called for both the top-level seller worklet and the component auction worklet with the bid that won the top-level auction, if applicable. Any sellers in component auctions whose top-scoring bids did not win the top-most auction will not have their ReportResult() methods invoked.
 
 
 ```
