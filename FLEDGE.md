@@ -317,14 +317,14 @@ The arguments to `generateBid()` are:
     }
     ```
 
+For auctions with component auctions, an interest group's worklet may bid in all auctions for which it qualifies, though the `bidCount` value passed to future auctions will only be incremented by one for participation in that auction as a whole.
+
 The output of `generateBid()` contains four fields:
 
 *   ad: Arbitrary metadata about the ad which this interest group wants to show.  The seller uses this information in its auction and decision logic.
 *   bid: A numerical bid that will enter the auction.  The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand").  If the bid is zero or negative, then this interest group will not participate in the seller's auction at all.  With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear.
 *   render: A URL, or a list of URLs, which will be rendered to display the creative if this bid wins the auction.  (See "Ads Composed of Multiple Pieces" below.)
 *   adComponents: An optional list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent renderUrl exactly. This field must not be present if the InterestGroup has no adComponent field. It is valid for this field not to be present even when adComponents is present.
-
-For auctions with component auctions, an interest group's worklet may bids in all auctions for which it qualifies, though the `bidCount` value passed to future auctions will only be incremented by one for participation in that auction as a whole.
 
 
 #### 3.3 Metadata with the Ad Bid
