@@ -162,7 +162,7 @@ const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
 
 This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auctionSignals`, `sellerSignals`, and `perBuyerSignals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auctionSignals` are made available to everyone, while the other signals are given only to one party.
 
-In some cases, one or more intermediary SSPs may want to run their own auction and send the winner up to another auction. To facilitate these `component auctions`, `componentAuctions` can optionally contain additional auction configurations for additional sellers.  The winning bid of each of these `component auctions` will be passed to the top-most` auction.  How bids are scored in this case is further described in [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions).
+In some cases, multiple SSPs may want to run their own auction and send the winner up to another auction. To facilitate these "component auctions", `componentAuctions` can optionally contain additional auction configurations for each seller's "component auction".  The winning bid of each of these "component auctions" will be passed to the top-most auction.  How bids are scored in this case is further described in [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions).
 
 The returned `auctionResultPromise` object is _opaque_: it is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents, but it can be passed to a Fenced Frame for rendering.  (The [Fenced Frame Opaque Source explainer](https://github.com/shivanigithub/fenced-frame/blob/master/OpaqueSrc.md) has initial thoughts about how this could be implemented.)  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
@@ -306,11 +306,11 @@ The arguments to `generateBid()` are:
 *   auctionSignals: As provided by the seller in the call to `runAdAuction()`.  This is the opportunity for the seller to provide information about the page context (ad size, publisher ID, etc), the type of auction (first-price vs second-price), and so on.
 *   perBuyerSignals: The value for _this specific buyer_ as taken from the auction config passed to `runAdAuction()`.  This can include contextual signals about the page that come from the buyer's server, if the seller is an SSP which performs a real-time bidding call to buyer servers and pipes the response back, or if the publisher page contacts the buyer's server directly.  If so, the buyer may wish to check a cryptographic signature of those signals inside `generateBid()` as protection against tampering.
 *   trustedBiddingSignals: An object whose keys are the `trustedBiddingSignalsKeys` for the interest group, and whose values are those returned in the `trustedBiddingSignals` request.
-*   browserSignals: An object constructed by the browser, containing information that the browser knows, and which the buyer's auction script might want to use or verify.  This can include information about both the context (e.g. the true hostname of the current page, which the seller could otherwise lie about) and about the interest group itself (e.g. times when it previously won the auction, to allow on-device frequency capping). `topLevelSeller` is only present if the worklet is running at part of a component auction.
+*   browserSignals: An object constructed by the browser, containing information that the browser knows, and which the buyer's auction script might want to use or verify.  This can include information about both the context (e.g. the true hostname of the current page, which the seller could otherwise lie about) and about the interest group itself (e.g. times when it previously won the auction, to allow on-device frequency capping). `topLevelSeller` is only present if the worklet is running as part of a component auction.
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
       'seller': 'https://www.example-ssp.com',
-      `topLevelSeller`: 'https://www.some-other-ssp.com',
+      `topLevelSeller`: 'https://www.another-ssp.com',
       'joinCount': 3,
       'bidCount': 17,
       'prevWins': [[time1,ad1],[time2,ad2],...],
@@ -383,8 +383,8 @@ The arguments to this function are:
 
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
-      `topLevelSeller`: 'https://www.some-other-ssp.com',
-      `componentSeller`: 'https://www.example-ssp.com',
+      `topLevelSeller`: 'https://www.example-ssp.com',
+      `componentSeller`: 'https://www.some-other-ssp.com',
       'interestGroupOwner': 'https://www.example-dsp.com/',
       'renderUrl': 'https://cdn.com/url-of-winning-creative.wbn',
       'bid:' bidValue,
