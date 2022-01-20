@@ -86,6 +86,7 @@ const myGroup = {
   'owner': 'https://www.example-dsp.com',
   'name': 'womens-running-shoes',
   'biddingLogicUrl': ...,
+  'biddingWasmHelperUrl': ...,
   'dailyUpdateUrl': ...,
   'trustedBiddingSignalsUrl': ...,
   'trustedBiddingSignalsKeys': ['key1', 'key2'],
@@ -107,6 +108,8 @@ The browser will remain in an interest group for only a limited amount of time. 
 #### 1.2 Interest Group Attributes
 
 The `userBiddingSignals` is for storage of additional metadata that the owner can use during on-device bidding, and the `trustedBiddingSignals*` attributes provide another mechanism for making real-time data available for use at bidding time.
+
+The `biddingWasmHelperUrl` field is optional, and lets the bidder provide computationally-expensive subroutines in WebAssembly, rather than JavaScript, to be driven from the JavaScript function provided by `biddingLogicUrl`. If provided, it must point to a WebAssembly binary, delivered with a `application/wasm` mimetype. The corresponding `WebAssembly.Module` will be made available by the browser to the `generateBid` function.
 
 The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically update the attributes of the interest group: any new values returned in this way overwrite the values previously stored (except that the `name` and `owner` cannot be changed).  However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateUrl` , e.g. at least 100 browsers with the same update URL. This will not include any metadata, so data such as the interest group `name` should be included within the URL, so long as the URL exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
 
@@ -299,6 +302,7 @@ The arguments to `generateBid()` are:
       'joinCount': 3,
       'bidCount': 17,
       'prevWins': [[time1,ad1],[time2,ad2],...],
+      'wasmHelper': ... /* a WebAssembly.Module object based on interest group's biddingWasmHelperUrl */
     }
     ```
 
