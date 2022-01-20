@@ -204,7 +204,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
       'adComponents': ['https://cdn.com/ad_component_of_bid',
                        'https://cdn.com/next_ad_component_of_bid',
                        ...],
-      'biddingDurationMsec': 12,
+      'biddingDurationMsec': 12
     }
     ```
 
