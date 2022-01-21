@@ -367,7 +367,7 @@ In the long term, we need a mechanism to ensure that the after-the-fact reportin
 
 #### 5.1 Seller Reporting on Render
 
-The seller's JavaScript (i.e. the same script, loaded from `decisionLogicUrl`, that provided the `scoreAd()` function) can also expose a `reportResult()` function, which is called for both the top-level seller worklet and the component auction worklet with the bid that won the top-level auction, if applicable. Any sellers in component auctions whose top-scoring bids did not win the top-most auction will not have their ReportResult() methods invoked.
+A seller's JavaScript (i.e. the same script, loaded from `decisionLogicUrl`, that provided the `scoreAd()` function) can also expose a `reportResult()` function. This is called with the bid that won the auction, if applicable. For component auction seller scripts, `reportResult()` is only invoked if the bid that won the component auction also went on to win the top-level auction.
 
 
 ```
@@ -416,7 +416,7 @@ The arguments to this function are:
 
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
-*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields.  If the bidder bid in a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction, and a `topLevelSellerSignals` field will contain the return value of the top level seller's `ReportResult()` method.  `browserSignals` could also include some buyer-specific signal like the second-highest bid from that particular buyer.
+*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields.  If the bidder bid in a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction, and a `topLevelSellerSignals` field will contain the return value of the top level seller's `reportResult()` method.  `browserSignals` could also include some buyer-specific signal like the second-highest bid from that particular buyer.
 
 The `reportWin()` function's reporting happens by calling browser-provided aggregate reporting APIs or, temporarily, directly calling network APIs.
 
