@@ -162,13 +162,15 @@ const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
 
 This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auctionSignals`, `sellerSignals`, and `perBuyerSignals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auctionSignals` are made available to everyone, while the other signals are given only to one party.
 
-In some cases, multiple SSPs may want to run their own auction and send the winner up to another auction. To facilitate these "component auctions", `componentAuctions` can optionally contain additional auction configurations for each seller's "component auction".  The winning bid of each of these "component auctions" will be passed to the top-most auction.  How bids are scored in this case is further described in [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions).
+In some cases, multiple SSPs may want to run their own auction and send the winner up to another auction. To facilitate these "component auctions", `componentAuctions` can optionally contain additional auction configurations for each seller's "component auction".  The winning bid of each of these "component auctions" will be passed to the top-most auction.  How bids are scored in this case is further described in [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions). The `AuctionConfig` of Component auctions may not have their own `componentAuctions`.
 
 The returned `auctionResultPromise` object is _opaque_: it is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents, but it can be passed to a Fenced Frame for rendering.  (The [Fenced Frame Opaque Source explainer](https://github.com/shivanigithub/fenced-frame/blob/master/OpaqueSrc.md) has initial thoughts about how this could be implemented.)  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
 Optionally, `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's bidding scripts. If no value is specified for a particular buyer, a default timeout of 50 ms will be selected. Any `perBuyerTimeouts` higher than 500 ms will be clamped to 500 ms. A key of `'*'` is used to change the default of unspecified buyers.
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
+
+In the case of a component auction, all `AuctionConfig` parameters for that component auction are only scoped to buyer and seller scripts run as part of that auction component. Similarly, all vaues specified by the top-level auction are not applied to the component auctions.
 
 
 #### 2.2 Auction Participants
@@ -413,7 +415,7 @@ reportWin(auctionSignals, perBuyerSignals, sellerSignals, browserSignals) {
 The arguments to this function are:
 
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
-*   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
+*   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
 *   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields.  If the bidder bid in a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction, and a topLevelSellerSignals field will contain the return value of the top level seller's ReportResult() method.  `browserSignals` could also include some buyer-specific signal like the second-highest bid from that particular buyer.
 
 The `reportWin()` function's reporting happens by calling browser-provided aggregate reporting APIs or, temporarily, directly calling network APIs.
