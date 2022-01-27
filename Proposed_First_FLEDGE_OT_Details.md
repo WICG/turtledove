@@ -145,7 +145,7 @@ When the breakpoint triggers, the worklet will be paused before the first statem
 
 Live worklet scripts will also show up under the Threads panel:
 
-![debug worklet threads](debug_worklet_threads.png)
+![debug worklet threads](assets/debug_worklet_threads.png)
 
 Since some worklets may run in parallel, multiple threads may end up in the "paused" state there; the thread list can be used to switch between them and resume or inspect them more closely as appropriate.
 
