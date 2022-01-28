@@ -321,7 +321,7 @@ The arguments to `generateBid()` are:
     }
     ```
 
-For auctions with component auctions, an interest group's `generateBid()` function will be inboked in all auctions for which it qualifies, though the `bidCount` value passed to future auctions will only be incremented by one for participation in that auction as a whole.
+For auctions with component auctions, an interest group's `generateBid()` function will be invoked in all auctions for which it qualifies, though the `bidCount` value passed to future auctions will only be incremented by one for participation in that auction as a whole.
 
 The output of `generateBid()` contains four fields:
 
@@ -383,7 +383,7 @@ reportResult(auctionConfig, browserSignals) {
 The arguments to this function are:
 
 *   auctionConfig: The auction configuration object passed to `navigator.runAdAuction()`
-*   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction. `topLevelSeller` is only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction:
+*   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction. `topLevelSeller` and `topLevelSellerSignals` are only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction. `topLevelSellerSignals` is the output of the top-level seller's ReportResult() method:
 
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
@@ -393,6 +393,7 @@ The arguments to this function are:
       'renderUrl': 'https://cdn.com/url-of-winning-creative.wbn',
       'bid:' bidValue,
       'desirability': desirabilityScoreForWinningAd,
+      'topLevelSellerSignals': outputOfTopLevelSellersReportResult,
       'dataVersion': versionFromKeyValueResponse,
     }
     ```
@@ -418,7 +419,7 @@ The arguments to this function are:
 
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
-*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields.  If the bidder bid in a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction, and a `topLevelSellerSignals` field will contain the return value of the top level seller's `reportResult()` method.  `browserSignals` could also include some buyer-specific signal like the second-highest bid from that particular buyer.
+*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields.  If the bidder bid in a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction.  `browserSignals` could also include some buyer-specific signal like the second-highest bid from that particular buyer.
 
 The `reportWin()` function's reporting happens by calling browser-provided aggregate reporting APIs or, temporarily, directly calling network APIs.
 
