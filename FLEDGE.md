@@ -147,7 +147,7 @@ const myAuctionConfig = {
   'additionalBids': [otherSourceAd1, otherSourceAd2, ...],
   'auctionSignals': {...},
   'sellerSignals': {...},
-  `sellerTimeout`: 100,
+  'sellerTimeout': 100,
   'perBuyerSignals': {'https://www.example-dsp.com': {...},
                         'https://www.another-buyer.com': {...},
                         ...},
