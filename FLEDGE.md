@@ -147,6 +147,7 @@ const myAuctionConfig = {
   'additionalBids': [otherSourceAd1, otherSourceAd2, ...],
   'auctionSignals': {...},
   'sellerSignals': {...},
+  'sellerTimeout': 100,
   'perBuyerSignals': {'https://www.example-dsp.com': {...},
                         'https://www.another-buyer.com': {...},
                         ...},
@@ -163,7 +164,7 @@ This will cause the browser to execute the appropriate bidding and auction logic
 
 The returned `auctionResultPromise` object is _opaque_: it is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents, but it can be passed to a Fenced Frame for rendering.  (The [Fenced Frame Opaque Source explainer](https://github.com/shivanigithub/fenced-frame/blob/master/OpaqueSrc.md) has initial thoughts about how this could be implemented.)  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
-Optionally, `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's bidding scripts. If no value is specified for a particular buyer, a default timeout of 50 ms will be selected. Any `perBuyerTimeouts` higher than 500 ms will be clamped to 500 ms. A key of `'*'` is used to change the default of unspecified buyers.
+Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
 
