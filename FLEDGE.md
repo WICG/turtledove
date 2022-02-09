@@ -205,7 +205,8 @@ The function gets called once for each candidate ad in the auction.  The argumen
       'adComponents': ['https://cdn.com/ad_component_of_bid',
                        'https://cdn.com/next_ad_component_of_bid',
                        ...],
-      'biddingDurationMsec': 12
+      'biddingDurationMsec': 12,
+      'dataVersion': 1, /* Data-Version value from the trusted scoring signals server's response */
     }
     ```
 
@@ -273,7 +274,7 @@ The value of `trustedScoringSignals` passed to the seller's `scoreAd()` function
 
 _As a temporary mechanism_ during the First Experiment timeframe, the buyer and seller can fetch these bidding signals from any server, including one they operate  themselves (a "Bring Your Own Server" model).  However, in the final version after the removal of third-party cookies, the request will only be sent to a trusted key-value-type server.  Because the server is trusted, there is no k-anonymity constraint on this request.  The browser needs to trust that the server's return value for each key will be based only on that key and the hostname, and that the server does no event-level logging and has no other side effects based on these requests. 
 
-The server may optionally include a numeric `Data-Version` header on the response to indicate the state of the data that generated this response, which will then be available in reporting.  This version number should not depend on any properties of the request, only the state of the server.  Ideally, the number would only increment and at any time would be identical across all servers in a fleet.  In practice a small amount of skew is permitted for operational reasons, including propagation delays, staged rollouts, and emergency rollbacks.
+Either trusted server may optionally include a numeric `Data-Version` header on the response to indicate the state of the data that generated this response, which will then be available in bid generation/scoring and reporting.  This version number should not depend on any properties of the request, only the state of the server.  Ideally, the number would only increment and at any time would be identical across all servers in a fleet.  In practice a small amount of skew is permitted for operational reasons, including propagation delays, staged rollouts, and emergency rollbacks. The version number should be formatted with only the digits `[0-9]` with no leading `0`s and fit in a 32-bit unsigned integer.
 
 #### 3.2 On-Device Bidding
 
@@ -304,6 +305,7 @@ The arguments to `generateBid()` are:
       'bidCount': 17,
       'prevWins': [[time1,ad1],[time2,ad2],...],
       'wasmHelper': ... /* a WebAssembly.Module object based on interest group's biddingWasmHelperUrl */
+      'dataVersion': 1, /* Data-Version value from the trusted bidding signals server's response */
     }
     ```
 
@@ -381,7 +383,7 @@ The arguments to this function are:
     }
     ```
 
-The `browserSignals` argument must be handled carefully to avoid tracking.  It certainly cannot include anything like the full list of interest groups, which would be too identifiable as a tracking signal.  The `renderUrl` can always be included since it has already passed a k-anonymity check, for example, but the winning `interestGroupName` will only be present if it has exceeded the threshold which gates daily updates.  Similarly, the browser may limit the precision of the bid and desirability values to avoid these numbers exfiltrating information from the interest group's `userBiddingSignals`.  On the upside, this set of signals can be expanded to include useful additional summary data about the wider range of bids that participated in the auction, e.g. the second-highest bid or the number of bids.
+The `browserSignals` argument must be handled carefully to avoid tracking.  It certainly cannot include anything like the full list of interest groups, which would be too identifiable as a tracking signal.  The `renderUrl` can always be included since it has already passed a k-anonymity check, for example, but the winning `interestGroupName` will only be present if it has exceeded the threshold which gates daily updates.  Similarly, the browser may limit the precision of the bid and desirability values to avoid these numbers exfiltrating information from the interest group's `userBiddingSignals`.  On the upside, this set of signals can be expanded to include useful additional summary data about the wider range of bids that participated in the auction, e.g. the second-highest bid or the number of bids.  Additionally, the `dataVersion` will only be present if the `Data-Version` header was provided in the response headers from the Trusted Scoring server.
 
 The `reportResult()` function's reporting happens by calling browser-provided aggregate reporting APIs or, temporarily, directly calling network APIs.  The output of this function is not used for reporting, but rather as an input to the buyer's reporting function.
 
@@ -402,7 +404,7 @@ The arguments to this function are:
 
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer.
-*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields.  This could also include some buyer-specific signal like the second-highest bid from that particular buyer.
+*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields. The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers (if present).  This could also include some buyer-specific signal like the second-highest bid from that particular buyer.
 
 The `reportWin()` function's reporting happens by calling browser-provided aggregate reporting APIs or, temporarily, directly calling network APIs.
 
