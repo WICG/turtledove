@@ -189,7 +189,8 @@ Once the bids are known, the seller runs code inside an _auction worklet_.  With
 ```
 scoreAd(adMetadata, bid, auctionConfig, trustedScoringSignals, browserSignals) {
   ...
-  return desirabilityScoreForThisAd;
+  return {desirability: desirabilityScoreForThisAd,
+          allowComponentAuction: componentAuctionsAllowed};
 }
 ```
 
@@ -212,7 +213,11 @@ The function gets called once for each candidate ad in the auction.  The argumen
     }
     ```
 
-The output of `scoreAd()` is a number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.)   The winner of the auction is the ad object which was given the highest score.
+The output of `scoreAd()` is an object with the following fields:
+* desirability: Number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.) The winner of the auction is the ad object which was given the highest score.
+* allowComponentAuction: (optional) If the bid being scored is from a component auction and this value is not true, the bid is ignored. If not present, this value is consired false.
+
+If `scoreAd()` returns only a numeric value, it's equivalent to returning {'desireability': numericValue, `allowComponentAuciton`: false}.
 
 The logic in `scoreAd()` has access to the full auction configuration object, which means the seller can pass in arbitrary information from the publisher page.  In particular, the configuration object's `sellerSignals` field is exclusively for passing information into `scoreAd()`.  This field can include information based on looking up publisher settings, based on making a contextual ad request, and so on.  Examples of logic that could live in the `scoreAd()` function include:
 
@@ -236,11 +241,6 @@ Seller scripts in component auctions behave a little differently.  They still ex
 Once all of a component auction's bids have been scored by the component auction's seller script, the bid with the highest score is passed to the top-level seller to score. For that bid, the top-level seller's `scoreAd()` method is passed the `ad` value from the component auction seller's `scoreAd()` method, and there is an an additional `componentSeller` field in the `browserSignals`, which is the seller for the component auction. All other values are the same as if the bid had come from an interest group participating directly in the top-level auction. In the case of a tie, one of the highest scoring bids will be chosen randomly and only that bid will passed to the top-level seller to score.
 
 The ultimate winner of the top-level auction is the single bid the top-level seller script gives the highest score. This may either be the winning bid of one of the component auctions, or a bid from one of the `interestGroupBuyers` in the `AuctionConfig` of the top-level auction. Those bids will be scored directly by the top-level seller script without having to win any component auction.
-
-The top-level seller script's `scoreAd()` function also returns an object instead of only desireability score when scoring a bid from a component auction. It contains the following fields:
-
-* desirability: Numeric score of the bid. Must be positive or the ad will be rejected.
-* allowComponentAuction: If this value is does not have a value of true, the bid will be rejected.
 
 
 ### 3. Buyers Provide Ads and Bidding Functions (BYOS for now)
