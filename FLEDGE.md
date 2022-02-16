@@ -189,7 +189,7 @@ Once the bids are known, the seller runs code inside an _auction worklet_.  With
 ```
 scoreAd(adMetadata, bid, auctionConfig, trustedScoringSignals, browserSignals) {
   ...
-  return {score: desirabilityScoreForThisAd,
+  return {desirability: desirabilityScoreForThisAd,
           allowComponentAuction: componentAuctionsAllowed};
 }
 ```
@@ -214,7 +214,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
     ```
 
 The output of `scoreAd()` is an object with the following fields:
-* score: Number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.) The winner of the auction is the ad object which was given the highest score.
+* desirability: Number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.) The winner of the auction is the ad object which was given the highest score.
 * allowComponentAuction: (optional) If the bid being scored is from a component auction and this value is not true, the bid is ignored. If not present, this value is consired false.
 
 If `scoreAd()` returns only a numeric value, it's equivalent to returning {'score': numericValue, `allowComponentAuciton`: false}.
