@@ -236,7 +236,7 @@ Seller scripts in component auctions behave a little differently.  They still ex
 * ad: Arbitrary metadata to pass to the top-level seller.
 * desirability: Numeric score of the bid. Must be positive or the ad will be rejected.
 * allowComponentAuction: If this value is does not have a value of true, the bid will be rejected.
-* bid: (optional) Adjusted bid value to provide to the top-level seller script. If present, this will be passed to the top-level seller instead of the original bid.
+* bid: (optional) Modified bid value to provide to the top-level seller script. If present, this will be passed to the top-level seller instead of the original bid.
 
 Once all of a component auction's bids have been scored by the component auction's seller script, the bid with the highest score is passed to the top-level seller to score. For that bid, the top-level seller's `scoreAd()` method is passed the `ad` value from the component auction seller's `scoreAd()` method, and there is an an additional `componentSeller` field in the `browserSignals`, which is the seller for the component auction. All other values are the same as if the bid had come from an interest group participating directly in the top-level auction. In the case of a tie, one of the highest scoring bids will be chosen randomly and only that bid will passed to the top-level seller to score.
 
@@ -396,7 +396,7 @@ reportResult(auctionConfig, browserSignals) {
 The arguments to this function are:
 
 *   auctionConfig: The auction configuration object passed to `navigator.runAdAuction()`
-*   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction. `topLevelSeller`, `topLevelSellerSignals`, and `adjustedBid` are only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction. `adjustedBid` is bid value a component auction's `scoreAd()` script passes to the top-level auction. `topLevelSellerSignals` is the output of the top-level seller's ReportResult() method:
+*   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction. `topLevelSeller`, `topLevelSellerSignals`, and `modifiedBid` are only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction. `modifiedBid` is bid value a component auction's `scoreAd()` script passes to the top-level auction. `topLevelSellerSignals` is the output of the top-level seller's ReportResult() method:
 
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
@@ -408,7 +408,7 @@ The arguments to this function are:
       'desirability': desirabilityScoreForWinningAd,
       'topLevelSellerSignals': outputOfTopLevelSellersReportResult,
       'dataVersion': versionFromKeyValueResponse,
-      'adjustedBid': adjustedBidValue
+      'modifiedBid': modifiedBidValue
     }
     ```
 
