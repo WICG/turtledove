@@ -61,12 +61,14 @@ Browser will process this similar to how the existing [navigator.sendBeacon](htt
 
 
 ```
-navigator.reportEvent({
+window.fence.reportEvent({
   'eventType': 'click',
   'eventData': {'clickX': '123', 'clickY': '456'},
   'destination':['buyer', 'seller']
 });
 ```
+
+Note `window.fence` here is a new namepsace for APIs that are only available from within a fenced frame. 
 
 ## registerAdBeacon
 
@@ -85,7 +87,7 @@ The worklet is able to add the buyerEventId/sellerEventId and any other relevant
 
 
 ```
-navigator.registerAdBeacon({
+registerAdBeacon({
  'click': {'url': 'https://adtech.example/click?buyer_event_id=123'},
 });
 ```
