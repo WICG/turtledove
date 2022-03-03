@@ -17,6 +17,7 @@ We plan to hold regular meetings under the auspices of the WICG to go through th
     - [2.1 Initiating an On-Device Auction](#21-initiating-an-on-device-auction)
     - [2.2 Auction Participants](#22-auction-participants)
     - [2.3 Scoring Bids](#23-scoring-bids)
+    - [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions)
   - [3. Buyers Provide Ads and Bidding Functions (BYOS for now)](#3-buyers-provide-ads-and-bidding-functions-byos-for-now)
     - [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server)
     - [3.2 On-Device Bidding](#32-on-device-bidding)
@@ -144,7 +145,6 @@ const myAuctionConfig = {
   'decisionLogicUrl': ...,
   'trustedScoringSignalsUrl': ...,
   'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
-  'additionalBids': [otherSourceAd1, otherSourceAd2, ...],
   'auctionSignals': {...},
   'sellerSignals': {...},
   'sellerTimeout': 100,
@@ -155,6 +155,12 @@ const myAuctionConfig = {
                         'https://www.another-buyer.com': 200,
                         '*': 150,
                         ...},
+  'componentAuctions': [
+    {'seller': 'https://www.some-other-ssp.com',
+      'decisionLogicUrl': ...,
+      ...},
+    ...
+  ]
 };
 const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
 ```
@@ -162,11 +168,15 @@ const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
 
 This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auctionSignals`, `sellerSignals`, and `perBuyerSignals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auctionSignals` are made available to everyone, while the other signals are given only to one party.
 
+In some cases, multiple SSPs may want to participate in an auction, with the winners of separate auctions being passed up to another auction, run by another SSP. To facilitate these "component auctions", `componentAuctions` can optionally contain additional auction configurations for each seller's "component auction". The winning bid of each of these "component auctions" will be passed to the "top-level" auction. How bids are scored in this case is further described in [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions). The `AuctionConfig` of component auctions may not have their own `componentAuctions`.
+
 The returned `auctionResultPromise` object is _opaque_: it is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents, but it can be passed to a Fenced Frame for rendering.  (The [Fenced Frame Opaque Source explainer](https://github.com/shivanigithub/fenced-frame/blob/master/OpaqueSrc.md) has initial thoughts about how this could be implemented.)  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
 Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
+
+In the case of a component auction, all `AuctionConfig` parameters for that component auction are only scoped to buyer and seller scripts run as part of that auction component. Similarly, all vaues specified by the top-level auction are not applied to the component auctions.
 
 
 #### 2.2 Auction Participants
@@ -174,8 +184,6 @@ A `Permissions-Policy` directive named "run-ad-auction" controls access to the `
 Each interest group the browser has joined and whose owner is in the list of `interestGroupBuyers` will have an opportunity to bid in the auction.  See the "Buyers Provide Ads and Bidding Functions" section, below, for how interest groups bid.
 
 The seller may instead specify `'interestGroupBuyers': '*'` to permit all interest groups into the auction, and decide ad admissibility later in the process, based on criteria other than the interest group owner.  For example, a seller with an out-of-band creative review process might decide admissibility solely based on the creative, not the buyer.
-
-The auction configuration's list of `additionalBids` is meant to allow a second way for ads to participate in this on-device auction.  More design work is needed to figure out how to support buyers' and sellers' needs in the multi-level decision-making use cases like those discussed in Issues [#59](https://github.com/WICG/turtledove/issues/59) or [#73](https://github.com/WICG/turtledove/issues/73) — a simple approach like putting one auction's `auctionResultPromise` into another auction's `additionalBids` is probably not sufficient.  This field may not be usable yet in the First Experiment stage, depending on how much new complexity it adds to the design.
 
 
 #### 2.3 Scoring Bids
@@ -186,7 +194,8 @@ Once the bids are known, the seller runs code inside an _auction worklet_.  With
 ```
 scoreAd(adMetadata, bid, auctionConfig, trustedScoringSignals, browserSignals) {
   ...
-  return desirabilityScoreForThisAd;
+  return {desirability: desirabilityScoreForThisAd,
+          allowComponentAuction: componentAuctionsAllowed};
 }
 ```
 
@@ -210,7 +219,11 @@ The function gets called once for each candidate ad in the auction.  The argumen
     }
     ```
 
-The output of `scoreAd()` is a number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.)   The winner of the auction is the ad object which was given the highest score.
+The output of `scoreAd()` is an object with the following fields:
+* desirability: Number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.) The winner of the auction is the ad object which was given the highest score.
+* allowComponentAuction: (optional) If the bid being scored is from a component auction and this value is not true, the bid is ignored. If not present, this value is consired false. This field must be present and true both when the component seller scores a bid, and when that bid is being scored by the top-level auction.
+
+If `scoreAd()` returns only a numeric value, it's equivalent to returning {'score': numericValue, `allowComponentAuciton`: false}.
 
 The logic in `scoreAd()` has access to the full auction configuration object, which means the seller can pass in arbitrary information from the publisher page.  In particular, the configuration object's `sellerSignals` field is exclusively for passing information into `scoreAd()`.  This field can include information based on looking up publisher settings, based on making a contextual ad request, and so on.  Examples of logic that could live in the `scoreAd()` function include:
 
@@ -220,6 +233,20 @@ The logic in `scoreAd()` has access to the full auction configuration object, wh
 *   Checking whether the creative contents have been pre-approved by the seller.  This could be implemented by an out-of-band creative review process leading to the seller handing the buyer a cryptographically-signed token, which the buyer then includes in the ad's metadata.  See [TERN's Section 0](https://github.com/WICG/turtledove/blob/master/TERN.md#0-before-advertising-begins) for more discussion of this possibility.
 
 Note that `scoreAd()` does not have any way to _store_ information for use later on a different page.  In particular, if the ad scoring logic on day 1 observes a bid from a particular interest group, and then on day 2 the browser interest group membership expires, there is no way for the ad scoring logic on day 3 to "remember" the pre-expiration membership information.
+
+
+#### 2.4 Scoring Bids in Component Auctions
+
+Seller scripts in component auctions behave a little differently.  They still expose a `scoreAd()` function to score each bid from the component auction's buyers, however all of its arguments come from the component auction, including `auctionConfig`. `browserSignals` has an additional `topLevelSeller` field, which contains the seller of the top-level auction. Instead of returning just a desirability score, the component seller's `scoreAd()` returns an object with the following fields:
+
+* ad: (optional) Arbitrary metadata to pass to the top-level seller. Defaults to null, if not present.
+* desirability: Numeric score of the bid. Must be positive or the ad will be rejected.
+* allowComponentAuction: If this field is not true, the bid will be rejected.
+* bid: (optional) Modified bid value to provide to the top-level seller script. If present, this will be passed to the top-level seller's `scoreAd()` and `reportResult()` methods instead of the original bid, if the ad wins the component auction and top-level auction, respectively.
+
+Once all of a component auction's bids have been scored by the component auction's seller script, the bid with the highest score is passed to the top-level seller to score. For that bid, the top-level seller's `scoreAd()` method is passed the `ad` value from the component auction seller's `scoreAd()` method, and there is an an additional `componentSeller` field in the `browserSignals`, which is the seller for the component auction. All other values are the same as if the bid had come from an interest group participating directly in the top-level auction. In the case of a tie, one of the highest scoring bids will be chosen randomly and only that bid will passed to the top-level seller to score.
+
+The ultimate winner of the top-level auction is the single bid the top-level seller script gives the highest score. This may either be the winning bid of one of the component auctions, or a bid from one of the `interestGroupBuyers` in the `AuctionConfig` of the top-level auction. Those bids will be scored directly by the top-level seller script without having to win any component auction.
 
 
 ### 3. Buyers Provide Ads and Bidding Functions (BYOS for now)
@@ -288,7 +315,11 @@ Once the trusted bidding signals are fetched, each interest group's bidding func
 ```
 generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
   ...
-  return {'ad': adObject, 'bid': bidValue, 'render': renderUrl, 'adComponents': [adComponent1, adComponent2, ...]};
+  return {'ad': adObject,
+          'bid': bidValue,
+          'render': renderUrl,
+          'adComponents': [adComponent1, adComponent2, ...],
+          'allowComponentAuction': false};
 }
 ```
 
@@ -301,10 +332,11 @@ The arguments to `generateBid()` are:
 *   auctionSignals: As provided by the seller in the call to `runAdAuction()`.  This is the opportunity for the seller to provide information about the page context (ad size, publisher ID, etc), the type of auction (first-price vs second-price), and so on.
 *   perBuyerSignals: The value for _this specific buyer_ as taken from the auction config passed to `runAdAuction()`.  This can include contextual signals about the page that come from the buyer's server, if the seller is an SSP which performs a real-time bidding call to buyer servers and pipes the response back, or if the publisher page contacts the buyer's server directly.  If so, the buyer may wish to check a cryptographic signature of those signals inside `generateBid()` as protection against tampering.
 *   trustedBiddingSignals: An object whose keys are the `trustedBiddingSignalsKeys` for the interest group, and whose values are those returned in the `trustedBiddingSignals` request.
-*   browserSignals: An object constructed by the browser, containing information that the browser knows, and which the buyer's auction script might want to use or verify.  The `dataVersion` field will only be present if the `Data-Version` header was provided and had a consistent value for all of the trusted bidding signals server responses used to construct the trustedBiddingSignals. Additional fields can include information about both the context (e.g. the true hostname of the current page, which the seller could otherwise lie about) and about the interest group itself (e.g. times when it previously won the auction, to allow on-device frequency capping).
+*   browserSignals: An object constructed by the browser, containing information that the browser knows, and which the buyer's auction script might want to use or verify.  The `dataVersion` field will only be present if the `Data-Version` header was provided and had a consistent value for all of the trusted bidding signals server responses used to construct the trustedBiddingSignals. `topLevelSeller` is only present if `generateBid()` is running as part of a component auction. Additional fields can include information about both the context (e.g. the true hostname of the current page, which the seller could otherwise lie about) and about the interest group itself (e.g. times when it previously won the auction, to allow on-device frequency capping).
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
       'seller': 'https://www.example-ssp.com',
+      `topLevelSeller`: 'https://www.another-ssp.com',
       'joinCount': 3,
       'bidCount': 17,
       'prevWins': [[time1,ad1],[time2,ad2],...],
@@ -313,14 +345,15 @@ The arguments to `generateBid()` are:
     }
     ```
 
-The output of `generateBid()` contains four fields:
+In the case of component auctions, an interest group's `generateBid()` function will be invoked in all component auctions for which it qualifies, though the `bidCount` value passed to future auctions will only be incremented by one for participation in that auction as a whole.
 
+The output of `generateBid()` contains the following fields:
 
-
-*   ad: Arbitrary metadata about the ad which this interest group wants to show.  The seller uses this information in its auction and decision logic.
+*   ad: (optional) Arbitrary metadata about the ad which this interest group wants to show. The seller uses this information in its auction and decision logic. If not present, it's treated as if the value were null.
 *   bid: A numerical bid that will enter the auction.  The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand").  If the bid is zero or negative, then this interest group will not participate in the seller's auction at all.  With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear.
 *   render: A URL, or a list of URLs, which will be rendered to display the creative if this bid wins the auction.  (See "Ads Composed of Multiple Pieces" below.)
-*   adComponents: An optional list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent renderUrl exactly. This field must not be present if the InterestGroup has no adComponent field. It is valid for this field not to be present even when adComponents is present.
+*   adComponents: (optional) A list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent renderUrl exactly. This field must not be present if the InterestGroup has no adComponent field. It is valid for this field not to be present even when adComponents is present.
+*   allowComponentAuction: If this buyer is taking part of a component auction, this value must be present and true, or the bid is ignored. This value is ignored (and may be absent) if the buyer is part of a top-level auction.
 
 
 #### 3.3 Metadata with the Ad Bid
@@ -361,7 +394,7 @@ In the long term, we need a mechanism to ensure that the after-the-fact reportin
 
 #### 5.1 Seller Reporting on Render
 
-The seller's JavaScript (i.e. the same script, loaded from `decisionLogicUrl`, that provided the `scoreAd()` function) can also expose a `reportResult()` function:
+A seller's JavaScript (i.e. the same script, loaded from `decisionLogicUrl`, that provided the `scoreAd()` function) can also expose a `reportResult()` function. This is called with the bid that won the auction, if applicable. For component auction seller scripts, `reportResult()` is only invoked if the bid that won the component auction also went on to win the top-level auction.
 
 
 ```
@@ -375,15 +408,19 @@ reportResult(auctionConfig, browserSignals) {
 The arguments to this function are:
 
 *   auctionConfig: The auction configuration object passed to `navigator.runAdAuction()`
-*   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction:
+*   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction. `topLevelSeller`, `topLevelSellerSignals`, and `modifiedBid` are only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction. `modifiedBid` is bid value a component auction's `scoreAd()` script passes to the top-level auction. `topLevelSellerSignals` is the output of the top-level seller's ReportResult() method:
 
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
+      `topLevelSeller`: 'https://www.example-ssp.com',
+      `componentSeller`: 'https://www.some-other-ssp.com',
       'interestGroupOwner': 'https://www.example-dsp.com/',
       'renderUrl': 'https://cdn.com/url-of-winning-creative.wbn',
       'bid:' bidValue,
       'desirability': desirabilityScoreForWinningAd,
+      'topLevelSellerSignals': outputOfTopLevelSellersReportResult,
       'dataVersion': versionFromKeyValueResponse,
+      'modifiedBid': modifiedBidValue
     }
     ```
 
@@ -407,8 +444,8 @@ reportWin(auctionSignals, perBuyerSignals, sellerSignals, browserSignals) {
 The arguments to this function are:
 
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
-*   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer.
-*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields.  The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.  Additional fields could also include some buyer-specific signal like the second-highest bid from that particular buyer.
+*   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
+*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields.  The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.  If the winning bid was from a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction.  Additional fields could also include some buyer-specific signal like the second-highest bid from that particular buyer.
 
 The `reportWin()` function's reporting happens by calling browser-provided aggregate reporting APIs or, temporarily, directly calling network APIs.
 
