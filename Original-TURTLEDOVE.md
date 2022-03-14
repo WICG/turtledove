@@ -303,3 +303,62 @@ The [FLoC proposal](https://github.com/jkarlin/floc) offers a different approach
 In the FLoC model, advertisers and ad networks have no control over what groups people are in.  Instead the browser itself is responsible for somehow grouping together flocks of "similar people", with wide latitude in how it comes up with its notion of similarity.  The browser can then take steps to prevent its grouping from allowing tracking or revealing sensitive characteristics.
 
 The current FLoC proposal involves sending the browser's flock assignment to a server and letting it influence the server-side ad auction.  In a world with a TURTLEDOVE in-browser auction, one could imagine making FLoC an in-browser-only signal as well, fetching ads for the flock in yet a third uncorrelated request ("ThURTLEDOVE"?).  Given how hard even the incremental adoption path in this path is already, keeping FLoC as an independent effort for now seems prudent.
+
+## Privacy Considerations
+
+TURTLEDOVE aims to advance the privacy of remarketing advertising on the web, so it includes a host of new privacy motivated protections.  These protections work together to ensure [identity is sharded per site](https://github.com/michaelkleber/privacy-model#sharding-web-identity).  These protections fall into two main categories:
+
+### Site Partitioned Data
+
+TURTLEDOVE is designed to keep data from different sites separate, or in other words, each piece of data comes from just one particular site:
+*   The contextual ad request comes from the site where the ad will appear, and doesn’t draw from any cross-site stored data (assuming third-party cookies are no longer available).  This ensures that the request can only contain data from the site issuing it.
+*   Each interest group contains only data from the site where the user was added to that interest group, i.e. the top-level site that the user was browsing at the time of `navigator.joinAdInterestGroup()`.
+
+These constraints hold true as the data progresses through the TURTLEDOVE API:
+*   [The contextual ad request](#two-uncorrelated-requests) only contains data from the site issuing the request.  You can imagine this happening like any other fetch request from a site.
+*   [Each interest-group ad request](#two-uncorrelated-requests) only contains data from the site that called `navigator.joinAdInterestGroup()`.
+*   The JavaScript bidding function receives information about the site where the ad will be displayed and from the site that called `navigator.joinAdInterestGroup()`, but this script is run in isolation (without network, storage, DOM, or postMessage() access) and only returns a bid value.  The bid value is used by the browser to select the highest bid, and sharing beyond that is limited to [tightly restricted/anonymized/aggregated reporting mechanisms](#frequency-capping-budgets-metrics-and-reporting).  (In the FLEDGE implementation, this isolation property applies to the combination of the bidding and scoring functions that run in two separate isolated worklets.)
+*   The winning ad is rendered in an environment isolated from all other web pages including the page containing the ad slot.  What little information about the user that the ad represents (see [Outcome-based TURTLEDOVE](https://github.com/WICG/turtledove/blob/main/OUTCOME_BASED.md) for how this is limited), comes only from the site that called `navigator.joinAdInterestGroup()`.  This happens because the call to `navigator.joinAdInterestGroup()` declares the ad’s URL.
+
+### Cross-site Identity Join Prevention
+
+As the word "uncorrelated" in TURTLEDOVE implies, the goal of the proposal is to prevent cross-site identity joining of the contextual and interest group ad requests using either interest group information or associated metadata. We propose to limit access to this information in a few different ways: 
+1.  The requests are uncredentialed so they are strictly limited to only containing information about the respective ad request.
+1.  The requests are issued at different times to prevent time-based correlation.
+1.  At least one of the requests can be issued using an IP blinding technique so their IP addresses cannot be used for correlation.
+1.  They are strictly network requests, so all active fingerprinting techniques are precluded by not providing queryable APIs.
+
+### Possible Privacy Concerns and Mitigations
+
+In a few cases there exists the potential for cross-site identity leaks, but in all cases the minimum data is exposed and possible mitigations exist:
+1.  During the [On-Device Auction](#on-device-auction), one critical need is for a site to know whether the site should display the contextual or interest-group-based ad.  Fortunately this requires only one bit of information (contextual versus interest-group) per auction so the leak is small to begin with. In reality the amount of entropy leaked here will be less than one bit as it’s unlikely the contextual versus interest-group split will be exactly 50%/50%.  There are a variety of ways to further mitigate this leak.  There are technical interventions the browser can perform (e.g. limit numbers of auctions with different outcomes, or per-site noise added to interest group membership) and abuse detection mechanisms the browser can perform (e.g. browser performs aggregate logging to detect abusive usage versus intended usage).  Mitigations are discussed in [issue 211](https://github.com/WICG/turtledove/issues/211#issuecomment-889269834).
+1.  JS bidding functions run during the [On-Device Auction](#on-device-auction) must be isolated from other sites, for example the bidding scripts should have no network, storage, DOM or postMessage() access.  Blocking direct exfiltration makes exfiltration from the bidding scripts very challenging but there are still some covert channels abusers might seek to exploit.  There are however many factors that make it challenging for an attacker to exploit these covert channels, for example:
+    1.  For security reasons browsers will likely isolate bidding scripts from other scripts executing in the browser, as browsers already do for things like [Site-Isolation](https://www.chromium.org/Home/chromium-security/site-isolation/).  This often includes separating scripts into separate sandboxed processes.  These isolation barriers also make covert channel communication significantly more challenging.  Evolving CPU and memory improvements make these isolation techniques more feasible and common in browsers, see [Chrome rolling out more Site-Isolation](https://security.googleblog.com/2021/07/protecting-more-with-site-isolation.html).
+    1.  Most covert channels involve modulating usage of a shared resource.  For example a covert channel can be made by modulating CPU usage or frequency scaling to encode information via something like morse code (as an aside, this can be easily mitigated by disallowing asynchronous or wait APIs, so scripts can only use 100% CPU, and further by noising how long scripts run for).  These channels are slow (because they must ramp up or down some significant resource, and the listener must constantly “listen” for the signal which requires accurate timers) and noisy (because they are at the mercy of whatever else the system is doing; the browser alone can be utilizing thousands of threads).  The best way to compensate for the noise is to slow down signal transmission or repeat transmissions, either way exacerbating the slowness of the covert channel.  By limiting the time a script has to run it’s possible to use the slowness of the channel to limit the amount of data that can go through it.  For example FLEDGE has a default bidder script timeout of 50ms.
+    1.  Removing access to timers makes it harder to transmit and receive covert signals as it’s more challenging to assemble and decode the signals without having a reference clock.  Busy waiting can be used but is a lousy alternative to a timer as it’s highly variable between devices and highly variable/noisy under typically heavy browser CPU loads.
+    1.  TURTLEDOVE describes micro-targeting preventions that work by “disallowing interest groups that are too small”.  This interest group size requirement means a single interest group cannot be uniquely identifying, as a single person is certainly “too small”.  FLEDGE talks about minimum group sizes of 100 people.  The implication is that to leak uniquely identifying cross-site information requires several bidding scripts all leaking identity, which is a considerably higher bar than just one.
+    Covert channel leaks between bidding scripts and other pages open in the browser are nearly identical to other potential cross-site identity leaks via covert channels present in a typical browser, for example a browser with multiple tabs open must consider similar leaks between the tabs (imagine an exploit where one long-live tab broadcasts user identity to other open tabs).  This common goal of preventing these covert channels is likely to result in a synergy when it comes to finding covert channel mitigations.
+1.  Reporting and measuring the results of an on-device TURTLEDOVE ad auction is critical to TURTLEDOVE’s success, otherwise there’s no way to do things like know who should pay the publisher for rendering the ad.  Like other parts of the TURTLEDOVE API, there exists the potential to leak joinable cross-site identity if this isn’t done carefully with privacy in mind.  Reporting and measurement is such a complicated area that it cannot be fully covered in the TURTLEDOVE proposal and is instead covered by a host of other proposals, e.g. the proposed [Aggregate Reporting API](https://github.com/csharrison/aggregate-reporting-api).
+
+## Security Considerations
+
+TURTLEDOVE involves the browser running untrusted JavaScript downloaded from multiple parties, so security concerns are top of mind.  Fortunately TURTLEDOVE is a highly constrained API not attempting to be a general purpose execution environment.  Execution of the bidding scripts is controlled and limited as follows:
+1.  The TURTLEDOVE implementation as specified in FLEDGE requires the origin of the bidding script URL to match that of the origin of the interest group owner, which is in turn required to match the origin of the context calling the `navigator.joinAdInterestGroup()`.
+1.  Chrome’s implementation has several requirements for bidding script fetches:
+    1.  URL scheme is required to be HTTPS.
+    1.  Matching origin requirement as mentioned above, see “1.”
+    1.  Redirects are disallowed.
+    1.  Responses are required to contain the `X-Allow-FLEDGE: true` header.
+    1.  Fetches are uncredentialed.
+1.  The TURTLEDOVE implementation as specified in FLEDGE has the browser pass in several “browserSignals” to the bidding script that give the script unforgeable information about the context that the script is being executed in, for example the top level frame’s URL and the origin of the seller in the auction.  This way bidders have the choice to only bid in auctions where they are comfortable working with the involved parties.  Likewise sellers receive unforgeable information disclosing involved parties, like which origin produced each bid.
+1.  The execution environment available to the bidding script is the absolute minimum necessary to calculate a bid.  It supports only ECMAScript.  Some popular examples of things that are not supported:
+    1.  network access
+    1.  storage access
+    1.  timer or date access
+    1.  device access
+    1.  DOM access
+    1.  postMessage access
+    1.  thread APIs like Workers (Storage, Shared, etc)
+    1.  asynchronous execution (e.g. waiting on Promises)
+    1.  [Navigator](https://developer.mozilla.org/en-US/docs/Web/API/Navigator) or [Window](https://developer.mozilla.org/en-US/docs/Web/API/Window) APIs
+1.  The TURTLEDOVE implementation as specified in FLEDGE adds Permission-Policies to control access to the TURTLEDOVE APIs to give sites and embedders the ability to clamp down on use of the APIs as they see fit.
