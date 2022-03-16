@@ -262,6 +262,6 @@ SB: Maybe getting the auction config into the auction securely is indeed its own
 
 ### Other
 
-Peiwen Hu: Hi, Peiwen from Chrome, working on the trusted server. We have just published an API on the trusted server. It won’t impact in any way the First Origin Trial but would love to see feedback. It’s in the same GH repo as the Fledge explainer.  https://github.com/WICG/turtledove/blob/main/FLEDGE\_Key\_Value\_Server\_API.md
+Peiwen Hu: Hi, Peiwen from Chrome, working on the trusted server. We have just published an API on the trusted server. It won’t impact in any way the First Origin Trial but would love to see feedback. It’s in the same GH repo as the Fledge explainer.  https://github.com/WICG/turtledove/blob/main/FLEDGE_Key_Value_Server_API.md
 
 MK: Thank you all for coming, look forward to seeing you all in the future.
