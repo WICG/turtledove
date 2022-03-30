@@ -13,6 +13,7 @@ We plan to hold regular meetings under the auspices of the WICG to go through th
   - [1. Browsers Record Interest Groups](#1-browsers-record-interest-groups)
     - [1.1 Joining Interest Groups](#11-joining-interest-groups)
     - [1.2 Interest Group Attributes](#12-interest-group-attributes)
+    - [1.3 Permission Delegation](#13-permission-delegation)
   - [2. Sellers Run On-Device Auctions](#2-sellers-run-on-device-auctions)
     - [2.1 Initiating an On-Device Auction](#21-initiating-an-on-device-auction)
     - [2.2 Auction Participants](#22-auction-participants)
@@ -119,6 +120,23 @@ The `ads` list contains the various ads that the interest group might show.  Eac
 The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similarly to the `ads` field, each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time. Thanks to `ads` and `adsComponents` being separate fields, the buyer is able to update the `ads` field via daily update without losing `adComponents` stored in the interest group.
 
 The browser will provide protection against microtargeting, by only rendering an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 100 people would have seen the ad, if it were allowed to show).  As discussed in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal, this threshold applies only to the rendered creative; all of the metadata associated with ad bidding is not under any such restriction.  Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold.  This means that a small, specialized interest group that is still below the daily-update threshold could still choose to participate in auctions, bidding with a more-generic ad until the group becomes large enough.
+
+
+#### 1.3 Permission Delegation
+
+When one domain calls joinAdInterestGroup() or leaveAdInterestGroup() for an interest group with a different owner, the browser will fetch the URL https://owner.domain/.well-known/interest-group/permissions/domain.of.frame.that.called.the.method, without credentials, using the Network Partition Key of the frame that invoked the method. The fetched response should have a JSON MIME type and be of the format:
+
+```
+{ "joinAdInterestGroup": true/false,
+  "leaveAdInterestGroup": true/false
+}
+```
+
+Indicating whether the origin in the path has permissions to join and/or leave interest groups owned by the domain the request is sent to. Missing permissions are assumed to be false.
+
+The browser may limit, per page or globally, the number of interest groups joins waiting for .well-known fetches at a time, and drop additions that exceed this limit. It is recommended that at least 20 be allowed per live page at a time.
+
+Leave calls should unconditionally request the .well-known file, regardless of whether the user is in the group or not, as otherwise, whether or not a fetch is made can leak data to a MitM attacker. Browsers may also limit pending leave operations that need .well-known fetches. It's recommended that at least 1,000 across 20 different owners be allowed per live page at a time.
 
 
 ### 2. Sellers Run On-Device Auctions
