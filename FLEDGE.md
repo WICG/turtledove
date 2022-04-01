@@ -134,7 +134,7 @@ When a frame navigated to one domain calls joinAdInterestGroup() or leaveAdInter
 
 Indicating whether the origin in the path has permissions to join and/or leave interest groups owned by the domain the request is sent to. Missing permissions are assumed to be false.
 
-The browser may limit, per page or globally, the number of interest groups joins waiting for .well-known fetches at a time, and drop additions that exceed this limit. It is recommended that at least 20 be allowed per live page at a time.
+The browser may limit, per page or globally, the number of interest groups joins concurrently waiting on .well-known fetches at a time, and drop additions that exceed this limit. It is recommended that at least 20 be allowed per live page at a time.
 
 Browsers may also limit pending leave operations that need .well-known fetches. It's recommended that at least 1,000 across 20 different owners be allowed per live page at a time.
 
