@@ -124,21 +124,21 @@ The browser will provide protection against microtargeting, by only rendering an
 
 #### 1.3 Permission Delegation
 
-When a frame navigated to one domain calls joinAdInterestGroup() or leaveAdInterestGroup() for an interest group with a different owner, the browser will fetch the URL https://owner.domain/.well-known/interest-group/permissions/?domain=frame.domain, where `owner.domain` is domain that owns the interest group and `frame.domain` is the domain of the frame. The fetch is made without credentials, using the (Network Partition Key)[https://fetch.spec.whatwg.org/#network-partition-keys] of the frame that invoked the method. The fetched response should have a JSON MIME type and be of the format:
+When a frame navigated to one domain calls joinAdInterestGroup() or leaveAdInterestGroup() for an interest group with a different owner, the browser will fetch the URL https://owner.domain/.well-known/interest-group/permissions/?domain=frame.domain, where `owner.domain` is domain that owns the interest group and `frame.domain` is the domain of the frame. The fetch is made without credentials, using the [Network Partition Key](https://fetch.spec.whatwg.org/#network-partition-keys) of the frame that invoked the method. The fetched response should have a JSON MIME type and be of the format:
 
-```
-{ "joinAdInterestGroup": true/false,
-  "leaveAdInterestGroup": true/false
-}
-```
+    ```
+    { "joinAdInterestGroup": true/false,
+      "leaveAdInterestGroup": true/false
+    }
+    ```
 
 Indicating whether the origin in the path has permissions to join and/or leave interest groups owned by the domain the request is sent to. Missing permissions are assumed to be false.
 
-The browser may limit, per page or globally, the number of interest groups joins concurrently waiting on .well-known fetches at a time, and drop additions that exceed this limit. It is recommended that at least 20 be allowed per live page at a time.
+The browser may limit, per page or globally, the number of interest groups joins concurrently waiting on `.well-known` fetches at a time, and drop additions that exceed this limit. It is recommended that at least 20 be allowed per live page at a time.
 
-Browsers may also limit pending leave operations that need .well-known fetches. It's recommended that at least 1,000 across 20 different owners be allowed per live page at a time.
+Browsers may also limit pending leave operations that need `.well-known` fetches. It's recommended that at least 1,000 across 20 different owners be allowed per live page at a time.
 
-In order to prevent leaking data, join and leave calls must request the .well-known file, regardless of whether the user is in the group or not, as otherwise, whether or not a fetch is made can potentially leak data. Browsers may cache .well-known fetch results that share a network partition key.
+In order to prevent leaking data, join and leave calls must request the `.well-known` file, regardless of whether the user is in the group or not, as otherwise, whether or not a fetch is made can potentially leak data. Browsers may cache `.well-known` fetch results that share a network partition key.
 
 ### 2. Sellers Run On-Device Auctions
 
