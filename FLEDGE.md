@@ -96,13 +96,15 @@ const myGroup = {
   'ads': [shoesAd1, shoesAd2, shoesAd3],
   'adComponents': [runningShoes1, runningShoes2, gymShoes, gymTrainers1, gymTrainers2],
 };
-navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
+const joinPromise = navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
 ```
 
 
 The browser will only allow the `joinAdInterestGroup()` operation with the permission of both the site being visited and the group's owner.  The site can allow or deny permission to any or all third parties via a `Permissions-Policy` (directive named "join-ad-interest-group"), where the default policy is to allow all in the top-level page and to deny all in cross-domain iframes.  The group's owner can indicate permission by `joinAdInterestGroup()` running in a page or iframe in the owner's domain, and can delegate that permission to any other domains via a list at a `.well-known` URL (see [1.3 Permission Delegation](#13-permission-delegation)).  These can be combined, to allow a DSP to add a person to one of its interest groups based on publisher context, as discussed in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups) — provided the publisher's `Permissions-Policy` permits interest group additions by its SSP, and the DSP gives this SSP this ability.  If some permission is missing, `joinAdInterestGroup()` will raise an `Error` describing the reason for failure.
 
-There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which looks only at `myGroup.name` and `myGroup.owner`.  As a special case to support in-ad UIs, invoking `navigator.leaveAdInterestGroup()` from inside an ad that is being targeted at a particular interest group will cause the browser to leave that group, irrespective of permission policies.
+The returned `auctionResultPromise` is resolved on the InterestGroup is successfully joined, and rejected with an error if the join operation fails. The error message and the resolution time must _not_ depend on what interest groups a user is in, or any cross-origin browser state, apart from the results of the .well-known fetch, to avoid leaking any data across sites.
+
+There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which looks only at `myGroup.name` and `myGroup.owner`. As with join calls, `leaveAdInterestGroup()` also returns a promise. As a special case to support in-ad UIs, invoking `navigator.leaveAdInterestGroup()` from inside an ad that is being targeted at a particular interest group will cause the browser to leave that group, irrespective of permission policies.
 
 The browser will remain in an interest group for only a limited amount of time.  The duration is specified in the call to `joinAdInterestGroup()`, and will be capped at 30 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's `userBiddingSignal` or list of ads.
 
@@ -124,7 +126,7 @@ The browser will provide protection against microtargeting, by only rendering an
 
 #### 1.3 Permission Delegation
 
-When a frame navigated to one domain calls joinAdInterestGroup() or leaveAdInterestGroup() for an interest group with a different owner, the browser will fetch the URL https://owner.domain/.well-known/interest-group/permissions/?origin=frame.origin, where `owner.domain` is domain that owns the interest group and `frame.origin` is the origin of the frame. The fetch is made without credentials, using the [Network Partition Key](https://fetch.spec.whatwg.org/#network-partition-keys) of the frame that invoked the method. The fetched response should have a JSON MIME type and be of the format:
+When a frame navigated to one domain calls joinAdInterestGroup() or leaveAdInterestGroup() for an interest group with a different owner, the browser will fetch the URL https://owner.domain/.well-known/interest-group/permissions/?origin=frame.origin, where `owner.domain` is domain that owns the interest group and `frame.origin` is the origin of the frame. The fetch uses the `omit` [credentials mode](https://fetch.spec.whatwg.org/#concept-request-credentials-mode), using the [Network Partition Key](https://fetch.spec.whatwg.org/#network-partition-keys) of the frame that invoked the method. To avoid leaking cross-origin data through the returned Promise unexpectedly, the fetch uses the `cors` [mode](https://fetch.spec.whatwg.org/#concept-request-mode). The fetched response should have a JSON MIME type and be of the format:
 
     ```
     { "joinAdInterestGroup": true/false,
@@ -134,9 +136,7 @@ When a frame navigated to one domain calls joinAdInterestGroup() or leaveAdInter
 
 Indicating whether the origin in the path has permissions to join and/or leave interest groups owned by the domain the request is sent to. Missing permissions are assumed to be false.
 
-The browser may limit, per page or globally, the number of interest groups joins concurrently waiting on `.well-known` fetches at a time, and drop additions that exceed this limit. It is recommended that at least 20 be allowed per live page at a time.
-
-Browsers may also limit pending leave operations that need `.well-known` fetches. It's recommended that at least 1,000 across 20 different owners be allowed per live page at a time.
+Since joining or leaving a group may depend on a network requests, browsers may delay these requests, or run them out of order. Each frame must, however, run all pending joins and leaves for a single owner in the order in which they were made. Same-origin operations should be applied immediately. When a page or frame is navigated, the browser should make a best-effort attempt to complete pending join and leave operations that are blocked on a network fetch, but may choose to drop them if there are more than 20 for a site. This is intended to allow joining or leaving a cross-origin interest group at the same time as starting a navigation in response to a user gesture, though previous join/leave calls may still cause such an operation to be dropped.
 
 In order to prevent leaking data, join and leave calls must request the `.well-known` file, regardless of whether the user is in the group or not, as otherwise, whether or not a fetch is made can potentially leak data. Browsers may cache `.well-known` fetch results that share a network partition key.
 
