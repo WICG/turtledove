@@ -111,9 +111,9 @@ The browser will remain in an interest group for only a limited amount of time. 
 
 The `priority` is used to select which interest groups participate in an auction when the number of interest groups are limited by the `perBuyerGroupLimits` attribute of the auction config. If not specified, a `priority` of `0.0` is assigned. There is no special meaning to these values. These values are only used to select interest groups to participate in an auction such that if there is an interest group participating in the auction with priority `x`, all interest groups with the same owner having a priority `y` where `y > x` should also participate (i.e. `generateBid` will be called). In the case where some but not all interest groups with equal priority can participate in an auction due to `perBuyerGroupLimits`, the participating interest groups will be uniformly randomly chosen from the set of interest groups with that priority.
 
-The `userBiddingSignals` is for storage of additional metadata that the owner can use during on-device bidding, and the `trustedBiddingSignals*` attributes provide another mechanism for making real-time data available for use at bidding time.
+The `userBiddingSignals` is for storage of additional metadata that the owner can use during on-device bidding, and the `trustedBiddingSignals` attributes provide another mechanism for making real-time data available for use at bidding time.
 
-The `biddingWasmHelperUrl` field is optional, and lets the bidder provide computationally-expensive subroutines in WebAssembly, rather than JavaScript, to be driven from the JavaScript function provided by `biddingLogicUrl`. If provided, it must point to a WebAssembly binary, delivered with a `application/wasm` mimetype. The corresponding `WebAssembly.Module` will be made available by the browser to the `generateBid` function.
+The `biddingWasmHelperUrl` field is optional, and lets the bidder provide computationally-expensive subroutines in WebAssembly, rather than JavaScript, to be driven from the JavaScript function provided by `biddingLogicUrl`. If provided, it must point to a WebAssembly binary, delivered with an `application/wasm` mimetype. The corresponding `WebAssembly.Module` will be made available by the browser to the `generateBid` function.
 
 The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically update the attributes of the interest group: any new values returned in this way overwrite the values previously stored (except that the `name` and `owner` cannot be changed).  However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateUrl` , e.g. at least 100 browsers with the same update URL. This will not include any metadata, so data such as the interest group `name` should be included within the URL, so long as the URL exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
 
@@ -185,7 +185,7 @@ Optionally, `perBuyerGroupLimits` can be specified to limit the number of of int
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
 
-In the case of a component auction, all `AuctionConfig` parameters for that component auction are only scoped to buyer and seller scripts run as part of that auction component. Similarly, all vaues specified by the top-level auction are not applied to the component auctions.
+In the case of a component auction, all `AuctionConfig` parameters for that component auction are only scoped to buyer and seller scripts run as part of that auction component. Similarly, all values specified by the top-level auction are not applied to the component auctions.
 
 
 #### 2.2 Auction Participants
@@ -230,7 +230,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
 
 The output of `scoreAd()` is an object with the following fields:
 * desirability: Number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.) The winner of the auction is the ad object which was given the highest score.
-* allowComponentAuction: (optional) If the bid being scored is from a component auction and this value is not true, the bid is ignored. If not present, this value is consired false. This field must be present and true both when the component seller scores a bid, and when that bid is being scored by the top-level auction.
+* allowComponentAuction: (optional) If the bid being scored is from a component auction and this value is not true, the bid is ignored. If not present, this value is considered false. This field must be present and true both when the component seller scores a bid, and when that bid is being scored by the top-level auction.
 
 If `scoreAd()` returns only a numeric value, it's equivalent to returning {'score': numericValue, `allowComponentAuciton`: false}.
 
@@ -253,7 +253,7 @@ Seller scripts in component auctions behave a little differently.  They still ex
 * allowComponentAuction: If this field is not true, the bid will be rejected.
 * bid: (optional) Modified bid value to provide to the top-level seller script. If present, this will be passed to the top-level seller's `scoreAd()` and `reportResult()` methods instead of the original bid, if the ad wins the component auction and top-level auction, respectively.
 
-Once all of a component auction's bids have been scored by the component auction's seller script, the bid with the highest score is passed to the top-level seller to score. For that bid, the top-level seller's `scoreAd()` method is passed the `ad` value from the component auction seller's `scoreAd()` method, and there is an an additional `componentSeller` field in the `browserSignals`, which is the seller for the component auction. All other values are the same as if the bid had come from an interest group participating directly in the top-level auction. In the case of a tie, one of the highest scoring bids will be chosen randomly and only that bid will passed to the top-level seller to score.
+Once all of a component auction's bids have been scored by the component auction's seller script, the bid with the highest score is passed to the top-level seller to score. For that bid, the top-level seller's `scoreAd()` method is passed the `ad` value from the component auction seller's `scoreAd()` method, and there is an additional `componentSeller` field in the `browserSignals`, which is the seller for the component auction. All other values are the same as if the bid had come from an interest group participating directly in the top-level auction. In the case of a tie, one of the highest scoring bids will be chosen randomly and only that bid will be passed to the top-level seller to score.
 
 The ultimate winner of the top-level auction is the single bid the top-level seller script gives the highest score. This may either be the winning bid of one of the component auctions, or a bid from one of the `interestGroupBuyers` in the `AuctionConfig` of the top-level auction. Those bids will be scored directly by the top-level seller script without having to win any component auction.
 
@@ -345,7 +345,7 @@ The arguments to `generateBid()` are:
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
       'seller': 'https://www.example-ssp.com',
-      `topLevelSeller`: 'https://www.another-ssp.com',
+      'topLevelSeller': 'https://www.another-ssp.com',
       'joinCount': 3,
       'bidCount': 17,
       'prevWins': [[time1,ad1],[time2,ad2],...],
@@ -417,12 +417,12 @@ reportResult(auctionConfig, browserSignals) {
 The arguments to this function are:
 
 *   auctionConfig: The auction configuration object passed to `navigator.runAdAuction()`
-*   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction. `topLevelSeller`, `topLevelSellerSignals`, and `modifiedBid` are only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction. `modifiedBid` is bid value a component auction's `scoreAd()` script passes to the top-level auction. `topLevelSellerSignals` is the output of the top-level seller's ReportResult() method:
+*   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction. `topLevelSeller`, `topLevelSellerSignals`, and `modifiedBid` are only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction. `modifiedBid` is the bid value a component auction's `scoreAd()` script passes to the top-level auction. `topLevelSellerSignals` is the output of the top-level seller's ReportResult() method:
 
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
-      `topLevelSeller`: 'https://www.example-ssp.com',
-      `componentSeller`: 'https://www.some-other-ssp.com',
+      'topLevelSeller': 'https://www.example-ssp.com',
+      'componentSeller': 'https://www.some-other-ssp.com',
       'interestGroupOwner': 'https://www.example-dsp.com/',
       'renderUrl': 'https://cdn.com/url-of-winning-creative.wbn',
       'bid:' bidValue,
