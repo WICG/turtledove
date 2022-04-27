@@ -86,7 +86,7 @@ To meet these requirements, the proposed design for the key-value server relies 
 
 
 
-![alt_text](assets/fledge_key_value_server.jpg "image_tooltip")
+![alt_text](assets/fledge_key_value_server.png "FLEDGE Key Value Server system diagram")
 
 
 
