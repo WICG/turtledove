@@ -344,7 +344,7 @@ A list of JSON objects where each object contains the following:
   <tr>
    <td>delete
    </td>
-   <td>If set, it indicates that this key should be deleted immediately.
+   <td>If set, it indicates that this key should be deleted.
    </td>
    <td>DSP, SSP
    </td>
