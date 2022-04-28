@@ -88,7 +88,7 @@ The worklet is able to add the buyerEventId/sellerEventId and any other relevant
 
 ```
 registerAdBeacon({
- 'click': {'url': 'https://adtech.example/click?buyer_event_id=123'},
+ 'click': 'https://adtech.example/click?buyer_event_id=123',
 });
 ```
 
