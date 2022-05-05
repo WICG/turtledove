@@ -10,10 +10,7 @@ Authors:
 
 # Context
 
-This explainer is the first step in the standardization process of the key/value server beyond the temporary BYOS model in the FLEDGE Origin Trial phase. It does not impact the ongoing Origin Trial, which is detailed [here](https://github.com/WICG/turtledove/blob/main/Proposed_First_FLEDGE_OT_Details.md#trusted-signals). 
-
-The key/value service is not finalized. The service as described is subject to change as we incorporate ecosystem feedback and iterate.
-
+We are currently in an early requirements gathering and design phase and aim to test this server either in 2H 2022 or 1H 2023. Use of this server is not currently part of the critical path for third-party cookie deprecation, however we welcome input on the design, privacy properties and timing from the ecosystem on both setting up their own server as well as leveraging one described here.
 
 # Introduction
 
