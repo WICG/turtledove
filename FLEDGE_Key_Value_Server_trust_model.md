@@ -41,7 +41,7 @@ Before reading this explainer, it will be helpful to familiarize yourself with k
 *   _Client software_: shorthand for the implementation of FLEDGE in a browser or on a device (such as a [Chrome browser](https://www.google.com/url?q=https://github.com/WICG/turtledove/blob/main/FLEDGE.md%2331-fetching-real-time-data-from-a-trusted-server&sa=D&source=docs&ust=1651077929049635&usg=AOvVaw2mNLZwBgIzzYL7iUKJTUwb) or an [Android device](https://www.google.com/url?q=https://developer.android.com/design-for-safety/ads/fledge%23ad-selection-ad-tech-platform-managed-trusted-server&sa=D&source=docs&ust=1651077929049793&usg=AOvVaw19U97RKrvuOGjGH-tIk98Y)).
 *   _Attestation_: a mechanism to authenticate software identity, usually with [cryptographic hashes](https://en.wikipedia.org/wiki/Cryptographic_hash_function) or signatures. In this proposal, attestation matches the code running in the adtech-operated key/value service with the open source code.
 *   _Trusted Execution Environment (TEE)_: a dedicated, closed execution context that is isolated through hardware memory protection and cryptographic protection of storage. The TEE's contents are protected from observation and tampering by unauthorized parties, including the root user.
-*   _Key management service (KMS): _a centralized component tasked with provision of decryption keys to appropriately secured aggregation server instances. Provision of public encryption keys to end user devices and key rotation also fall under key management.
+*   _Key management service (KMS)_: a centralized component tasked with provision of decryption keys to appropriately secured aggregation server instances. Provision of public encryption keys to end user devices and key rotation also fall under key management.
 
 
 # Key/value server workflow
@@ -83,7 +83,7 @@ To meet these requirements, the proposed design for the key-value server relies 
 
 
 
-![alt_text](assets/fledge_key_value_server.png "FLEDGE Key Value Server system diagram")
+![FLEDGE Key Value Server system diagram](assets/fledge_key_value_server.png)
 
 
 
