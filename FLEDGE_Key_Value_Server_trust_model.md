@@ -109,15 +109,15 @@ There are a number of ways that visible side effects of request handling are pos
 
 
 1. _Monitoring metrics_ - Only noised aggregate metrics will be available for monitoring and alerting.  These will be aggregated to at least k size.
-    1. For example, counting the approximate number of failed requests in the past n minutes is likely to be fine but doing so at millisecond granularity is not.
+   1. For example, counting the approximate number of failed requests in the past n minutes is likely to be fine but doing so at millisecond granularity is not.
 2. _Logging_ - No event-level logs will be written.
-    2. Event-level logging that normally happens from any shared libraries we might use will be disabled.
+   1. Event-level logging that normally happens from any shared libraries we might use will be disabled.
 3. _Outbound RPCs_ - These servers will make a small set of outbound RPCs that they initiate.
-    3. They’ll do so to each other for load balancing and sharding of data. Requests will only be made to other key/value servers that are part of this system and that have the same protections in place. Attestation checks will be chained together.
-    4. There are no outbound RPCs to other systems.
+   1. They’ll do so to each other for load balancing and sharding of data. Requests will only be made to other key/value servers that are part of this system and that have the same protections in place. Attestation checks will be chained together.
+   1. There are no outbound RPCs to other systems.
 4. _Inbound RPC responses_ - As in the [API explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE_Key_Value_Server_API.md), there are two sets of APIs.
-    5. For the client device to read K/V data. The client will provide its own secure channel and user data is allowed to go back to the browser.
-    6. For adtech server operators to mutate K/V data. These are private APIs that are only available to the server operator. The K/V server will acknowledge success or failure but not send other responses.
+   1. For the client device to read K/V data. The client will provide its own secure channel and user data is allowed to go back to the browser.
+   2. For adtech server operators to mutate K/V data. These are private APIs that are only available to the server operator. The K/V server will acknowledge success or failure but not send other responses.
 
 
 ## Trusted Execution Environment
