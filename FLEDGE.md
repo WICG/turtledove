@@ -315,6 +315,7 @@ Either trusted server may optionally include a numeric `Data-Version` header on 
 For detailed specification and explainers of the trusted key-value server, see also the following:
 
 - [FLEDGE Key/Value Server APIs Explainer](https://github.com/WICG/turtledove/blob/master/FLEDGE_Key_Value_Server_API.md)
+- [FLEDGE Key/Value Server Trust Model Explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE_Key_Value_Server_trust_model.md)
 
 #### 3.2 On-Device Bidding
 
