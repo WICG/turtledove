@@ -445,18 +445,19 @@ The buyer's JavaScript (i.e. the same script, loaded from `biddingLogicUrl`, tha
 
 
 ```
-reportWin(interestGroup, auctionSignals, perBuyerSignals, sellerSignals, browserSignals) {
+reportWin(auctionSignals, perBuyerSignals, sellerSignals, browserSignals) {
   ...
 }
 ```
 
 
 The arguments to this function are:
-*   interestGroup, auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
-*   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
-*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, and with the additional `seller` field.  The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.  If the winning bid was from a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction.  Additional fields could also include some buyer-specific signal like the second-highest bid from that particular buyer.
 
-The `reportWin()` function's reporting happens by calling the Private Aggregation API or, temporarily, directly calling network APIs. During this temporary period in which `reportWin` may call network APIs, rather than calling the Private Aggregation API, the `interestGroup` object will be unavailable to the `reportWin` function, and the `interestGroupName` will instead be available in `browserSignals`.
+*   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
+*   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
+*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields.  The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.  If the winning bid was from a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction.  Additional fields could also include some buyer-specific signal like the second-highest bid from that particular buyer.
+
+The `reportWin()` function's reporting happens by calling the Private Aggregation API or, temporarily, directly calling network APIs.
 
 Ads often need to report on events that happen once the ad is rendered.  One common example is reporting on whether an ad became viewable on-screen.  We will need a communications channel to allow the publisher page or the Fenced Frame to pass such information into the worklet responsible for reporting.  Some additional design work is needed here.
 
