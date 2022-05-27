@@ -98,7 +98,7 @@ that is sent with `Join` requests.  Even the operator of the k-anonymity server
 shouldn't be able to identify unique users calling `Join`.  If the operator
 cheats, and examines the database stored by `Join`, we're protecting users
 by only sending to `Join` a value `b` with entropy limited to $j$ bits.
-We expect $8\leq j\leq 16$, meaning there are no more than $65,536$ different
+We expect $8\leq j\leq 16$, meaning there are no more than 65,536 different
 possible identifiers; which is far lower than the number of 1-day active
 users of desktop Chrome.
 
