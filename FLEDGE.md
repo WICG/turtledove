@@ -453,11 +453,14 @@ The arguments to this function are:
       'desirability': desirabilityScoreForWinningAd,
       'topLevelSellerSignals': outputOfTopLevelSellersReportResult,
       'dataVersion': versionFromKeyValueResponse,
-      'modifiedBid': modifiedBidValue
+      'modifiedBid': modifiedBidValue,
+      'highestScoringOtherBid': highestScoringOtherBidValue
     }
     ```
 
 The `browserSignals` argument must be handled carefully to avoid tracking.  It certainly cannot include anything like the full list of interest groups, which would be too identifiable as a tracking signal.  The `renderUrl` can be included since it has already passed a k-anonymity check.  The browser may limit the precision of the bid and desirability values to avoid these numbers exfiltrating information from the interest group's `userBiddingSignals`.  On the upside, this set of signals can be expanded to include useful additional summary data about the wider range of bids that participated in the auction, e.g. the second-highest bid or the number of bids.  Additionally, the `dataVersion` will only be present if the `Data-Version` header was provided in the response headers from the Trusted Scoring server.
+
+`highestScoringOtherBid` is the value of a bid with the second highest score in the auction. Since it's a bid, and not a score, it may be greater than `bid`. If there was only one bid, it will be 0. In the case of a tie, it will be randomly chosen from all bids with the second highest score, excluding the winning bid. A component seller's reportWin() functions will be passed a bid with the second highest score in the component auction, not the top-level auction.
 
 The `reportResult()` function's reporting happens by directly calling network APIs in the short-term, but will eventually go through the Private Aggregation API once it has been developed. The output of this function is not used for reporting, but rather as an input to the buyer's reporting function.
 
