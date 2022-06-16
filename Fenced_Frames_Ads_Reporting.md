@@ -63,7 +63,7 @@ Browser will process this similar to how the existing [navigator.sendBeacon](htt
 ```
 window.fence.reportEvent({
   'eventType': 'click',
-  'eventData': {'clickX': '123', 'clickY': '456'},
+  'eventData': JSON.stringify({'clickX': '123', 'clickY': '456'}),
   'destination':['buyer', 'seller']
 });
 ```
