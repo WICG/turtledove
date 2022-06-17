@@ -68,6 +68,14 @@ window.fence.reportEvent({
 });
 ```
 
+```
+window.fence.reportEvent({
+  'eventType': 'click',
+  'eventData': 'an example string',
+  'destination':['buyer', 'seller']
+});
+```
+
 Note `window.fence` here is a new namepsace for APIs that are only available from within a fenced frame. 
 
 ## registerAdBeacon
