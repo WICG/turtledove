@@ -45,9 +45,11 @@ The following new APIs will be added for achieving this.
 
 ## reportEvent
 
-Fenced frame can invoke this API for the browser to be able to send a beacon with the data in this API, to the URL registered by the worklet in registerAdBeacon (see below). Depending on the ‘destination type’ present here, the beacon will be sent to either the buyer’s or the seller’s registered URL. Examples of such events are mouse hovers, clicks that may or may not lead to navigation e.g. video player control element clicks etc.
+Fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon with event data to a URL registered by the worklet in `registerAdBeacon` (see below). Depending on the declared `destination`, the beacon is sent to either the buyer's or the seller's registered URL. Examples of such events are mouse hovers, clicks (which may or may not lead to navigation e.g. video player control element clicks), etc.
 
-Browser will process this similar to how the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon) works via sending an HTTP POST request.
+This API is available from the initial rendered ad document and across subsequent same-origin navigations, but it's no longer available after cross-origin navigations. (This way, the ad may redirect itself without losing access to reporting, but other sites can't send spurious reports.)
+
+The browser processes the beacon by sending an HTTP POST request, like the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
 
 
 ### Parameters
