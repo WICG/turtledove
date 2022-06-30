@@ -346,7 +346,7 @@ Once the trusted bidding signals are fetched, each interest group's bidding func
 
 
 ```
-generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
+generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals, sameSiteInterestGroups) {
   ...
   return {'ad': adObject,
           'bid': bidValue,
@@ -377,6 +377,7 @@ The arguments to `generateBid()` are:
       'dataVersion': 1, /* Data-Version value from the trusted bidding signals server's response(s) */
     }
     ```
+* sameSiteInterestGroups: If the user is added to `interestGroup` on a single site, this argument contains a list of all other interest group objects added on that site; Otherwise, this argument will be an empty list.
 
 In the case of component auctions, an interest group's `generateBid()` function will be invoked in all component auctions for which it qualifies, though the `bidCount` value passed to future auctions will only be incremented by one for participation in that auction as a whole.
 
