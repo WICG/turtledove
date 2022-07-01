@@ -19,6 +19,7 @@ We plan to hold regular meetings under the auspices of the WICG to go through th
     - [2.2 Auction Participants](#22-auction-participants)
     - [2.3 Scoring Bids](#23-scoring-bids)
     - [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions)
+    - [2.5 extraSignals Hidden from the Page (for Auction Worklets Only)](#25-extrasignals-hidden-from-the-page-for-auction-worklets-only)
   - [3. Buyers Provide Ads and Bidding Functions (BYOS for now)](#3-buyers-provide-ads-and-bidding-functions-byos-for-now)
     - [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server)
     - [3.2 On-Device Bidding](#32-on-device-bidding)
@@ -170,6 +171,7 @@ const myAuctionConfig = {
   'trustedScoringSignalsUrl': ...,
   'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
   'auctionSignals': {...},
+  'extraSignals: 'https://www.example-ssp.com/...',
   'sellerSignals': {...},
   'sellerTimeout': 100,
   'perBuyerSignals': {'https://www.example-dsp.com': {...},
@@ -195,6 +197,8 @@ const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
 
 
 This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auctionSignals`, `sellerSignals`, and `perBuyerSignals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auctionSignals` are made available to everyone, while the other signals are given only to one party.
+
+The optional `extraSellers` field can also be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `extraSignals` content cannot be viewed by scripts running on the page -- the signals may only be read by the intended auction participants. For more details, see [2.5 extraSignals Hidden from the Page (for Auction Worklets Only)](#25-extrasignals-hidden-from-the-page-for-auction-worklets-only).
 
 In some cases, multiple SSPs may want to participate in an auction, with the winners of separate auctions being passed up to another auction, run by another SSP. To facilitate these "component auctions", `componentAuctions` can optionally contain additional auction configurations for each seller's "component auction". The winning bid of each of these "component auctions" will be passed to the "top-level" auction. How bids are scored in this case is further described in [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions). The `AuctionConfig` of component auctions may not have their own `componentAuctions`.
 
@@ -279,6 +283,40 @@ Seller scripts in component auctions behave a little differently.  They still ex
 Once all of a component auction's bids have been scored by the component auction's seller script, the bid with the highest score is passed to the top-level seller to score. For that bid, the top-level seller's `scoreAd()` method is passed the `ad` value from the component auction seller's `scoreAd()` method, and there is an additional `componentSeller` field in the `browserSignals`, which is the seller for the component auction. All other values are the same as if the bid had come from an interest group participating directly in the top-level auction. In the case of a tie, one of the highest scoring bids will be chosen randomly and only that bid will be passed to the top-level seller to score.
 
 The ultimate winner of the top-level auction is the single bid the top-level seller script gives the highest score. This may either be the winning bid of one of the component auctions, or a bid from one of the `interestGroupBuyers` in the `AuctionConfig` of the top-level auction. Those bids will be scored directly by the top-level seller script without having to win any component auction.
+
+
+#### 2.5 extraSignals Hidden from the Page (for Auction Worklets Only)
+
+Auction config parameter values are visible to any scripts, first or third party, that are running on the frame that called `runAdAuction()`. For instance, a script could assign a new proxy function to `navigator.runAdAuction()`.
+
+For auction fairness, sellers might not want to reveal seller and per-buyer signals to other parties.
+
+
+The optional `extraSellers` field can be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `extraSignals` content cannot be viewed by scripts running on the page -- the signals may only be read by the respective intended auction participants. If present, `extraSellers` should be an https URL of a resource in a (subresource bundle)[https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md] that has been loaded by the current document, whose contents are of type `application/json`, with the following response headers: `X-Allow-Fledge: true` and `X-FLEDGE-Auction-Only: true`.
+
+The JSON response should be a dictionary, whose keys are the origins of the auction participants (including both the seller and individual buyers), and whose values are the signals to be delivered to each respective auction participant.
+
+```
+{
+  'seller.com': {...},
+  'buyer1.com': {...},
+  'buyer2.com': {...}
+}
+```
+
+It is not necessary to specify `extraSignals` for all auction participants.
+
+Scripts on the page will not be able to read (i.e. via [fetch()](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) or [XMLHttpRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest)) any resource that is served with the header `X-FLEDGE-Auction-Only` -- only the auction particpants will be able to access those signals.
+
+Since the JSON response containing the signals is a subresource bundle response, scripts on the page may attempt to fetch and parse the bundle file directly to retrieve the signals. Servers can check that requests are made with the request header `Sec-Fetch-Dest: webbundle` (and fail the request if that header isn't present as expected), as that header cannot be altered by scripts, and will only be sent with the value `webbundle` when the bundle is fetched via a `<script type="webbundle">` tag.
+
+The bundle may be fetched using credentials like cookies, as described in the [subresource bundles explainer](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md#requests-mode-and-credentials-mode).
+
+CORS will be used when fetching the JSON response -- this allows the seller origin to not match the origin of the frame that called `runAdAuction()` (that is, the publisher origin). Since the publisher calls `runAdAuction()` and controls which `extraSignals` URL is requested, the publisher origin is therefore considered the initiator of the network reqeust for signals. Therefore, when the publisher and seller aren't the same origin, the response should also contain the [Access-Control-Allow-Origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin) header to give the publisher's origin permission to read the response. (Recall that this permission is limited in scope by the `X-FLEDGE-Auction-Only` header).
+
+For the JSON response, only the `https` scheme is supported -- the `uuid-in-package` scheme isn't supported as that scheme doesn't support CORS.
+
+Worklet processes follow Chrome's standard site-isolation policies. On Android, due to resource constraints, it's possible that a worklet may run in the same process as a renderer.
 
 
 ### 3. Buyers Provide Ads and Bidding Functions (BYOS for now)
