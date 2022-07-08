@@ -149,15 +149,17 @@ const myAuctionConfig = {
   'sellerSignals': {...},
   'sellerTimeout': 100,
   'sellerExperimentGroupId': 12345,
-  'perBuyerSignals': {'https://www.example-dsp.com': {
-                        'buyerExperimentGroupId': 234,
-                        ...},
+  'perBuyerSignals': {'https://www.example-dsp.com': {...},
                         'https://www.another-buyer.com': {...},
                         ...},
   'perBuyerTimeouts': {'https://www.example-dsp.com': 50,
                         'https://www.another-buyer.com': 200,
                         '*': 150,
                         ...},
+  'perBuyerExperimentGroupIds': {'https://www.example-dsp.com': 234,
+                       'https://www.another-buyer.com': 345,
+                       '*': 456,
+                       ...},
   'componentAuctions': [
     {'seller': 'https://www.some-other-ssp.com',
       'decisionLogicUrl': ...,
@@ -177,7 +179,7 @@ The returned `auctionResultPromise` object is _opaque_: it is not possible for a
 
 Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
 
-Optionally, `sellerExperimentGroupId` parameter can be specified by the seller to support coordinated experiments with seller trusted server. If specified, this must be an integer between zero and 65535 (16 bits). Optionally,`buyerExperimentGroupId` parameter can be specified by the buyer as part of `perBuyerSignals` to support coordinated experiments with buyer trusted server. If specified, this must also be an integer between zero and 65535 (16 bits).
+Optionally, `sellerExperimentGroupId` parameter can be specified by the seller to support coordinated experiments with seller trusted server. If specified, this must be an integer between zero and 65535 (16 bits). Optionally,`perBuyerExperimentGroupIds` can be specified by the buyer to support coordinated experiments with buyer trusted server. If specified, this must also be an integer between zero and 65535 (16 bits).
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
 
@@ -275,11 +277,11 @@ Buyers have three basic jobs in the on-device ad auction:
 
 Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsUrl` and `trustedBiddingSignalsKeys` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
 
-    https://www.kv-server.example/getvalues?hostname=publisher.com&buyerExperimentGroupId=12345&keys=key1,key2
+    https://www.kv-server.example/getvalues?hostname=publisher.com&experimentGroupId=12345&keys=key1,key2
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `buyerExperimentGroupId` comes from `perBuyerSignals` if provided, and `keys` is a list of `trustedBiddingSignalsKeys` strings, perhaps coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl`.  The response from the server should be a JSON object whose keys are key1, key2, etc., and whose values will be made available to the buyer's bidding functions (un-coalesced).
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `experimentGroupId` comes from `perBuyerExperimentGroupIds` if provided, and `keys` is a list of `trustedBiddingSignalsKeys` strings, perhaps coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl`.  The response from the server should be a JSON object whose keys are key1, key2, etc., and whose values will be made available to the buyer's bidding functions (un-coalesced).
 
-Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object. The parameter `sellerExperimentGroupId` comes from the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderUrls bids offered in the auction. It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
+Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderUrls bids offered in the auction. It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
 
     ```
     { 'renderUrls': {
