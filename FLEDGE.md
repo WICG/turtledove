@@ -179,7 +179,7 @@ The returned `auctionResultPromise` object is _opaque_: it is not possible for a
 
 Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
 
-Optionally, `sellerExperimentGroupId` parameter can be specified by the seller to support coordinated experiments with seller trusted server. If specified, this must be an integer between zero and 65535 (16 bits). Optionally,`perBuyerExperimentGroupIds` can be specified by the buyer to support coordinated experiments with buyer trusted server. If specified, this must also be an integer between zero and 65535 (16 bits).
+Optionally, `sellerExperimentGroupId` can be specified by the seller to support coordinated experiments with the seller's trusted server. If specified, this must be an integer between zero and 65535 (16 bits). Optionally,`perBuyerExperimentGroupIds` can be specified to support coordinated experiments with buyers' trusted servers. If specified, this must also be an integer between zero and 65535 (16 bits).
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
 
