@@ -292,7 +292,7 @@ Auction config parameter values are visible to any scripts, first or third party
 For auction fairness, sellers might not want to reveal seller and per-buyer signals to other parties.
 
 
-The optional `extraSellers` field can be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `extraSignals` content cannot be viewed by scripts running on the page -- the signals may only be read by the respective intended auction participants. If present, `extraSellers` should be an https URL of a resource in a (subresource bundle)[https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md] that has been loaded by the current document, whose contents are of type `application/json`, with the following response headers: `X-Allow-Fledge: true` and `X-FLEDGE-Auction-Only: true`.
+The optional `extraSellers` field can be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `extraSignals` content cannot be viewed by scripts running on the page -- the signals may only be read by the respective intended auction participants. If present, `extraSellers` should be an https URL of a resource in a [subresource bundle](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md) that has been loaded by the current document, whose contents are of type `application/json`, with the following response headers: `X-Allow-Fledge: true` and `X-FLEDGE-Auction-Only: true`.
 
 The JSON response should be a dictionary, whose keys are the origins of the auction participants (including both the seller and individual buyers), and whose values are the signals to be delivered to each respective auction participant.
 
