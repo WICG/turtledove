@@ -85,18 +85,14 @@ A similar API was initially discussed here: https://github.com/WICG/turtledove/i
 
 ### Parameters
 
-**Event type:** E.g. click. This corresponds to the event type in reportEvent. This is for enabling buyers/ sellers to register distinct beacon URLs for different event types.
-
-**URL:** The URL to which a beacon will be sent by the browser on receiving events from the fenced frame via reportEvent
-The worklet is able to add the buyerEventId/sellerEventId and any other relevant information via this API.
-
+A map from event type to reporting url, where the event type corresponds to the event type in reportEvent. Event type enables the worklets (for buyer, seller or component seller) to register distinct beacon URLs for different event types. The reporting url is the url to which a beacon will be sent by the browser on receiving events from the fenced frame via reportEvent. The worklet is able to add the buyerEventId/sellerEventId and any other relevant information by adding to this url.
 
 ### Example
 
 
 ```
 registerAdBeacon({
- 'click': {'url': 'https://adtech.example/click?buyer_event_id=123'},
+ 'click': 'https://adtech.example/click?buyer_event_id=123',
 });
 ```
 
