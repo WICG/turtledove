@@ -54,7 +54,7 @@ Browser will process this similar to how the existing [navigator.sendBeacon](htt
 
 **Event type and data:** Includes the event type and data associated with an event. When an event type e.g. click matches to the event type registered in registerAdBeacon, the data will be used by the browser as the data sent in the beacon sent to the registered URL.
 
-**Destination type:** List of values to determine whether this event needs to be reported to both buyer and seller, only buyer or only seller.
+**Destination type:** List of values to determine whether this event needs to be reported to buyer, seller or component seller or any combination of those.
 
 
 ### Example
@@ -85,7 +85,7 @@ A similar API was initially discussed here: https://github.com/WICG/turtledove/i
 
 ### Parameters
 
-A map from event type to reporting url, where the event type corresponds to the event type in reportEvent. Event type enables the worklets (for buyer, seller or component seller) to register distinct beacon URLs for different event types. The reporting url is the url to which a beacon will be sent by the browser on receiving events from the fenced frame via reportEvent. The worklet is able to add the buyerEventId/sellerEventId and any other relevant information by adding to this url.
+A map from event type to reporting url, where the event type corresponds to the event type in reportEvent. Event type enables the worklets (for buyer, seller or component seller) to register distinct beacon URLs for different event types. The reporting url is the url to which a beacon will be sent by the browser on receiving events from the fenced frame via reportEvent. The worklet can add the buyerEventId/sellerEventId or any other relevant information as query parameters to this url.
 
 ### Example
 
