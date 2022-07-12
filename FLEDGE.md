@@ -255,8 +255,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
       'dataVersion': 1, /* Data-Version value from the trusted scoring signals server's response */
     }
     ```
-*   extraSellerSignals: Like auctionConfig.sellerSignals, but passed via the
-    [extraSignals](#25-extrasignals-hidden-from-the-page-for-auction-worklets-only) mechanism.
+*   extraSellerSignals: Like auctionConfig.sellerSignals, but passed via the [extraSignals](#25-extrasignals-hidden-from-the-page-for-auction-worklets-only) mechanism. These are the signals destined for the seller's origin.
 
 The output of `scoreAd()` is an object with the following fields:
 * desirability: Number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.) The winner of the auction is the ad object which was given the highest score.
@@ -501,8 +500,7 @@ The arguments to this function are:
       'modifiedBid': modifiedBidValue
     }
     ```
-*   extraSellerSignals: Like auctionConfig.sellerSignals, but passed via the
-    [extraSignals](#25-extrasignals-hidden-from-the-page-for-auction-worklets-only) mechanism.
+*   extraSellerSignals: Like auctionConfig.sellerSignals, but passed via the [extraSignals](#25-extrasignals-hidden-from-the-page-for-auction-worklets-only) mechanism. These are the signals destined for the seller's origin.
 
 The `browserSignals` argument must be handled carefully to avoid tracking.  It certainly cannot include anything like the full list of interest groups, which would be too identifiable as a tracking signal.  The `renderUrl` can be included since it has already passed a k-anonymity check.  The browser may limit the precision of the bid and desirability values to avoid these numbers exfiltrating information from the interest group's `userBiddingSignals`.  On the upside, this set of signals can be expanded to include useful additional summary data about the wider range of bids that participated in the auction, e.g. the second-highest bid or the number of bids.  Additionally, the `dataVersion` will only be present if the `Data-Version` header was provided in the response headers from the Trusted Scoring server.
 
