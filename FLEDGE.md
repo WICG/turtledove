@@ -301,9 +301,9 @@ The JSON response should be a dictionary, whose keys are the origins of the auct
 
 ```
 {
-  'seller.com': {...},
-  'buyer1.com': {...},
-  'buyer2.com': {...}
+  'https://seller.com': {...},
+  'https://buyer1.com': {...},
+  'https://buyer2.com': {...}
 }
 ```
 
