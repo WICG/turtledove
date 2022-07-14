@@ -304,7 +304,7 @@ Buyers may want to make on-device decisions that take into account real-time dat
 
     https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2&interestGroups=group1,group2
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `keys` is a list of `trustedBiddingSignalsKeys` strings, and "interestGroups" is a list of interest groups paritipating in the uaction.  The requests may becoalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl`.
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `keys` is a list of `trustedBiddingSignalsKeys` strings, and `interestGroups` is a list of interest groups owned by a single buyer paritipating in the auction.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
 
 The response from the server should be a JSON object of the form:
     ```
@@ -315,9 +315,9 @@ The response from the server should be a JSON object of the form:
     }
     ```
 
-and the server must include the HTTP response header "X-fledge-bidding-signals-format-version: 2".  If the server does not include the header, the response will assumed to be an in older format, where the response is only the `keys` subdictionary (when FLEDGE is standardized, this extra header will be removed, and all responses will be assumed to use the new format).
+and the server must include the HTTP response header "X-fledge-bidding-signals-format-version: 2".  If the server does not include the header, the response will assumed to be an in older format, where the response is only the `keys` dictionary. Wwhen FLEDGE is standardized, this extra header will be removed, and all responses will be assumed to use the new format.
 
-The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no trustedBiddingSignalsKeys in the interest group, or there is no trustedBiddingSignalsUrl, then the trustedBiddingSignals argument will be null.
+The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, there are no `trustedBiddingSignalsKeys` in the interest group, or there is no `trustedBiddingSignalsUrl`, then the `trustedBiddingSignals` argument to generateBid() will be null.
 
 Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object. However, it has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderUrls bids offered in the auction. It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
 
