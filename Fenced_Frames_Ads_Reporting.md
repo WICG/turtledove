@@ -54,7 +54,7 @@ Browser will process this similar to how the existing [navigator.sendBeacon](htt
 
 **Event type and data:** Includes the event type and data associated with an event. When an event type e.g. click matches to the event type registered in registerAdBeacon, the data will be used by the browser as the data sent in the beacon sent to the registered URL.
 
-**Destination type:** List of values to determine whether this event needs to be reported to buyer, seller or component seller or any combination of those.
+**Destination type:** List of values to determine whose registered beacons are reported, can be a combination of 'buyer', 'seller', or 'component-seller'.
 
 
 ### Example
@@ -72,7 +72,7 @@ window.fence.reportEvent({
 window.fence.reportEvent({
   'eventType': 'click',
   'eventData': 'an example string',
-  'destination':['buyer', 'seller']
+  'destination':['component-seller']
 });
 ```
 
