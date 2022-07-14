@@ -85,7 +85,7 @@ A similar API was initially discussed here: https://github.com/WICG/turtledove/i
 
 ### Parameters
 
-A map from event type to reporting url, where the event type corresponds to the value of reportEvent. The event type enables worklets (for buyer, seller, or component seller) to register distinct beacon URLs for different event types. The reporting url is the location where a beacon is sent once the fenced frame delivers an event via reportEvent.
+A map from event type to reporting URL, where the event type corresponds to the `eventType` value passed to  `reportEvent()`. The event type enables worklets (for buyer, seller, or component seller) to register distinct reporting URLs for different event types. The reporting URL is the location where a beacon is sent once the fenced frame delivers the corresponding event via `reportEvent()`.
 
 Worklets can add the buyerEventId, sellerEventId, or any other relevant information as query parameters to this url.
 
