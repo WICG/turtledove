@@ -302,9 +302,22 @@ Buyers have three basic jobs in the on-device ad auction:
 
 Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsUrl` and `trustedBiddingSignalsKeys` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
 
-    https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2
+    https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2&interestGroups=group1,group2
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, and `keys` is a list of `trustedBiddingSignalsKeys` strings, perhaps coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl`.  The response from the server should be a JSON object whose keys are key1, key2, etc., and whose values will be made available to the buyer's bidding functions (un-coalesced).
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `keys` is a list of `trustedBiddingSignalsKeys` strings, and "interestGroups" is a list of interest groups paritipating in the uaction.  The requests may becoalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl`.
+
+The response from the server should be a JSON object of the form:
+    ```
+    { 'keys': {
+          'key1': arbitrary_json,
+          'key2': arbitrary_json,
+          ...}
+    }
+    ```
+
+and the server must include the HTTP response header "X-fledge-bidding-signals-format-version: 2".  If the server does not include the header, the response will assumed to be an in older format, where the response is only the `keys` subdictionary (when FLEDGE is standardized, this extra header will be removed, and all responses will be assumed to use the new format).
+
+The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no trustedBiddingSignalsKeys in the interest group, or there is no trustedBiddingSignalsUrl, then the trustedBiddingSignals argument will be null.
 
 Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object. However, it has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderUrls bids offered in the auction. It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
 
