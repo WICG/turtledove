@@ -302,9 +302,9 @@ Buyers have three basic jobs in the on-device ad auction:
 
 Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsUrl` and `trustedBiddingSignalsKeys` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
 
-    https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2&interestGroups=group1,group2
+    https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `keys` is a list of `trustedBiddingSignalsKeys` strings, and `interestGroups` is a list of interest groups owned by a single buyer participating in the auction.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, and `keys` is a list of `trustedBiddingSignalsKeys` strings.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
 
 The response from the server should be a JSON object of the form:
     ```
@@ -315,7 +315,7 @@ The response from the server should be a JSON object of the form:
     }
     ```
 
-and the server must include the HTTP response header "X-fledge-bidding-signals-format-version: 2".  If the server does not include the header, the response will assumed to be an in older format, where the response is only the `keys` dictionary. when FLEDGE is standardized, this extra header will be removed, and all responses will be assumed to use the new format.
+and the server must include the HTTP response header "X-fledge-bidding-signals-format-version: 2".  If the server does not include the header, the response will assumed to be an in older format, where the response is only the `keys` dictionary.
 
 The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, there are no `trustedBiddingSignalsKeys` in the interest group, or there is no `trustedBiddingSignalsUrl`, then the `trustedBiddingSignals` argument to generateBid() will be null.
 
