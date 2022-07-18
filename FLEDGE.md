@@ -316,7 +316,7 @@ The response from the server should be a JSON object of the form:
 }
 ```
 
-and the server must include the HTTP response header "X-fledge-bidding-signals-format-version: 2".  If the server does not include the header, the response will assumed to be an in older format, where the response is only the contents of the `keys` dictionary.
+and the server must include the HTTP response header `X-fledge-bidding-signals-format-version: 2`.  If the server does not include the header, the response will assumed to be an in older format, where the response is only the contents of the `keys` dictionary.
 
 The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no `trustedBiddingSignalsKeys` or `trustedBiddingSignalsUrl` in the interest group, then the `trustedBiddingSignals` argument to generateBid() will be null.
 
