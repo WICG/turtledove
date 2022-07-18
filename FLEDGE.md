@@ -307,6 +307,7 @@ Buyers may want to make on-device decisions that take into account real-time dat
 The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, and `keys` is a list of `trustedBiddingSignalsKeys` strings.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
 
 The response from the server should be a JSON object of the form:
+
     ```
     { 'keys': {
           'key1': arbitrary_json,
