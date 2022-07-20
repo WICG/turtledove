@@ -19,7 +19,7 @@ We plan to hold regular meetings under the auspices of the WICG to go through th
     - [2.2 Auction Participants](#22-auction-participants)
     - [2.3 Scoring Bids](#23-scoring-bids)
     - [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions)
-    - [2.5 extraSignals Hidden from the Page (for Auction Worklets Only)](#25-extrasignals-hidden-from-the-page-for-auction-worklets-only)
+    - [2.5 Additional Trusted Signals (extraSignals)](#25-additional-trusted-signals-extrasignals)
   - [3. Buyers Provide Ads and Bidding Functions (BYOS for now)](#3-buyers-provide-ads-and-bidding-functions-byos-for-now)
     - [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server)
     - [3.2 On-Device Bidding](#32-on-device-bidding)
@@ -198,7 +198,7 @@ const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
 
 This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auctionSignals`, `sellerSignals`, and `perBuyerSignals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auctionSignals` are made available to everyone, while the other signals are given only to one party.
 
-The optional `extraSignals` field can also be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `extraSignals` content cannot be viewed by scripts running on the page -- the signals may only be read by the intended auction participants. For more details, see [2.5 extraSignals Hidden from the Page (for Auction Worklets Only)](#25-extrasignals-hidden-from-the-page-for-auction-worklets-only).
+The optional `extraSignals` field can also be used to pass signals to the auction, similar to `sellerSignals`,  `perBuyerSignals`, and `auctionSignals`. The difference is that `extraSignals` are trusted to come from the seller because the content loads from a [subresource bundle](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md) loaded from a seller's origin, ensuring the authenticity and integrity of the signals. For more details, see [2.5 extraSignals](#25-additional-trusted-signals-extrasignals).
 
 In some cases, multiple SSPs may want to participate in an auction, with the winners of separate auctions being passed up to another auction, run by another SSP. To facilitate these "component auctions", `componentAuctions` can optionally contain additional auction configurations for each seller's "component auction". The winning bid of each of these "component auctions" will be passed to the "top-level" auction. How bids are scored in this case is further described in [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions). The `AuctionConfig` of component auctions may not have their own `componentAuctions`.
 
@@ -229,7 +229,7 @@ Once the bids are known, the seller runs code inside an _auction worklet_.  With
 
 ```
 scoreAd(adMetadata, bid, auctionConfig, trustedScoringSignals, browserSignals,
-extraSellerSignals) {
+    extraSellerSignals, extraAuctionSignals) {
   ...
   return {desirability: desirabilityScoreForThisAd,
           allowComponentAuction: componentAuctionsAllowed};
@@ -255,7 +255,8 @@ The function gets called once for each candidate ad in the auction.  The argumen
       'dataVersion': 1, /* Data-Version value from the trusted scoring signals server's response */
     }
     ```
-*   extraSellerSignals: Like auctionConfig.sellerSignals, but passed via the [extraSignals](#25-extrasignals-hidden-from-the-page-for-auction-worklets-only) mechanism. These are the signals destined for the seller's origin.
+*   extraSellerSignals: Like auctionConfig.sellerSignals, but passed via the [extraSignals](#25-additional-trusted-signals-extrasignals) mechanism. These are the signals whose subresource URL ends in `extraSellerSignals`.
+*   extraAuctionSignals: Like auctionConfig.auctionSignals, but passed via the [extraSignals](#25-additional-trusted-signals-extrasignals) mechanism. These are the signals whose subresource URL ends in `auctionSignals`.
 
 The output of `scoreAd()` is an object with the following fields:
 * desirability: Number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.) The winner of the auction is the ad object which was given the highest score.
@@ -287,40 +288,33 @@ Once all of a component auction's bids have been scored by the component auction
 The ultimate winner of the top-level auction is the single bid the top-level seller script gives the highest score. This may either be the winning bid of one of the component auctions, or a bid from one of the `interestGroupBuyers` in the `AuctionConfig` of the top-level auction. Those bids will be scored directly by the top-level seller script without having to win any component auction.
 
 
-#### 2.5 extraSignals Hidden from the Page (for Auction Worklets Only)
+#### 2.5 Additional Trusted Signals (extraSignals)
 
-Auction config parameter values are visible to any scripts, first or third party, that are running on the frame that called `runAdAuction()`. For instance, a script could assign a new proxy function to `navigator.runAdAuction()`.
+While the browser ensures (using TLS) that information stored in a buyer's interest group and coming from a buyer's trusted bidding signals server comes from the buyer, information passed into `runAdAuction()` is not known to come from the seller unless the seller calls `runAdAuction()` from its own iframe.  In a multi-seller auction it becomes impossible to have all sellers create the frame calling runAdAuction().  `extraSignals` allows the browser to ensure the authenticity and integrity of information passed into an auction from the seller.
 
-For auction fairness, sellers might not want to reveal seller and per-buyer signals to other parties.
+The optional `extraSignals` field can be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `extraSignals` are trusted to come from a seller because the content loads from a [subresource bundle](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md) loaded from a seller's origin. If present, `extraSignals` should be an HTTPS URL prefix using the seller's origin -- when combined with a browser-provided suffix (see details below), the resultant URL should be a resource in a subresource bundle that has been loaded by the current document, whose contents are of type `application/json`, with the following response headers: `X-Allow-Fledge: true` and `X-FLEDGE-Auction-Only: true`.
 
+The URL prefix should not have a query string (i.e. `?a=b&c=d`). The browser will append the following suffixes to the prefix:
 
-The optional `extraSignals` field can be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `extraSignals` content cannot be viewed by scripts running on the page -- the signals may only be read by the respective intended auction participants. If present, `extraSignals` should be an https URL of a resource in a [subresource bundle](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md) that has been loaded by the current document, whose contents are of type `application/json`, with the following response headers: `X-Allow-Fledge: true` and `X-FLEDGE-Auction-Only: true`.
+*   `?perBuyerSignals=[origin]`, where [origin] is one of the origins in `interestGroupBuyers`: this corresponds to the `extraPerBuyerSignals` for the buyer `origin`
+*   `?sellerSignals`: this corresponds to the `sellerSignals` only delivered to the seller
+*   `?auctionSignals`: this corresponds to `auctionSignals` delivered to the seller, and all buyers
 
-The JSON response should be a dictionary, whose keys are the origins of the auction participants (including both the seller and individual buyers), and whose values are the signals to be delivered to each respective auction participant.
+`runAdAuction()` will check all of the above URLs (`perBuyerSignals` for all buyers, `sellerSignals`, and `auctionSignals`) to see if they have been pre-registered as a subresource URL via `<script type="application/webbundle">` tags (note that signals may come from separate bundle files, but each bundle must be served from the seller's origin) -- it's possible to register only a subset of all possible signals.
 
-```
-{
-  'https://seller.com': {...},
-  'https://buyer1.com': {...},
-  'https://buyer2.com': {...}
-}
-```
+The signals will be passed as parameters `extraPerBuyerSignals`, `extraSellerSignals`, and `extraAuctionSignals` on worklet functions. See [generateBid()](#32-on-device-bidding), [scoreAd()](#23-scoring-bids), [reportWin()](#52-buyer-reporting-on-render-and-ad-events), and [reportResult()](#51-seller-reporting-on-render).
 
-It is not necessary to specify `extraSignals` for all auction participants.
-
-The signals will be passed as parameters `extraPerBuyerSignals` and `extraSellerSignals` on worklet functions. See [generateBid()](#32-on-device-bidding), [scoreAd()](#23-scoring-bids), [reportWin()](#52-buyer-reporting-on-render-and-ad-events), and [reportResult()](#51-seller-reporting-on-render).
-
-Scripts on the page will not be able to read (i.e. via [fetch()](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) or [XMLHttpRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest)) any resource that is served with the header `X-FLEDGE-Auction-Only` -- only the auction particpants will be able to access those signals.
-
-Since the JSON response containing the signals is a subresource bundle response, scripts on the page may attempt to fetch and parse the bundle file directly to retrieve the signals. Servers can check that requests are made with the request header `Sec-Fetch-Dest: webbundle` (and fail the request if that header isn't present as expected), as that header cannot be altered by scripts, and will only be sent with the value `webbundle` when the bundle is fetched via a `<script type="webbundle">` tag.
+As the name implies, subresource bundles are bundles of HTTPS subresources.  These HTTPS subresources can contain various HTTPS response headers, including ones meant to enforce basic Web principles, e.g. CORS headers.  To prevent bypassing these basic Web principles by loading the bundles directly with [fetch()](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) or [XMLHttpRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) and ignoring the HTTPS headers within, the bundles should only be served when requested with the header `Sec-Fetch-Dest: webbundle`.  To protect against cross-origin side channel attacks, like what CORB does, the browser requires the subresources from the bundle are served with the header `X-FLEDGE-Auction-Only` which ensures they are only loaded via `extraSignals`.
 
 The bundle may be fetched using credentials like cookies, as described in the [subresource bundles explainer](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md#requests-mode-and-credentials-mode).
 
-CORS will be used when fetching the JSON response -- this allows the seller origin to not match the origin of the frame that called `runAdAuction()` (that is, the publisher origin). Since the publisher calls `runAdAuction()` and controls which `extraSignals` URL is requested, the publisher origin is therefore considered the initiator of the network reqeust for signals. Therefore, when the publisher and seller aren't the same origin, the response should also contain the [Access-Control-Allow-Origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin) header to give the publisher's origin permission to read the response. (Recall that this permission is limited in scope by the `X-FLEDGE-Auction-Only` header).
+Worklet processes follow Chrome's standard site-isolation policies. On Android, due to resource constraints, it's possible that a worklet may run in the same process as a renderer.
+
+##### CORS Required
+
+The origin of the frame that called `runAdAuction()` is not required to match the origin of `extraSignals`, so CORS is used when fetching `extraSignals`.  This means subresources in the bundle should include the [Access-Control-Allow-Origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin) header.
 
 For the JSON response, only the `https` scheme is supported -- the `uuid-in-package` scheme isn't supported as that scheme doesn't support CORS.
-
-Worklet processes follow Chrome's standard site-isolation policies. On Android, due to resource constraints, it's possible that a worklet may run in the same process as a renderer.
 
 
 ### 3. Buyers Provide Ads and Bidding Functions (BYOS for now)
@@ -388,7 +382,9 @@ Once the trusted bidding signals are fetched, each interest group's bidding func
 
 
 ```
-generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals, extraPerBuyerSignals) {
+generateBid(interestGroup, auctionSignals, perBuyerSignals,
+    trustedBiddingSignals, browserSignals, extraPerBuyerSignals,
+    extraAuctionSignals) {
   ...
   return {'ad': adObject,
           'bid': bidValue,
@@ -419,8 +415,8 @@ The arguments to `generateBid()` are:
       'dataVersion': 1, /* Data-Version value from the trusted bidding signals server's response(s) */
     }
     ```
-*   extraPerBuyerSignals: Like perBuyerSignals, but passed via the
-    [extraSignals](#25-extrasignals-hidden-from-the-page-for-auction-worklets-only) mechanism.
+*   extraPerBuyerSignals: Like perBuyerSignals, but passed via the [extraSignals](#25-additional-trusted-signals-extrasignals) mechanism. These are the signals whose subresource URL ends in `perBuyerSignals=[origin]`.
+*   extraAuctionSignals: Like auctionConfig.auctionSignals, but passed via the [extraSignals](#25-additional-trusted-signals-extrasignals) mechanism. These are the signals whose subresource URL ends in `auctionSignals`.
 
 In the case of component auctions, an interest group's `generateBid()` function will be invoked in all component auctions for which it qualifies, though the `bidCount` value passed to future auctions will only be incremented by one for participation in that auction as a whole.
 
@@ -475,7 +471,8 @@ A seller's JavaScript (i.e. the same script, loaded from `decisionLogicUrl`, tha
 
 
 ```
-reportResult(auctionConfig, browserSignals, extraSellerSignals) {
+reportResult(auctionConfig, browserSignals, extraSellerSignals,
+    extraAuctionSignals) {
   ...
   return signalsForWinner;
 }
@@ -500,7 +497,8 @@ The arguments to this function are:
       'modifiedBid': modifiedBidValue
     }
     ```
-*   extraSellerSignals: Like auctionConfig.sellerSignals, but passed via the [extraSignals](#25-extrasignals-hidden-from-the-page-for-auction-worklets-only) mechanism. These are the signals destined for the seller's origin.
+*   extraSellerSignals: Like auctionConfig.sellerSignals, but passed via the [extraSignals](#25-additional-trusted-signals-extrasignals) mechanism. These are the signals whose subresource URL ends in `extraSellerSignals`.
+*   extraAuctionSignals: Like auctionConfig.auctionSignals, but passed via the [extraSignals](#25-additional-trusted-signals-extrasignals) mechanism. These are the signals whose subresource URL ends in `auctionSignals`.
 
 The `browserSignals` argument must be handled carefully to avoid tracking.  It certainly cannot include anything like the full list of interest groups, which would be too identifiable as a tracking signal.  The `renderUrl` can be included since it has already passed a k-anonymity check.  The browser may limit the precision of the bid and desirability values to avoid these numbers exfiltrating information from the interest group's `userBiddingSignals`.  On the upside, this set of signals can be expanded to include useful additional summary data about the wider range of bids that participated in the auction, e.g. the second-highest bid or the number of bids.  Additionally, the `dataVersion` will only be present if the `Data-Version` header was provided in the response headers from the Trusted Scoring server.
 
@@ -514,7 +512,7 @@ The buyer's JavaScript (i.e. the same script, loaded from `biddingLogicUrl`, tha
 
 ```
 reportWin(auctionSignals, perBuyerSignals, sellerSignals, browserSignals,
-extraPerBuyerSignals) {
+    extraPerBuyerSignals, extraAuctionSignals) {
   ...
 }
 ```
@@ -525,8 +523,8 @@ The arguments to this function are:
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
 *   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields.  The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.  If the winning bid was from a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction.  Additional fields could also include some buyer-specific signal like the second-highest bid from that particular buyer.
-*   extraPerBuyerSignals: Like perBuyerSignals, but passed via the
-    [extraSignals](#25-extrasignals-hidden-from-the-page-for-auction-worklets-only) mechanism.
+*   extraPerBuyerSignals: Like perBuyerSignals, but passed via the [extraSignals](#25-additional-trusted-signals-extrasignals) mechanism. These are the signals whose subresource URL ends in `perBuyerSignals=[origin]`.
+*   extraAuctionSignals: Like auctionConfig.auctionSignals, but passed via the [extraSignals](#25-additional-trusted-signals-extrasignals) mechanism. These are the signals whose subresource URL ends in `auctionSignals`.
 
 The `reportWin()` function's reporting happens by directly calling network APIs in the short-term, but will eventually go through the Private Aggregation API once it has been developed. Once the Private Aggregation API has been integrated with FLEDGE the `interestGroup` object passed to `generateBid()` will be available to `reportWin()`.
 
