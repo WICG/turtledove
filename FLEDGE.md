@@ -179,6 +179,10 @@ const myAuctionConfig = {
                         'https://www.another-buyer.com': 200,
                         '*': 150,
                         ...},
+  'perBuyerBidGenerationTimeouts': {'https://www.example-dsp.com': 500,
+                                    'https://www.another-buyer.com': 600,
+                                    '*': 450,
+                                    ...},
   'perBuyerGroupLimits': {'https://www.example-dsp.com': 2,
                         'https://www.another-buyer.com': 1000,
                         '*': 15,
@@ -201,6 +205,8 @@ In some cases, multiple SSPs may want to participate in an auction, with the win
 The returned `auctionResultPromise` object is _opaque_: it is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents, but it can be passed to a Fenced Frame for rendering.  (The [Fenced Frame Opaque Source explainer](https://github.com/shivanigithub/fenced-frame/blob/master/explainer/opaque_src.md) has initial thoughts about how this could be implemented.)  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
 Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
+
+`perBuyerBidGenerationTimeouts` is structured like `perBuyerTimeouts`, but the values cover the entirety of the time it takes to generate bids for all interest groups for each buyer, including downloading resources, starting processes, and all generate bid calls.  The single limit applies collectively across all interest groups with the same owner.  It's measure as wall clock time starting when dedicated tasks needed to generate a bid for a particular buyer start.  Timers may be running for multiple bidders simultaneously.  It does not include time takeb by the seller to score the buyer's bids.  Once the timer expires, the affected buyer's interest groups may no longer generate any bids. Scripts may be unloaded, fetches cancelled, etc.
 
 Optionally, `perBuyerGroupLimits` can be specified to limit the number of of interest groups from a particular buyer that participate in the auction. A key of `'*'` in `perBuyerGroupLimits` is used to set a limit for unspecified buyers. For each buyer, interest groups will be selected to participate in the auction in order of decreasing `priority` (larger priorities are selected first) up to the specfied limit. The selection of interest groups occurs independently for each buyer, so the priorities do not need to be comparable between buyers and could have a buyer-specific meaning. The value of the limits provided should be able to be represented by a 16 bit unsigned integer.
 
