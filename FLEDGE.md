@@ -133,11 +133,11 @@ The browser will provide protection against microtargeting, by only rendering an
 
 When a frame navigated to one domain calls joinAdInterestGroup() or leaveAdInterestGroup() for an interest group with a different owner, the browser will fetch the URL https://owner.domain/.well-known/interest-group/permissions/?origin=frame.origin, where `owner.domain` is domain that owns the interest group and `frame.origin` is the origin of the frame. The fetch uses the `omit` [credentials mode](https://fetch.spec.whatwg.org/#concept-request-credentials-mode), using the [Network Partition Key](https://fetch.spec.whatwg.org/#network-partition-keys) of the frame that invoked the method. To avoid leaking cross-origin data through the returned Promise unexpectedly, the fetch uses the `cors` [mode](https://fetch.spec.whatwg.org/#concept-request-mode). The fetched response should have a JSON MIME type and be of the format:
 
-    ```
-    { "joinAdInterestGroup": true/false,
-      "leaveAdInterestGroup": true/false
-    }
-    ```
+```
+{ "joinAdInterestGroup": true/false,
+  "leaveAdInterestGroup": true/false
+}
+```
 
 Indicating whether the origin in the path has permissions to join and/or leave interest groups owned by the domain the request is sent to. Missing permissions are assumed to be false.
 
@@ -310,32 +310,46 @@ Buyers may want to make on-device decisions that take into account real-time dat
 
     https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, and `keys` is a list of `trustedBiddingSignalsKeys` strings, perhaps coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl`.  The response from the server should be a JSON object whose keys are key1, key2, etc., and whose values will be made available to the buyer's bidding functions (un-coalesced).
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, and `keys` is a list of `trustedBiddingSignalsKeys` strings.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
+
+The response from the server should be a JSON object of the form:
+
+```
+{ 'keys': {
+      'key1': arbitrary_json,
+      'key2': arbitrary_json,
+      ...}
+}
+```
+
+and the server must include the HTTP response header `X-fledge-bidding-signals-format-version: 2`.  If the server does not include the header, the response will assumed to be an in older format, where the response is only the contents of the `keys` dictionary.
+
+The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no `trustedBiddingSignalsKeys` or `trustedBiddingSignalsUrl` in the interest group, then the `trustedBiddingSignals` argument to generateBid() will be null.
 
 Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object. However, it has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderUrls bids offered in the auction. It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
 
-    ```
-    { 'renderUrls': {
-          'https://cdn.com/render_url_of_some_bid': arbitrary_json,
-          'https://cdn.com/render_url_of_some_other_bid': arbitrary_json,
-          ...},
-      'adComponentRenderUrls': {
-          'https://cdn.com/ad_component_of_a_bid': arbitrary_json,
-          'https://cdn.com/another_ad_component_of_a_bid': arbitrary_json,
-          ...}
-    }
-    ```
+```
+{ 'renderUrls': {
+      'https://cdn.com/render_url_of_some_bid': arbitrary_json,
+      'https://cdn.com/render_url_of_some_other_bid': arbitrary_json,
+      ...},
+  'adComponentRenderUrls': {
+      'https://cdn.com/ad_component_of_a_bid': arbitrary_json,
+      'https://cdn.com/another_ad_component_of_a_bid': arbitrary_json,
+      ...}
+}
+```
 
 The value of `trustedScoringSignals` passed to the seller's `scoreAd()` function is an object of the form:
 
-    ```
-    { 'renderUrl': {'https://cdn.com/render_url_of_bidder': arbitrary_value_from_signals},
-      'adComponentRenderUrls': {
-          'https://cdn.com/ad_component_of_a_bid': arbitrary_value_from_signals,
-          'https://cdn.com/another_ad_component_of_a_bid': arbitrary_value_from_signals,
-          ...}
-    }
-    ```
+```
+{ 'renderUrl': {'https://cdn.com/render_url_of_bidder': arbitrary_value_from_signals},
+  'adComponentRenderUrls': {
+      'https://cdn.com/ad_component_of_a_bid': arbitrary_value_from_signals,
+      'https://cdn.com/another_ad_component_of_a_bid': arbitrary_value_from_signals,
+      ...}
+}
+```
 
 _As a temporary mechanism_ during the First Experiment timeframe, the buyer and seller can fetch these bidding signals from any server, including one they operate  themselves (a "Bring Your Own Server" model).  However, in the final version after the removal of third-party cookies, the request will only be sent to a trusted key-value-type server.  Because the server is trusted, there is no k-anonymity constraint on this request.  The browser needs to trust that the server's return value for each key will be based only on that key and the hostname, and that the server does no event-level logging and has no other side effects based on these requests.
 
