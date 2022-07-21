@@ -128,8 +128,6 @@ The `priority` is used to select which interest groups participate in an auction
 
 `priorityVector`, `prioritySignalsOverrides`, and `enableBiddingSignalsPrioritization`, are optional values use to dymnically calculate a priority used in place of `priority`. `priorityVector` and `prioritySignalsOverrides` are mappings of strings to Javscript numbers, while enableBiddingSignalsPrioritization is a bool that defaults to false. See [Prioritizing Interest Groups](#35-prioritizing-interest-groups) for a description of these fields.
 
-`prioritySignalsOverrides` is an optional mapping of string keys to Javascript numbers that, if present, will override the corresponding values in a `prioritySignals` vector when using a `priorityVector` to calculate an interest group's priority. See [Prioritizing Interest Groups](#35-prioritizing-interest-groups) for more information.
-
 The `userBiddingSignals` is for storage of additional metadata that the owner can use during on-device bidding, and the `trustedBiddingSignals` attributes provide another mechanism for making real-time data available for use at bidding time.
 
 The `biddingWasmHelperUrl` field is optional, and lets the bidder provide computationally-expensive subroutines in WebAssembly, rather than JavaScript, to be driven from the JavaScript function provided by `biddingLogicUrl`. If provided, it must point to a WebAssembly binary, delivered with an `application/wasm` mimetype. The corresponding `WebAssembly.Module` will be made available by the browser to the `generateBid` function.
@@ -401,6 +399,7 @@ The arguments to `generateBid()` are:
 
 
 *   interestGroup: The interest group object, as saved during `joinAdInterestGroup()` and perhaps updated via the `dailyUpdateUrl`.
+    * `priority` and `prioritySignalsOverrides` are not included. The can be modified by generatedBid() calls, so could theoretically be used to create a cross-site profile of a user by adding data when an interest group participates in an auction, so are not included.
 *   auctionSignals: As provided by the seller in the call to `runAdAuction()`.  This is the opportunity for the seller to provide information about the page context (ad size, publisher ID, etc), the type of auction (first-price vs second-price), and so on.
 *   perBuyerSignals: The value for _this specific buyer_ as taken from the auction config passed to `runAdAuction()`.  This can include contextual signals about the page that come from the buyer's server, if the seller is an SSP which performs a real-time bidding call to buyer servers and pipes the response back, or if the publisher page contacts the buyer's server directly.  If so, the buyer may wish to check a cryptographic signature of those signals inside `generateBid()` as protection against tampering.
 *   trustedBiddingSignals: An object whose keys are the `trustedBiddingSignalsKeys` for the interest group, and whose values are those returned in the `trustedBiddingSignals` request.
@@ -442,6 +441,30 @@ If `generateBid()` picks an ad whose rendering URL is not yet above the browser-
 The [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md) proposal describes a use case in which the rendered ad is composed of multiple pieces — a top-level ad template "container" which includes some slots that can be filled in with specific "products".  This is useful because the browser's microtargeting threshold can be applied to each individual component of the ad without compromising on tracking protections.
 
 The output of `generateBid()` can use the on-device ad composition flow through an optional adComponents field, listing additional URLs made available to the fenced frame the container URL is loaded in. The component URLs may be retrieved by calling `navigator.adAuctionComponents(numComponents)`, where numComponents is at most 20. To prevent bidder worklets from using this as a sidechannel to leak additional data to the fenced frame, exactly numComponents obfuscated URLs will be returned by this method, regardless of how many adComponent URLs were actually in the bid, even if the bid contained no adComponents, and the Interest Group itself had no adComponents either.
+
+
+#### 3.5 Prioritizing Interest Groups
+
+When an InterestGroup has a non-empty `priorityVector`, its priority is dynically calculted before applying `perBuyerGroupLimits`. To do this, the sparse dot product of interest group's `priorityVector` is multiplied by a `prioritySignals` vector. The `prioritySignals` vector is the result of merging the following objects, which all have strings as keys and numbers as values, with entry in objects earlier in the list taking priority over entries later in the list:
+
+* The interest group's `prioritySignalsOverrides` field.
+* A browser-generated `prioritySignals` object, defined below.
+* The `auctionConfig`'s `perBuyerPrioritySignals` entry for the interest group owner.
+* The `auctionConfig`'s `perBuyerPrioritySignals` "\*" entry.
+
+Additionally, keys starting with "browserSignals." are reserved, and may only appear in `prioritySignalsOverrides` and the browser-generated `prioritySignals` object.
+
+The browser-generated `prioritySignals` object contains the following values:
+* `browserSignals.one`: This is always 1. It's useful for adding a constant to the dot product.
+* `browserSignals.age`: How long ago the user was added to the interest group, in milliseconds. This is the most recent time the use was added to the injterest group, so re-joining an interest group resets the value. This value is always non-negative.
+* `browserSignals.basePriority`: The priority field in the interest group, which may have been modified by a setPriority() call.
+* `browserSignals.firstDotProductPriority`: The priority from multiplying the interest group's `priorityVector` by `prioritySignals`. Only non-zero when using a `proirityVector` from a trusted bidding signals fetch, and the interest group also has a `prioritySignals` field. See below for more details.
+
+If the resulting dot-product is negative, the interest group is immediately removed from an auction (Note that if there's no `priorityVector`, interest groups with negative values currently are not filtered from auctions). After calculting new priorities, as needed, and filtering out interest groups with negative calculated priorities, the `perBuyerGroupLimits` value is applied to all interest groups of a given order, unless the interest group's `enableBiddingSignalsPrioritization` field is present and true.
+
+If `enableBiddingSignalsPrioritization` is true, then rather than applying `perBuyerGroupLimits` immediately after the the calculating the sparse dot product as desribed above (if `priorityVector` is non-null), then instead, group limit enforcement is delayed until after fetching the trusted bidding signals. In this case, if the trusted bidding signals specify a per-interest-group `priorityVector` for an interest group, the dot product of that `priorityVector` is a again taken with a `prioritySignals` vector. The `prioritySignals` vector is the same as in the first calculation, except that it may have a non-zero `browserSignals.firstDotProductPriority` value. If this dot product is negative, the interest group is removed from the auction. If there is no `priorityVector` for an interest group, the priority from earlier in the auction is used instead. Once all priorities have been calculated, then `perBuyerGroupLimits` is applied, and the auction continues as normal.
+
+The advantage of having not using `enableBiddingSignalsPrioritization` is that interest groups can be filtered out before bidding signals are fetched. In auctions with large numbers of buyers auctions, some buyers may also be able to filter themselves out entirely, which could significantly improve performance.
 
 
 ### 4. Browsers Render the Winning Ad
