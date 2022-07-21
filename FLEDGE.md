@@ -126,7 +126,7 @@ The browser will remain in an interest group for only a limited amount of time. 
 
 The `priority` is used to select which interest groups participate in an auction when the number of interest groups are limited by the `perBuyerGroupLimits` attribute of the auction config. If not specified, a `priority` of `0.0` is assigned. There is no special meaning to these values. These values are only used to select interest groups to participate in an auction such that if there is an interest group participating in the auction with priority `x`, all interest groups with the same owner having a priority `y` where `y > x` should also participate (i.e. `generateBid` will be called). In the case where some but not all interest groups with equal priority can participate in an auction due to `perBuyerGroupLimits`, the participating interest groups will be uniformly randomly chosen from the set of interest groups with that priority.
 
-`priorityVector`, `prioritySignalsOverrides`, and `enableBiddingSignalsPrioritization`, are optional values use to dymnically calculate a priority used in place of `priority`. `priorityVector` and `prioritySignalsOverrides` are mappings of strings to Javscript numbers, while enableBiddingSignalsPrioritization is a bool that defaults to false. See [Prioritizing Interest Groups](#35-prioritizing-interest-groups) for a description of these fields.
+`priorityVector`, `prioritySignalsOverrides`, and `enableBiddingSignalsPrioritization`, are optional values use to dymnically calculate a priority used in place of `priority`. `priorityVector` and `prioritySignalsOverrides` are mappings of strings to Javscript numbers, while enableBiddingSignalsPrioritization is a bool that defaults to `false`. See [Prioritizing Interest Groups](#35-prioritizing-interest-groups) for a description of these fields.
 
 The `userBiddingSignals` is for storage of additional metadata that the owner can use during on-device bidding, and the `trustedBiddingSignals` attributes provide another mechanism for making real-time data available for use at bidding time.
 
@@ -325,9 +325,9 @@ Buyers have three basic jobs in the on-device ad auction:
 
 Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsUrl` and `trustedBiddingSignalsKeys` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
 
-    https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2
+    https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2&interestGroups=name1,name2
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, and `keys` is a list of `trustedBiddingSignalsKeys` strings.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `keys` is a list of `trustedBiddingSignalsKeys` strings, and interestGroupNames is a list of the names of interest groups data is being fetched for.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
 
 The response from the server should be a JSON object of the form:
 
@@ -335,13 +335,24 @@ The response from the server should be a JSON object of the form:
 { 'keys': {
       'key1': arbitrary_json,
       'key2': arbitrary_json,
-      ...}
+      ...},
+  'perInterestGroupData': {
+      'name1': {
+          'priorityVector': {
+              'signal1': number,
+              'signal2': number,
+              ...}
+      },
+      ...
+  }
 }
 ```
 
 and the server must include the HTTP response header `X-fledge-bidding-signals-format-version: 2`.  If the server does not include the header, the response will assumed to be an in older format, where the response is only the contents of the `keys` dictionary.
 
-The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no `trustedBiddingSignalsKeys` or `trustedBiddingSignalsUrl` in the interest group, then the `trustedBiddingSignals` argument to generateBid() will be null.
+The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed from the `keys` dictionary to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no `trustedBiddingSignalsKeys` or `trustedBiddingSignalsUrl` in the interest group, then the `trustedBiddingSignals` argument to generateBid() will be null.
+
+The `perInterestGroupData` dictionary contains optional data for interest groups whose names were included in the request URL. The `priorityVector` will be used as the priority for an interest group, if that interest group has `enableBiddingSignalsPrioritization` set to `true` in its definition. See [Prioritizing Interest Groups](#35-prioritizing-interest-groups) for more information.
 
 Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object. However, it has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderUrls bids offered in the auction. It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
 
@@ -462,7 +473,7 @@ The browser-generated `prioritySignals` object contains the following values:
 
 If the resulting dot-product is negative, the interest group is immediately removed from an auction (Note that if there's no `priorityVector`, interest groups with negative values currently are not filtered from auctions). After calculting new priorities, as needed, and filtering out interest groups with negative calculated priorities, the `perBuyerGroupLimits` value is applied to all interest groups of a given order, unless the interest group's `enableBiddingSignalsPrioritization` field is present and true.
 
-If `enableBiddingSignalsPrioritization` is true, then rather than applying `perBuyerGroupLimits` immediately after the the calculating the sparse dot product as desribed above (if `priorityVector` is non-null), then instead, group limit enforcement is delayed until after fetching the trusted bidding signals. In this case, if the trusted bidding signals specify a per-interest-group `priorityVector` for an interest group, the dot product of that `priorityVector` is a again taken with a `prioritySignals` vector. The `prioritySignals` vector is the same as in the first calculation, except that it may have a non-zero `browserSignals.firstDotProductPriority` value. If this dot product is negative, the interest group is removed from the auction. If there is no `priorityVector` for an interest group, the priority from earlier in the auction is used instead. Once all priorities have been calculated, then `perBuyerGroupLimits` is applied, and the auction continues as normal.
+If `enableBiddingSignalsPrioritization` is `true`, then rather than applying `perBuyerGroupLimits` immediately after the the calculating the sparse dot product as desribed above (if `priorityVector` is non-null), then instead, group limit enforcement is delayed until after fetching the trusted bidding signals. In this case, if the trusted bidding signals specify a per-interest-group `priorityVector` for an interest group, the dot product of that `priorityVector` is a again taken with a `prioritySignals` vector. The `prioritySignals` vector is the same as in the first calculation, except that it may have a non-zero `browserSignals.firstDotProductPriority` value. If this dot product is negative, the interest group is removed from the auction. If there is no `priorityVector` for an interest group, the priority from earlier in the auction is used instead. Once all priorities have been calculated, then `perBuyerGroupLimits` is applied, and the auction continues as normal.
 
 The advantage of having not using `enableBiddingSignalsPrioritization` is that interest groups can be filtered out before bidding signals are fetched. In auctions with large numbers of buyers auctions, some buyers may also be able to filter themselves out entirely, which could significantly improve performance.
 
