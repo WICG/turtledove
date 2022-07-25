@@ -132,7 +132,7 @@ The `userBiddingSignals` is for storage of additional metadata that the owner ca
 
 The `biddingWasmHelperUrl` field is optional, and lets the bidder provide computationally-expensive subroutines in WebAssembly, rather than JavaScript, to be driven from the JavaScript function provided by `biddingLogicUrl`. If provided, it must point to a WebAssembly binary, delivered with an `application/wasm` mimetype. The corresponding `WebAssembly.Module` will be made available by the browser to the `generateBid` function.
 
-The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically update the attributes of the interest group: any new values returned in this way overwrite the values previously stored (except that the `name` and `owner` cannot be changed).  However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateUrl` , e.g. at least 100 browsers with the same update URL. This will not include any metadata, so data such as the interest group `name` should be included within the URL, so long as the URL exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
+The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically update the attributes of the interest group: any new values returned in this way overwrite the values previously stored (except that the `name` and `owner` cannot be changed, and `perBrowserSignalsOverrides` will be merged with the previous value).  However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateUrl` , e.g. at least 100 browsers with the same update URL. This will not include any metadata, so data such as the interest group `name` should be included within the URL, so long as the URL exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
 
 The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time.
 
@@ -409,7 +409,7 @@ The arguments to `generateBid()` are:
 
 
 *   interestGroup: The interest group object, as saved during `joinAdInterestGroup()` and perhaps updated via the `dailyUpdateUrl`.
-    * `priority` and `prioritySignalsOverrides` are not included. The can be modified by generatedBid() calls, so could theoretically be used to create a cross-site profile of a user by adding data when an interest group participates in an auction, so are not included.
+    * `priority` and `prioritySignalsOverrides` are not included. They can be modified by generatedBid() calls, so could theoretically be used to create a cross-site profile of a user accessible to generateBid() methods, otherwise.
 *   auctionSignals: As provided by the seller in the call to `runAdAuction()`.  This is the opportunity for the seller to provide information about the page context (ad size, publisher ID, etc), the type of auction (first-price vs second-price), and so on.
 *   perBuyerSignals: The value for _this specific buyer_ as taken from the auction config passed to `runAdAuction()`.  This can include contextual signals about the page that come from the buyer's server, if the seller is an SSP which performs a real-time bidding call to buyer servers and pipes the response back, or if the publisher page contacts the buyer's server directly.  If so, the buyer may wish to check a cryptographic signature of those signals inside `generateBid()` as protection against tampering.
 *   trustedBiddingSignals: An object whose keys are the `trustedBiddingSignalsKeys` for the interest group, and whose values are those returned in the `trustedBiddingSignals` request.
@@ -435,6 +435,8 @@ The output of `generateBid()` contains the following fields:
 *   render: A URL, or a list of URLs, which will be rendered to display the creative if this bid wins the auction.  (See "Ads Composed of Multiple Pieces" below.)
 *   adComponents: (optional) A list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent renderUrl exactly. This field must not be present if the InterestGroup has no adComponent field. It is valid for this field not to be present even when adComponents is present.
 *   allowComponentAuction: If this buyer is taking part of a component auction, this value must be present and true, or the bid is ignored. This value is ignored (and may be absent) if the buyer is part of a top-level auction.
+
+`generateBid()` has access to the setPrioritySignalsOverride(key, value) method. This adds an entry to the current interest group's prioritySignalsOverrides dictionary with the specified `key` and `value`, overwriting the previous value, if there was already an entry with `key`. If `value` is null, the entry with the specified key is deleted, if it exists.
 
 
 #### 3.3 Metadata with the Ad Bid
@@ -474,7 +476,7 @@ If the resulting dot-product is negative, the interest group is immediately remo
 
 If `enableBiddingSignalsPrioritization` is `true`, then rather than applying `perBuyerGroupLimits` immediately after the the calculating the sparse dot product as desribed above (if `priorityVector` is non-null), then instead, group limit enforcement is delayed until after fetching the trusted bidding signals. In this case, if the trusted bidding signals specify a per-interest-group `priorityVector` for an interest group, the dot product of that `priorityVector` is a again taken with a `prioritySignals` vector. The `prioritySignals` vector is the same as in the first calculation, except that it may have a non-zero `browserSignals.firstDotProductPriority` value. If this dot product is negative, the interest group is removed from the auction. If there is no `priorityVector` for an interest group, the priority from earlier in the auction is used instead. Once all priorities have been calculated, then `perBuyerGroupLimits` is applied, and the auction continues as normal.
 
-The advantage of having not using `enableBiddingSignalsPrioritization` is that interest groups can be filtered out before bidding signals are fetched. In auctions with large numbers of buyers auctions, some buyers may also be able to filter themselves out entirely, which could significantly improve performance.
+The advantage of having not using `enableBiddingSignalsPrioritization` is that interest groups can be filtered out before bidding signals are fetched, reducing network usage and server load. In auctions with large numbers of buyers auctions, some buyers may also be able to filter themselves out entirely, which could significantly improve performance.
 
 
 ### 4. Browsers Render the Winning Ad
