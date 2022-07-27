@@ -457,7 +457,7 @@ The output of `generateBid()` can use the on-device ad composition flow through 
 
 #### 3.5 Prioritizing Interest Groups
 
-When an interest group has a non-empty `priorityVector`, its priority is dynically calculted before applying `perBuyerGroupLimits`. To do this, the sparse dot product of interest group's `priorityVector` is multiplied by a `prioritySignals` vector. The `sparse dot product` of two vectors `V` and `W` is the sum of the products `V[key] * W[key]` for each key in both `V` and `W`. For example, the sparse dot product of `{'x':3, 'y':7, 'z':12}` with `{'x':-2, 'y':1.7, 'teapot':418}` is `3*(-2) + 7*1.7 = 5.9`. The `prioritySignals` vector is the result of merging the following objects, which all have strings as keys and numbers as values, with entry in objects earlier in the list taking priority over entries later in the list:
+When an interest group has a non-empty `priorityVector`, its priority is dynically calculted before applying `perBuyerGroupLimits`. To do this, the sparse dot product of interest group's `priorityVector` is multiplied by a `prioritySignals` vector. The __sparse dot product__ of two vectors `V` and `W` is the sum of the products `V[key] * W[key]` for each key in both `V` and `W`. For example, the sparse dot product of `{'x':3, 'y':7, 'z':12}` with `{'x':-2, 'y':1.7, 'teapot':418}` is `3*(-2) + 7*1.7 = 5.9`. The `prioritySignals` vector is the result of merging the following objects, which all have strings as keys and numbers as values, with entry in objects earlier in the list taking priority over entries later in the list:
 
 * The interest group's `prioritySignalsOverrides` field.
 * A browser-generated `prioritySignals` object, defined below.
