@@ -309,6 +309,8 @@ As the name implies, subresource bundles are bundles of HTTPS subresources.  The
 
 The bundle may be fetched using credentials like cookies, as described in the [subresource bundles explainer](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md#requests-mode-and-credentials-mode).
 
+`directFromSellerSignals` supports multiple sellers -- it may be set on the top-level auction, and on component auctions.
+
 Worklet processes follow Chrome's standard site-isolation policies. On Android, due to resource constraints, it's possible that a worklet may run in the same process as a renderer.
 
 ##### CORS Required
