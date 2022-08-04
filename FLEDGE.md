@@ -468,7 +468,7 @@ Additionally, keys starting with "browserSignals." are reserved, and may only ap
 
 The browser-generated `prioritySignals` object contains the following values:
 * `browserSignals.one`: This is always 1. It's useful for adding a constant to the dot product.
-* `browserSignals.age`: How long ago the user was added to the interest group, in milliseconds. This is the most recent time the use was added to the injterest group, so re-joining an interest group resets the value. This value is always non-negative.
+* `browserSignals.age`: How long ago the user was added to the interest group, in milliseconds. This is the most recent time the user was added to the interest group, so re-joining an interest group resets the value. This value is always non-negative.
 * `browserSignals.basePriority`: The priority field in the interest group, which may have been modified by a setPriority() call.
 * `browserSignals.firstDotProductPriority`: The priority from multiplying the interest group's `priorityVector` by `prioritySignals`. Only non-zero when using a `proirityVector` from a trusted bidding signals fetch, and the interest group also has a `prioritySignals` field. See below for more details.
 
