@@ -157,6 +157,40 @@ The initial implementation strategy for the key/value service is as follows:
 *   The TEE based key/value service implementation would be deployed on cloud service(s) which support needed security features. We envision the key/value service being capable of deployment with multiple cloud providers.
 
 
+# Support for user-defined functions (UDFs)
+
+Given ecosystem feedback, we plan to support user-defined functions (UDFs), to be loaded and executed inside the Key/Value Server.  This will allow more flexibility in how this server is used  and provide a server-side FLEDGE platform for code execution.  The loading mechanism has yet to be determined, and will be included in a future update to this explainer.
+
+By default we will provide a reference UDF that will do a lookup for the key and simply return the value.  Replacing this with a custom UDF is not needed if only basic lookup functionality is required.  (We expect the performance impact of the reference UDF to be negligible.)  The data store that holds the adtech-loaded data will be exposed to the UDF via new read-only APIs.
+
+This diagram shows how the interaction will work:
+
+![alt_text](assets/fledge_kv_server_custom_logic.png "UDF server-integration diagram")
+
+
+_The diagram shows the request handler inside the Key/Value Server being able to invoke a UDF which can use a new API to read data from the data store._
+
+
+## Design principles
+
+The following principles are necessary in order to preserve the trust model:
+
+
+
+*   _Sandbox_ - the custom code will be executed inside a sandbox that limits what it is allowed to do.  We’re currently looking at the [Open Source V8 engine](https://v8.dev/) inside [Sandbox2](https://developers.google.com/code-sandboxing/sandbox2), which has support for both JavaScript and Web Assembly (WASM).  Other suggestions are welcome!
+*   _No network, disk access, timers, or logging_ - this will be enforced using the sandbox, above.  This preserves the Key/Value Server’s principle of no side-effects and avoids leaking user data.  Coarse timers may be allowed but fine-grained timers are disallowed to help prevent covert channels (e.g. SPECTRE).
+*   _Individual request handling_ - Per the [FLEDGE explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#31-fetching-real-time-data-from-a-trusted-server), a request to the K/V Server may be for multiple keys.  The UDF will be called separately for each individual key, rather than once for all of the keys.  This ensures that each key is processed independently and prevents a group of keys from being used as a cross-site profile for a user.
+*   _Data store APIs_ - The K/V Server will expose an API to the UDF to read data from the data Store.  There will be no write APIs to the data store.
+*   _Side-effect free_ - The UDF can read data from the Data store APIs but cannot write data to any location apart from returning it to the FLEDGE client.  No state is shared between UDF executions.
+*   _Limited request metadata access_ - Each request to the K/V Server contains the keys to look up as well as some amount of request metadata.  This includes the user IP address, request timestamp, and [experiment id](https://github.com/WICG/turtledove/issues/191).  We expect to allow the UDF to have access to some of this metadata and will be updating this explainer with details of that once we work through how this will fit into the privacy model.
+*   _No Open Source requirement_ - UDFs are provided by adtechs and do not need to be disclosed or shared publicly.
+
+
+### API
+
+We’ll update the [API explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE_Key_Value_Server_API.md) with the APIs that we plan to provide for UDFs.
+
+
 # Open questions
 
 Explainers are the first step in the standardization process followed by The Privacy Sandbox proposals. The key/value service is not finalized. We anticipate community feedback which will lead to improved designs and proposed implementations. There are many ways to provide feedback on this proposal and participate in ongoing discussions, which includes commenting on the issues below, [opening new issues in this repository](https://github.com/WICG/turtledove/issues), or attending a [WICG meeting](https://github.com/WICG/turtledove/issues/88). We intend to incorporate and iterate based on feedback.
