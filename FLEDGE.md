@@ -172,6 +172,7 @@ const myAuctionConfig = {
   'auctionSignals': {...},
   'sellerSignals': {...},
   'sellerTimeout': 100,
+  'sellerExperimentGroupId': 12345,
   'perBuyerSignals': {'https://www.example-dsp.com': {...},
                         'https://www.another-buyer.com': {...},
                         ...},
@@ -183,6 +184,10 @@ const myAuctionConfig = {
                         'https://www.another-buyer.com': 1000,
                         '*': 15,
                         ...},
+  'perBuyerExperimentGroupIds': {'https://www.example-dsp.com': 234,
+                       'https://www.another-buyer.com': 345,
+                       '*': 456,
+                       ...},
   'componentAuctions': [
     {'seller': 'https://www.some-other-ssp.com',
       'decisionLogicUrl': ...,
@@ -203,6 +208,8 @@ The returned `auctionResultPromise` object is _opaque_: it is not possible for a
 Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
 
 Optionally, `perBuyerGroupLimits` can be specified to limit the number of of interest groups from a particular buyer that participate in the auction. A key of `'*'` in `perBuyerGroupLimits` is used to set a limit for unspecified buyers. For each buyer, interest groups will be selected to participate in the auction in order of decreasing `priority` (larger priorities are selected first) up to the specfied limit. The selection of interest groups occurs independently for each buyer, so the priorities do not need to be comparable between buyers and could have a buyer-specific meaning. The value of the limits provided should be able to be represented by a 16 bit unsigned integer.
+
+Optionally, `sellerExperimentGroupId` can be specified by the seller to support coordinated experiments with the seller's trusted server. If specified, this must be an integer between zero and 65535 (16 bits). Optionally,`perBuyerExperimentGroupIds` can be specified to support coordinated experiments with buyers' trusted servers. If specified, this must also be an integer between zero and 65535 (16 bits).
 
 All fields that accept arbitrary metadata objects (`auctionSignals`, `sellerSignals`, and keys of `perBuyerSignals`) must be JSON-serializable.
 
@@ -302,9 +309,9 @@ Buyers have three basic jobs in the on-device ad auction:
 
 Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsUrl` and `trustedBiddingSignalsKeys` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
 
-    https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2
+    https://www.kv-server.example/getvalues?hostname=publisher.com&experimentGroupId=12345&keys=key1,key2
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, and `keys` is a list of `trustedBiddingSignalsKeys` strings.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `experimentGroupId` comes from `perBuyerExperimentGroupIds` if provided, and `keys` is a list of `trustedBiddingSignalsKeys` strings.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
 
 The response from the server should be a JSON object of the form:
 
@@ -320,7 +327,7 @@ and the server must include the HTTP response header `X-fledge-bidding-signals-f
 
 The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no `trustedBiddingSignalsKeys` or `trustedBiddingSignalsUrl` in the interest group, then the `trustedBiddingSignals` argument to generateBid() will be null.
 
-Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object. However, it has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderUrls bids offered in the auction. It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
+Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderUrls bids offered in the auction. It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
 
 ```
 { 'renderUrls': {
