@@ -54,19 +54,29 @@ Browser will process this similar to how the existing [navigator.sendBeacon](htt
 
 **Event type and data:** Includes the event type and data associated with an event. When an event type e.g. click matches to the event type registered in registerAdBeacon, the data will be used by the browser as the data sent in the beacon sent to the registered URL.
 
-**Destination type:** List of values to determine whether this event needs to be reported to both buyer and seller, only buyer or only seller.
+**Destination type:** List of values to determine whose registered beacons are reported, can be a combination of 'buyer', 'seller', or 'component-seller'.
 
 
 ### Example
 
 
 ```
-navigator.reportEvent({
+window.fence.reportEvent({
   'eventType': 'click',
-  'eventData': {'clickX': '123', 'clickY': '456'},
+  'eventData': JSON.stringify({'clickX': '123', 'clickY': '456'}),
   'destination':['buyer', 'seller']
 });
 ```
+
+```
+window.fence.reportEvent({
+  'eventType': 'click',
+  'eventData': 'an example string',
+  'destination':['component-seller']
+});
+```
+
+Note `window.fence` here is a new namepsace for APIs that are only available from within a fenced frame. 
 
 ## registerAdBeacon
 
@@ -75,18 +85,16 @@ A similar API was initially discussed here: https://github.com/WICG/turtledove/i
 
 ### Parameters
 
-**Event type:** E.g. click. This corresponds to the event type in reportEvent. This is for enabling buyers/ sellers to register distinct beacon URLs for different event types.
+A map from event type to reporting URL, where the event type corresponds to the `eventType` value passed to  `reportEvent()`. The event type enables worklets (for buyer, seller, or component seller) to register distinct reporting URLs for different event types. The reporting URL is the location where a beacon is sent once the fenced frame delivers the corresponding event via `reportEvent()`.
 
-**URL:** The URL to which a beacon will be sent by the browser on receiving events from the fenced frame via reportEvent
-The worklet is able to add the buyerEventId/sellerEventId and any other relevant information via this API.
-
+Worklets can add a buyer event identifier, seller event identifier, or any other relevant information as query parameters to this URL.
 
 ### Example
 
 
 ```
-navigator.registerAdBeacon({
- 'click': {'url': 'https://adtech.example/click?buyer_event_id=123'},
+registerAdBeacon({
+ 'click': 'https://adtech.example/click?buyer_event_id=123',
 });
 ```
 

@@ -56,7 +56,7 @@ As the FLEDGE explainer talks about, the FOT#1 will include event-level reportin
 
   
 
-The FOT#1 will include event-level reporting for both winning and losing bids. Implementations of the `generateBid()` and `scoreAd()` worklets, provided by the buyers and sellers respectively in the auction, may call a `debug.sendReportOnLoss()` API which takes a single string argument representing a URL. If the bid being generated or scored loses the auction, the URL will be fetched. These worklets may also call a `debug.sendReportOnWin()` API which operates similarly to `debug.sendReportOnLoss()` API but only fetches the URL after a winning bid or score.
+The FOT#1 will include event-level reporting for both winning and losing bids. Implementations of the `generateBid()` and `scoreAd()` worklets, provided by the buyers and sellers respectively in the auction, may call a `forDebuggingOnly.reportAdAuctionLoss()` API which takes a single string argument representing a URL. If the bid being generated or scored loses the auction, the URL will be fetched. These worklets may also call a `forDebuggingOnly.reportAdAuctionWin()` API which operates similarly to `forDebuggingOnly.reportAdAuctionLoss()` API but only fetches the URL after a winning bid or score.
 
   
 
@@ -165,7 +165,7 @@ The plan is for the FOT#1 to include support for multi-seller/SSP auctions. This
 
 To make Chrome’s FLEDGE implementation function as described in this document, use a very recent version of Chrome, e.g. Chrome Canary, and pass this parameter to Chrome on the command line:
 
-`--enable-features=InterestGroupStorage,AdInterestGroupAPI,Fledge,AllowURNsInIframes`
+`--enable-features=InterestGroupStorage,AdInterestGroupAPI,Fledge,AllowURNsInIframes,BiddingAndScoringDebugReportingAPI`
 
 #### Privacy Limitations of FOT#1
 

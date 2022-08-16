@@ -13,6 +13,7 @@ We plan to hold regular meetings under the auspices of the WICG to go through th
   - [1. Browsers Record Interest Groups](#1-browsers-record-interest-groups)
     - [1.1 Joining Interest Groups](#11-joining-interest-groups)
     - [1.2 Interest Group Attributes](#12-interest-group-attributes)
+    - [1.3 Permission Delegation](#13-permission-delegation)
   - [2. Sellers Run On-Device Auctions](#2-sellers-run-on-device-auctions)
     - [2.1 Initiating an On-Device Auction](#21-initiating-an-on-device-auction)
     - [2.2 Auction Participants](#22-auction-participants)
@@ -86,6 +87,7 @@ Browsers keep track of the set of interest groups that they have joined.  For ea
 const myGroup = {
   'owner': 'https://www.example-dsp.com',
   'name': 'womens-running-shoes',
+  'priority': 0.0,
   'biddingLogicUrl': ...,
   'biddingWasmHelperUrl': ...,
   'dailyUpdateUrl': ...,
@@ -95,22 +97,26 @@ const myGroup = {
   'ads': [shoesAd1, shoesAd2, shoesAd3],
   'adComponents': [runningShoes1, runningShoes2, gymShoes, gymTrainers1, gymTrainers2],
 };
-navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
+const joinPromise = navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
 ```
 
 
-The browser will only allow the `joinAdInterestGroup()` operation with the permission of both the site being visited and the group's owner.  The site can allow or deny permission to any or all third parties via a `Permissions-Policy` (directive named "join-ad-interest-group"), where the default policy is to allow all in the top-level page and to deny all in cross-domain iframes.  The group's owner can indicate permission by `joinAdInterestGroup()` running in a page or iframe in the owner's domain, and can delegate that permission to any other domains via a list at a `.well-known` URL.  These can be combined, to allow a DSP to add a person to one of its interest groups based on publisher context, as discussed in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups) — provided the publisher's `Permissions-Policy` permits interest group additions by its SSP, and the DSP gives this SSP this ability.  If some permission is missing, `joinAdInterestGroup()` will raise an `Error` describing the reason for failure.
+The browser will only allow the `joinAdInterestGroup()` operation with the permission of both the site being visited and the group's owner.  The site can allow or deny permission to any or all third parties via a `Permissions-Policy` (directive named "join-ad-interest-group"), where the default policy is to allow all in the top-level page and to deny all in cross-domain iframes.  The group's owner can indicate permission by `joinAdInterestGroup()` running in a page or iframe in the owner's domain, and can delegate that permission to any other domains via a list at a `.well-known` URL (see [1.3 Permission Delegation](#13-permission-delegation)).  These can be combined, to allow a DSP to add a person to one of its interest groups based on publisher context, as discussed in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md#c-contextual-interest-groups) — provided the publisher's `Permissions-Policy` permits interest group additions by its SSP, and the DSP gives this SSP this ability.
 
-There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which looks only at `myGroup.name` and `myGroup.owner`.  As a special case to support in-ad UIs, invoking `navigator.leaveAdInterestGroup()` from inside an ad that is being targeted at a particular interest group will cause the browser to leave that group, irrespective of permission policies.
+The returned `joinPromise` is resolved on the group is successfully joined, and rejected with an error if the join operation fails. The error message and the resolution time must _not_ depend on what interest groups a user is in, or any cross-origin browser state, apart from the results of the .well-known fetch, to avoid leaking any data across sites.
+
+There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which looks only at `myGroup.name` and `myGroup.owner`. As with join calls, `leaveAdInterestGroup()` also returns a promise. As a special case to support in-ad UIs, invoking `navigator.leaveAdInterestGroup()` from inside an ad that is being targeted at a particular interest group will cause the browser to leave that group, irrespective of permission policies. Note that leaving without arguments isn't supported inside a component ad frame.
 
 The browser will remain in an interest group for only a limited amount of time.  The duration is specified in the call to `joinAdInterestGroup()`, and will be capped at 30 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's `userBiddingSignal` or list of ads.
 
 
 #### 1.2 Interest Group Attributes
 
-The `userBiddingSignals` is for storage of additional metadata that the owner can use during on-device bidding, and the `trustedBiddingSignals*` attributes provide another mechanism for making real-time data available for use at bidding time.
+The `priority` is used to select which interest groups participate in an auction when the number of interest groups are limited by the `perBuyerGroupLimits` attribute of the auction config. If not specified, a `priority` of `0.0` is assigned. There is no special meaning to these values. These values are only used to select interest groups to participate in an auction such that if there is an interest group participating in the auction with priority `x`, all interest groups with the same owner having a priority `y` where `y > x` should also participate (i.e. `generateBid` will be called). In the case where some but not all interest groups with equal priority can participate in an auction due to `perBuyerGroupLimits`, the participating interest groups will be uniformly randomly chosen from the set of interest groups with that priority.
 
-The `biddingWasmHelperUrl` field is optional, and lets the bidder provide computationally-expensive subroutines in WebAssembly, rather than JavaScript, to be driven from the JavaScript function provided by `biddingLogicUrl`. If provided, it must point to a WebAssembly binary, delivered with a `application/wasm` mimetype. The corresponding `WebAssembly.Module` will be made available by the browser to the `generateBid` function.
+The `userBiddingSignals` is for storage of additional metadata that the owner can use during on-device bidding, and the `trustedBiddingSignals` attributes provide another mechanism for making real-time data available for use at bidding time.
+
+The `biddingWasmHelperUrl` field is optional, and lets the bidder provide computationally-expensive subroutines in WebAssembly, rather than JavaScript, to be driven from the JavaScript function provided by `biddingLogicUrl`. If provided, it must point to a WebAssembly binary, delivered with an `application/wasm` mimetype. The corresponding `WebAssembly.Module` will be made available by the browser to the `generateBid` function.
 
 The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically update the attributes of the interest group: any new values returned in this way overwrite the values previously stored (except that the `name` and `owner` cannot be changed).  However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateUrl` , e.g. at least 100 browsers with the same update URL. This will not include any metadata, so data such as the interest group `name` should be included within the URL, so long as the URL exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
 
@@ -118,8 +124,26 @@ The `ads` list contains the various ads that the interest group might show.  Eac
 
 The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similarly to the `ads` field, each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time. Thanks to `ads` and `adsComponents` being separate fields, the buyer is able to update the `ads` field via daily update without losing `adComponents` stored in the interest group.
 
+All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
+
 The browser will provide protection against microtargeting, by only rendering an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 100 people would have seen the ad, if it were allowed to show).  As discussed in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal, this threshold applies only to the rendered creative; all of the metadata associated with ad bidding is not under any such restriction.  Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold.  This means that a small, specialized interest group that is still below the daily-update threshold could still choose to participate in auctions, bidding with a more-generic ad until the group becomes large enough.
 
+
+#### 1.3 Permission Delegation
+
+When a frame navigated to one domain calls joinAdInterestGroup() or leaveAdInterestGroup() for an interest group with a different owner, the browser will fetch the URL https://owner.domain/.well-known/interest-group/permissions/?origin=frame.origin, where `owner.domain` is domain that owns the interest group and `frame.origin` is the origin of the frame. The fetch uses the `omit` [credentials mode](https://fetch.spec.whatwg.org/#concept-request-credentials-mode), using the [Network Partition Key](https://fetch.spec.whatwg.org/#network-partition-keys) of the frame that invoked the method. To avoid leaking cross-origin data through the returned Promise unexpectedly, the fetch uses the `cors` [mode](https://fetch.spec.whatwg.org/#concept-request-mode). The fetched response should have a JSON MIME type and be of the format:
+
+```
+{ "joinAdInterestGroup": true/false,
+  "leaveAdInterestGroup": true/false
+}
+```
+
+Indicating whether the origin in the path has permissions to join and/or leave interest groups owned by the domain the request is sent to. Missing permissions are assumed to be false.
+
+Since joining or leaving a group may depend on a network requests, browsers may delay these requests, or run them out of order. Each frame must, however, run all pending joins and leaves for a single owner in the order in which they were made. Same-origin operations should be applied immediately. When a page or frame is navigated, the browser should make a best-effort attempt to complete pending join and leave operations that are blocked on a network fetch, but may choose to drop them if there are more than 20 for a single top-level frame. This is intended to allow joining or leaving a cross-origin interest group at the same time as starting a navigation in response to a user gesture, though previous join/leave calls may still cause such an operation to be dropped.
+
+In order to prevent leaking data, join and leave calls must request the `.well-known` file, regardless of whether the user is in the group or not, as otherwise, whether or not a fetch is made can potentially leak data. Browsers may cache `.well-known` fetch results that share a network partition key.
 
 ### 2. Sellers Run On-Device Auctions
 
@@ -156,6 +180,10 @@ const myAuctionConfig = {
                         'https://www.another-buyer.com': 200,
                         '*': 150,
                         ...},
+  'perBuyerGroupLimits': {'https://www.example-dsp.com': 2,
+                        'https://www.another-buyer.com': 1000,
+                        '*': 15,
+                        ...},
   'perBuyerExperimentGroupIds': {'https://www.example-dsp.com': 234,
                        'https://www.another-buyer.com': 345,
                        '*': 456,
@@ -179,11 +207,15 @@ The returned `auctionResultPromise` object is _opaque_: it is not possible for a
 
 Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
 
+Optionally, `perBuyerGroupLimits` can be specified to limit the number of of interest groups from a particular buyer that participate in the auction. A key of `'*'` in `perBuyerGroupLimits` is used to set a limit for unspecified buyers. For each buyer, interest groups will be selected to participate in the auction in order of decreasing `priority` (larger priorities are selected first) up to the specfied limit. The selection of interest groups occurs independently for each buyer, so the priorities do not need to be comparable between buyers and could have a buyer-specific meaning. The value of the limits provided should be able to be represented by a 16 bit unsigned integer.
+
 Optionally, `sellerExperimentGroupId` can be specified by the seller to support coordinated experiments with the seller's trusted server. If specified, this must be an integer between zero and 65535 (16 bits). Optionally,`perBuyerExperimentGroupIds` can be specified to support coordinated experiments with buyers' trusted servers. If specified, this must also be an integer between zero and 65535 (16 bits).
+
+All fields that accept arbitrary metadata objects (`auctionSignals`, `sellerSignals`, and keys of `perBuyerSignals`) must be JSON-serializable.
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
 
-In the case of a component auction, all `AuctionConfig` parameters for that component auction are only scoped to buyer and seller scripts run as part of that auction component. Similarly, all vaues specified by the top-level auction are not applied to the component auctions.
+In the case of a component auction, all `AuctionConfig` parameters for that component auction are only scoped to buyer and seller scripts run as part of that auction component. Similarly, all values specified by the top-level auction are not applied to the component auctions.
 
 
 #### 2.2 Auction Participants
@@ -228,7 +260,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
 
 The output of `scoreAd()` is an object with the following fields:
 * desirability: Number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.) The winner of the auction is the ad object which was given the highest score.
-* allowComponentAuction: (optional) If the bid being scored is from a component auction and this value is not true, the bid is ignored. If not present, this value is consired false. This field must be present and true both when the component seller scores a bid, and when that bid is being scored by the top-level auction.
+* allowComponentAuction: (optional) If the bid being scored is from a component auction and this value is not true, the bid is ignored. If not present, this value is considered false. This field must be present and true both when the component seller scores a bid, and when that bid is being scored by the top-level auction.
 
 If `scoreAd()` returns only a numeric value, it's equivalent to returning {'score': numericValue, `allowComponentAuciton`: false}.
 
@@ -251,7 +283,7 @@ Seller scripts in component auctions behave a little differently.  They still ex
 * allowComponentAuction: If this field is not true, the bid will be rejected.
 * bid: (optional) Modified bid value to provide to the top-level seller script. If present, this will be passed to the top-level seller's `scoreAd()` and `reportResult()` methods instead of the original bid, if the ad wins the component auction and top-level auction, respectively.
 
-Once all of a component auction's bids have been scored by the component auction's seller script, the bid with the highest score is passed to the top-level seller to score. For that bid, the top-level seller's `scoreAd()` method is passed the `ad` value from the component auction seller's `scoreAd()` method, and there is an an additional `componentSeller` field in the `browserSignals`, which is the seller for the component auction. All other values are the same as if the bid had come from an interest group participating directly in the top-level auction. In the case of a tie, one of the highest scoring bids will be chosen randomly and only that bid will passed to the top-level seller to score.
+Once all of a component auction's bids have been scored by the component auction's seller script, the bid with the highest score is passed to the top-level seller to score. For that bid, the top-level seller's `scoreAd()` method is passed the `ad` value from the component auction seller's `scoreAd()` method, and there is an additional `componentSeller` field in the `browserSignals`, which is the seller for the component auction. All other values are the same as if the bid had come from an interest group participating directly in the top-level auction. In the case of a tie, one of the highest scoring bids will be chosen randomly and only that bid will be passed to the top-level seller to score.
 
 The ultimate winner of the top-level auction is the single bid the top-level seller script gives the highest score. This may either be the winning bid of one of the component auctions, or a bid from one of the `interestGroupBuyers` in the `AuctionConfig` of the top-level auction. Those bids will be scored directly by the top-level seller script without having to win any component auction.
 
@@ -279,32 +311,46 @@ Buyers may want to make on-device decisions that take into account real-time dat
 
     https://www.kv-server.example/getvalues?hostname=publisher.com&experimentGroupId=12345&keys=key1,key2
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `experimentGroupId` comes from `perBuyerExperimentGroupIds` if provided, and `keys` is a list of `trustedBiddingSignalsKeys` strings, perhaps coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl`.  The response from the server should be a JSON object whose keys are key1, key2, etc., and whose values will be made available to the buyer's bidding functions (un-coalesced).
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `experimentGroupId` comes from `perBuyerExperimentGroupIds` if provided, and `keys` is a list of `trustedBiddingSignalsKeys` strings.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
+
+The response from the server should be a JSON object of the form:
+
+```
+{ 'keys': {
+      'key1': arbitrary_json,
+      'key2': arbitrary_json,
+      ...}
+}
+```
+
+and the server must include the HTTP response header `X-fledge-bidding-signals-format-version: 2`.  If the server does not include the header, the response will assumed to be an in older format, where the response is only the contents of the `keys` dictionary.
+
+The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no `trustedBiddingSignalsKeys` or `trustedBiddingSignalsUrl` in the interest group, then the `trustedBiddingSignals` argument to generateBid() will be null.
 
 Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderUrls bids offered in the auction. It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
 
-    ```
-    { 'renderUrls': {
-          'https://cdn.com/render_url_of_some_bid': arbitrary_json,
-          'https://cdn.com/render_url_of_some_other_bid': arbitrary_json,
-          ...},
-      'adComponentRenderUrls': {
-          'https://cdn.com/ad_component_of_a_bid': arbitrary_json,
-          'https://cdn.com/another_ad_component_of_a_bid': arbitrary_json,
-          ...}
-    }
-    ```
+```
+{ 'renderUrls': {
+      'https://cdn.com/render_url_of_some_bid': arbitrary_json,
+      'https://cdn.com/render_url_of_some_other_bid': arbitrary_json,
+      ...},
+  'adComponentRenderUrls': {
+      'https://cdn.com/ad_component_of_a_bid': arbitrary_json,
+      'https://cdn.com/another_ad_component_of_a_bid': arbitrary_json,
+      ...}
+}
+```
 
 The value of `trustedScoringSignals` passed to the seller's `scoreAd()` function is an object of the form:
 
-    ```
-    { 'renderUrl': {'https://cdn.com/render_url_of_bidder': arbitrary_value_from_signals},
-      'adComponentRenderUrls': {
-          'https://cdn.com/ad_component_of_a_bid': arbitrary_value_from_signals,
-          'https://cdn.com/another_ad_component_of_a_bid': arbitrary_value_from_signals,
-          ...}
-    }
-    ```
+```
+{ 'renderUrl': {'https://cdn.com/render_url_of_bidder': arbitrary_value_from_signals},
+  'adComponentRenderUrls': {
+      'https://cdn.com/ad_component_of_a_bid': arbitrary_value_from_signals,
+      'https://cdn.com/another_ad_component_of_a_bid': arbitrary_value_from_signals,
+      ...}
+}
+```
 
 _As a temporary mechanism_ during the First Experiment timeframe, the buyer and seller can fetch these bidding signals from any server, including one they operate  themselves (a "Bring Your Own Server" model).  However, in the final version after the removal of third-party cookies, the request will only be sent to a trusted key-value-type server.  Because the server is trusted, there is no k-anonymity constraint on this request.  The browser needs to trust that the server's return value for each key will be based only on that key and the hostname, and that the server does no event-level logging and has no other side effects based on these requests.
 
@@ -313,6 +359,7 @@ Either trusted server may optionally include a numeric `Data-Version` header on 
 For detailed specification and explainers of the trusted key-value server, see also the following:
 
 - [FLEDGE Key/Value Server APIs Explainer](https://github.com/WICG/turtledove/blob/master/FLEDGE_Key_Value_Server_API.md)
+- [FLEDGE Key/Value Server Trust Model Explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE_Key_Value_Server_trust_model.md)
 
 #### 3.2 On-Device Bidding
 
@@ -343,7 +390,7 @@ The arguments to `generateBid()` are:
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
       'seller': 'https://www.example-ssp.com',
-      `topLevelSeller`: 'https://www.another-ssp.com',
+      'topLevelSeller': 'https://www.another-ssp.com',
       'joinCount': 3,
       'bidCount': 17,
       'prevWins': [[time1,ad1],[time2,ad2],...],
@@ -396,7 +443,7 @@ Once the winning ad has rendered in its Fenced Frame, the seller and the winning
 
 _As a temporary mechanism,_ these reporting functions will be able to send event-level reports to their servers.  These reports can include contextual information, and can include information about the winning interest group if it is over an anonymity threshold.  This reporting will happen synchronously, while the page with the ad is still open in the browser.
 
-In the long term, we need a mechanism to ensure that the after-the-fact reporting cannot be used to learn the advertising interest group of individual visitors to the publisher's site — the same privacy goal that led to Fenced Frame rendering.  Therefore event-level reporting is just a temporary model until an adequate trusted-server reporting framework is settled and in place.  (Once we have a trusted reporting mechanism, we can consider allowing the reports to be influenced by the interest group's `userBiddingSignals`.)
+In the long term, we need a mechanism to ensure that the after-the-fact reporting cannot be used to learn the advertising interest group of individual visitors to the publisher's site — the same privacy goal that led to Fenced Frame rendering. The [Private Aggregation API](https://github.com/alexmturner/private-aggregation-api) proposal aims to satisfy this use case. Therefore event-level reporting is just a temporary model until an adequate reporting framework is settled and in place.
 
 
 #### 5.1 Seller Reporting on Render
@@ -415,12 +462,12 @@ reportResult(auctionConfig, browserSignals) {
 The arguments to this function are:
 
 *   auctionConfig: The auction configuration object passed to `navigator.runAdAuction()`
-*   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction. `topLevelSeller`, `topLevelSellerSignals`, and `modifiedBid` are only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction. `modifiedBid` is bid value a component auction's `scoreAd()` script passes to the top-level auction. `topLevelSellerSignals` is the output of the top-level seller's ReportResult() method:
+*   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction. `topLevelSeller`, `topLevelSellerSignals`, and `modifiedBid` are only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction. `modifiedBid` is the bid value a component auction's `scoreAd()` script passes to the top-level auction. `topLevelSellerSignals` is the output of the top-level seller's ReportResult() method:
 
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
-      `topLevelSeller`: 'https://www.example-ssp.com',
-      `componentSeller`: 'https://www.some-other-ssp.com',
+      'topLevelSeller': 'https://www.example-ssp.com',
+      'componentSeller': 'https://www.some-other-ssp.com',
       'interestGroupOwner': 'https://www.example-dsp.com/',
       'renderUrl': 'https://cdn.com/url-of-winning-creative.wbn',
       'bid:' bidValue,
@@ -433,7 +480,7 @@ The arguments to this function are:
 
 The `browserSignals` argument must be handled carefully to avoid tracking.  It certainly cannot include anything like the full list of interest groups, which would be too identifiable as a tracking signal.  The `renderUrl` can be included since it has already passed a k-anonymity check.  The browser may limit the precision of the bid and desirability values to avoid these numbers exfiltrating information from the interest group's `userBiddingSignals`.  On the upside, this set of signals can be expanded to include useful additional summary data about the wider range of bids that participated in the auction, e.g. the second-highest bid or the number of bids.  Additionally, the `dataVersion` will only be present if the `Data-Version` header was provided in the response headers from the Trusted Scoring server.
 
-The `reportResult()` function's reporting happens by calling browser-provided aggregate reporting APIs or, temporarily, directly calling network APIs.  The output of this function is not used for reporting, but rather as an input to the buyer's reporting function.
+The `reportResult()` function's reporting happens by directly calling network APIs in the short-term, but will eventually go through the Private Aggregation API once it has been developed. The output of this function is not used for reporting, but rather as an input to the buyer's reporting function.
 
 
 #### 5.2 Buyer Reporting on Render and Ad Events
@@ -454,7 +501,7 @@ The arguments to this function are:
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
 *   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields.  The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.  If the winning bid was from a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction.  Additional fields could also include some buyer-specific signal like the second-highest bid from that particular buyer.
 
-The `reportWin()` function's reporting happens by calling browser-provided aggregate reporting APIs or, temporarily, directly calling network APIs.
+The `reportWin()` function's reporting happens by directly calling network APIs in the short-term, but will eventually go through the Private Aggregation API once it has been developed. Once the Private Aggregation API has been integrated with FLEDGE the `interestGroup` object passed to `generateBid()` will be available to `reportWin()`.
 
 Ads often need to report on events that happen once the ad is rendered.  One common example is reporting on whether an ad became viewable on-screen.  We will need a communications channel to allow the publisher page or the Fenced Frame to pass such information into the worklet responsible for reporting.  Some additional design work is needed here.
 
