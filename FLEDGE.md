@@ -92,6 +92,7 @@ const myGroup = {
   'biddingLogicUrl': ...,
   'biddingWasmHelperUrl': ...,
   'dailyUpdateUrl': ...,
+  'executionMode': ...,
   'trustedBiddingSignalsUrl': ...,
   'trustedBiddingSignalsKeys': ['key1', 'key2'],
   'userBiddingSignals': {...},
@@ -120,6 +121,8 @@ The `userBiddingSignals` is for storage of additional metadata that the owner ca
 The `biddingWasmHelperUrl` field is optional, and lets the bidder provide computationally-expensive subroutines in WebAssembly, rather than JavaScript, to be driven from the JavaScript function provided by `biddingLogicUrl`. If provided, it must point to a WebAssembly binary, delivered with an `application/wasm` mimetype. The corresponding `WebAssembly.Module` will be made available by the browser to the `generateBid` function.
 
 The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically update the attributes of the interest group: any new values returned in this way overwrite the values previously stored (except that the `name` and `owner` cannot be changed).  However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateUrl` , e.g. at least 100 browsers with the same update URL. This will not include any metadata, so data such as the interest group `name` should be included within the URL, so long as the URL exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
+
+The `executionMode` attribute is optional. The default value (`compatibility`) will run each invocation of `generateBid` in a totally fresh execution environment, which prevents them from directly passing data to each other, but has non-trivial execution costs.  The `groupByOrigin` mode will attempt to re-use the execution environment for interest groups with the same script that were added on the same site, which saves a lot of these setup costs, but in order to avoid collusion, attempts to join the same interest group in `groupByOrigin` mode from multiple sites will result in previously joined `groupByOrigin` groups being removed.
 
 The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time.
 
