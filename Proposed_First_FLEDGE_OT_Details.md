@@ -56,9 +56,16 @@ As the FLEDGE explainer talks about, the FOT#1 will include event-level reportin
 
   
 
-The FOT#1 will include event-level reporting for both winning and losing bids. Implementations of the `generateBid()` and `scoreAd()` worklets, provided by the buyers and sellers respectively in the auction, may call a `forDebuggingOnly.reportAdAuctionLoss()` API which takes a single string argument representing a URL. If the bid being generated or scored loses the auction, the URL will be fetched. These worklets may also call a `forDebuggingOnly.reportAdAuctionWin()` API which operates similarly to `forDebuggingOnly.reportAdAuctionLoss()` API but only fetches the URL after a winning bid or score.
+The FOT#1 will include event-level reporting for both winning and losing bids. Implementations of the `generateBid()` and `scoreAd()` worklets, provided by the buyers and sellers respectively in the auction, may call a `forDebuggingOnly.reportAdAuctionLoss()` API which takes a single string argument representing a URL. The text placeholders below will be replaced with the corresponding value from the auction when found in the reporting URL (right now this replacement only happens in the path of the URL, but when http://crbug.com/1338233 is fixed the replacement should only happen in the query parameters of the URL).
 
-  
+*   “${winningBid}” - The value of the winning bid.  In component auctions, this value comes from the component auction and not the top-level auction.
+*   “${madeWinningBid}” - A boolean value representing whether the owner of this interest group made the winning bid, either via this interest group, or another interest group with the same owner.  In component auctions, this value comes from the component auction and not the top-level auction.
+*   “${highestScoringOtherBid}” - The value of the bid  that was scored as second highest by the seller’s scoreAd script. Note that this may not be the second highest bid value, since scores and bids may be independent.  In component auctions, this value comes from the component auction and not the top-level auction.
+*   “${madeHighestScoringOtherBid}” - A boolean value representing whether the owner of this interest group made the ${highestScoringOtherBid} bid, either via this interest group, or another interest group with the same owner.  In component auctions, this value comes from the component auction and not the top-level auction.
+*   “${topLevelWinningBid}” - The value of the bid that won the top-level auction.  This value is only reported in component auctions.
+*   “${topLevelMadeWinningBid}” - A boolean value representing whether the owner of this interest group made the bid that won the top-level auction, either via this interest group, or another interest group with the same owner. This value is only reported in component auctions.
+
+If the bid being generated or scored loses the auction, the URL will be fetched. These worklets may also call a `forDebuggingOnly.reportAdAuctionWin()` API which operates similarly to `forDebuggingOnly.reportAdAuctionLoss()` API but only fetches the URL after a winning bid or score.
 
 The FOT#1 will not include aggregate auction result reporting support for FLEDGE auctions. This is due to motivations relating to [promoting accurate measurement](#promoting-accurate-measurement-of-fledge-effectiveness.) and [availability of aggregate reporting technologies](#availability-of-other-technologies.). As discussed above, event-level reporting will be provided to winning and losing bids during the FOT#1. We’ll look to add support for aggregate reporting in a future version.
 
