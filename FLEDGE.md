@@ -468,9 +468,12 @@ Additionally, keys starting with "browserSignals." are reserved, and may only ap
 
 The browser-generated `prioritySignals` object contains the following values:
 * `browserSignals.one`: This is always 1. It's useful for adding a constant to the dot product.
-* `browserSignals.age`: How long ago the user was added to the interest group, in milliseconds. This is the most recent time the user was added to the interest group, so re-joining an interest group resets the value. This value is always non-negative.
 * `browserSignals.basePriority`: The priority field in the interest group, which may have been modified by a setPriority() call.
 * `browserSignals.firstDotProductPriority`: The priority from multiplying the interest group's `priorityVector` by `prioritySignals`. Only non-zero when using a `proirityVector` from a trusted bidding signals fetch, and the interest group also has a `prioritySignals` field. See below for more details.
+* `browserSignals.ageInMinutes`: How long since the interest group was most recently joined, in minutes. Guaranteed to be between 0 and 43200 (the number of minutes in 30 days, the maximum lifetime of an interest group), inclusive.
+* `browserSignals.ageInMinutesMax60`: Same as `browserSignals.ageInMinutes`, but with a maximum value of 60, which is returned if the group is more than an hour old.
+* `browserSignals.ageInHoursMax24`: The interset group's age in hours, with a maximum value of 24.
+* `browserSignals.ageInDaysMax30`: The interset group's age in days, with a maximum value of 30.
 
 If the resulting dot-product is negative, the interest group is immediately removed from an auction (Note that if there's no `priorityVector`, interest groups with negative values currently are not filtered from auctions). After calculating new priorities as needed, and filtering out interest groups with negative calculated priorities, the `perBuyerGroupLimits` value is applied to all interest groups of a given owner, unless the interest group's `enableBiddingSignalsPrioritization` field is present and true.
 
