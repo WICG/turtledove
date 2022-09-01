@@ -127,14 +127,14 @@ will be bound to a specific low-entropy identifier, `b`.  Each browser will
 be issued tokens with its assigned `b`, and it can spend those tokens as it
 wishes to make `Join` calls to the server.
 
-We will operate a Trust Token issuer specific to this server and these tokens;
-we'll call this issuer **`Sign`**.  In our current proposal, `Sign` will
-require, at least initially for desktop Chrome, that the user be signed-in
-to Chrome with a Google Account.  Requiring sign-in lets us rate limit the
-number of tokens issued to a given user, assign each user a stable, but
-resettable, value for `b`, and prevent naive abuse of `Join` by anonymous
-users.  Even though the user is signed-in, and Google Account credentials
-are used to issue Trust Tokens, the Trust Tokens received by `Join` [cannot be
+We will operate a Trust Token issuer specific to this server and these
+tokens; we'll call this issuer **`Sign`**.  In our current proposal,
+`Sign` will require, at least initially for desktop Chrome, that the user
+be signed-in to Chrome with a Google Account.  Requiring sign-in lets us
+rate limit the number of tokens issued to a given user, assign each user a
+stable value for `b`, and prevent naive abuse of `Join` by anonymous users.
+Even though the user is signed-in, and Google Account credentials are
+used to issue Trust Tokens, the Trust Tokens received by `Join` [cannot be
 linked](https://github.com/WICG/trust-token-api#cryptographic-property-unlinkability)
 back to the Google Account they were issued to.  The Trust Token issuer can
 learn which users join a large number of interest groups.  To guard against
@@ -178,21 +178,39 @@ of network and computational overhead, and multi-party PIR, which has less
 overhead but the additional complexity of operating two non-colluding servers
 with consistent copies of the dataset.
 
-#### Anonymous tokens to replace low entropy identifiers
+#### Anonymous Counting Tokens to replace low entropy identifiers
 
 We're working on researching and testing a privacy improvement to low-entropy
 browser identifiers.  The $j$-bit identifier, `b`, is constant for a given
 browser, which allows some inferences to be made by the `Join` server, in
 spite of collisions between users.  To improve the privacy of this scheme
 and increase the accuracy of our cardinality calculations, while maintaining
-our ability to prevent abusive traffic, we're researching additions to Trust
-Token APIs.
+our ability to prevent abusive traffic, we're developing a new token scheme
+that we're calling _Anonymous Counting Tokens_.
 
-We are working on extending anonymous tokens in a way that enables users to
-obtain signatures on the set being joined without revealing the set to `Sign`.
-We also aim to enable additional functionality that prevents users from
-obtaining multiple tokens for the same set, letting us verify on the server
-that browsers aren't joining the same set more frequently than they should.
+Anonymous Counting Tokens will allow a token issuer (the `Sign` server)
+to issue tokens to a client that are associated with a value that the
+client provides.  The issuer will be able to ensure that the client
+can obtain only a single token for a given value without knowing
+the value the client is requesting a token for, i.e. the tokens are
+[blind](https://en.wikipedia.org/wiki/Blinding_(cryptography)).
+
+The `Sign` server will use Anonymous Counting Tokens to issue tokens signed
+for a single set hash, in contrast to the low entropy identifier design where
+tokens are signed for a value derived from a first party identity the `Sign`
+server is given by the client.  Each user will be able to request only a
+single token for each set hash and the `Join` server will verify, in what
+will become a `Join(t, s)` call, that the token was issued for the set hash
+`s` that the client is attempting to join.
+
+To support validity periods for the Anonymous Counting Tokens where each
+client can get one token per value per period, we will have a registration
+mechanism which would enable clients to refresh their parameters per TTL
+period and obtain a fresh token for each period.
+
+Similar to low entropy identifiers, `Sign` will require with Anonymous Counting
+Tokens that the server has a first party identity with the user (a Google
+Account or other trusted identity provider) for the server to issue tokens.
 
 #### Trusted execution environments
 
