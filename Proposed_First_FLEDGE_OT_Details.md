@@ -56,7 +56,7 @@ As the FLEDGE explainer talks about, the FOT#1 will include event-level reportin
 
   
 
-The FOT#1 will include event-level reporting for both winning and losing bids. Implementations of the `generateBid()` and `scoreAd()` worklets, provided by the buyers and sellers respectively in the auction, may call a `forDebuggingOnly.reportAdAuctionLoss()` API which takes a single string argument representing a URL. The text placeholders below will be replaced with the corresponding value from the auction when found in the reporting URL (right now this replacement only happens in the path of the URL, but when http://crbug.com/1338233 is fixed the replacement should only happen in the query parameters of the URL).
+The FOT#1 will include event-level reporting for both winning and losing bids. Implementations of the `generateBid()` and `scoreAd()` worklets, provided by the buyers and sellers respectively in the auction, may call a `forDebuggingOnly.reportAdAuctionLoss()` API which takes a single string argument representing a URL. The text placeholders below will be replaced with the corresponding value from the auction when found in the reporting URL's query parameters.
 
 *   “${winningBid}” - The value of the winning bid.  In component auctions, this value comes from the component auction and not the top-level auction.
 *   “${madeWinningBid}” - A boolean value representing whether the owner of this interest group made the winning bid, either via this interest group, or another interest group with the same owner.  In component auctions, this value comes from the component auction and not the top-level auction.
