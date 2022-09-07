@@ -113,7 +113,7 @@ Brian: is the KV server going to be run by a 3rd party on behalf of the adtech?
 
 Phil: We'll have a third party (Coordinator) doing server attestation and handing out decryption keys. The server itself is operated by adtech.
 
-Michael Kleber: Same model as the aggregate measurement server. Let me describe the execution model. See diagram in https://github.com/privacysandbox/fledge-docs/blob/main/key\_value\_service\_trust\_model.md#privacy-and-security-considerations
+Michael Kleber: Same model as the aggregate measurement server. Let me describe the execution model. See diagram in https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md#privacy-and-security-considerations
 
 The computation has a bunch of parties in it, let's walk through who is who.
 
