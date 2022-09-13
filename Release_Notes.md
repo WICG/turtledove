@@ -1,6 +1,14 @@
 # FLEDGE Release Notes
 
 
+## Chrome M107
+
+
+
+*   Bug fixes:
+    *   Placeholder replacement of post-auction signals in FLEDGE 'forDebuggingOnly' URLs only takes place in query parameters now, instead of path.
+
+
 ## Chrome M104
 
 
