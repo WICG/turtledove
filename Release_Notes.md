@@ -6,7 +6,7 @@
 
 
 *   Bug fixes:
-    *   Placeholder replacement of post-auction signals in FLEDGE 'forDebuggingOnly' URLs only takes place in query parameters now, instead of path.
+    *   ['forDebuggingOnly' URLs only replaces post-auction signals placeholders in query parameters now, instead of path](http://crbug.com/1338233).
 
 
 ## Chrome M104
