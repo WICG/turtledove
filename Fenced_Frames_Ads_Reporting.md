@@ -45,16 +45,18 @@ The following new APIs will be added for achieving this.
 
 ## reportEvent
 
-Fenced frame can invoke this API for the browser to be able to send a beacon with the data in this API, to the URL registered by the worklet in registerAdBeacon (see below). Depending on the ‘destination type’ present here, the beacon will be sent to either the buyer’s or the seller’s registered URL. Examples of such events are mouse hovers, clicks that may or may not lead to navigation e.g. video player control element clicks etc.
+Fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon with event data to a URL registered by the worklet in `registerAdBeacon` (see below). Depending on the declared `destination`, the beacon is sent to either the buyer's or the seller's registered URL. Examples of such events are mouse hovers, clicks (which may or may not lead to navigation e.g. video player control element clicks), etc.
 
-Browser will process this similar to how the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon) works via sending an HTTP POST request.
+This API is available from same-origin frames within the initial rendered ad document and across subsequent same-origin navigations, but it's no longer available after cross-origin navigations or in cross-origin subframes. (For this API, for chains of redirects, the requestor is considered same-origin with the target only if it is same-origin with all redirect URLs in the chain.) This way, the ad may redirect itself without losing access to reporting, but other sites can't send spurious reports.
+
+The browser processes the beacon by sending an HTTP POST request, like the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
 
 
 ### Parameters
 
 **Event type and data:** Includes the event type and data associated with an event. When an event type e.g. click matches to the event type registered in registerAdBeacon, the data will be used by the browser as the data sent in the beacon sent to the registered URL.
 
-**Destination type:** List of values to determine whether this event needs to be reported to both buyer and seller, only buyer or only seller.
+**Destination type:** List of values to determine whose registered beacons are reported, can be a combination of 'buyer', 'seller', or 'component-seller'.
 
 
 ### Example
@@ -72,7 +74,7 @@ window.fence.reportEvent({
 window.fence.reportEvent({
   'eventType': 'click',
   'eventData': 'an example string',
-  'destination':['buyer', 'seller']
+  'destination':['component-seller']
 });
 ```
 
@@ -85,18 +87,16 @@ A similar API was initially discussed here: https://github.com/WICG/turtledove/i
 
 ### Parameters
 
-**Event type:** E.g. click. This corresponds to the event type in reportEvent. This is for enabling buyers/ sellers to register distinct beacon URLs for different event types.
+A map from event type to reporting URL, where the event type corresponds to the `eventType` value passed to  `reportEvent()`. The event type enables worklets (for buyer, seller, or component seller) to register distinct reporting URLs for different event types. The reporting URL is the location where a beacon is sent once the fenced frame delivers the corresponding event via `reportEvent()`.
 
-**URL:** The URL to which a beacon will be sent by the browser on receiving events from the fenced frame via reportEvent
-The worklet is able to add the buyerEventId/sellerEventId and any other relevant information via this API.
-
+Worklets can add a buyer event identifier, seller event identifier, or any other relevant information as query parameters to this URL.
 
 ### Example
 
 
 ```
 registerAdBeacon({
- 'click': {'url': 'https://adtech.example/click?buyer_event_id=123'},
+ 'click': 'https://adtech.example/click?buyer_event_id=123',
 });
 ```
 
