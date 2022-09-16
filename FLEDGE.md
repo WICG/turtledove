@@ -326,7 +326,7 @@ Buyers may want to make on-device decisions that take into account real-time dat
 
     https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2&interestGroups=name1,name2
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `keys` is a list of `trustedBiddingSignalsKeys` strings, and interestGroupNames is a list of the names of interest groups data is being fetched for.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `keys` is a list of `trustedBiddingSignalsKeys` strings, and `interestGroupNames` is a list of the names of the interest groups that data is being fetched for.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
 
 The response from the server should be a JSON object of the form:
 
