@@ -234,11 +234,12 @@ decision on a best-effort basis to use versions as new as possible.
 The server does not guarantee that the version will always be returned. It’s
 much more likely when the number of keys in a request is small.
 
-## Server Internal APIs
-The system would provide multiple private APIs, primarily for loading data and user-defined functions whose model is described in detail in the [Key/Value server design explainer](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md#support-for-user-defined-functions-udfs), and possibly more in the future.
+## Server Internal APIs and procedures
 
-These all are private processes with ACLs controlled by the ad tech operator of the system, for only the operator (and their designated parties) to use.
+The system will provide multiple private APIs and procedures, for loading data and user-defined functions whose model is described in detail in the [Key/Value server design explainer](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md#support-for-user-defined-functions-udfs).
 
-The key/value server code is available on its [Privacy Sandbox github repo](https://github.com/privacysandbox/fledge-key-value-service) which reflects the most recent API and processes. As an example, the [data loading guide](https://github.com/privacysandbox/fledge-key-value-service/blob/main/docs/loading_data.md) has specific instructions on how to integrate with the data ingestion process. The process may be based on the actual storage medium of the dataset, e.g., the server can read data from data files in a prespecified location.
+These APIs and procedures are ACLs controlled by the ad tech operator of the system, for only the operator (and their designated parties) to use.
 
-As the [FLEDGE API](https://github.com/WICG/turtledove/blob/main/FLEDGE.md) describes the client side flow, the APIs and processes related to the server system design and implementation will have the specification posted and updated in the key/value server’s [github repo](https://github.com/privacysandbox/fledge-key-value-service).
+The key/value server code is available on its [Privacy Sandbox github repo](https://github.com/privacysandbox/fledge-key-value-service) which reflects the most recent API and procedures. As an example, the [data loading guide](https://github.com/privacysandbox/fledge-key-value-service/blob/main/docs/loading_data.md) has specific instructions on integrating with the data ingestion procedure. The procedure may be based on the actual storage medium of the dataset, e.g., the server can read data from data files from a prespecified location.
+
+As the [FLEDGE API](https://github.com/WICG/turtledove/blob/main/FLEDGE.md) describes the client side flow, the APIs and procedures related to the server system design and implementation will have the specification posted and updated in the key/value server’s [github repo](https://github.com/privacysandbox/fledge-key-value-service).
