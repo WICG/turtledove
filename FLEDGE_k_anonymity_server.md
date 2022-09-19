@@ -178,15 +178,16 @@ of network and computational overhead, and multi-party PIR, which has less
 overhead but the additional complexity of operating two non-colluding servers
 with consistent copies of the dataset.
 
-#### Anonymous Counting Tokens to replace low entropy identifiers
+#### Anonymous Counting Tokens to replace low-entropy identifiers
 
-We're working on researching and testing a privacy improvement to low-entropy
-browser identifiers.  The $j$-bit identifier, `b`, is constant for a given
-browser, which allows some inferences to be made by the `Join` server, in
-spite of collisions between users.  To improve the privacy of this scheme
-and increase the accuracy of our cardinality calculations, while maintaining
-our ability to prevent abusive traffic, we're developing a new token scheme
-that we're calling _Anonymous Counting Tokens_.
+We're working on researching and testing a privacy improvement to
+[low-entropy](#low-entropy-identifiers) browser identifiers.  The $j$-bit
+identifier, `b`, is constant for a given browser, which allows some inferences
+to be made by the `Join` server, in spite of collisions between users.
+To improve the privacy of this scheme and increase the accuracy of our
+cardinality calculations, while maintaining our ability to prevent abusive
+traffic, we're developing a new token scheme that we're calling _Anonymous
+Counting Tokens_.
 
 Anonymous Counting Tokens will allow a token issuer (the `Sign` server)
 to issue tokens to a client that are associated with a value that the
@@ -196,7 +197,7 @@ the value the client is requesting a token for, i.e. the tokens are
 [blind](https://en.wikipedia.org/wiki/Blinding_(cryptography)).
 
 The `Sign` server will use Anonymous Counting Tokens to issue tokens signed
-for a single set hash, in contrast to the low entropy identifier design where
+for a single set hash, in contrast to the low-entropy identifier design where
 tokens are signed for a value derived from a first party identity the `Sign`
 server is given by the client.  Each user will be able to request only a
 single token for each set hash and the `Join` server will verify, in what
@@ -208,7 +209,7 @@ client can get one token per value per period, we will have a registration
 mechanism which would enable clients to refresh their parameters per TTL
 period and obtain a fresh token for each period.
 
-Similar to low entropy identifiers, `Sign` will require with Anonymous Counting
+Similar to low-entropy identifiers, `Sign` will require with Anonymous Counting
 Tokens that the server has a first party identity with the user (a Google
 Account or other trusted identity provider) for the server to issue tokens.
 
