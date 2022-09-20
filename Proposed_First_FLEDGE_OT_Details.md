@@ -71,7 +71,7 @@ If a seller rejected a bid from participating in an auction, the seller can opti
 *   "not-available"
 *   "invalid-bid"
 *   "bid-below-auction-floor"
-*   "pending-by-exchange"
+*   "pending-approval-by-exchange"
 *   "disapproved-by-exchange"
 *   "blocked-by-publisher"
 *   "language-exclusions"
