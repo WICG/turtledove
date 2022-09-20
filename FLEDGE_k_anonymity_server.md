@@ -200,16 +200,16 @@ The `Sign` server will use Anonymous Counting Tokens to issue tokens signed
 for a single set hash, in contrast to the low-entropy identifier design
 where tokens are signed for a value derived from a first party identity the
 `Sign` server is given by the client.  Each user will be able to request
-only a single token for each set hash and the `Join` server will verify,
-in what will become a `Join(t, s)` call, that the token was issued for the
-set hash `s` that the client is attempting to join.  It may be surprising
-that this is even possible without the token issuer learning anything about
-the set hashes joined by a particular user, but _Anonymous Counting Tokens_
-indeed allow this outcome.
+only a single token for each set hash and the `Join` server will verify, in
+what will become a `Join(t, s)` call, that the token was issued for the set
+hash `s` that the client is attempting to join.  It may be surprising that
+this behavior is even possible without the token issuer learning anything
+about the set hashes joined by a particular user.  A forthcoming paper will
+describe the cryptographic technique that makes this possible.
 
 To support validity periods for the Anonymous Counting Tokens where each
 client can get one token per value per period, we will have a registration
-mechanism which would enable clients to refresh their parameters per TTL
+mechanism which will enable clients to refresh their parameters per TTL
 period and obtain a fresh token for each period.
 
 Similar to low-entropy identifiers, `Sign` will require with Anonymous Counting
