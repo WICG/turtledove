@@ -11,7 +11,7 @@ The usefulness of this page depends on testers sharing information and updates; 
 
 - Not evaluative. The purpose of this page is to consolidate links to information published by Privacy Sandbox testers.  Editors will review submissions for relevance and to ensure general conformance to the guidelines above, but are not evaluating or endorsing the information provided.
 
-- Editors will regularly review and approve submissions that meet the guidelines below. If you believe that an error has been submitted, please create an issue in the FLEDGE repository with the words ‘[Tester List’] in the subject and the Editors will respond in short order.
+- Editors will regularly review and approve submissions that meet the guidelines below. If you believe that an error has been submitted, please create an issue in the FLEDGE repository with the words ‘[Tester List]‘ in the subject and the Editors will respond in short order.
 
 ## Guidelines
 
