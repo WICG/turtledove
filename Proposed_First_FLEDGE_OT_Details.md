@@ -121,7 +121,7 @@ Usage in iframe can be disabled by adding the allow="join-ad-interest-group 'non
 
 `<iframe src="https://example.com" allow="join-ad-interest-group 'none'; run-ad-auction 'none'"></iframe>`
 
-The FOT#1 will not include support for delegating interest group access via a .well-known URL as the explainer describes.
+The FOT#1 also supports delegating interest group access via a .well-known URL as the explainer describes.
 
 #### K-anonymity Enforcement
 
