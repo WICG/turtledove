@@ -509,7 +509,11 @@ reportResult(auctionConfig, browserSignals, directFromSellerSignals) {
 The arguments to this function are:
 
 *   auctionConfig: The auction configuration object passed to `navigator.runAdAuction()`
-*   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction. `topLevelSeller`, `topLevelSellerSignals`, and `modifiedBid` are only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction. `modifiedBid` is the bid value a component auction's `scoreAd()` script passes to the top-level auction. `topLevelSellerSignals` is the output of the top-level seller's ReportResult() method:
+*   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction.
+    *   `topLevelSeller`, `topLevelSellerSignals`, and `modifiedBid` are only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction.
+    *   `modifiedBid` is the bid value a component auction's `scoreAd()` script passes to the top-level auction.
+    *   `topLevelSellerSignals` is the output of the top-level seller's ReportResult() method.
+    *   `highestScoringOtherBid` is the value of a bid with the second highest score in the auction. It may be greater than `bid` since it's a bid instead of a score, and a higher bid value may get a lower score. If there was only one bid, it will be 0. In the case of a tie, it will be randomly chosen from all bids with the second highest score, excluding the winning bid if the winning bid had the same score. A component seller's reportWin() function will be passed a bid with the second highest score in the component auction, not the top-level auction. It is not reported to top-level sellers in a multi-SSP case because we expect a top-level auction in this case to be first-price auction only:
 
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
@@ -521,14 +525,15 @@ The arguments to this function are:
       'desirability': desirabilityScoreForWinningAd,
       'topLevelSellerSignals': outputOfTopLevelSellersReportResult,
       'dataVersion': versionFromKeyValueResponse,
-      'modifiedBid': modifiedBidValue
+      'modifiedBid': modifiedBidValue,
+      'highestScoringOtherBid': highestScoringOtherBidValue
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
     *   sellerSignals: Like auctionConfig.sellerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?sellerSignals`.
     *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
 
-The `browserSignals` argument must be handled carefully to avoid tracking.  It certainly cannot include anything like the full list of interest groups, which would be too identifiable as a tracking signal.  The `renderUrl` can be included since it has already passed a k-anonymity check.  The browser may limit the precision of the bid and desirability values to avoid these numbers exfiltrating information from the interest group's `userBiddingSignals`.  On the upside, this set of signals can be expanded to include useful additional summary data about the wider range of bids that participated in the auction, e.g. the second-highest bid or the number of bids.  Additionally, the `dataVersion` will only be present if the `Data-Version` header was provided in the response headers from the Trusted Scoring server.
+The `browserSignals` argument must be handled carefully to avoid tracking.  It certainly cannot include anything like the full list of interest groups, which would be too identifiable as a tracking signal.  The `renderUrl` can be included since it has already passed a k-anonymity check.  The browser may limit the precision of the bid and desirability values to avoid these numbers exfiltrating information from the interest group's `userBiddingSignals`.  On the upside, this set of signals can be expanded to include useful additional summary data about the wider range of bids that participated in the auction, e.g. the number of bids.  Additionally, the `dataVersion` will only be present if the `Data-Version` header was provided in the response headers from the Trusted Scoring server.
 
 The `reportResult()` function's reporting happens by directly calling network APIs in the short-term, but will eventually go through the Private Aggregation API once it has been developed. The output of this function is not used for reporting, but rather as an input to the buyer's reporting function.
 
@@ -550,7 +555,11 @@ The arguments to this function are:
 
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
-*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName` and `seller` fields.  The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.  If the winning bid was from a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction.  Additional fields could also include some buyer-specific signal like the second-highest bid from that particular buyer.
+*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `interestGroupName`, `seller` and `madeHighestScoringOtherBid` fields.
+    *   The `madeHighestScoringOtherBid` field is true if the IG owner was the only bidder that made bids with the second highest score.
+    *   The `highestScoringOtherBid` and `madeHighestScoringOtherBid` fields are based on the auction the interest group was directly part of. If that was a component auction, they're from the component auction. If that was the top-level auction, then they're from the top-level auction. Component bidders do not get these signals from top-level auctions since it is the auction seller joining the top-level auction, instead of winning component bidders joining the top-level auction directly.
+    *   The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.
+    *   If the winning bid was from a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top-level auction.
 *   directFromSellerSignals is an object that may contain the following fields:
     *   perBuyerSignals: Like auctionConfig.perBuyerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
     *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
