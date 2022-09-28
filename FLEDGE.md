@@ -304,7 +304,7 @@ While the browser ensures (using TLS) that information stored in a buyer's inter
 
 The optional `directFromSellerSignals` field can be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `directFromSellerSignals` are trusted to come from a seller because the content loads from a [subresource bundle](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md) loaded from a seller's origin. If present, `directFromSellerSignals` should be an HTTPS URL prefix using the seller's origin -- when combined with a browser-provided suffix (see details below), the resultant URL should be a resource in a subresource bundle that has been loaded by the current document, whose contents are of type `application/json`, with the following response headers: `X-Allow-Fledge: true` and `X-FLEDGE-Auction-Only: true`.
 
-The URL prefix should not have a query string (i.e. `?a=b&c=d`). The browser will append the following suffixes to the prefix:
+The URL prefix should not have a query string (i.e. `?a=b&c=d`). Different calls to `navigator.runAdAuction()` on a page may use different prefixes -- for instance, to give different signals to different ad slots. The browser will append the following suffixes to the prefix:
 
 *   `?perBuyerSignals=[origin]`, where [origin] is one of the origins in `interestGroupBuyers`: this corresponds to the `perBuyerSignals` for the buyer `origin`
 *   `?sellerSignals`: this corresponds to the `sellerSignals` only delivered to the seller
