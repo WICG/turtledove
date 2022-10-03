@@ -18,3 +18,86 @@ Default Biblio Status: current
 Markup Shorthands: markdown yes
 Assume Explicit For: yes
 </pre>
+
+# Introduction # {#intro}
+
+<em>This section is non-normative</em>
+
+The FLEDGE API facilitates selecting an advertisement to display to a user based on a previous interaction with the advertiser or advertising network.
+
+When a user's interactions with an advertiser indicate an interest in something, the advertiser can ask the browser to record this interest on-device by calling {{Window/navigator}}.{{Navigator/joinAdInterestGroup()}}.  Later, when a website wants to select an advertisement to show to the user, the website can call {{Window/navigator}}.{{Navigator/runAdAuction()}} to ask the browser to conduct an auction where each of these on-device recorded interests are given the chance to calculate a bid to display their advertisement.
+
+
+<h2 id="joining-interest-groups">Joining Interest Groups</h2>
+
+When a user's interactions with a website indicate that the user may have a particular interest, an advertiser or someone working on behalf of the advertiser (e.g. a demand side platform, DSP) can ask the user's browser to record this interest on-device by calling {{Window/navigator}}.{{Navigator/joinAdInterestGroup()}}.  This indicates an intent to display an advertisement relevant to this interest to this user in the future.
+
+
+<xmp class="idl">
+[SecureContext]
+partial interface Navigator {
+  Promise<undefined> joinAdInterestGroup(AuctionAdInterestGroup group, double durationSeconds);
+};
+
+enum WorkletExecutionMode {
+  "compatibility",
+  "groupByOrigin",
+};
+
+dictionary AuctionAd {
+  required USVString renderUrl;
+  any metadata;
+};
+
+dictionary AuctionAdInterestGroup {
+  required USVString owner;
+  required USVString name;
+
+  double priority;
+  boolean enableBiddingSignalsPrioritization;
+  record<USVString, double> priorityVector;
+  record<USVString, double> prioritySignalsOverrides;
+
+  WorkletExecutionMode executionMode;
+  USVString biddingLogicUrl;
+  USVString biddingWasmHelperUrl;
+  USVString dailyUpdateUrl;
+  USVString trustedBiddingSignalsUrl;
+  sequence<USVString> trustedBiddingSignalsKeys;
+  any userBiddingSignals;
+  sequence<AuctionAd> ads;
+  sequence<AuctionAd> adComponents;
+};
+</xmp>
+
+
+<h2 id="running-ad-auctions">Running Ad Auctions</h2>
+
+When a website or someone working on behalf of the website (e.g. a supply side platform, SSP)  wants to conduct an auction to select an advertisement to display to the user, they can call the {{Window/navigator}}.{{Navigator/runAdAuction()}} function, 
+providing an auction configuration that tells the browser how to conduct the auction and which on-device recorded interests are allowed to bid in the auction for the chance to display their advertisement.
+  
+<xmp class="idl">
+[SecureContext]
+partial interface Navigator {
+  Promise<USVString?> runAdAuction(AuctionAdConfig config);
+};
+
+dictionary AuctionAdConfig {
+  required USVString seller;
+  required USVString decisionLogicUrl;
+  USVString trustedScoringSignalsUrl;
+  sequence<USVString> interestGroupBuyers;
+  any auctionSignals;
+  any sellerSignals;
+  USVString directFromSellerSignals;
+  unsigned long long sellerTimeout;
+  unsigned short sellerExperimentGroupId;
+  record<USVString, any> perBuyerSignals;
+  record<USVString, unsigned long long> perBuyerTimeouts;
+  record<USVString, unsigned short> perBuyerGroupLimits;
+  record<USVString, unsigned short> perBuyerExperimentGroupIds;
+  record<USVString, record<USVString, double>> perBuyerPrioritySignals;
+  sequence<AuctionAdConfig> componentAuctions;
+  AbortSignal? signal;
+};
+</xmp>
