@@ -24,7 +24,7 @@ We plan to hold regular meetings under the auspices of the WICG to go through th
     - [3.2 On-Device Bidding](#32-on-device-bidding)
     - [3.3 Metadata with the Ad Bid](#33-metadata-with-the-ad-bid)
     - [3.4 Ads Composed of Multiple Pieces](#34-ads-composed-of-multiple-pieces)
-    - [3.5 Prioritizing Interest Groups](#35-prioritizing-interest-groups)
+    - [3.5 Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups)
   - [4. Browsers Render the Winning Ad](#4-browsers-render-the-winning-ad)
   - [5. Event-Level Reporting (for now)](#5-event-level-reporting-for-now)
     - [5.1 Seller Reporting on Render](#51-seller-reporting-on-render)
@@ -99,7 +99,7 @@ const myGroup = {
     'signal2': 0,
     ...
   }
-  `enableBiddingSignalsPrioritization` : [true | false],
+  `enableBiddingSignalsPrioritization` : true,
   'biddingLogicUrl': ...,
   'biddingWasmHelperUrl': ...,
   'dailyUpdateUrl': ...,
@@ -126,7 +126,7 @@ The browser will remain in an interest group for only a limited amount of time. 
 
 The `priority` is used to select which interest groups participate in an auction when the number of interest groups are limited by the `perBuyerGroupLimits` attribute of the auction config. If not specified, a `priority` of `0.0` is assigned. There is no special meaning to these values. These values are only used to select interest groups to participate in an auction such that if there is an interest group participating in the auction with priority `x`, all interest groups with the same owner having a priority `y` where `y > x` should also participate (i.e. `generateBid` will be called). In the case where some but not all interest groups with equal priority can participate in an auction due to `perBuyerGroupLimits`, the participating interest groups will be uniformly randomly chosen from the set of interest groups with that priority.
 
-`priorityVector`, `prioritySignalsOverrides`, and `enableBiddingSignalsPrioritization` are optional values used to dynamically calculate a priority used in place of `priority`. `priorityVector` and `prioritySignalsOverrides` are mappings of strings to Javscript numbers, while `enableBiddingSignalsPrioritization` is a bool that defaults to `false`. See [Prioritizing Interest Groups](#35-prioritizing-interest-groups) for a description of how these fields are used.
+`priorityVector`, `prioritySignalsOverrides`, and `enableBiddingSignalsPrioritization` are optional values used to dynamically calculate a priority used in place of `priority`. `priorityVector` and `prioritySignalsOverrides` are mappings of strings to Javscript numbers, while `enableBiddingSignalsPrioritization` is a bool that defaults to `false`. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for a description of how these fields are used.
 
 The `userBiddingSignals` is for storage of additional metadata that the owner can use during on-device bidding, and the `trustedBiddingSignals` attributes provide another mechanism for making real-time data available for use at bidding time.
 
@@ -224,7 +224,7 @@ Optionally, `sellerTimeout` can be specified to restrict the runtime (in millise
 
 Optionally, `perBuyerGroupLimits` can be specified to limit the number of of interest groups from a particular buyer that participate in the auction. A key of `'*'` in `perBuyerGroupLimits` is used to set a limit for unspecified buyers. For each buyer, interest groups will be selected to participate in the auction in order of decreasing `priority` (larger priorities are selected first) up to the specfied limit. The selection of interest groups occurs independently for each buyer, so the priorities do not need to be comparable between buyers and could have a buyer-specific meaning. The value of the limits provided should be able to be represented by a 16 bit unsigned integer.
 
-Optionally, `perBuyerPrioritySignals` is an object mapping string keys to Javascript numbers that can be used to dynamically compute interest group priorities before `perBuyerGroupLimits` are applied. See [Prioritizing Interest Groups](#35-prioritizing-interest-groups) for more information.
+Optionally, `perBuyerPrioritySignals` is an object mapping string keys to Javascript numbers that can be used to dynamically compute interest group priorities before `perBuyerGroupLimits` are applied. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
 
 All fields that accept arbitrary metadata objects (`auctionSignals`, `sellerSignals`, and keys of `perBuyerSignals`) must be JSON-serializable.
 
@@ -351,7 +351,7 @@ and the server must include the HTTP response header `X-fledge-bidding-signals-f
 
 The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed from the `keys` dictionary to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no `trustedBiddingSignalsKeys` or `trustedBiddingSignalsUrl` in the interest group, then the `trustedBiddingSignals` argument to generateBid() will be null.
 
-The `perInterestGroupData` dictionary contains optional data for interest groups whose names were included in the request URL. The `priorityVector` will be used to calculate the final priority for an interest group, if that interest group has `enableBiddingSignalsPrioritization` set to true in its definition. Otherwise, it's only used to filter out interest groups, if the result of multipling it by the `prioritySignals` is negative. See [Prioritizing Interest Groups](#35-prioritizing-interest-groups) for more information.
+The `perInterestGroupData` dictionary contains optional data for interest groups whose names were included in the request URL. The `priorityVector` will be used to calculate the final priority for an interest group, if that interest group has `enableBiddingSignalsPrioritization` set to true in its definition. Otherwise, it's only used to filter out interest groups, if the result of multipling it by the `prioritySignals` is negative. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
 
 Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object. However, it has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderUrls bids offered in the auction. It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
 
@@ -455,7 +455,7 @@ The [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PR
 The output of `generateBid()` can use the on-device ad composition flow through an optional adComponents field, listing additional URLs made available to the fenced frame the container URL is loaded in. The component URLs may be retrieved by calling `navigator.adAuctionComponents(numComponents)`, where numComponents is at most 20. To prevent bidder worklets from using this as a sidechannel to leak additional data to the fenced frame, exactly numComponents obfuscated URLs will be returned by this method, regardless of how many adComponent URLs were actually in the bid, even if the bid contained no adComponents, and the Interest Group itself had no adComponents either.
 
 
-#### 3.5 Prioritizing Interest Groups
+#### 3.5 Filtering and Prioritizing Interest Groups
 
 When an interest group has a non-empty `priorityVector`, its priority is dynamically calculted before applying `perBuyerGroupLimits`. To do this, the sparse dot product of interest group's `priorityVector` is multiplied by a `prioritySignals` vector. The __sparse dot product__ of two vectors `V` and `W` is the sum of the products `V[key] * W[key]` for each key in both `V` and `W`. For example, the sparse dot product of `{'x':3, 'y':7, 'z':12}` with `{'x':-2, 'y':1.7, 'teapot':418}` is `3*(-2) + 7*1.7 = 5.9`. The `prioritySignals` vector is the result of merging the following objects, which all have strings as keys and numbers as values, with entry in objects earlier in the list taking priority over entries later in the list:
 
