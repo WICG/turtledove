@@ -1,6 +1,13 @@
 # FLEDGE Release Notes
 
 
+## Chrome M108
+
+
+
+*   Support reporting bid reject reason to buyers through calling `forDebuggingOnly.reportAdAuctionLoss()` API in `generateBid()` and including `${rejectReason}` in the report URL's query string.
+
+
 ## Chrome M104
 
 
