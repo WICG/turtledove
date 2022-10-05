@@ -70,17 +70,17 @@ dictionary AuctionAdInterestGroup {
 };
 </xmp>
 
-To join an interest group, given an {{AuctionAdInterestGroup}} |group| and a double |durationSeconds|, perform the following steps. Then return a [=promise type|Promise=]:
+The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</dfn> method steps are:
 
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the "join-ad-interest-group" [=policy-controlled feature=], then return [=a promise rejected with=] a "{{NotAllowedError}}" {{DOMException}}.
-1. Let interestGroup be a new [=interest group=].
+1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
   1. Set |interestGroup|'s [=interest group/expiry=] to now plus |durationSeconds|.
-  1. If the |group|["{{AuctionAdInterestGroup/owner}}"] [=url/scheme=] is HTTPS, then set |interestGroup|'s [=interest group/owner=] to |group|["{{AuctionAdInterestGroup/owner}}"]. Otherwise, return [=a promise rejected with=] a "{{TypeError}}" {{DOMException}}.
+  1. If the |group|["{{AuctionAdInterestGroup/owner}}"] [=url/scheme=] is HTTPS, then set |interestGroup|'s [=interest group/owner=] to |group|["{{AuctionAdInterestGroup/owner}}"]. Otherwise, return [=a promise rejected with=] a {{TypeError}}.
   1. Set |interestGroup|'s [=interest group/name=] to |group|["{{AuctionAdInterestGroup/name}}"].
   1. If |group|["{{AuctionAdInterestGroup/executionMode}}"] is not null:
-    1. If it is "compatibility" or "groupByOrigin", then set |interestGroup|'s [=interest group/execution mode=] to it.
-    1. Otherwise, return [=a promise rejected with=] a "{{TypeError}}" {{DOMException}}.
+    1. Assert: |group|["{{AuctionAdInterestGroup/executionMode}}"] is "compatibility" or "groupByOrigin".
+    1. Set |interestGroup|'s [=interest group/execution mode=] to |group|["{{AuctionAdInterestGroup/executionMode}}"]
   1. If |group|["{{AuctionAdInterestGroup/biddingLogicUrl}}"] is not null:
     1. If it is a valid [=URL=], then set |interestGroup|'s [=interest group/bidding url=] to it.
     1. Otherwise, return [=a promise rejected with=] a "{{TypeError}}" {{DOMException}}.
@@ -117,9 +117,8 @@ To join an interest group, given an {{AuctionAdInterestGroup}} |group| and a dou
 1. Store |interestGroup| in the browser’s list of interest groups.
 1. Return a new promise.
 
-To <dfn>estimate size of an [=interest group=]</dfn> |ig|:
-1. Let size be the sum of:
-  1. [=string/Length=] of [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=].
+The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig| is the sum of:
+1. The [=string/length=] of the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=].
   1. [=string/Length=] of |ig|'s [=interest group/name=].
   1. 8 bytes, which is the size of |ig|'s [=interest group/priority=].
   1. [=string/Length=] of |ig|'s [=interest group/execution mode=].
@@ -171,7 +170,7 @@ An interest group is a [=struct=] with the following items:
 
 <dl dfn-for="interest group">
 : <dfn>expiry</dfn>
-:: A length of time.
+:: A point in time at which the browser will forget about this interest group.
 : <dfn>owner</dfn>
 :: An [=url/origin=].
 : <dfn>name</dfn>
