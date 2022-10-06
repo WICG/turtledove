@@ -42,3 +42,4 @@ The usefulness of this page depends on testers sharing information and updates.
 | --------------- | --------------- | ---------------------- | ------------------------------------- | ------------------ |
 | Criteo | DSP | | | privacy-sandbox-testing@criteo.com |
 | NextRoll | DSP | | | privacysandbox@nextroll.com |
+| OpenX | SSP | Limited testing in progress | | joel.meyer@openx.com |
