@@ -44,3 +44,4 @@ The usefulness of this page depends on testers sharing information and updates.
 | NextRoll | DSP | | | privacysandbox@nextroll.com |
 | OpenX | SSP | Limited testing in progress | | joel.meyer@openx.com |
 | RTB House | DSP | Continuous testing ongoing; long term commitment. | https://blog.rtbhouse.com/whitepaper-deep-insights-from-early-fledge-experiments/ | privacysandbox@rtbhouse.com |
+| SMN | DSP | | | privacy-sandbox-testing@so-netmedia.jp |
