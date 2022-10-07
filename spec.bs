@@ -124,9 +124,9 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
       1. Let |parsedUrl| be the result of running the [=URL parser=] on |group|[|groupMember|].
       1. If |parsedUrl| is an error, return [=a promise rejected with=] a {{TypeError}}.
       1. Set |interestGroup|'s |interestGroupField| to |parsedUrl|.
-  1. [=list/For each=] |key| in |group|["{{AuctionAdInterestGroup/trustedBiddingSignalsKeys}}"]:
+  1. [=list/For each=] |key| of |group|["{{AuctionAdInterestGroup/trustedBiddingSignalsKeys}}"]:
     1. [=list/Append=] |key| to |interestGroup|'s [=interest group/trusted bidding signals keys=].
-  1. If |group|["{{AuctionAdInterestGroup/userBiddingSignals}}"] is not null:
+  1. If |group|["{{AuctionAdInterestGroup/userBiddingSignals}}"] [=map/exists=]:
     1. Let |interestGroup|'s [=interest group/user bidding signals=] be the result of
       [=JSON-serializing=] |group|["{{AuctionAdInterestGroup/userBiddingSignals}}"] into a string.
       If it fails, then return [=a promise rejected with=] a {{TypeError}}.
@@ -141,7 +141,7 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
         <td>[=interest group/ad components=]</td>
       </tr>
     </table>
-    1. [=list/For each=] |ad| in |group|[|groupMember|]:
+    1. [=list/For each=] |ad| of |group|[|groupMember|]:
       1. Let |igAd| be a new [=interest group ad=].
       1. Let |renderUrl| be the result of running the [=URL parser=] on
         |ad|["{{AuctionAd/renderUrl}}"].
@@ -166,7 +166,7 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
   1. If [=interest group/trusted bidding signals url=]'s
     <a href="https://url.spec.whatwg.org/#concept-url-path">query</a> is not null, then return
     [=a promise rejected with=] a {{TypeError}}.
-  1. [=list/For each=] |ad| in |interestGroup|'s [=interest group/ads=] (same for
+  1. [=list/For each=] |ad| of |interestGroup|'s [=interest group/ads=] (same for
     |interestGroup|'s [=interest group/ad components=]), return [=a promise rejected with=] a
     {{TypeError}} if |ad|'s [=interest group ad/render url=]:
     1. [=url/scheme=] is not HTTPS.
@@ -188,11 +188,34 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 1. 8 bytes, which is the size of |ig|'s [=interest group/priority=].
 1. The [=string/length=] of |ig|'s [=interest group/execution mode=].
 1. 2 bytes, which is the size of |ig|'s [=interest group/enable bidding signals prioritization=].
-1. The [=map/size=] of |ig|'s [=interest group/priority vector=].
-1. The [=map/size=] of |ig|'s [=interest group/priority signals overrides=].
+1. If |ig|'s [=interest group/priority vector=] is not null, [=map/for each=] |key| → |value| of
+  [=interest group/priority vector=]:
+  1. The [=string/length=] of |key|.
+  1. 8 bytes, which is the size of |value|.
+1. If |ig|'s [=interest group/priority signals overrides=] is not null, [=map/for each=] |key| → 
+  |value| of [=interest group/priority signals overrides=]:
+  1. The [=string/length=] of |key|.
+  1. 8 bytes, which is the size of |value|.
+1. The size of [=interest group/execution mode=].
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
-  [=interest group/bidding url=].
-1. TODO: finish this.
+  [=interest group/bidding url=], if the field is not null.
+1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
+  [=interest group/bidding wasm helper url=], if the field is not null.
+1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
+  [=interest group/daily update url=], if the field is not null.
+1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
+  [=interest group/trusted bidding signals url=], if the field is not null.
+1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
+  1. The [=string/length=] of |key|.
+1. The [=string/length=] of |ig|'s [=interest group/user bidding signals=].
+1. If |ig|'s [=interest group/ads=] is not null, [=list/for each=] |ad| of it:
+  1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
+    [=interest group ad/render url=].
+  1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null..
+1. If |ig|'s [=interest group/ad components=] is not null, [=list/for each=] |ad| of it:
+  1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
+    [=interest group ad/render url=].
+  1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
 
 TODO: .well-known fetches.
 
@@ -246,7 +269,7 @@ An interest group is a [=struct=] with the following items:
 : <dfn>name</dfn>
 :: A [=string=].
 : <dfn>priority</dfn>
-:: A double.
+:: A double. Defaulting to 0.0.
 : <dfn>enable bidding signals prioritization</dfn>
 :: A [=boolean=].
 : <dfn>priority vector</dfn>
@@ -266,7 +289,7 @@ An interest group is a [=struct=] with the following items:
 : <dfn>trusted bidding signals url</dfn>
 :: Null or a [=URL=].
 : <dfn>trusted bidding signals keys</dfn>
-:: Null or a [=list=].
+:: Null or a [=list=] of [=string=].
 : <dfn>user bidding signals</dfn>
 :: Null or a [=string=].
 : <dfn>ads</dfn>
