@@ -41,7 +41,9 @@ When a user's interactions with a website indicate that the user may have a part
 advertiser or someone working on behalf of the advertiser (e.g. a demand side platform, DSP) can ask
 the user's browser to record this interest on-device by calling
 {{Window/navigator}}.{{Navigator/joinAdInterestGroup()}}. This indicates an intent to display an
-advertisement relevant to this interest to this user in the future.
+advertisement relevant to this interest to this user in the future. The user agent has an
+<dfn>interest group set</dfn>, a [=list=] of [=interest groups=] in which
+[=interest group/owner=] / [=interest group/name=] pairs are unique.
 
 
 <xmp class="idl">
@@ -69,7 +71,7 @@ dictionary AuctionAdInterestGroup {
   record<USVString, double> priorityVector;
   record<USVString, double> prioritySignalsOverrides;
 
-  WorkletExecutionMode executionMode;
+  WorkletExecutionMode executionMode = "compatibility";
   USVString biddingLogicUrl;
   USVString biddingWasmHelperUrl;
   USVString dailyUpdateUrl;
@@ -93,14 +95,24 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
   1. Set |interestGroup|'s [=interest group/expiry=] to now plus |durationSeconds|.
   1. Let |ownerUrl| be the result of running the [=URL parser=] on
     |group|["{{AuctionAdInterestGroup/owner}}"]. If |ownerUrl| is an error, or its [=url/scheme=] is
-    not HTTPS, return [=a promise rejected with=] a {{TypeError}}. Otherwise, set |interestGroup|'s
-    [=interest group/owner=] to |ownerUrl|'s [=url/origin=].
+    not "`https`", return [=a promise rejected with=] a {{TypeError}}. Otherwise, set
+    |interestGroup|'s [=interest group/owner=] to |ownerUrl|'s [=url/origin=].
   1. Set |interestGroup|'s [=interest group/name=] to |group|["{{AuctionAdInterestGroup/name}}"].
-  1. If |group|["{{AuctionAdInterestGroup/executionMode}}"] [=map/exists=]:
-    1. Assert: |group|["{{AuctionAdInterestGroup/executionMode}}"] is "compatibility" or
-      "groupByOrigin".
-    1. Set |interestGroup|'s [=interest group/execution mode=] to
-      |group|["{{AuctionAdInterestGroup/executionMode}}"].
+  1. If |group|["{{AuctionAdInterestGroup/priority}}"] [=map/exists=], then set |interestGroup|'s
+    [=interest group/priority=] to |group|["{{AuctionAdInterestGroup/priority}}"]. Otherwise, set it
+    to 0.0.
+  1. If |group|["{{AuctionAdInterestGroup/priorityVector}}"] [=map/exists=]:
+    1. Let |out| be a new [=ordered map=].
+    1. [=map/for each=] |key| → |value| of |group|["{{AuctionAdInterestGroup/priorityVector}}"]:
+      1. Set |out|[|key|] to |value|.
+    1. Set |interestGroup|'s [=interest group/priority vector=] to |out|.
+  1. If |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"] [=map/exists=]:
+    1. Let |out| be a new [=ordered map=].
+    1. [=map/for each=] |key| → |value| of |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"]:
+      1. Set |out|[|key|] to |value|.
+    1. Set |interestGroup|'s [=interest group/priority signals overrides=] to |out|.
+  1. Set |interestGroup|'s [=interest group/execution mode=] to
+    |group|["{{AuctionAdInterestGroup/executionMode}}"].
   1. For each |groupMember| and |interestGroupField| in the following table <table class="data">
       <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
       <tr>
@@ -128,8 +140,9 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
     1. [=list/Append=] |key| to |interestGroup|'s [=interest group/trusted bidding signals keys=].
   1. If |group|["{{AuctionAdInterestGroup/userBiddingSignals}}"] [=map/exists=]:
     1. Let |interestGroup|'s [=interest group/user bidding signals=] be the result of
-      [=JSON-serializing=] |group|["{{AuctionAdInterestGroup/userBiddingSignals}}"] into a string.
-      If it fails, then return [=a promise rejected with=] a {{TypeError}}.
+      [=serializing a JavaScript value to a JSON string=], given
+      |group|["{{AuctionAdInterestGroup/userBiddingSignals}}"]. If it fails, then return
+      [=a promise rejected with=] a {{TypeError}}.
   1. For each |groupMember| and |interestGroupField| in the following table <table class="data">
       <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
       <tr>
@@ -148,35 +161,29 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
       1. If |renderUrl| is an error, return [=a promise rejected with=] a {{TypeError}}.
       1. set |igAd|'s [=interest group ad/render url=] to |renderUrl|.
       1. If |ad|["{{AuctionAd/metadata}}"] is not null, let |igAd|'s [=interest group ad/metadata=] 
-        be the result of [=JSON-serializing=] |ad|["{{AuctionAd/metadata}}"] into a string. If it
-        fails, then return [=a promise rejected with=] a {{TypeError}}.
+        be the result of [=serializing a JavaScript value to a JSON string=], given
+        |ad|["{{AuctionAd/metadata}}"]. If it fails, then return [=a promise rejected with=] a
+        {{TypeError}}.
       1. [=list/Append=] |igAd| to |interestGroup|'s |interestGroupField|.
 1. Validate the new interest group |interestGroup|:
-  1. If |interestGroup|'s [=interest group/priority=] is infinite, then return
-    [=a promise rejected with=] a {{TypeError}}.
   1. For each |url| in |interestGroup|'s [=interest group/bidding url=],
     [=interest group/bidding wasm helper url=], [=interest group/daily update url=], and
     [=interest group/trusted bidding signals url=], return [=a promise rejected with=] a
-    {{TypeError}} if |url|:
-    1. is not [=same origin=] with |interestGroup|'s [=interest group/owner=].
-    1. [=url/scheme=] is not HTTPS.
-    1. has non-empty <a href="https://url.spec.whatwg.org/#concept-url-username">username</a> or
-      <a href="https://url.spec.whatwg.org/#concept-url-password">password</a>.
-    1. <a href="https://url.spec.whatwg.org/#concept-url-fragment">fragment</a> is not null.
-  1. If [=interest group/trusted bidding signals url=]'s
-    <a href="https://url.spec.whatwg.org/#concept-url-path">query</a> is not null, then return
+    {{TypeError}} if any of:
+    * |url| is not [=same origin=] with |interestGroup|'s [=interest group/owner=].
+    * [=includes credentials=].
+    * [url/fragment is not null.
+  1. If [=interest group/trusted bidding signals url=]'s [=url/query] is not null, then return
     [=a promise rejected with=] a {{TypeError}}.
   1. [=list/For each=] |ad| of |interestGroup|'s [=interest group/ads=] (same for
     |interestGroup|'s [=interest group/ad components=]), return [=a promise rejected with=] a
-    {{TypeError}} if |ad|'s [=interest group ad/render url=]:
-    1. [=url/scheme=] is not HTTPS.
-    1. has non-empty <a href="https://url.spec.whatwg.org/#concept-url-username">username</a> or
-      <a href="https://url.spec.whatwg.org/#concept-url-password">password</a>.
+    {{TypeError}} if |ad|'s [=interest group ad/render url=] [=url/scheme=] is not "`https`", or it
+    [=includes credentials=].
   1. If |interestGroup|'s [=interest group/estimated size=] is greater than 50 KB, then return
     [=a promise rejected with=] a {{TypeError}}.
 1. If the browser is currently storing an interest group with `owner` and `name` that matches
   |interestGroup|, then remove the currently stored one.
-1. Store |interestGroup| in the browser’s list of interest groups.
+1. Store |interestGroup| in the browser’s [=interest group set=].
 1. Return a new promise.
 
 </div>
@@ -253,6 +260,15 @@ dictionary AuctionAdConfig {
   AbortSignal? signal;
 };
 </xmp>
+
+
+# Permissions Policy integration # {#permissions-policy-integration}
+
+This specification defines a [=policy-controlled feature=] identified by the string
+"<code><dfn noexport>join-ad-interest-group</dfn></code>". Its [=default allowlist=] is `'self'`.
+
+Note: In the Chromium implementation the [=default allowlist=] is temporarily set to `*` to ease
+testing.
 
 
 # Structures # {#structures}
