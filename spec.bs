@@ -101,6 +101,10 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
   1. If |group|["{{AuctionAdInterestGroup/priority}}"] [=map/exists=], then set |interestGroup|'s
     [=interest group/priority=] to |group|["{{AuctionAdInterestGroup/priority}}"]. Otherwise, set it
     to 0.0.
+  1. Set |interestGroup|'s [=interest group/enable bidding signals prioritization=] to false.
+  1. If |group|["{{AuctionAdInterestGroup/enableBiddingSignalsPrioritization}}"] [=map/exists=], set
+    |interestGroup|'s [=interest group/enable bidding signals prioritization=] to
+    |group|["{{AuctionAdInterestGroup/enableBiddingSignalsPrioritization}}"].
   1. If |group|["{{AuctionAdInterestGroup/priorityVector}}"] [=map/exists=]:
     1. Let |out| be a new [=ordered map=].
     1. [=map/for each=] |key| → |value| of |group|["{{AuctionAdInterestGroup/priorityVector}}"]:
@@ -285,33 +289,43 @@ An interest group is a [=struct=] with the following items:
 : <dfn>name</dfn>
 :: A [=string=].
 : <dfn>priority</dfn>
-:: A double. Defaulting to 0.0.
+:: A double. Defaulting to 0.0. Used to select which interest groups participate in an auction when
+  the number of interest groups are limited by {{AuctionAdConfig/perBuyerGroupLimits}}.
 : <dfn>enable bidding signals prioritization</dfn>
-:: A [=boolean=].
+:: A [=boolean=]. Being true if the interest group's priority should be calculated using vectors
+  from bidding signals fetch.
 : <dfn>priority vector</dfn>
 :: Null or an [=ordered map=] whose [=map/key|keys=] are [=strings=] and whose [=map/value|values=]
-  are doubles.
+  are doubles. Its dot product with the {{AuctionAdConfig/perBuyerPrioritySignals}} will be used in
+  place of [=interest group/priority=], if set.
 : <dfn>priority signals overrides</dfn>
 :: Null or an [=ordered map=] whose [=map/key|keys=] are [=strings=] and whose [=map/value|values=]
-  are doubles.
+  are doubles. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
 : <dfn>execution mode</dfn>
 :: An {{WorkletExecutionMode}}, defaulting to "compatibility".
 : <dfn>bidding url</dfn>
-:: Null or a [=URL=].
+:: Null or a [=URL=]. The URL to fetch the buyer's Javascript from.
 : <dfn>bidding wasm helper url</dfn>
-:: Null or a [=URL=].
+:: Null or a [=URL=]. Lets the bidder provide computationally-expensive subroutines in WebAssembly,
+  rather than JavaScript, to be driven from the JavaScript function provided by
+  [=interest group/bidding url=].
 : <dfn>daily update url</dfn>
-:: Null or a [=URL=].
+:: Null or a [=URL=]. Provides a mechanism for the group's owner to periodically update the
+  attributes of the interest group.
 : <dfn>trusted bidding signals url</dfn>
-:: Null or a [=URL=].
+:: Null or a [=URL=]. Provide a mechanism for making real-time data available for use at bidding
+  time.
 : <dfn>trusted bidding signals keys</dfn>
 :: Null or a [=list=] of [=string=].
 : <dfn>user bidding signals</dfn>
-:: Null or a [=string=].
+:: Null or a [=string=]. Additional metadata that the owner can use during on-device bidding.
 : <dfn>ads</dfn>
-:: Null or a [=list=] of [=interest group ad=].
+:: Null or a [=list=] of [=interest group ad=]. Contains various ads that the interest group might
+  show.
 : <dfn>ad components</dfn>
-:: Null or a [=list=] of [=interest group ad=].
+:: Null or a [=list=] of [=interest group ad=]. Contains various ad components (or "products") that
+  can be used to construct ads composed of multiple pieces — a top-level ad template "container"
+  which includes some slots that can be filled in with specific "products".
 
 </dl>
 
