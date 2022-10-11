@@ -257,14 +257,71 @@ dictionary AuctionAdConfig {
 };
 </xmp>
 
+<div algorithm="runAdAuction()">
+
+The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
+
+1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
+  "run-ad-auction" [=policy-controlled feature=], then [=reject=] [=this=].auctionPromise with a
+  "{{NotAllowedError}}" {{DOMException}}.
+1. Let |auctionConfig| be a new [=auction ad config=].
+1. Validate the given |config| and set |auctionConfig|'s fields accordingly.
+  1. Let |seller| be the result of running the [=URL parser=] on
+    |config|["{{AuctionAdConfig/seller}}"]. If |seller| is an error, or its [=url/scheme=] is not
+    "`https`", then return [=a promise rejected with=] a {{TypeError}}. Otherwise, set
+    |auctionConfig|'s [=auction ad config/seller=] to |seller|.
+  1. Let |decisionLogicUrl| be the result of running the [=URL parser=] on
+    |config|["{{AuctionAdConfig/decisionLogicUrl}}"]. If |decisionLogicUrl| is an error, or its
+    [=url/scheme=] is not "`https`", or it is not [=same origin=] with
+    |auctionConfig|.[=auction ad config/seller=], then return [=a promise rejected with=] a
+    {{TypeError}}. Otherwise, set |auctionConfig|'s [=auction ad config/decision logic url=] to
+    |decisionLogicUrl|.
+  1. Let |trustedScoringSignalsUrl| be the result of running the [=URL parser=] on
+    |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"]. If |trustedScoringSignalsUrl| is an
+    error, or its [=url/scheme=] is not "`https`", or it is not [=same origin=] with
+    |auctionConfig|.[=auction ad config/seller=], then return [=a promise rejected with=] a
+    {{TypeError}}. Otherwise, set |auctionConfig|'s
+    [=auction ad config/trusted scoring signals url=] to |trustedScoringSignalsUrl|.
+  1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] is not empty, let |buyers| be a new
+    [=list/is empty|empty=] [=list=].
+    1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
+      1. Let |buyer| be the result of parsing |buyerString| to an [=url/origin=]. If it fails, then
+        return [=a promise rejected with=] a {{TypeError}}. Otherwise, [=list/Append=] |buyer| to
+        |buyers|.
+    1. If step 1 succeeds, then set |auctionConfig|'s interestGroupBuyers to |buyers|.
+  1. If |config|["{{AuctionAdConfig/auctionSignals}}"] is not empty, let |auctionConfig|'s
+    auctionSignals be the result of [=JSON-serializing=]
+    |config|["{{AuctionAdConfig/auctionSignals}}"] into a string. If it fails, then return
+    [=a promise rejected with=] a {{TypeError}}.
+  1. If |config|["{{AuctionAdConfig/sellerSignals}}"] is not empty, let |auctionConfig|'s
+    sellerSignals be the result of [=JSON-serializing=]
+    |config|["{{AuctionAdConfig/sellerSignals}}"] into a string. If it fails, then return
+    [=a promise rejected with=] a {{TypeError}}.
+  1. If |config|["{{AuctionAdConfig/directFromSellerSignals}}"] is not empty, [=URL parser|Parse=]
+    |config|["{{AuctionAdConfig/directFromSellerSignals}}"] to a URL
+    |directFromSellerSignalsPrefix|.
+    1. return [=a promise rejected with=] a {{TypeError}} if any of:
+      *. The parsing fails.
+      *. |directFromSellerSignalsPrefix| [=url/scheme=] is not "`https`".
+      *. |directFromSellerSignalsPrefix| is not [=same origin=] with |auctionConfig|.seller.
+      *. |directFromSellerSignalsPrefix| [=url/query] is not null.
+    1. Otherwise:
+      1. Let |directFromSellerSignals| be a new [=direct from seller signals=]. 
+      1. Set |directFromSellerSignals|'s [=direct from seller signals/prefix=] to
+        |directFromSellerSignalsPrefix|.
+      1. [=list/For each=] |buyer| in
+
+</div>
+
 
 # Permissions Policy integration # {#permissions-policy-integration}
 
-This specification defines a [=policy-controlled feature=] identified by the string
-"<code><dfn noexport>join-ad-interest-group</dfn></code>". Its [=default allowlist=] is `'self'`.
+This specification defines two [=policy-controlled feature|policy-controlled features=]
+identified by the string "<code><dfn noexport>join-ad-interest-group</dfn></code>", and
+"<code><dfn noexport>run-ad-auction</dfn></code>". Their [=default allowlist=] are `'self'`.
 
-Note: In the Chromium implementation the [=default allowlist=] is temporarily set to `*` to ease
-testing.
+Note: In the Chromium implementation the [=default allowlist=] for both features are
+temporarily set to `*` to ease testing.
 
 
 # Structures # {#structures}
@@ -333,5 +390,66 @@ An interest group ad is a [=struct=] with the following items:
 :: A [=URL=].
 : <dfn>metadata</dfn>
 :: Null or a [=string=].
+
+</dl>
+
+<h3 dfn-type=dfn>Auction ad config</h3>
+
+An auction ad config is a [=struct=] with the following items:
+
+<dl dfn-for="auction ad config">
+: <dfn>seller</dfn>
+:: An [=url/origin=].
+: <dfn>decision logic url</dfn>
+:: A [=URL=].
+: <dfn>trusted scoring signals url</dfn>
+:: A [=URL=].
+: <dfn>auction ad config non shared params</dfn>
+:: An [=auction ad config non shared params=].
+: <dfn>direct from seller signals</dfn>
+:: Null or an [=direct from seller signals=].
+
+
+</dl>
+
+
+<h3 dfn-type=dfn>Direct from seller signals</h3>
+
+A direct from seller signals is a [=struct=] with the following items:
+
+<dl dfn-for="direct from seller signals">
+: <dfn>prefix</dfn>
+:: A [=URL=].
+: <dfn>per buyer signals</dfn>
+:: An [=ordered map=] whose [=map/key|keys=] are [=url/origin=] and whose
+    [=map/value|values=] are [=direct from seller signals subresource=].
+: <dfn>seller signals</dfn>
+:: Null or a [=direct from seller signals subresource=].
+: <dfn>auction signals</dfn>
+:: Null or a [=direct from seller signals subresource=].
+
+</dl>
+
+<h3 dfn-type=dfn>Direct from seller signals subresource</h3>
+
+A direct from seller signals subresource is a [=struct=] with the following items:
+
+<dl dfn-for="direct from seller signals subresource">
+: <dfn>bundle url</dfn>
+:: A [=URL=].
+: <dfn>token</dfn>
+:: An [=unguessable token=].
+
+</dl>
+
+<h3 dfn-type=dfn>Unguessable token</h3>
+
+An unguessable token is a [=struct=] with the following items:
+
+<dl dfn-for="unguessable token">
+: <dfn>high</dfn>
+:: A non-negative 64-bit integer.
+: <dfn>low</dfn>
+:: A non-negative 64-bit integer.
 
 </dl>
