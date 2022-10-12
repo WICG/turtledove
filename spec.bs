@@ -262,7 +262,7 @@ dictionary AuctionAdConfig {
 The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
-  "run-ad-auction" [=policy-controlled feature=], then return [=a promise rejected with=] a
+  [="run-ad-auction"=] [=policy-controlled feature=], then return [=a promise rejected with=] a
   "{{NotAllowedError}}" {{DOMException}}.
 1. Let |auctionConfig| be a new [=auction ad config=].
 1. Validate the given |config| and set |auctionConfig|'s fields accordingly.
@@ -279,15 +279,16 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       * It is not [=same origin=] with |auctionConfig|.[=auction ad config/seller=].
     1. Otherwise, set |auctionConfig|'s [=auction ad config/decision logic url=] to
       |decisionLogicUrl|.
-  1. Let |trustedScoringSignalsUrl| be the result of running the [=URL parser=] on
-    |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"].
+  1. If |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"] [=map/exists=]:
+    1. Let |trustedScoringSignalsUrl| be the result of running the [=URL parser=] on
+      |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"].
     1. Return [=a promise rejected with=] a {{TypeError}} if any of:
       * |trustedScoringSignalsUrl| is an error.
       * It is not [=same origin=] with |auctionConfig|.[=auction ad config/seller=].
     1. Otherwise, set |auctionConfig|'s [=auction ad config/trusted scoring signals url=] to
       |trustedScoringSignalsUrl|.
-  1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] is not [=list/is empty|empty=], let
-    |buyers| be a new [=list/is empty|empty=] [=list=].
+  1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=], and is not
+    [=list/is empty|empty=], let |buyers| be a new [=list/is empty|empty=] [=list=].
     1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
       1. Let |buyer| be the result of parsing |buyerString| to an [=url/origin=]. If it fails, then
         return [=a promise rejected with=] a {{TypeError}}. Otherwise, [=list/append=] |buyer| to
@@ -407,7 +408,7 @@ An auction ad config is a [=struct=] with the following items:
 : <dfn>decision logic url</dfn>
 :: A [=URL=].
 : <dfn>trusted scoring signals url</dfn>
-:: A [=URL=].
+:: Null or a [=URL=].
 : <dfn>auction ad config non shared params</dfn>
 :: An [=auction ad config non shared params=].
 : <dfn>direct from seller signals</dfn>
