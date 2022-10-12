@@ -66,8 +66,8 @@ dictionary AuctionAdInterestGroup {
   required USVString owner;
   required USVString name;
 
-  double priority;
-  boolean enableBiddingSignalsPrioritization;
+  double priority = 0.0;
+  boolean enableBiddingSignalsPrioritization = false;
   record<USVString, double> priorityVector;
   record<USVString, double> prioritySignalsOverrides;
 
@@ -88,8 +88,8 @@ dictionary AuctionAdInterestGroup {
 The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</dfn> method steps are:
 
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
-  "join-ad-interest-group" [=policy-controlled feature=], then return [=a promise rejected with=] a
-  "{{NotAllowedError}}" {{DOMException}}.
+  "[=join-ad-interest-group=]" [=policy-controlled feature=], then return
+  [=a promise rejected with=] a "{{NotAllowedError}}" {{DOMException}}.
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
   1. Set |interestGroup|'s [=interest group/expiry=] to now plus |durationSeconds|.
@@ -98,23 +98,16 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
     not "`https`", return [=a promise rejected with=] a {{TypeError}}. Otherwise, set
     |interestGroup|'s [=interest group/owner=] to |ownerUrl|'s [=url/origin=].
   1. Set |interestGroup|'s [=interest group/name=] to |group|["{{AuctionAdInterestGroup/name}}"].
-  1. If |group|["{{AuctionAdInterestGroup/priority}}"] [=map/exists=], then set |interestGroup|'s
-    [=interest group/priority=] to |group|["{{AuctionAdInterestGroup/priority}}"]. Otherwise, set it
-    to 0.0.
-  1. Set |interestGroup|'s [=interest group/enable bidding signals prioritization=] to false.
-  1. If |group|["{{AuctionAdInterestGroup/enableBiddingSignalsPrioritization}}"] [=map/exists=], set
-    |interestGroup|'s [=interest group/enable bidding signals prioritization=] to
+  1. Set |interestGroup|'s [=interest group/priority=] to
+    |group|["{{AuctionAdInterestGroup/priority}}"].
+  1. Set |interestGroup|'s [=interest group/enable bidding signals prioritization=] to
     |group|["{{AuctionAdInterestGroup/enableBiddingSignalsPrioritization}}"].
-  1. If |group|["{{AuctionAdInterestGroup/priorityVector}}"] [=map/exists=]:
-    1. Let |out| be a new [=ordered map=].
-    1. [=map/for each=] |key| → |value| of |group|["{{AuctionAdInterestGroup/priorityVector}}"]:
-      1. Set |out|[|key|] to |value|.
-    1. Set |interestGroup|'s [=interest group/priority vector=] to |out|.
-  1. If |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"] [=map/exists=]:
-    1. Let |out| be a new [=ordered map=].
-    1. [=map/for each=] |key| → |value| of |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"]:
-      1. Set |out|[|key|] to |value|.
-    1. Set |interestGroup|'s [=interest group/priority signals overrides=] to |out|.
+  1. If |group|["{{AuctionAdInterestGroup/priorityVector}}"] [=map/exists=], then set
+    |interestGroup|'s [=interest group/priority vector=] to
+    |group|["{{AuctionAdInterestGroup/priorityVector}}"].
+  1. If |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"] [=map/exists=], then set
+    |interestGroup|'s [=interest group/priority signals overrides=] to
+    |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"].
   1. Set |interestGroup|'s [=interest group/execution mode=] to
     |group|["{{AuctionAdInterestGroup/executionMode}}"].
   1. For each |groupMember| and |interestGroupField| in the following table <table class="data">
@@ -140,8 +133,9 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
       1. Let |parsedUrl| be the result of running the [=URL parser=] on |group|[|groupMember|].
       1. If |parsedUrl| is an error, return [=a promise rejected with=] a {{TypeError}}.
       1. Set |interestGroup|'s |interestGroupField| to |parsedUrl|.
-  1. [=list/For each=] |key| of |group|["{{AuctionAdInterestGroup/trustedBiddingSignalsKeys}}"]:
-    1. [=list/Append=] |key| to |interestGroup|'s [=interest group/trusted bidding signals keys=].
+  1. If |group|["{{AuctionAdInterestGroup/trustedBiddingSignalsKeys}}"] [=list/exists=], then set
+    |interestGroup|'s [=interest group/trusted bidding signals keys=] to
+    |group|["{{AuctionAdInterestGroup/trustedBiddingSignalsKeys}}"].
   1. If |group|["{{AuctionAdInterestGroup/userBiddingSignals}}"] [=map/exists=]:
     1. Let |interestGroup|'s [=interest group/user bidding signals=] be the result of
       [=serializing a JavaScript value to a JSON string=], given
@@ -164,10 +158,10 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
         |ad|["{{AuctionAd/renderUrl}}"].
       1. If |renderUrl| is an error, return [=a promise rejected with=] a {{TypeError}}.
       1. set |igAd|'s [=interest group ad/render url=] to |renderUrl|.
-      1. If |ad|["{{AuctionAd/metadata}}"] is not null, let |igAd|'s [=interest group ad/metadata=] 
-        be the result of [=serializing a JavaScript value to a JSON string=], given
-        |ad|["{{AuctionAd/metadata}}"]. If it fails, then return [=a promise rejected with=] a
-        {{TypeError}}.
+      1. If |ad|["{{AuctionAd/metadata}}"] [=map/exists=], let
+        |igAd|'s [=interest group ad/metadata=] be the result of
+        [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
+        If it fails, then return [=a promise rejected with=] a {{TypeError}}.
       1. [=list/Append=] |igAd| to |interestGroup|'s |interestGroupField|.
 1. Validate the new interest group |interestGroup|:
   1. For each |url| in |interestGroup|'s [=interest group/bidding url=],
@@ -177,7 +171,7 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
     * |url| is not [=same origin=] with |interestGroup|'s [=interest group/owner=].
     * [=includes credentials=].
     * [=url/fragment=] is not null.
-  1. If [=interest group/trusted bidding signals url=]'s [=url/query] is not null, then return
+  1. If [=interest group/trusted bidding signals url=]'s [=url/query=] is not null, then return
     [=a promise rejected with=] a {{TypeError}}.
   1. [=list/For each=] |ad| of |interestGroup|'s [=interest group/ads=] and |interestGroup|'s
     [=interest group/ad components=], return [=a promise rejected with=] a {{TypeError}} if |ad|'s
@@ -188,7 +182,7 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
 1. If the browser is currently storing an interest group with `owner` and `name` that matches
   |interestGroup|, then remove the currently stored one.
 1. Store |interestGroup| in the browser’s [=interest group set=].
-1. Return a new promise.
+1. Return a [=a promise resolved with=] `undefined`.
 
 </div>
 
@@ -292,8 +286,8 @@ An interest group is a [=struct=] with the following items:
 :: A double. Defaulting to 0.0. Used to select which interest groups participate in an auction when
   the number of interest groups are limited by {{AuctionAdConfig/perBuyerGroupLimits}}.
 : <dfn>enable bidding signals prioritization</dfn>
-:: A [=boolean=]. Being true if the interest group's priority should be calculated using vectors
-  from bidding signals fetch.
+:: A [=boolean=]. Defaulting to false. Being true if the interest group's priority should be
+  calculated using vectors from bidding signals fetch.
 : <dfn>priority vector</dfn>
 :: Null or an [=ordered map=] whose [=map/key|keys=] are [=strings=] and whose [=map/value|values=]
   are doubles. Its dot product with the {{AuctionAdConfig/perBuyerPrioritySignals}} will be used in
@@ -326,6 +320,9 @@ An interest group is a [=struct=] with the following items:
 :: Null or a [=list=] of [=interest group ad=]. Contains various ad components (or "products") that
   can be used to construct ads composed of multiple pieces — a top-level ad template "container"
   which includes some slots that can be filled in with specific "products".
+
+TODO: Update the short descriptions of some fields above, and add links when runAdAuction() section
+is ready.
 
 </dl>
 
