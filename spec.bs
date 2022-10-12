@@ -262,54 +262,58 @@ dictionary AuctionAdConfig {
 The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
-  "run-ad-auction" [=policy-controlled feature=], then [=reject=] [=this=].auctionPromise with a
+  "run-ad-auction" [=policy-controlled feature=], then return [=a promise rejected with=] a
   "{{NotAllowedError}}" {{DOMException}}.
 1. Let |auctionConfig| be a new [=auction ad config=].
 1. Validate the given |config| and set |auctionConfig|'s fields accordingly.
   1. Let |seller| be the result of running the [=URL parser=] on
-    |config|["{{AuctionAdConfig/seller}}"]. If |seller| is an error, or its [=url/scheme=] is not
-    "`https`", then return [=a promise rejected with=] a {{TypeError}}. Otherwise, set
-    |auctionConfig|'s [=auction ad config/seller=] to |seller|.
+    |config|["{{AuctionAdConfig/seller}}"].
+    1. Return [=a promise rejected with=] a {{TypeError}} if any of:
+      * |seller| is an error.
+      * Its [=url/scheme=] is not "`https`".
+    1. Otherwise, set |auctionConfig|'s [=auction ad config/seller=] to |seller|.
   1. Let |decisionLogicUrl| be the result of running the [=URL parser=] on
-    |config|["{{AuctionAdConfig/decisionLogicUrl}}"]. If |decisionLogicUrl| is an error, or its
-    [=url/scheme=] is not "`https`", or it is not [=same origin=] with
-    |auctionConfig|.[=auction ad config/seller=], then return [=a promise rejected with=] a
-    {{TypeError}}. Otherwise, set |auctionConfig|'s [=auction ad config/decision logic url=] to
-    |decisionLogicUrl|.
+    |config|["{{AuctionAdConfig/decisionLogicUrl}}"].
+    1. Return [=a promise rejected with=] a {{TypeError}} if any of:
+      * |decisionLogicUrl| is an error.
+      * It is not [=same origin=] with |auctionConfig|.[=auction ad config/seller=].
+    1. Otherwise, set |auctionConfig|'s [=auction ad config/decision logic url=] to
+      |decisionLogicUrl|.
   1. Let |trustedScoringSignalsUrl| be the result of running the [=URL parser=] on
-    |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"]. If |trustedScoringSignalsUrl| is an
-    error, or its [=url/scheme=] is not "`https`", or it is not [=same origin=] with
-    |auctionConfig|.[=auction ad config/seller=], then return [=a promise rejected with=] a
-    {{TypeError}}. Otherwise, set |auctionConfig|'s
-    [=auction ad config/trusted scoring signals url=] to |trustedScoringSignalsUrl|.
-  1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] is not empty, let |buyers| be a new
-    [=list/is empty|empty=] [=list=].
+    |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"].
+    1. Return [=a promise rejected with=] a {{TypeError}} if any of:
+      * |trustedScoringSignalsUrl| is an error.
+      * It is not [=same origin=] with |auctionConfig|.[=auction ad config/seller=].
+    1. Otherwise, set |auctionConfig|'s [=auction ad config/trusted scoring signals url=] to
+      |trustedScoringSignalsUrl|.
+  1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] is not [=list/is empty|empty=], let
+    |buyers| be a new [=list/is empty|empty=] [=list=].
     1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
       1. Let |buyer| be the result of parsing |buyerString| to an [=url/origin=]. If it fails, then
-        return [=a promise rejected with=] a {{TypeError}}. Otherwise, [=list/Append=] |buyer| to
+        return [=a promise rejected with=] a {{TypeError}}. Otherwise, [=list/append=] |buyer| to
         |buyers|.
-    1. If step 1 succeeds, then set |auctionConfig|'s interestGroupBuyers to |buyers|.
+    1. Set |auctionConfig|'s interestGroupBuyers to |buyers|.
   1. If |config|["{{AuctionAdConfig/auctionSignals}}"] is not empty, let |auctionConfig|'s
-    auctionSignals be the result of [=JSON-serializing=]
-    |config|["{{AuctionAdConfig/auctionSignals}}"] into a string. If it fails, then return
+    auctionSignals be the result of [=serializing a JavaScript value to a JSON string=], given
+    |config|["{{AuctionAdConfig/auctionSignals}}"]. If it fails, then return
     [=a promise rejected with=] a {{TypeError}}.
   1. If |config|["{{AuctionAdConfig/sellerSignals}}"] is not empty, let |auctionConfig|'s
-    sellerSignals be the result of [=JSON-serializing=]
-    |config|["{{AuctionAdConfig/sellerSignals}}"] into a string. If it fails, then return
+    sellerSignals be the result of [=serializing a JavaScript value to a JSON string=], given
+    |config|["{{AuctionAdConfig/sellerSignals}}"]. If it fails, then return
     [=a promise rejected with=] a {{TypeError}}.
-  1. If |config|["{{AuctionAdConfig/directFromSellerSignals}}"] is not empty, [=URL parser|Parse=]
-    |config|["{{AuctionAdConfig/directFromSellerSignals}}"] to a URL
-    |directFromSellerSignalsPrefix|.
-    1. return [=a promise rejected with=] a {{TypeError}} if any of:
-      *. The parsing fails.
-      *. |directFromSellerSignalsPrefix| [=url/scheme=] is not "`https`".
-      *. |directFromSellerSignalsPrefix| is not [=same origin=] with |auctionConfig|.seller.
-      *. |directFromSellerSignalsPrefix| [=url/query] is not null.
+  1. If |config|["{{AuctionAdConfig/directFromSellerSignals}}"] is not empty, let
+    |directFromSellerSignalsPrefix| be the result of running the [=URL parser=] on
+    |config|["{{AuctionAdConfig/directFromSellerSignals}}"].
+    1. Return [=a promise rejected with=] a {{TypeError}} if any of:
+      * |directFromSellerSignalsPrefix| is an error.
+      * |directFromSellerSignalsPrefix| is not [=same origin=] with
+        |auctionConfig|.[=auction ad config/seller=].
+      * |directFromSellerSignalsPrefix| [=url/query] is not null.
     1. Otherwise:
       1. Let |directFromSellerSignals| be a new [=direct from seller signals=]. 
       1. Set |directFromSellerSignals|'s [=direct from seller signals/prefix=] to
         |directFromSellerSignalsPrefix|.
-      1. [=list/For each=] |buyer| in
+      1. [=list/For each=] |buyer| in 
 
 </div>
 
