@@ -88,15 +88,15 @@ dictionary AuctionAdInterestGroup {
 The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</dfn> method steps are:
 
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
-  "[=join-ad-interest-group=]" [=policy-controlled feature=], then return
-  [=a promise rejected with=] a "{{NotAllowedError}}" {{DOMException}}.
+  "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
+  "{{NotAllowedError}}" {{DOMException}}.
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
   1. Set |interestGroup|'s [=interest group/expiry=] to now plus |durationSeconds|.
   1. Let |ownerUrl| be the result of running the [=URL parser=] on
     |group|["{{AuctionAdInterestGroup/owner}}"].
-    1. If |ownerUrl| is an error, or its [=url/scheme=] is not "`https`", return
-      [=a promise rejected with=] a {{TypeError}}.
+    1. If |ownerUrl| is an error, or its [=url/scheme=] is not "`https`", [=exception/throw=] a
+      {{TypeError}}.
     1. Set |interestGroup|'s [=interest group/owner=] to |ownerUrl|'s [=url/origin=].  
   1. Set |interestGroup|'s [=interest group/name=] to |group|["{{AuctionAdInterestGroup/name}}"].
   1. Set |interestGroup|'s [=interest group/priority=] to
@@ -132,16 +132,22 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
     </table>
     1. If |group| [=map/contains=] |groupMember|:
       1. Let |parsedUrl| be the result of running the [=URL parser=] on |group|[|groupMember|].
-      1. If |parsedUrl| is an error, return [=a promise rejected with=] a {{TypeError}}.
+      1. [=exception/Throw=] a {{TypeError}} if any of:
+        * |parsedUrl| is an error.
+        * |parsedUrl| is not [=same origin=] with |interestGroup|'s [=interest group/owner=].
+        * |parsedUrl| [=includes credentials=].
+        * |parsedUrl| [=url/fragment=] is not null.
       1. Set |interestGroup|'s |interestGroupField| to |parsedUrl|.
+  1. If |interestGroup|'s [=interest group/trusted bidding signals url=]'s [=url/query=] is not
+    null, then [=exception/throw=] a {{TypeError}}.
   1. If |group|["{{AuctionAdInterestGroup/trustedBiddingSignalsKeys}}"] [=map/exists=], then set
     |interestGroup|'s [=interest group/trusted bidding signals keys=] to
     |group|["{{AuctionAdInterestGroup/trustedBiddingSignalsKeys}}"].
   1. If |group|["{{AuctionAdInterestGroup/userBiddingSignals}}"] [=map/exists=]:
     1. Let |interestGroup|'s [=interest group/user bidding signals=] be the result of
       [=serializing a JavaScript value to a JSON string=], given
-      |group|["{{AuctionAdInterestGroup/userBiddingSignals}}"]. If it fails, then return
-      [=a promise rejected with=] a {{TypeError}}.
+      |group|["{{AuctionAdInterestGroup/userBiddingSignals}}"]. This can [=exception/throw=] a
+      {{TypeError}}.
   1. For each |groupMember| and |interestGroupField| in the following table <table class="data">
       <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
       <tr>
@@ -157,36 +163,26 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
       1. Let |igAd| be a new [=interest group ad=].
       1. Let |renderUrl| be the result of running the [=URL parser=] on
         |ad|["{{AuctionAd/renderUrl}}"].
-      1. If |renderUrl| is an error, return [=a promise rejected with=] a {{TypeError}}.
+      1. [=exception/Throw=] a {{TypeError}} if any of:
+        * |renderUrl| is an error.
+        * |renderUrl| [=url/scheme=] is not "`https`".
+        * |renderUrl| [=includes credentials=].
       1. Set |igAd|'s [=interest group ad/render url=] to |renderUrl|.
       1. If |ad|["{{AuctionAd/metadata}}"] [=map/exists=], then let
         |igAd|'s [=interest group ad/metadata=] be the result of
         [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
-        If it fails, then return [=a promise rejected with=] a {{TypeError}}.
+        This can [=exception/throw=] a {{TypeError}}.
       1. [=list/Append=] |igAd| to |interestGroup|'s |interestGroupField|.
-1. Validate the new interest group |interestGroup|:
-  1. For each |url| in |interestGroup|'s [=interest group/bidding url=],
-    [=interest group/bidding wasm helper url=], [=interest group/daily update url=], and
-    [=interest group/trusted bidding signals url=], return [=a promise rejected with=] a
-    {{TypeError}} if any of:
-    * |url| is not [=same origin=] with |interestGroup|'s [=interest group/owner=].
-    * [=includes credentials=].
-    * [=url/fragment=] is not null.
-  1. If [=interest group/trusted bidding signals url=]'s [=url/query=] is not null, then return
-    [=a promise rejected with=] a {{TypeError}}.
-  1. [=list/For each=] |ad| of |interestGroup|'s [=interest group/ads=] and |interestGroup|'s
-    [=interest group/ad components=], return [=a promise rejected with=] a {{TypeError}} if |ad|'s
-    [=interest group ad/render url=] [=url/scheme=] is not "`https`", or it
-    [=includes credentials=].
-  1. If |interestGroup|'s [=interest group/estimated size=] is greater than 50 KB, then return
-    [=a promise rejected with=] a {{TypeError}}.
-1. If the browser is currently storing an interest group with `owner` and `name` that matches
-  |interestGroup|, then remove the currently stored one.
-1. Store |interestGroup| in the browser’s [=interest group set=].
-1. Return a [=a promise resolved with=] `undefined`.
-
-Note: TODO: document .well-known fetches for cross-origin joins. And it's where the promise is
-useful for.
+1. If |interestGroup|'s [=interest group/estimated size=] is greater than 50 KB, then
+  [=exception/throw=] a {{TypeError}}.
+1. Let |p| be [=a new promise=].
+1. Return |p| and run the following steps [=in parallel=]: (TODO: Enqueue the steps to a
+  [=parallel queue=] instead.)
+  1. TODO: document .well-known fetches for cross-origin joins.
+  1. If the browser is currently storing an interest group with `owner` and `name` that matches
+    |interestGroup|, then remove the currently stored one.
+  1. Store |interestGroup| in the browser’s [=interest group set=].
+  1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
 
 </div>
 
