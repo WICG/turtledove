@@ -79,17 +79,46 @@ as research areas advance and new technologies and tools become available.
 
 ### What we're doing now
 
-#### Willful IP blindness
+#### Oblivious HTTP
 
-First, this server will adhere to the [willful IP blindness
-principles](https://github.com/bslassey/ip-blindness/blob/master/proposed_willful_ip_blindness_principles.md).
-The server doesn't need to know the IP address of a client, and
-we won't store it or use it for any purpose except the conforming
-use cases described in the principles.  When [Chrome's Near-path
-NAT](https://github.com/bslassey/ip-blindness/blob/master/near_path_nat.md)
-launches we expect that calls to this server will be routed through that
-proxy for users that turn it on, further hiding those users' IP addresses
-from this server.
+For requests to the k-anonymity server that are intended to be anonymous, such
+as `Join` and `Query` requests described above, we plan to use an [Oblivious
+HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-ohttp/) relay so Google
+is blind to the IP addresses of end users.  The payload for `Join` and `Query`
+requests contain set hashes, which we consider sensitive browsing behavior,
+so we'd like Google to know as little as possible about user requests.
+Oblivious HTTP is well suited to this use case, where we have small, anonymous,
+stateless, requests and we don't need the server that knows the browsing data,
+i.e. the set hashes, privy to identifying information, including IP address,
+of the user making the request.  To implement Oblivious HTTP we're engaging
+a third-party company to operate a _relay_ resource on our behalf.  Chrome
+browsers, when making `Join` or `Query` requests, send to this relay, in the
+body of an HTTP `POST` message, an encrypted payload for the k-anonymity server.
+The payload is a [Binary HTTP](https://datatracker.ietf.org/doc/rfc9292/)
+message that has been encrypted using [Hybrid Public Key
+Encryption](https://datatracker.ietf.org/doc/rfc9180/).    Chrome will encrypt
+the message using keys fetched directly from the k-anonymity server (on the
+Google domain, not through the relay).  The relay will forward the request
+to a _gateway_ that will run on Google servers near the k-anonymity server.
+The relay is therefore oblivious to the content of the request but privy
+to the requestor's IP address and the k-anonymity server (and gateway)
+are oblivious to the requestor but privy to the request content.
+
+
+![ohttp diagram](assets/kanon_ohttp_diagram.svg)
+
+This design lets us separate between two entities user identifying data that
+we can't remove by other means (such as the IP address) and the content of
+the user's request.  No single entity sees both, and we expect a contractual
+relationship that ensures these entities don't collude to share request data.
+
+We evaluated several other proxying designs that could avoid Google becoming
+privy to user IP addresses.  Among the other options we considered, Oblivious
+HTTP stood out as offering a solution with the most coverage for Chrome users
+in restrictive network environments, such as those with existing forward
+proxies required to access the internet.  As a normal, small, `POST` request
+to the relay, Oblivious HTTP traffic is expected to work in more restricted
+environments than, say, HTTP CONNECT or MASQUE proxy requests.
 
 #### Low-entropy identifiers
 
