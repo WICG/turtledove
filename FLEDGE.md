@@ -92,6 +92,7 @@ const myGroup = {
   'biddingLogicUrl': ...,
   'biddingWasmHelperUrl': ...,
   'dailyUpdateUrl': ...,
+  'executionMode': ...,
   'trustedBiddingSignalsUrl': ...,
   'trustedBiddingSignalsKeys': ['key1', 'key2'],
   'userBiddingSignals': {...},
@@ -120,6 +121,8 @@ The `userBiddingSignals` is for storage of additional metadata that the owner ca
 The `biddingWasmHelperUrl` field is optional, and lets the bidder provide computationally-expensive subroutines in WebAssembly, rather than JavaScript, to be driven from the JavaScript function provided by `biddingLogicUrl`. If provided, it must point to a WebAssembly binary, delivered with an `application/wasm` mimetype. The corresponding `WebAssembly.Module` will be made available by the browser to the `generateBid` function.
 
 The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically update the attributes of the interest group: any new values returned in this way overwrite the values previously stored (except that the `name` and `owner` cannot be changed).  However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateUrl` , e.g. at least 100 browsers with the same update URL. This will not include any metadata, so data such as the interest group `name` should be included within the URL, so long as the URL exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
+
+The `executionMode` attribute is optional. The default value (`"compatibility"`) will run each invocation of `generateBid` in a totally fresh execution environment, which prevents one invocation from directly passing data to a subsequent invocation, but has non-trivial execution costs as each execution environment must be initialized from scratch.  The `"groupByOrigin"` mode will attempt to re-use the execution environment for interest groups with the same script that were joined on the same top-level origin, which saves a lot of these initialization costs. However, to avoid cross-site information leaking into `generateBid`, attempts to join or leave an interest group in `"groupByOrigin"` mode from more than one top-level origin will result in all `"groupByOrigin"` interest groups that were joined from the same top-level origin being removed. When the execution environment is re-used the script top-level will not be re-executed, with only the `generateBid` function being run the subsequent times. This mode is intended for interest groups that are extremely likely to be joined or left from a single top-level origin only, with the probability high enough that the penalty of removal if the requirement doesn't hold to be low enough for the performance gains to be a worthwhile trade-off.
 
 The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time.
 
