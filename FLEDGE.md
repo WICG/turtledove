@@ -199,7 +199,8 @@ const myAuctionConfig = {
       'decisionLogicUrl': ...,
       ...},
     ...
-  ]
+  ],
+  'signal': /* optionally, an AbortSignal */...,
 };
 const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
 ```
@@ -214,6 +215,8 @@ In some cases, multiple SSPs may want to participate in an auction, with the win
 The returned `auctionResultPromise` object is _opaque_: it is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents, but it can be passed to a Fenced Frame for rendering.  (The [Fenced Frame Opaque Source explainer](https://github.com/shivanigithub/fenced-frame/blob/master/explainer/opaque_src.md) has initial thoughts about how this could be implemented.)  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
 Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
+
+Optionally, the `signal` field can be set to an [`AbortSignal`](https://dom.spec.whatwg.org/#interface-AbortSignal) object (generally from an [`AbortController`](https://dom.spec.whatwg.org/#interface-abortcontroller)'s [`signal`](https://dom.spec.whatwg.org/#dom-abortcontroller-signal) field) to permit aborting the execution of the auction.  When the [`abort()`](https://dom.spec.whatwg.org/#dom-abortcontroller-abort) method on the associated [`AbortController`](https://dom.spec.whatwg.org/#interface-abortcontroller) is called, an attempt to interrupt the auction will be made. Since the auction executes in parallel to the page, it's possible for this call to happen after the auction actually completed (perhaps unsuccessfully) but before this has been noticed by the caller of `runAdAuction`. In that case, the cancellation attempt is ignored. If the cancellation is successful, the promise is rejected, and no side effects of the whole auction (like reporting and bid statics) occur, though priority adjustments still take place. Calling `abort()` after the promise from `runAdAuction` has resolved has no effect.
 
 Optionally, `perBuyerGroupLimits` can be specified to limit the number of of interest groups from a particular buyer that participate in the auction. A key of `'*'` in `perBuyerGroupLimits` is used to set a limit for unspecified buyers. For each buyer, interest groups will be selected to participate in the auction in order of decreasing `priority` (larger priorities are selected first) up to the specfied limit. The selection of interest groups occurs independently for each buyer, so the priorities do not need to be comparable between buyers and could have a buyer-specific meaning. The value of the limits provided should be able to be represented by a 16 bit unsigned integer.
 
