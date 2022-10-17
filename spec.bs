@@ -262,24 +262,24 @@ dictionary AuctionAdConfig {
 The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
-  [="run-ad-auction"=] [=policy-controlled feature=], then return [=a promise rejected with=] a
+  [="run-ad-auction"=] [=policy-controlled feature=], then [=exception/throw=] a
   "{{NotAllowedError}}" {{DOMException}}.
 1. Let |auctionConfig| be a new [=auction ad config=].
 1. Validate the given |config| and set |auctionConfig|'s fields accordingly.
   1. Let |seller| be the result of running the [=URL parser=] on
     |config|["{{AuctionAdConfig/seller}}"].
-    1. Return [=a promise rejected with=] a {{TypeError}} if |seller| is an error, or its
-      [=url/scheme=] is not "`https`".
+    1. [=exception/Throw=] a {{TypeError}} if |seller| is an error, or its [=url/scheme=] is not
+      "`https`".
     1. Set |auctionConfig|'s [=auction ad config/seller=] to |seller|.
   1. Let |decisionLogicUrl| be the result of running the [=URL parser=] on
     |config|["{{AuctionAdConfig/decisionLogicUrl}}"].
-    1. Return [=a promise rejected with=] a {{TypeError}} if |decisionLogicUrl| is an error, or it
+    1. [=exception/Throw=] a {{TypeError}} if |decisionLogicUrl| is an error, or it
       is not [=same origin=] with |auctionConfig|.[=auction ad config/seller=].
     1. Set |auctionConfig|'s [=auction ad config/decision logic url=] to |decisionLogicUrl|.
   1. If |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"] [=map/exists=]:
     1. Let |trustedScoringSignalsUrl| be the result of running the [=URL parser=] on
       |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"].
-    1. Return [=a promise rejected with=] a {{TypeError}} if |trustedScoringSignalsUrl| is an error,
+    1. [=exception/Throw=] a {{TypeError}} if |trustedScoringSignalsUrl| is an error,
       or it is not [=same origin=] with |auctionConfig|.[=auction ad config/seller=].
     1. Set |auctionConfig|'s [=auction ad config/trusted scoring signals url=] to
       |trustedScoringSignalsUrl|.
@@ -287,21 +287,18 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     [=list/is empty|empty=] [=list=].
     1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
       1. Let |buyer| be the result of parsing |buyerString| to an [=url/origin=]. If it fails, then
-        return [=a promise rejected with=] a {{TypeError}}. Otherwise, [=list/append=] |buyer| to
-        |buyers|.
-    1. Set |auctionConfig|'s interestGroupBuyers to |buyers|.
+        [=exception/throw=] a {{TypeError}}. Otherwise, [=list/append=] |buyer| to |buyers|.
+    1. Set |auctionConfig|'s [=auction ad config non shared params=]'s interestGroupBuyers to |buyers|.
   1. If |config|["{{AuctionAdConfig/auctionSignals}}"] is not empty, let |auctionConfig|'s
     auctionSignals be the result of [=serializing a JavaScript value to a JSON string=], given
-    |config|["{{AuctionAdConfig/auctionSignals}}"]. If it fails, then return
-    [=a promise rejected with=] a {{TypeError}}.
+    |config|["{{AuctionAdConfig/auctionSignals}}"]. If it fails, then [=exception/throw=] a {{TypeError}}.
   1. If |config|["{{AuctionAdConfig/sellerSignals}}"] is not empty, let |auctionConfig|'s
     sellerSignals be the result of [=serializing a JavaScript value to a JSON string=], given
-    |config|["{{AuctionAdConfig/sellerSignals}}"]. If it fails, then return
-    [=a promise rejected with=] a {{TypeError}}.
+    |config|["{{AuctionAdConfig/sellerSignals}}"]. If it fails, then [=exception/throw=] a {{TypeError}}.
   1. If |config|["{{AuctionAdConfig/directFromSellerSignals}}"] is not empty, let
     |directFromSellerSignalsPrefix| be the result of running the [=URL parser=] on
     |config|["{{AuctionAdConfig/directFromSellerSignals}}"].
-    1. Return [=a promise rejected with=] a {{TypeError}} if any of:
+    1. [=exception/Throw=] a {{TypeError}} if any of:
       * |directFromSellerSignalsPrefix| is an error.
       * |directFromSellerSignalsPrefix| is not [=same origin=] with
         |auctionConfig|.[=auction ad config/seller=].
@@ -314,9 +311,8 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 
   TODO: finish other copy steps.
 1. If |config|["{{AuctionAdConfig/signal}}"] [=map/exists=]:
-  1. If |config|["{{AuctionAdConfig/signal}}"] is [=AbortSignal/aborted=], then return
-    [=a promise rejected with=] |config|["{{AuctionAdConfig/signal}}"]'s
-    [=AbortSignal/abort reason=].
+  1. If |config|["{{AuctionAdConfig/signal}}"] is [=AbortSignal/aborted=], then [=exception/throw-]
+    |config|["{{AuctionAdConfig/signal}}"]'s [=AbortSignal/abort reason=].
   1. [=AbortSignal/Add=] an algorithm (TODO: define it) to |config|["{{AuctionAdConfig/signal}}"].
 
 Comment: **** content/browser/interest_group/ad_auction_service_impl.cc
@@ -330,11 +326,24 @@ TODO: fenced-frame
 
 The <dfn for="auction ad config">start bidding and scoring phase(|on_seller_receiver_callback|, |bidding_and_scoring_phase_callback|)</dfn> method steps are:
 1. If component auctions are empty:
-  1. Request the seller worklet, 
-  
+  1. Request the seller worklet. TODO: expand this.
 1. If component auctions are not empty:
   1. [=list/For each=] |componentAuction| in component auctions:
     1. [=auction ad config/Start bidding and scoring phase=] with OnComponentSellerWorkletReceived and OnComponentAuctionComplete.
+1. [=list/For each=] |buyer| in |auctionConfig|'s interestGroupBuyers"
+  1. [=start generate bids=].
+
+The <dfn for="auction ad config">start generate bids()</dfn> method steps are:
+1. [=list/For each=] |bid_state| in bid_states:
+  1. Request bidder worklet. TODO: expand.
+  1. If BidderWorklet received, do OnBidderWorkletReceived.
+  1. Otherwise, do OnBidderWorkletGenerateBidFatalError.
+
+
+
+OnBidderWorkletReceived:
+
+OnBidderWorkletGenerateBidFatalError:
 
 
 # Permissions Policy integration # {#permissions-policy-integration}
