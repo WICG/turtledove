@@ -264,127 +264,175 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
   [="run-ad-auction"=] [=policy-controlled feature=], then [=exception/throw=] a
   "{{NotAllowedError}}" {{DOMException}}.
-1. Let |auctionConfig| be a new [=auction ad config=].
-1. Validate the given |config| and set |auctionConfig|'s fields accordingly.
-  1. Let |seller| be the result of running the [=URL parser=] on
-    |config|["{{AuctionAdConfig/seller}}"].
-    1. [=exception/Throw=] a {{TypeError}} if |seller| is an error, or its [=url/scheme=] is not
-      "`https`".
-    1. Set |auctionConfig|'s [=auction ad config/seller=] to |seller|.
-  1. Let |decisionLogicUrl| be the result of running the [=URL parser=] on
-    |config|["{{AuctionAdConfig/decisionLogicUrl}}"].
-    1. [=exception/Throw=] a {{TypeError}} if |decisionLogicUrl| is an error, or it
-      is not [=same origin=] with |auctionConfig|.[=auction ad config/seller=].
-    1. Set |auctionConfig|'s [=auction ad config/decision logic url=] to |decisionLogicUrl|.
-  1. If |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"] [=map/exists=]:
-    1. Let |trustedScoringSignalsUrl| be the result of running the [=URL parser=] on
-      |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"].
-    1. [=exception/Throw=] a {{TypeError}} if |trustedScoringSignalsUrl| is an error,
-      or it is not [=same origin=] with |auctionConfig|'s [=auction ad config/seller=].
-    1. Set |auctionConfig|'s [=auction ad config/trusted scoring signals url=] to
-      |trustedScoringSignalsUrl|.
-  1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=], let |buyers| be a new
-    [=list/is empty|empty=] [=list=].
-    1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
-      1. Let |buyer| be the result of parsing |buyerString| to an [=url/origin=]. If it fails, then
-        [=exception/throw=] a {{TypeError}}. Otherwise, [=list/append=] |buyer| to |buyers|.
-    1. Set [=auction ad config non shared params/interest group buyers=] of |auctionConfig|'s
-      [=auction ad config non shared params=] to |buyers|.
-  1. If |config|["{{AuctionAdConfig/auctionSignals}}"] [=map/exists=], let
-    [=auction ad config non shared params/auction signals=] of |auctionConfig|'s
-    [=auction ad config non shared params=] be the result of
-    [=serializing a JavaScript value to a JSON string=], given
-    |config|["{{AuctionAdConfig/auctionSignals}}"]. If it fails, then [=exception/throw=] a
-    {{TypeError}}.
-  1. If |config|["{{AuctionAdConfig/sellerSignals}}"] [=map/exists=], let
-    [=auction ad config non shared params/seller signals=] of |auctionConfig|'s
-    [=auction ad config non shared params=] be the result of
-    [=serializing a JavaScript value to a JSON string=], given
-    |config|["{{AuctionAdConfig/sellerSignals}}"]. If it fails, then [=exception/throw=] a
-    {{TypeError}}.
-  1. If |config|["{{AuctionAdConfig/directFromSellerSignals}}"] [=map/exists=], let
-    |directFromSellerSignalsPrefix| be the result of running the [=URL parser=] on
-    |config|["{{AuctionAdConfig/directFromSellerSignals}}"].
-    1. [=exception/Throw=] a {{TypeError}} if any of:
-      * |directFromSellerSignalsPrefix| is an error.
-      * |directFromSellerSignalsPrefix| is not [=same origin=] with |auctionConfig|'s
-        [=auction ad config/seller=].
-      * |directFromSellerSignalsPrefix| [=url/query] is not null.
-    1. Let |directFromSellerSignals| be a new [=direct from seller signals=]. 
-    1. Set |directFromSellerSignals|'s [=direct from seller signals/prefix=] to
-      |directFromSellerSignalsPrefix|.
-    1. [=list/For each=] |buyer| in [=auction ad config non shared params/interest group buyers=] of
-      |auctionConfig|'s [=auction ad config non shared params=]:
-      1. Let |prefix| be the result of running [=URL serializer=] on |directFromSellerSignalsPrefix|.
-      1. Let |buyerString| be the result of running [=URL serializer=] on |buyer|. 
-      1. Let |subresourceUrl| be the result of [=string/concatenate|concatenating=]
-        « |prefix|, "?perBuyerSignals=", substitute "/" with "%2F" in |buyerString|».
-      1. TODO: finish missing CopyDirectFromSellerSignalsFromIdlToMojo steps.
-  1. If |config|["{{AuctionAdConfig/perBuyerSignals}}"] [=map/exists=], [=list/for each=]
-    |perBuyerSignal| in |config|["{{AuctionAdConfig/perBuyerSignals}}"]:
-    1. Let |buyer| be parsing |perBuyerSignal|'s first to an [=url/origin=]. If it fails,
-      [=exception/throw=] a {{TypeError}}.
-    1. Let |signalsString| be the result of
-      [=serializing a JavaScript value to a JSON string=], given |perBuyerSignal|'s second. If it
-      fails, [=exception/throw=] a {{TypeError}}.
-    1. [=map/Set] output.auction_ad_config_non_shared_params->per_buyer_signals[|buyer|] to
-      |signalsString|.
-  1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] [=map/exists=], [=list/for each=]
-    |perBuyerTimeout| in |config|["{{AuctionAdConfig/perBuyerTimeouts}}"]:
-    1. If |perBuyerTimeout|'s first equals to "*", then set output.auction_ad_config_non_shared_params's
-      all_buyers_timeout to |perBuyerTimeout|'s second, and [=iteration/continue=].
-    1. Let |buyer| be parsing |perBuyerSignal|'s first to an [=url/origin=]. If it fails,
-      [=exception/throw=] a {{TypeError}}.
-    1. [=map/Set] output.auction_ad_config_non_shared_params->per_buyer_timeout[|buyer|] to
-      |perBuyerTimeout|'s second.
-  1. If |config|["{{AuctionAdConfig/perBuyerExperimentGroupIds}}"] [=map/exists=], [=list/for each=]
-    |id| in |config|["{{AuctionAdConfig/perBuyerExperimentGroupIds}}"]:
-    1. If |id|'s first equals to "*", then set output.auction_ad_config_non_shared_params's
-      all_buyers_timeout to |perBuyerTimeout|'s second, and [=iteration/continue=].
-    1. Let |buyer| be parsing |perBuyerSignal|'s first to an [=url/origin=]. If it fails,
-      [=exception/throw=] a {{TypeError}}.
-    1. [=map/Set] output.auction_ad_config_non_shared_params->per_buyer_timeout[|buyer|] to
-      |perBuyerTimeout|'s second.
-  1. If |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"] [=map/exists=], [=list/for each=]
-    |limit| in |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"]:
-    1. If |limit|'s second is less or equal to 0, [=exception/throw=] a {{TypeError}}.
-    1. If |limit|'s first equals to "*", then set output.auction_ad_config_non_shared_params's
-      all_buyers_group_limit to |limit|'s second, and [=iteration/continue=].
-    1. Let |buyer| be parsing |limit|'s first to an [=url/origin=]. If it fails,
-      [=exception/throw=] a {{TypeError}}.
-    1. [=map/Set] output.auction_ad_config_non_shared_params->per_buyer_group_limits[|buyer|] to
-      |limit|'s second.
-  1. If |config|["{{AuctionAdConfig/perBuyerPrioritySignals}}"] [=map/exists=], [=list/for each=]
-    |signal| in |config|["{{AuctionAdConfig/perBuyerPrioritySignals}}"]:
-    1. TODO: finish this step.
+1. Let |auctionConfig| be the result of running [=validate and convert auction ad config=] with
+  given |config| and [=validate and convert auction ad config/isTopLevel=] set to true. If it fails,
+  return [=a new promise=].
 1. If |config|["{{AuctionAdConfig/signal}}"] [=map/exists=]:
-  1. If |config|["{{AuctionAdConfig/signal}}"] is [=AbortSignal/aborted=], then [=exception/throw-]
+  1. If |config|["{{AuctionAdConfig/signal}}"] is [=AbortSignal/aborted=], then [=exception/throw=]
     |config|["{{AuctionAdConfig/signal}}"]'s [=AbortSignal/abort reason=].
   1. [=AbortSignal/Add=] an algorithm (TODO: define it) to |config|["{{AuctionAdConfig/signal}}"].
 1. TODO: fenced-frame.
-1. Load interest groups. If fails, failAuction. TODO: add more details.
-1. [=auction ad config/Start bidding and scoring phase=].
-1. TODO: following steps.
+1. Load the browser's [=interest group set=]. If it fails, failAuction. TODO: add more details?
+1. Run [=start bidding and scoring=] with |auctionConfig|.
+1. TODO: add missing steps.
 
 </div>
 
-The <dfn for="auction ad config">start bidding and scoring phase(|on_seller_receiver_callback|,
-|bidding_and_scoring_phase_callback|)</dfn> method steps are:
-1. If component auctions are empty:
-  1. Request the seller worklet. TODO: expand this.
-1. If component auctions are not empty:
-  1. [=list/For each=] |componentAuction| in component auctions:
-    1. [=auction ad config/Start bidding and scoring phase=] with OnComponentSellerWorkletReceived
-      and OnComponentAuctionComplete.
-1. [=list/For each=] |buyer| in [=auction ad config non shared params/interest group buyers=] of
-  |auctionConfig|'s [=auction ad config non shared params=]:
-  1. Request bidder worklet for |buyer|. TODO: expand.
-  1. If BidderWorklet received, do OnBidderWorkletReceived.
+<div algorithm="validate and convert auction ad config">
+
+To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}} |config| and a
+[=boolean=] <dfn for="validate and convert auction ad config">|isTopLevel|</dfn>:
+1. Let |auctionConfig| be a new [=auction config=].
+1. Let |seller| be the result of running the [=URL parser=] on
+  |config|["{{AuctionAdConfig/seller}}"].
+  1. [=exception/Throw=] a {{TypeError}} if |seller| is an error, or its [=url/scheme=] is not
+    "`https`".
+  1. Set |auctionConfig|'s [=auction config/seller=] to |seller|.
+1. Let |decisionLogicUrl| be the result of running the [=URL parser=] on
+  |config|["{{AuctionAdConfig/decisionLogicUrl}}"].
+  1. [=exception/Throw=] a {{TypeError}} if |decisionLogicUrl| is an error, or it is not
+    [=same origin=] with |auctionConfig|'s [=auction config/seller=].
+  1. Set |auctionConfig|'s [=auction config/decision logic url=] to |decisionLogicUrl|.
+1. If |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"] [=map/exists=]:
+  1. Let |trustedScoringSignalsUrl| be the result of running the [=URL parser=] on
+    |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"].
+  1. [=exception/Throw=] a {{TypeError}} if |trustedScoringSignalsUrl| is an error,
+    or it is not [=same origin=] with |auctionConfig|'s [=auction config/seller=].
+  1. Set |auctionConfig|'s [=auction config/trusted scoring signals url=] to
+    |trustedScoringSignalsUrl|.
+1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=], let |buyers| be a new
+  [=list/is empty|empty=] [=list=].
+  1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
+    1. Let |buyer| be the result of parsing |buyerString| to an [=url/origin=]. If it fails, then
+      [=exception/throw=] a {{TypeError}}. Otherwise, [=list/append=] |buyer| to |buyers|.
+    1. If |isTopLevel| is true and |config|["{{AuctionAdConfig/componentAuctions}}"] [=map/exists=],
+      |buyer| cannot be a buyer who directly participates the top level auction, i.e., |buyer| must
+      be from |config|["{{AuctionAdConfig/componentAuctions}}"].
+  1. Set |auctionConfig|'s [=auction config/interest group buyers=] to |buyers|.
+1. If |config|["{{AuctionAdConfig/auctionSignals}}"] [=map/exists=], let |auctionConfig|'s
+  [=auction config/auction signals=] be the result of
+  [=serializing a JavaScript value to a JSON string=], given
+  |config|["{{AuctionAdConfig/auctionSignals}}"]. If it fails, then [=exception/throw=] a
+  {{TypeError}}.
+1. If |config|["{{AuctionAdConfig/sellerSignals}}"] [=map/exists=], let |auctionConfig|'s
+  [=auction config/seller signals=] of be the result of
+  [=serializing a JavaScript value to a JSON string=], given
+  |config|["{{AuctionAdConfig/sellerSignals}}"]. If it fails, then [=exception/throw=] a
+  {{TypeError}}.
+1. If |config|["{{AuctionAdConfig/directFromSellerSignals}}"] [=map/exists=], let
+  |directFromSellerSignalsPrefix| be the result of running the [=URL parser=] on
+  |config|["{{AuctionAdConfig/directFromSellerSignals}}"].
+  1. [=exception/Throw=] a {{TypeError}} if any of:
+    * |directFromSellerSignalsPrefix| is an error.
+    * |directFromSellerSignalsPrefix| is not [=same origin=] with |auctionConfig|'s
+      [=auction config/seller=].
+    * |directFromSellerSignalsPrefix| [=url/query] is not null.
+  1. TODO: Figure out how to deal with DirectFromSellerSignals.
+1. If |config|["{{AuctionAdConfig/perBuyerSignals}}"] [=map/exists=], [=map/for each=] |key| →
+  |value| of |config|["{{AuctionAdConfig/perBuyerSignals}}"]:
+  1. Let |buyer| be parsing |key| to an [=url/origin=]. If it fails, [=exception/throw=] a
+    {{TypeError}}.
+  1. Let |signalsString| be the result of
+    [=serializing a JavaScript value to a JSON string=], given |value|. If it fails,
+    [=exception/throw=] a {{TypeError}}.
+  1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to
+    |signalsString|.
+1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] [=map/exists=], [=map/for each=] |key| →
+  |value| of |config|["{{AuctionAdConfig/perBuyerTimeouts}}"]:
+  1. If |key| equals to "*", then set |auctionConfig|'s [=auction config/all buyers timeout=]
+    to |value|, and [=iteration/continue=].
+  1. Let |buyer| be parsing |key| to an [=url/origin=]. If it fails, [=exception/throw=] a
+    {{TypeError}}.
+  1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|] to |value|.
+1. If |config|["{{AuctionAdConfig/perBuyerExperimentGroupIds}}"] [=map/exists=], [=map/for each=]
+  |key| → |value| of |config|["{{AuctionAdConfig/perBuyerExperimentGroupIds}}"]:
+  1. If |key| equals to "*", then set |auctionConfig|'s |auctionConfig|'s
+    [=auction config/all buyer experiment group id=] to |value|, and [=iteration/continue=].
+  1. Let |buyer| be parsing |key| to an [=url/origin=]. If it fails, [=exception/throw=] a
+    {{TypeError}}.
+  1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer experiment group ids=][|buyer|] to
+    |value|.
+1. If |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"] [=map/exists=], [=map/for each=]
+  |key| → |value| of |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"]:
+  1. If |value| is less or equal to 0, [=exception/throw=] a {{TypeError}}.
+  1. If |key| equals to "*", then set |auctionConfig|'s [=auction config/all buyers group limit=]
+    to |value|, and [=iteration/continue=].
+  1. Let |buyer| be parsing |key| to an [=url/origin=]. If it fails, [=exception/throw=] a
+    {{TypeError}}.
+  1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer group limits=][|buyer|] to |value|.
+1. If |config|["{{AuctionAdConfig/perBuyerPrioritySignals}}"] [=map/exists=], [=map/for each=]
+  |key| → |value| of |config|["{{AuctionAdConfig/perBuyerPrioritySignals}}"]:
+  1. Let |signals| be an [=ordered map=] whose [=map/key|keys=] are [=strings=] and whose
+    [=map/value|values=] are double.
+  1. [=map/for each=] |k| → |v| of |value|:
+    1. If |k| [=string/starts with=] "browserSignals.", [=exception/throw=] a {{TypeError}}.
+    1. Set |signals|[|k|] to |v|.
+  1. If |key| equals to "*", then set |auctionConfig|'s
+    [=auction config/all buyers priority signals=] to |value|, and [=iteration/continue=].
+  1. Let |buyer| be parsing |key| to an [=url/origin=]. If it fails, [=exception/throw=] a
+    {{TypeError}}.
+  1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer priority signals=][|buyer|] to
+    |signals|.
+1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
+  [=auction config/seller timeout=] to |config|["{{AuctionAdConfig/sellerTimeout}}"].
+1. If |config|["{{AuctionAdConfig/componentAuctions}}"] [=map/exists=], [=list/for each=]
+  |component| in |config|["{{AuctionAdConfig/componentAuctions}}"]:
+  1. If |isTopLevel| is false, [=exception/throw=] a {{TypeError}}.
+  1. Let |componentAuction| be the result of running [=validate and convert auction ad config=] with
+    |component| and [=validate and convert auction ad config/isTopLevel=] set to false. If it fails,
+    return null.
+  1. [=list/Append=] |componentAuction| to |auctionConfig|'s [=auction config/component auctions=].
+1. If |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"] [=map/exists=]:
+  1. Set |auctionConfig|'s [=auction config/seller experiment group id=] to
+    |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"].
+1. Return |auctionConfig|.
+
+</div>
+
+To <dfn>start bidding and scoring</dfn> given an [=auction config=]
+|auctionConfig|:
+1. If |auctionConfig|'s [=auction config/component auctions=] are empty:
+  1. Let sellerWorklet be a worklet object. TODO: expand this.
+1. OtherWise:
+  1. [=list/For each=] |component| |auctionConfig|'s [=auction config/component auctions=]:
+    1. [=Start bidding and scoring=] with |component|.
+1. [=list/For each=] |buyer| in [=auction config/interest group buyers=]:
+  1. Let |bidderWorklet| be a worklet object for |buyer|. TODO: expand.
+  1. If |bidderWorklet| received, do [=fetch bidding javascript=] with |buyer|.
   1. Otherwise, do OnBidderWorkletGenerateBidFatalError.
   1. TODO: rewrite this part.
 
-TODO: OnBidderWorkletReceived
-TODO: OnBidderWorkletGenerateBidFatalError:
+To <dfn>fetch bidding javascript</dfn> with given |buyer|:
+1. Let |request| be a new [=request=] with the following properties:
+    :   [=request/URL=]
+    ::  |buyer|'s [=interest group/bidding url=]
+    :   [=request/header list=]
+    ::  A new [=header list=] containing a [=header=] named
+        "`Accept`" whose value is "`application/javascript`"
+    :   [=request/redirect mode=]
+    :: "`error`"    
+    :   [=request/referrer=]
+    :: "`no-referrer`"
+    :   [=request/client=]
+    ::  `null`
+    :   [=request/window=]
+    ::  "`no-window`" TODO: verify
+    :   [=request/service-workers mode=]
+    ::  "`none`"
+    :   [=request/mode=]
+    ::  "`cors`"
+    :   [=request/credentials mode=]
+    ::  "`omit`"
+    :   [=request/cache mode=]
+    ::  "`no-store`" TODO: verify
+1. [=Fetch=] |request|.
+1. Let |response| be the result of [=fetch=] when it asynchronously completes.
+1. If |response|’s body is null:
+  1. TODO.
+1. Otherwise:
+  1. TODO. 
+
+TODO: OnBidderWorkletGenerateBidFatalError.
 
 # Permissions Policy integration # {#permissions-policy-integration}
 
@@ -465,40 +513,17 @@ An interest group ad is a [=struct=] with the following items:
 
 </dl>
 
-<h3 dfn-type=dfn>Auction ad config</h3>
+<h3 dfn-type=dfn>Auction config</h3>
 
-An auction ad config is a [=struct=] with the following items:
+An auction config is a [=struct=] with the following items:
 
-<dl dfn-for="auction ad config">
+<dl dfn-for="auction config">
 : <dfn>seller</dfn>
 :: An [=url/origin=].
 : <dfn>decision logic url</dfn>
 :: A [=URL=].
 : <dfn>trusted scoring signals url</dfn>
 :: Null or a [=URL=].
-: <dfn>auction ad config non shared params</dfn>
-:: An [=auction ad config non shared params=].
-: <dfn>direct from seller signals</dfn>
-:: Null or an [=direct from seller signals=].
-: <dfn>has seller experiment group id</dfn>
-:: A [=boolean=]. Defaulting to false.
-: <dfn>seller experiment group id</dfn>
-:: A non-negative 16-bit integer.
-: <dfn>has all buyer experiment group id</dfn>
-:: A [=boolean=]. Defaulting to false.
-: <dfn>all buyer experiment group id</dfn>
-:: A non-negative 16-bit integer.
-: <dfn>per buyer experiment group ids</dfn>
-:: An [=ordered map=] whose [=map/key|keys=] are [=url/origins=] and whose
-  [=map/value|values=] are non-negative 16-bit integers.
-
-</dl>
-
-<h3 dfn-type=dfn>Auction ad config non shared params</h3>
-
-An auction ad config non shared params is a [=struct=] with the following items:
-
-<dl dfn-for="auction ad config non shared params">
 : <dfn>interest group buyers</dfn>
 :: Null or a [=list=] of [=url/origin=].
 : <dfn>auction signals</dfn>
@@ -528,49 +553,14 @@ An auction ad config non shared params is a [=struct=] with the following items:
 : <dfn>all buyers group limit</dfn>
 :: A non-negative 16-bit integer.
 : <dfn>component auctions</dfn>
-:: A [=list=] of [=auction ad config=]s.
-
-</dl>
-
-
-<h3 dfn-type=dfn>Direct from seller signals</h3>
-
-A direct from seller signals is a [=struct=] with the following items:
-
-<dl dfn-for="direct from seller signals">
-: <dfn>prefix</dfn>
-:: A [=URL=].
-: <dfn>per buyer signals</dfn>
-:: An [=ordered map=] whose [=map/key|keys=] are [=url/origin=] and whose
-    [=map/value|values=] are [=direct from seller signals subresource=].
-: <dfn>seller signals</dfn>
-:: Null or a [=direct from seller signals subresource=].
-: <dfn>auction signals</dfn>
-:: Null or a [=direct from seller signals subresource=].
-
-</dl>
-
-<h3 dfn-type=dfn>Direct from seller signals subresource</h3>
-
-A direct from seller signals subresource is a [=struct=] with the following items:
-
-<dl dfn-for="direct from seller signals subresource">
-: <dfn>bundle url</dfn>
-:: A [=URL=].
-: <dfn>token</dfn>
-:: An [=unguessable token=].
-
-</dl>
-
-<h3 dfn-type=dfn>Unguessable token</h3>
-
-An unguessable token is a [=struct=] with the following items:
-
-<dl dfn-for="unguessable token">
-: <dfn>high</dfn>
-:: A non-negative 64-bit integer.
-: <dfn>low</dfn>
-:: A non-negative 64-bit integer.
+:: A [=list=] of [=auction config=]s.
+: <dfn>seller experiment group id</dfn>
+:: A non-negative 16-bit integer.
+: <dfn>all buyer experiment group id</dfn>
+:: A non-negative 16-bit integer.
+: <dfn>per buyer experiment group ids</dfn>
+:: An [=ordered map=] whose [=map/key|keys=] are [=url/origins=] and whose
+  [=map/value|values=] are non-negative 16-bit integers.
 
 </dl>
 
