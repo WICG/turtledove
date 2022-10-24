@@ -306,8 +306,9 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       error, then [=exception/throw=] a {{TypeError}}. Otherwise, [=list/append=] |buyer| to
       |buyers|.
     1. If |isTopLevel| is true and |config|["{{AuctionAdConfig/componentAuctions}}"] [=map/exists=],
-      TODO: |buyer| cannot be a buyer who directly participates the top level auction, i.e., |buyer|
-      must be a buyer who participate one of |config|["{{AuctionAdConfig/componentAuctions}}"].
+      TODO: |buyer| cannot be a buyer who directly participates in the top level auction, i.e.,
+      |buyer| must be a buyer who won a component auction of
+      |config|["{{AuctionAdConfig/componentAuctions}}"].
   1. Set |auctionConfig|'s [=auction config/interest group buyers=] to |buyers|.
 1. If |config|["{{AuctionAdConfig/auctionSignals}}"] [=map/exists=], let |auctionConfig|'s
   [=auction config/auction signals=] be the result of
@@ -398,16 +399,17 @@ To <dfn>start bidding and scoring</dfn> given an [=auction config=]
 1. OtherWise:
   1. [=list/For each=] |component| |auctionConfig|'s [=auction config/component auctions=]:
     1. [=Start bidding and scoring=] with |component|.
-1. [=list/For each=] |buyer| in [=auction config/interest group buyers=]:
-  1. Let |bidderWorklet| be a worklet object for |buyer|. TODO: expand.
-  1. If |bidderWorklet| received, do [=fetch bidding javascript=] with |buyer|.
+1. Request bidder worklets [=in parallel=]. [=list/For each=] |buyer| in
+  [=auction config/interest group buyers=]:
+  1. Let |bidderWorklet| be a [=bidder worklet=] object for |buyer|. TODO: expand.
+  1. If |bidderWorklet| received, do [=fetch bidding javascript=] with |bidderWorklet|.
   1. Otherwise, do OnBidderWorkletGenerateBidFatalError.
   1. TODO: rewrite this part.
 
-To <dfn>fetch bidding javascript</dfn> with given |buyer|:
+To <dfn>fetch bidding javascript</dfn> with given [=bidder worklet=] |bidderWorklet|:
 1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
-    ::  |buyer|'s [=interest group/bidding url=]
+    ::  |bidderWorklet|'s [=bidder worklet/bidding url=]
     :   [=request/header list=]
     ::  A new [=header list=] containing a [=header=] named
         "`Accept`" whose value is "`application/javascript`"
@@ -572,6 +574,16 @@ An auction config is a [=struct=] with the following items:
 : <dfn>per buyer experiment group ids</dfn>
 :: An [=ordered map=] whose [=map/key|keys=] are [=url/origins=] and whose
   [=map/value|values=] are non-negative 16-bit integers.
+
+</dl>
+
+<h3 dfn-type=dfn>Bidder worklet</h3>
+
+A bidder worklet is a [=struct=] with the following items: (TODO: expand)
+
+<dl dfn-for="bidder worklet">
+: <dfn>bidding url</dfn>
+:: A [=URL=].
 
 </dl>
 
