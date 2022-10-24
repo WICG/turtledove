@@ -541,6 +541,44 @@ If `enableBiddingSignalsPrioritization` is true, then rather than applying `perB
 
 if `enableBiddingSignalsPrioritization` is false, then the `priorityVector` from the trusted bidding signals will still be multiplied by the `prioritySignals` as above, but it will only be used to skip the interest group if the result is less than 0. This parameter exists to improve performance - when it's false for all interest groups for a particular bidder in an auction, that bidder's interest groups can be filtered out before any bidding signals are fetched, reducing network usage and server load.
 
+For example, with the following interest groups and auction config:
+
+```
+auctionConfig = {
+  ...,
+  'interestGroupBuyers': {'https://buyer1.com/'},
+  'perBuyerPrioritySignals': {
+    '\*': {'politics': 1},
+  }
+}
+
+interestGroup1 = {
+  'owner': 'https://buyer1.com/',
+  'name': 'NoPolitics',
+  'priorityVector': {'politics': -1},
+  ...
+}
+
+interestGroup2 = {
+  'owner': 'https://buyer1.com/',
+  'name': 'BidFor240Minutes',
+  'priorityVector': {'browserSignals.ageInMinutes': -1, 'browserSignals.one': 240},
+  ...
+}
+
+interestGroup3 = {
+  'owner': 'https://buyer1.com/',
+  'name': 'IgThatHasFilterDataFromServer',
+  'trustedBiddingSignalsUrl': 'https://buyer1.com/bidder_signals',
+  ...
+}
+```
+
+The `NoPolitics` interest group will not get a chance to bid, since the `AuctionConfig` has `politics` set to 1, and `NoPolitics` multiplies that by -1, giving it a priority of -1.
+
+The `BidFor240Minutes` interest group will have a positive priority if it was joined during the first 240 minutes, starting with 240 right after being joined, and working its way down to 0 at the 240 minute mark, after which it will have a negative priority and so will not bid.
+
+The 'FilterOnDataFromServer' will result in fetching `https://buyer1.com/bidder_signals?publisher=<...>&interest_groups=FilterOnDataFromServer` (possibly merged with other fetches), and then if that result has a `perInterestGroupData.IgThatHasFilterDataFromServer.priorityVector` object, then that is used just like the `priorityVector` field from the other two examples, except it's only used for filtering, not to set the priority, unless the group has a true `enableBiddingSignalsPrioritization` field.
 
 ### 4. Browsers Render the Winning Ad
 
