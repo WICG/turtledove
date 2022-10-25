@@ -88,7 +88,7 @@ function generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBidd
     });
 ```
 
-The above logic will trigger a report if the generated bid wins (see reserved.win). And another one,
+The above logic will trigger a report if the generated bid wins (see [reserved.win](#reporting-bidding-data-for-wins)). And another one,
 if the user later clicks on the winning ad (this needs to be triggered by the fenced frame itself, see
 reporting for post-auction signals). When the buyer receives an aggregated report they can infer what
 the click-through-rate (CTR) was for users on different “interest group age” buckets.
@@ -96,8 +96,8 @@ the click-through-rate (CTR) was for users on different “interest group age”
 ### Example 2: Getting the average bid gap for an ad. 
 
 A buyer may be interested in understanding how much higher they should have bid in order to win an
-auction. To do this, not only do we need to trigger a report at loss time (see Reporting for bids
-which do not win), but also have the value of the report depend on the outcome of the auction. To
+auction. To do this, not only do we need to trigger a report at loss time (see [Reporting for bids
+which do not win](#reporting-for-bids-which-do-not-win)), but also have the value of the report depend on the outcome of the auction. To
 do this, we introduce a field to the “contributions” object called `signalValue`. This field allows
 the report to depend on post auction information. A `signalValue` object is composed of the following
 values:
@@ -107,8 +107,8 @@ values:
 controlling the amount of noise added by the aggregation service. Scale is applied after `offset`
 is subtracted.
 
-After the auction happens, the final value of the generated report is scale*(baseValue + offset). The
-following example shows  how to return the gap between an ad bid and the winning bid.
+After the auction happens, the final value of the generated report is `scale`*(`baseValue` + `offset`). The
+following example shows how to return the gap between an ad bid and the winning bid:
 
 ```
 function generateBid(...) {
@@ -179,10 +179,10 @@ privateAggregation.reportContributionForEvent(eventType, contribution)
 
 The parameters consist of:
 * an `eventType` which is a string identifying the event type that triggers this report to
-be sent (see Triggering reports below), and
+be sent (see [Triggering reports](#triggering-reports) below), and
 * a `contribution` object which contains:
   * a `bucket` which is a 128bit ID or a `signalBucket`  which tells the browser how to calculate the bucket and
-  * a `value` which is an integer or a `signalValue` which tells the browser how to calculate the bucket.
+  * a `value` which is an integer or a `signalValue` which tells the browser how to calculate the value.
 
 
 Where `signalBucket` and `signalValue` is a dictionary which consists of:
@@ -207,7 +207,7 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
   * `scale` will be multiplied by the browser provided value
   * `offset` will be added to the browser provided value (allows you to shift buckets, etc)
 
-##Triggering reports
+## Triggering reports
 
 ### Reporting bidding data associated with an event in a frame
 
@@ -312,7 +312,7 @@ events / campaigns.
 
 ## Privacy Considerations
 
-See (Private Aggregation Privacy Consideration)[https://github.com/alexmturner/private-aggregation-api#privacy-and-security]
+See [Private Aggregation Privacy Consideration](https://github.com/alexmturner/private-aggregation-api#privacy-and-security)
 
 Reports generated with the mechanisms in this proposal will be subject to the same contribution
 bounding and bucketing for Private Aggregation Reports.
