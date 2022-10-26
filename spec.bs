@@ -392,29 +392,29 @@ To <dfn>parse an origin</dfn> given a [=string=] |input|:
 1. If |url| is an error, then return failure.
 1. Return |url|'s [=url/origin=].
 
-To <dfn>start bidding and scoring</dfn> given an [=auction config=]
-|auctionConfig|:
+To <dfn>start bidding and scoring</dfn> given an [=auction config=] |auctionConfig|:
 1. If |auctionConfig|'s [=auction config/component auctions=] are empty:
-  1. Let sellerWorklet be a worklet object. TODO: expand this.
+  1. TODO: Create seller worklet.
 1. OtherWise:
-  1. [=list/For each=] |component| |auctionConfig|'s [=auction config/component auctions=]:
+  1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=]:
     1. [=Start bidding and scoring=] with |component|.
-1. Request bidder worklets [=in parallel=]. [=list/For each=] |buyer| in
+1. Create bidder worklets [=in parallel=]. [=list/For each=] |buyer| in
   [=auction config/interest group buyers=]:
   1. Let |bidderWorklet| be a [=bidder worklet=] object for |buyer|. TODO: expand.
-  1. If |bidderWorklet| received, do [=fetch bidding javascript=] with |bidderWorklet|.
-  1. Otherwise, do OnBidderWorkletGenerateBidFatalError.
-  1. TODO: rewrite this part.
+  1. Let |biddingScript| be the result of [=fetching a bidding javascript=] with |bidderWorklet|.
+  1. If |biddingScript| is an error, [=iteration/continue=].
+  1. TODO: Run all [=generate a bid|GenerateBid()=] tasks that are ready.
+  1. TODO: Maybe rewrite this part.
 
-To <dfn>fetch bidding javascript</dfn> with given [=bidder worklet=] |bidderWorklet|:
+To <dfn>create a request</dfn> given a [=url=] |url|, and a [=string=] <dfn for="create a request">
+|accept|</dfn>:
 1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
-    ::  |bidderWorklet|'s [=bidder worklet/bidding url=]
+    ::  |url|
     :   [=request/header list=]
-    ::  A new [=header list=] containing a [=header=] named
-        "`Accept`" whose value is "`application/javascript`"
+    ::  A new [=header list=] containing a [=header=] named "`Accept`" whose value is |accept|
     :   [=request/redirect mode=]
-    :: "`error`"    
+    :: "`error`"
     :   [=request/referrer=]
     :: "`no-referrer`"
     :   [=request/client=]
@@ -429,22 +429,29 @@ To <dfn>fetch bidding javascript</dfn> with given [=bidder worklet=] |bidderWork
     ::  "`omit`"
     :   [=request/cache mode=]
     ::  "`no-store`" TODO: verify
+1. Return |request|.
+
+To <dfn>fetch a bidding javascript</dfn> with given [=bidder worklet=] |bidderWorklet|:
+1. Let |request| be the result of [=creating a request=] with |bidderWorklet|'s
+    [=bidder worklet/bidding url=], and [=create a request/accept=] set to
+    "`application/javascript`".
 1. [=Fetch=] |request|.
-1. TODO: the follow steps may go to a separate method so can be reused for other signal fetches as
-  well?
 1. Let |response| be the result of [=fetch=] when it asynchronously completes.
-1. If |response|’s [=response/body=] is null:
-  1. Return. TODO: throw?
+1. Let |body| be |response|’s [=response/body=].
+1. If |body| is null, return failure.
 1. Let |headers| be |response|'s [=response/header list=].
 1. If |headers| is empty or [=header list/get=] "X-Allow-FLEDGE" from |headers| does not
-  return "true", throw. (TODO: throw?)
+  return "true", return failure.
 1. Let |mimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
-1. If |mimeType| is failure or not a [=JavaScript MIME type=], throw.
+1. If |mimeType| is failure or not a [=JavaScript MIME type=], return failure.
 1. If |mimeType|'s [=MIME type/parameters=]["`charset`"] [=map/exists=], and is not "utf-8" or
-  "us-ascii", throw.
-1. TODO: auction downloader callback.
+  "us-ascii", return failure.
+1. Let |biddingScript| be the result of compiling |body|. If |biddingScript| is an error,
+  return failure.
+1. Return |biddingScript|.
 
-TODO: OnBidderWorkletGenerateBidFatalError.
+To <dfn>generate a bid</dfn>:
+1. TODO: add steps.
 
 
 # Permissions Policy integration # {#permissions-policy-integration}
