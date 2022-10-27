@@ -46,3 +46,4 @@ The usefulness of this page depends on testers sharing information and updates.
 | RTB House | DSP | Continuous testing ongoing; long term commitment. | https://blog.rtbhouse.com/whitepaper-deep-insights-from-early-fledge-experiments/ | privacysandbox@rtbhouse.com |
 | SMN | DSP | | | privacy-sandbox-testing@so-netmedia.jp |
 | CafeMedia | ad service for >3900 publisher sites | duration of origin trial | | dmarti@cafemedia.com |
+| CyberAgent | DSP | | | privacysandbox@cyberagent.co.jp |
