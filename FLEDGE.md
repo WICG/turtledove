@@ -568,7 +568,7 @@ interestGroup2 = {
 
 interestGroup3 = {
   'owner': 'https://buyer1.com/',
-  'name': 'IgThatHasFilterDataFromServer',
+  'name': 'FilterOnDataFromServer',
   'trustedBiddingSignalsUrl': 'https://buyer1.com/bidder_signals',
   ...
 }
@@ -578,7 +578,7 @@ The `NoPolitics` interest group will not get a chance to bid, since the `Auction
 
 The `BidFor240Minutes` interest group will have a positive priority if it was joined during the first 240 minutes, starting with 240 right after being joined, and working its way down to 0 at the 240 minute mark, after which it will have a negative priority and so will not bid.
 
-The 'FilterOnDataFromServer' will result in fetching `https://buyer1.com/bidder_signals?publisher=<...>&interest_groups=FilterOnDataFromServer` (possibly merged with other fetches), and then if that result has a `perInterestGroupData.IgThatHasFilterDataFromServer.priorityVector` object, then that is used just like the `priorityVector` field from the other two examples, except it's only used for filtering, not to set the priority, unless the group has a true `enableBiddingSignalsPrioritization` field.
+The `FilterOnDataFromServer` interest group will result in fetching `https://buyer1.com/bidder_signals?publisher=<...>&interest_groups=FilterOnDataFromServer,<...>`, and then if that result has a `perInterestGroupData.FilterOnDataFromServer.priorityVector` object, then that is used just like the `priorityVector` field from the other two examples, except that it's only used for filtering, not to set the priority (unless the group has a true `enableBiddingSignalsPrioritization` field).  A [user defined function](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md#support-for-user-defined-functions-udfs) could be used on the FLEDGE Key-Value server to calculate that `priorityVector` value, and hence to decide if `FilterOnDataFromServer`'s `generateBid()` method is invoked or if it's filtered out.
 
 ### 4. Browsers Render the Winning Ad
 
