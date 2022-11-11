@@ -1,0 +1,335 @@
+# Extended Private Aggregation Reporting in FLEDGE
+
+## Introduction
+The [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api)
+proposes a mechanism for participants of FLEDGE auctions to create 
+[summary reports](https://github.com/WICG/attribution-reporting-api/blob/main/AGGREGATION_SERVICE_TEE.md#key-terms)
+which can measure generic cross-site data.
+
+This proposal seeks to extend this API to support further measurement use-cases
+for FLEDGE auctions using the same mechanism to aggregate reports from the browser.
+The new APIs added allow for reporting bidding information and new signals (post-auction signals, latency)
+at different points in auction (e.g. win, loss, bid, click), while retaining the same privacy and
+aggregation aspects of the Private Aggregation API proposal.
+
+## Goals
+* Allow all auction participants (both winner and losers) to measure aggregate data about their bids, competing bids, and other auction signals
+  * “How far off the auction clearing price was my bid?”
+  * "Why was my bid rejected?"
+  * "How far off the second highest bid value was my bid?"
+* Allow auction participants to measure aggregate data using signals only available during bid generation
+  * "How many times did my campaign bid?" 
+  * "What is my campaign's win rate?"
+* Allow auction winners to measure aggregate data about the auction relative to events which happen with the rendered ad (such as a click on the ad)
+  * "What is the bid cost per click?"
+  * "What is the bid cost per render?" 
+* Allow auction sellers to measure aggregate data on auction latency and other statistics
+  * "Which participants are contributing the most to auction latency?"
+* Allow auction buyers to measure aggregate data on their bidding latency
+  * “How much latency are my bidding signals fetches and bid generation code contributing?
+
+## Background
+The [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api)
+currently allows auction winners to generate histogram contributions within their
+reportResult()/reportWin() methods using a new API available in the worklet:
+
+```
+function reportResult(auctionConfig, browserSignals) {
+  …
+  privateAggregation.sendHistogramReport({
+      bucket: convertBuyerToBucketId(browserSignals.interestGroupOwner),
+      value: convertBidToReportingValue(browserSignals.bid)
+    });
+}
+```
+While this provides a way to gather important information about a winning creative, for instance,
+the average bid submitted for a creative, it still lacks some information that can be useful for
+auction participants as well as sellers. Information which is also not available through event
+level reporting. Just to mention a few:
+* The ability for a seller to track the average number of auction participants
+* The ability for a buyer to know the win rate of a campaign
+* The ability for a buyer/seller to know the highest other bid (HOB) for training bid shading models
+* The ability for a buyer/seller to measure actions contributing to auction latency
+* The ability for a buyer to link useful bidding signals (for instance time a user has spent in 
+an interest group) with a click event — this information is essential for model training. 
+
+Below, we propose an extension of the Private Aggregation API that tries to address these use cases.
+
+## Declaring Contributions
+
+A natural way to address the above use cases is for auction participants and sellers to be able to
+trigger arbitrary reports at different events. For instance, a buyer may want to count the number of
+times users that were in an interest group for less than an hour clicked on the winning ad. Or they
+may want to track auction signals associated with a non-winning bid, etc.
+
+Our proposed API extension allows a bidder to register a set of histogram contributions associated
+with an arbitrary `event_key` within `generateBid`, `scoreAd`, `reportWin`, and `reportResult`.
+
+### Example 1: Correlating bidding signals with click information.
+
+We consider the scenario where a buyer wants to learn the click through rate of ads when a user has
+been in an interest group for a given time.
+
+The buyer may implement `getImpressionReportBucket()` and `getClickReportBucket()` which map an
+interest group and the time the user has spent in that interest group to a 128-bit integer.
+
+The buyer can then do the following during generateBid (when the above information is available)
+
+```
+function generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
+ …
+  privateAggregation.reportContributionsForEvent({eventType: “reserved.win”, contributions: {
+      bucket: getImpressionReportBucket()
+      value: 1
+  };
+  privateAggregation.reportContributionsForEvent({eventType: "click", contributions: {
+      bucket: getClickReportBuckets(), // 128-bit integer
+      value: 1
+    });
+```
+
+The above logic will trigger a report if the generated bid wins (see [reserved.win](#reporting-bidding-data-for-wins)). And another one,
+if the user later clicks on the winning ad (this needs to be triggered by the fenced frame itself, see
+reporting for post-auction signals). When the buyer receives an aggregated report they can infer what
+the click-through-rate (CTR) was for users on different “interest group age” buckets.
+
+### Example 2: Getting the average bid gap for an ad. 
+
+A buyer may be interested in understanding how much higher they should have bid in order to win an
+auction. To do this, not only do we need to trigger a report at loss time (see [Reporting for bids
+which do not win](#reporting-for-bids-which-do-not-win)), but also have the value of the report depend on the outcome of the auction. To
+do this, we introduce a field to the “contributions” object called `signalValue`. This field allows
+the report to depend on post auction information. A `signalValue` object is composed of the following
+values:
+* `baseValue`: The name of the auction result value we want to report. For instance, winningBid. 
+* `offset`: Optional offset to add/subtract to the auction result value
+* `scale`: Optional scale factor by which we want to multiply the output. This is useful for
+controlling the amount of noise added by the aggregation service. Scale is applied after `offset`
+is subtracted.
+
+After the auction happens, the final value of the generated report is `scale`*(`baseValue` + `offset`). The
+following example shows how to return the gap between an ad bid and the winning bid:
+
+```
+function generateBid(...) {
+  bid = 100
+  privateAggregation.reportContributionsForEvent({
+    eventType: "reserved.loss"
+    contributions: {
+      bucket: 1596 // represents a bucket for interest group x winning bid price
+      value: {
+        baseValue: "winningBid",
+        scale: 2, // Number which will be multiplied by browser value
+        offset: -bid // Numbers which will be added to browser value, prior to scaling
+       }
+    }});
+
+  return bid;
+}
+```
+
+In the event this bid does not win the auction, and the winning bid was 200, the histogram
+contribution would be generated as:
+
+```
+bucket: 1596
+value: 200 // = (winningBid + -bid) * scale = (200 - 100) * 2 
+```
+This would correspond to the gap by which the advertiser lost the auction, scaled by 2.
+Scaling is important as it allows bidders to better control the amount of noise which will
+be added to various aggregation keys.
+
+### Example 3: Understand the reason an ad did not win
+
+Similar to the above example, sometimes, the key that we want to aggregate over may depend
+on the outcome of an auction. To solve this use case we provide an object called `signalBucket`.
+The final bucket id of the bucket will depend on the outcome of the auction. The following
+example allows the buyer to keep track of how many times an ad was not shown because it was
+throttled due to not passing a k-anonymity threshold.
+
+
+```
+function generateBid(...) {
+  privateAggregation.reportContributionsForEvent({
+    eventType: "reserved.loss"
+    contributions: {
+      bucket: {
+        baseValue: "bidRejectReason",
+        offset: 255 // Offset buckets
+       },
+      value: 1
+    }});
+
+  return bid;
+}
+```
+If the bid is rejected for not reaching the k-anonymity threshold, this would result in a
+contribution being generated:
+
+```
+bucket: 255 // 255 + 0 (0 is the value associated with not reaching the threshold, see bidRejectReason below)
+value: 1
+```
+
+## Reporting API informal specification
+
+```
+privateAggregation.reportContributionForEvent(eventType, contribution)
+```
+
+The parameters consist of:
+* an `eventType` which is a string identifying the event type that triggers this report to
+be sent (see [Triggering reports](#triggering-reports) below), and
+* a `contribution` object which contains:
+  * a `bucket` which is a 128bit ID or a `signalBucket`  which tells the browser how to calculate the bucket and
+  * a `value` which is an integer or a `signalValue` which tells the browser how to calculate the value.
+
+
+Where `signalBucket` and `signalValue` is a dictionary which consists of:
+* a `baseValue` field indicating which value the browser should use to calculate the resulting bucket or value.  A `signalValue.baseValue` or `signalBucket.baseValue` may be any of the following:
+  * ‘winningBid’: the value used  is the winning bid value.
+  * ‘highestScoringOtherBid’: the value used is the bid value that was scored as second highest.
+  * `scriptRunTime`: milliseconds of CPU time that the calling function required, when called.
+  * `signalsFetchTime`: milliseconds required to fetch the trusted bidding or scoring signals, when called from `generateBid()` or `scoreAd()` respectively.
+  * ‘bidRejectReason’: one of the following values:
+    * 0: indicates ad creative URL did not meet the k-anonymity threshold
+    * 1: indicates seller rejected bid because “Invalid Bid”
+    * 2: indicates seller rejected bid because “Bid was Below Auction Floor”
+    * 3: indicates seller rejected bid because “Creative Filtered - Pending or Disapproved by Exchange”
+    * 4: indicates seller rejected bid because “Creative Filtered - Blocked by Publisher”
+    * 5: indicates seller rejected bid because “Creative Filtered - Language Exclusions”
+    * 6: indicates seller rejected bid because “Creative Filtered - Category Exclusions”
+    * Perhaps other values indicating:
+      * generateBid() hitting timeout
+      * The auction was aborted (i.e. calling endAdAuction())
+      * an auction that never rendered the ad
+* optional `offset` and `scale` that allow the reporter to manipulate the browser signal to customize the buckets and values they will receive in reports:
+  * `scale` will be multiplied by the browser provided value
+  * `offset` will be added to the browser provided value (allows you to shift buckets, etc)
+
+## Triggering reports
+
+### Reporting bidding data associated with an event in a frame
+
+A fenced frame can trigger the sending of contributions associated with an arbitrary event
+by calling into a new API:
+
+```
+window.fence.reportPrivateAggregationEvent("click");
+```
+
+This will cause any contributions associated with a call to `reportContributionsForEvent()`
+with an event-type of `click` to be reported/sent. 
+
+In this example, `"click"` is an event-name chosen by the auction bidder. There are a number
+of event names that are reserved and invoked directly by the browser. All reserved values will
+have the `"reserved."` prefix.
+
+### Reporting bidding data for wins
+
+The `reserved.win` event-type is a special value that indicates a report should be sent when a
+bid wins the auction.
+
+The browser will trigger sending if contributions were registered for a winning bid.
+
+### Reporting for bids which do not win
+
+The `reserved.loss` event-type is a special value that indicates a report should be sent when a
+bid does not win the auction. If the bid does not win, the browser will trigger reporting for
+the `loss` contributions.
+
+## Reporting Per-Buyer Latency and Statistics to the Seller
+
+The seller may want to collect aggregate statistics on latency and bids for their auctions.
+Measuring this per buyer will allow the seller to evaluate performance information at a more
+granular level and give helpful guidance and feedback to their bidders.
+
+In order for the seller to collect this additional information from buyers, we need to give
+buyers a way to express which sellers they’re comfortable sharing this information with, so we
+add a new mechanism which allows each buyer to declare a set of approved sellers: The interestGroup
+provided to `navigator.joinAdInterestGroup()` will contain a new field named `approvedSellers`, a
+list of seller origins  that the interest group owner is comfortable working with and sharing
+additional latency statistics with.  This is essentially the buy-side counterpart to the sell-side
+`interestGroupBuyers`.
+
+For the seller to declare reporting, the `auctionConfig` passed to `runAdAuction` is amended to
+contain a configuration for the seller latency report.
+
+```
+const auctionConfig = {
+  'seller': 'https://www.example-ssp.com',
+  …
+  ‘interestGroupBuyers’: ['https://buyer1.com', 'https://buyer2.com', …],
+  // An aggregation key for each buyer. This represents the starting contribution bucket
+  // associated with the corresponding buyer.
+  ‘auctionReportBuyerKeys’: [100, // key for buyer1.com
+                             105, // key for buyer2.com
+                             …],
+  // Configures what values will be reported for each buyer. The key declares what signal will be
+  // measured, and the bucket declares the bucket this will be placed relative to the
+  // buyer key and the scale determines how the value is scaled.
+  `auctionReportBuyers`: {
+    `interestGroupCount`:       { `bucket`: 0, `scale`: 1,  },
+    ‘bidCount’:                 { `bucket`: 1, `scale`: 1,  },
+    ‘totalGenerateBidLatency’:  { `bucket`: 2, `scale`: 1,  },
+    ‘totalSignalsFetchLatency’: { `bucket`: 3, `scale`: .1, },
+  }
+}
+
+```
+
+The seller is able to measure the following for each buyer:
+* interestGroupCount: The number of the interest groups which could participate in the auction
+(i.e. the interest group’s owner was listed in the `interestGroupBuyers`)
+* bidCount: The number of valid bids generated by this buyer
+* totalGenerateBidLatency: The sum of execution time for all generateBids() in milliseconds
+* totalSignalsFetchLatency: The total time spent fetching trusted buyer signals in milliseconds
+
+Given the `auctionConfig` above, if buyer1.com had two interest groups participate in the auction,
+their trusted buyer signals fetch taking 10ms, their `generateBid()` scripts running for 2ms and
+3ms, and one of the interest groups returning a bid, the following histogram reports would be
+generated by the browser:
+
+```
+{ bucket: 100,// = 100 + 0 = buyer1.com’s key + interestGroupCount’s bucket
+  value: 2 }, // = 2 interest groups were given the chance to bid.
+{ bucket: 101,// = 100 + 1 = buyer1.com’s key + bidCount’s bucket
+  value: 1 }, // = 1 interest group returning a bid.
+{ bucket: 102,// = 100 + 2 = buyer1.com’s key + totalGenerateBidLatency’s bucket
+  value: 5 }, // = 3ms + 2ms generateBid() runtimes.
+{ bucket: 103,// = 100 + 3 = buyer1.com’s key + totalSignalsFetchLatency’s bucket
+  value: 1 }, // = 10ms total trusted bidding signals fetch time multiplied by .1 scale.
+```
+
+## Data Volume
+
+To control the data volume of aggregatable reports, auction participants may want to subsample
+reports on the client to avoid high costs or latency associated with aggregation. Auction
+participants can do this by only utilizing the Private Aggregation API some fraction of the time.
+
+Subsampling on the client side as opposed to the server is ideal to avoid oversampling infrequent
+events / campaigns.
+
+## Privacy Considerations
+
+See [Private Aggregation Privacy Consideration](https://github.com/alexmturner/private-aggregation-api#privacy-and-security)
+
+Reports generated with the mechanisms in this proposal will be subject to the same contribution
+bounding and bucketing for Private Aggregation Reports.
+
+While new data is being used to generate histogram contributions (bidding signals, information from
+within the fenced frame), the general privacy properties offered by the Aggregation Service still hold.
+
+## Ideas For Future Iteration
+
+### Including remaining user contribution budget as an input to reports
+
+In the current proposal, the browser limits the overall sensitivity of the contributions made by a
+single user per reporter per day. It may be desirable to allow reporters/interest group owners to select
+their histogram contributions knowing the amount of budget which remains. Currently, reports created after
+the budget has been exhausted are ignored.
+
+### Reporting bidding data for renders
+
+We may want to add a `reserved.render` event-type or similar which allows a bidder to measure contributions
+when the browser shows the ad, or potentially when the browser finishes fetching the document.
