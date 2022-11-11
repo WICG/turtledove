@@ -1,6 +1,14 @@
 # FLEDGE Release Notes
 
 
+## Chrome M107
+
+
+
+*   Bug fixes:
+    *   [The `forDebuggingOnly.reportAdAuctionLoss()` and `forDebuggingOnly.reportAdAuctionWin()` APIs were fixed to perform post-auction signal parameter replacement on URL query parameters instead of the URL path](http://crbug.com/1338233).
+
+
 ## Chrome M104
 
 
