@@ -266,12 +266,12 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   "{{NotAllowedError}}" {{DOMException}}.
 1. Let |auctionConfig| be the result of running [=validate and convert auction ad config=] with
   |config| and [=validate and convert auction ad config/isTopLevel=] set to true.
+1. Let |p| be [=a new promise=].
 1. If |config|["{{AuctionAdConfig/signal}}"] [=map/exists=]:
-  1. If |config|["{{AuctionAdConfig/signal}}"] is [=AbortSignal/aborted=], then [=exception/throw=]
+  1. If |config|["{{AuctionAdConfig/signal}}"] is [=AbortSignal/aborted=], then [=reject=] |p| with
     |config|["{{AuctionAdConfig/signal}}"]'s [=AbortSignal/abort reason=].
   1. [=AbortSignal/Add=] an algorithm (TODO: define it) to |config|["{{AuctionAdConfig/signal}}"].
 1. TODO: Get the page's fenced frame urls map, and generate URN mapping to URL.
-1. Load the browser's [=interest group set=].
 1. Run [=start bidding and scoring=] with |auctionConfig|.
 1. TODO: add missing steps.
 
@@ -363,8 +363,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     |value|.
 1. If |config|["{{AuctionAdConfig/perBuyerPrioritySignals}}"] [=map/exists=], [=map/for each=]
   |key| → |value| of |config|["{{AuctionAdConfig/perBuyerPrioritySignals}}"]:
-  1. Let |signals| be an [=ordered map=] whose [=map/key|keys=] are [=strings=] and whose
-    [=map/value|values=] are {{double}}.
+  1. Let |signals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=]
+    are {{double}}.
   1. [=map/for each=] |k| → |v| of |value|:
     1. If |k| [=string/starts with=] "browserSignals.", [=exception/throw=] a {{TypeError}}.
     1. Set |signals|[|k|] to |v|.
@@ -397,28 +397,36 @@ To <dfn>start bidding and scoring</dfn> given an [=auction config=] |auctionConf
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=]:
     1. [=Start bidding and scoring=] with |component|.
   1. TODO: If the last |component|'s seller worklet is received, create a seller worklet.
-1. Let |bidGeneratorsMap| be a new [=ordered map=].
-1. Create [=per buyer bidding script bid generators=]. [=list/For each=] |buyer| in
-  [=auction config/interest group buyers=]:
-  1. [=list/For each=] |ig| of loaded interest groups whose [=interest group/owner=] is |buyer|:
-    1. Let |id| be a [=bid generator info=], whose [=bid generator info/bidding url=] is |ig|'s
-      [=interest group/bidding url=], and [=bid generator info/signals url=] is |ig|'s
-      [=interest group/trusted bidding signals url=].
-    1. If |bidGeneratorsMap| does not [=map/contain=] |id|:
-      1. let |generator| be a [=per buyer bidding script bid generator=] object.
-      1. Set |generator|'s [=per buyer bidding script bid generator/bidding url=] to |ig|'s
-        [=interest group/bidding url=].
-      1. [=map/Set=] |bidGeneratorsMap|[|id|] to |generator|.
-1. [=map/For each=] k → |bidGenerator| of |bidGeneratorsMap|: 
-  1. Let |biddingScript| be the result of [=fetching a bidding javascript=] with |bidGenerator|.
+1. Let |bidGenerators| be a new [=ordered map=] whose [=map/keys=] are [=url/origins=], and whose
+  [=map/values=] are [=ordered maps=] whose [=map/keys=] are [=url/origins=] and whose
+  [=map/values=] are [=interest groups=] (TODO: Maybe let values be another map from joinedOrigin to
+  IG for groupByOrigin optimization).
+1. [=list/For each=] |buyer| in [=auction config/interest group buyers=]:
+  1. [=list/For each=] |ig| of the user agent's [=interest group set=] whose
+    [=interest group/owner=] is |buyer|:
+    1. Let |biddingUrl| be |ig|'s [=interest group/bidding url=].
+    1. Let |signalsUrl| be |ig|'s [=interest group/trusted bidding signals url=].
+    1. If |bidGenerators| does not [=map/contain=] |biddingUrl|:
+      1. Let |perSignalsUrlGenerators| be a new [=ordered map=].
+      1. [=map/Set=] |perSignalsUrlGenerators|[|signalsUrl|] to |ig|.
+      1. [=map/Set=] |bidGenerators|[|biddingUrl|] to |perSignalsUrlGenerators|.
+    1. Otherwise:
+      1. Let |perSignalsUrlGenerators| be |bidGenerators|[|biddingUrl|].
+      1. If |perSignalsUrlGenerators| does not [=map/contain=] |signalsUrl|:
+        1. [=map/Set=] |perSignalsUrlGenerators|[|signalsUrl|] to |ig|.
+1. [=map/For each=] |biddingUrl| → |generators| of |bidGenerators|:
+  1. Let |biddingScript| be the result of [=fetch bidding or scoring javascript=] with |biddingUrl|.
   1. If |biddingScript| is an error, [=iteration/continue=].
-  1. TODO: Fetch trusted bidding signals asynchronously.
-  1. TODO: Run all [=generate a bid|GenerateBid()=] tasks that are ready.
+  1. [=map/For each=] |signalsUrl| -> |ig| of |generators|:
+    1. TODO: Fetch |ig|'s [=interest group/trusted bidding signals url=] synchronously.
+    1. TODO: [=Execute script=] with [=execute script/script=] set to |biddingScript|,
+      [=execute script/function=] set to "generateBid", and [=execute script/arguments=] set to
+      generateBid's arguemnts.
   1. TODO: Maybe rewrite this part.
 
 </div>
 
-To <dfn>create a request</dfn> given a [=url=] |url|, and a [=string=] <dfn for="create a request">
+To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for="create a request">
 |accept|</dfn>:
 1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
@@ -443,11 +451,9 @@ To <dfn>create a request</dfn> given a [=url=] |url|, and a [=string=] <dfn for=
     :: "`error`"
 1. Return |request|.
 
-To <dfn>fetch a bidding javascript</dfn> with given [=per buyer bidding script bid generator=]
-|bidGenerator|:
-1. Let |request| be the result of [=creating a request=] with |bidGenerator|'s
-    [=per buyer bidding script bid generator/bidding url=], and [=create a request/accept=] set to
-    "`application/javascript`".
+To <dfn>fetch bidding or scoring javascript</dfn> with given [=URL=] |url|:
+1. Let |request| be the result of [=creating a request=] with |url|, and [=create a request/accept=]
+  set to "`application/javascript`".
 1. [=Fetch=] |request|.
 1. Let |response| be the result of [=fetch=] when it asynchronously completes.
 1. Let |body| be |response|’s [=response/body=].
@@ -461,8 +467,11 @@ To <dfn>fetch a bidding javascript</dfn> with given [=per buyer bidding script b
   "us-ascii", return failure.
 1. Return |body|.
 
-To <dfn>generate a bid</dfn>:
-1. TODO: add steps.
+To <dfn>execute script</dfn> with given [=string=] <dfn for="execute script">|script|</dfn>,
+[=string=] <dfn for="execute script">|function|</dfn>, and a [=list=]
+<dfn for="execute script">|arguments|</dfn>:
+1. TODO: Return an object or null, which is the result of executing |script|'s |function| with
+  |arguments|.
 
 
 # Permissions Policy integration # {#permissions-policy-integration}
@@ -495,12 +504,12 @@ An interest group is a [=struct=] with the following items:
 :: A [=boolean=]. Defaulting to false. Being true if the interest group's priority should be
   calculated using vectors from bidding signals fetch.
 : <dfn>priority vector</dfn>
-:: Null or an [=ordered map=] whose [=map/key|keys=] are [=strings=] and whose [=map/value|values=]
-  are {{double}}. Its dot product with the {{AuctionAdConfig/perBuyerPrioritySignals}} will be used
+:: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+  {{double}}. Its dot product with the {{AuctionAdConfig/perBuyerPrioritySignals}} will be used
   in place of [=interest group/priority=], if set.
 : <dfn>priority signals overrides</dfn>
-:: Null or an [=ordered map=] whose [=map/key|keys=] are [=strings=] and whose [=map/value|values=]
-  are {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
+:: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+  {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
 : <dfn>execution mode</dfn>
 :: An {{WorkletExecutionMode}}, defaulting to "compatibility".
 : <dfn>bidding url</dfn>
@@ -564,23 +573,22 @@ An auction config is a [=struct=] with the following items:
 : <dfn>seller timeout</dfn>
 :: A duration. Defaulting to 50.
 : <dfn>per buyer signals</dfn>
-:: Null or an [=ordered map=] whose [=map/key|keys=] are [=url/origins=] and whose
-  [=map/value|values=] are [=strings=].
+:: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
+  [=strings=].
 : <dfn>per buyer timeouts</dfn>
-:: Null or an [=ordered map=] whose [=map/key|keys=] are [=url/origins=] and whose
-  [=map/value|values=] are durations.
+:: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
+  durations.
 : <dfn>all buyers timeout</dfn>
 :: A duration. Defaulting to 50.
 : <dfn>per buyer group limits</dfn>
-:: Null or an [=ordered map=] whose [=map/key|keys=] are [=url/origins=] and whose
-  [=map/value|values=] are non-negative 16-bit integers.
+:: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
+  non-negative 16-bit integers.
 : <dfn>per buyer priority signals</dfn>
-:: Null or an [=ordered map=] whose [=map/key|keys=] are [=url/origins=] and whose
-  [=map/value|values=] are [=ordered maps=], whose [=map/key|keys=] are [=strings=] and whose
-  [=map/value|values=] are {{double}}.
+:: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
+  [=ordered maps=], whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}}.
 : <dfn>all buyers priority signals</dfn>
-:: Null or an [=ordered map=] whose [=map/key|keys=] are [=strings=] and whose
-  [=map/value|values=] are {{double}}.
+:: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+  {{double}}.
 : <dfn>all buyers group limit</dfn>
 :: A non-negative 16-bit integer.
 : <dfn>component auctions</dfn>
@@ -590,32 +598,7 @@ An auction config is a [=struct=] with the following items:
 : <dfn>all buyer experiment group id</dfn>
 :: A non-negative 16-bit integer.
 : <dfn>per buyer experiment group ids</dfn>
-:: An [=ordered map=] whose [=map/key|keys=] are [=url/origins=] and whose
-  [=map/value|values=] are non-negative 16-bit integers.
-
-</dl>
-
-<h3 dfn-type=dfn>Per buyer bidding script bid generator</h3>
-
-A per buyer bidding script bid generator is a [=struct=] with the following items: (TODO: expand)
-
-<dl dfn-for="per buyer bidding script bid generator">
-: <dfn>bidding url</dfn>
-:: Null or a [=URL=].
-
-</dl>
-
-<h3 dfn-type=dfn>Bid generator info</h3>
-
-A bid generator info is used to uniquely identify a [=per buyer bidding script bid generator=]. It
-is a [=struct=] with the following items (TODO: maybe add wasm_url and experiment_group_id as well):
-
-<dl dfn-for="bid generator info">
-: <dfn>bidding url</dfn>
-:: Null or a [=URL=].
-: <dfn>signals url</dfn>
-:: Null or a [=URL=].
-
-</dl>
+:: An [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
+  non-negative 16-bit integers.
 
 TODO: Add short descriptions for fields of each structure above.
