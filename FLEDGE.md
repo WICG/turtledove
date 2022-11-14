@@ -2,7 +2,7 @@
 
 This document describes an early prototype for ads serving in the TURTLEDOVE family, appropriate for experimentation before a fully-featured system is ready.  It would be the First "Locally-Executed Decision over Groups" Experiment.
 
-Chrome expects to build and ship this first experiment during 2021.  The goal is for us to gain implementer experience, and for the ads ecosystem to evaluate its usability, as soon as it is feasible to do so.  We need a robust API to take flight before Chrome's expected removal of third-party cookies in 2023.
+This first experiment is currently a Chrome [Origin Trial](https://github.com/GoogleChrome/OriginTrials).  The goal is for us to gain implementer experience, and for the ads ecosystem to evaluate its usability, as soon as it is feasible to do so.  We need a robust API to take flight before the removal of third-party cookies shown on [Chrome's Privacy Sandbox timeline](https://privacysandbox.com/timeline).
 
 We plan to hold regular meetings under the auspices of the WICG to go through the details of this proposal and quickly make any needed changes.  Please comment on the timing question in Issue [#88](https://github.com/WICG/turtledove/issues/88) if you want to attend these meetings to be involved in hammering out details.
 
@@ -25,6 +25,7 @@ We plan to hold regular meetings under the auspices of the WICG to go through th
     - [3.2 On-Device Bidding](#32-on-device-bidding)
     - [3.3 Metadata with the Ad Bid](#33-metadata-with-the-ad-bid)
     - [3.4 Ads Composed of Multiple Pieces](#34-ads-composed-of-multiple-pieces)
+    - [3.5 Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups)
   - [4. Browsers Render the Winning Ad](#4-browsers-render-the-winning-ad)
   - [5. Event-Level Reporting (for now)](#5-event-level-reporting-for-now)
     - [5.1 Seller Reporting on Render](#51-seller-reporting-on-render)
@@ -89,9 +90,21 @@ const myGroup = {
   'owner': 'https://www.example-dsp.com',
   'name': 'womens-running-shoes',
   'priority': 0.0,
+  'priorityVector': {
+    'signal1': 2,
+    'signal2': -3.5,
+    ...
+  }
+  'prioritySignalsOverrides': {
+    'signal1': 4.5,
+    'signal2': 0,
+    ...
+  }
+  `enableBiddingSignalsPrioritization` : true,
   'biddingLogicUrl': ...,
   'biddingWasmHelperUrl': ...,
   'dailyUpdateUrl': ...,
+  'executionMode': ...,
   'trustedBiddingSignalsUrl': ...,
   'trustedBiddingSignalsKeys': ['key1', 'key2'],
   'userBiddingSignals': {...},
@@ -115,11 +128,15 @@ The browser will remain in an interest group for only a limited amount of time. 
 
 The `priority` is used to select which interest groups participate in an auction when the number of interest groups are limited by the `perBuyerGroupLimits` attribute of the auction config. If not specified, a `priority` of `0.0` is assigned. There is no special meaning to these values. These values are only used to select interest groups to participate in an auction such that if there is an interest group participating in the auction with priority `x`, all interest groups with the same owner having a priority `y` where `y > x` should also participate (i.e. `generateBid` will be called). In the case where some but not all interest groups with equal priority can participate in an auction due to `perBuyerGroupLimits`, the participating interest groups will be uniformly randomly chosen from the set of interest groups with that priority.
 
+`priorityVector`, `prioritySignalsOverrides`, and `enableBiddingSignalsPrioritization` are optional values used to dynamically calculate a priority used in place of `priority`. `priorityVector` and `prioritySignalsOverrides` are mappings of strings to Javscript numbers, while `enableBiddingSignalsPrioritization` is a bool that defaults to `false`. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for a description of how these fields are used.
+
 The `userBiddingSignals` is for storage of additional metadata that the owner can use during on-device bidding, and the `trustedBiddingSignals` attributes provide another mechanism for making real-time data available for use at bidding time.
 
 The `biddingWasmHelperUrl` field is optional, and lets the bidder provide computationally-expensive subroutines in WebAssembly, rather than JavaScript, to be driven from the JavaScript function provided by `biddingLogicUrl`. If provided, it must point to a WebAssembly binary, delivered with an `application/wasm` mimetype. The corresponding `WebAssembly.Module` will be made available by the browser to the `generateBid` function.
 
-The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically update the attributes of the interest group: any new values returned in this way overwrite the values previously stored (except that the `name` and `owner` cannot be changed).  However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateUrl` , e.g. at least 100 browsers with the same update URL. This will not include any metadata, so data such as the interest group `name` should be included within the URL, so long as the URL exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
+The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically update the attributes of the interest group: any new values returned in this way overwrite the values previously stored (except that the `name` and `owner` cannot be changed, and `prioritySignalsOverrides` will be merged with the previous value, with `null` meaning a value should be removed from the interest group's old dictionary).  However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateUrl` , e.g. at least 100 browsers with the same update URL. This will not include any metadata, so data such as the interest group `name` should be included within the URL, so long as the URL exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
+
+The `executionMode` attribute is optional. The default value (`"compatibility"`) will run each invocation of `generateBid` in a totally fresh execution environment, which prevents one invocation from directly passing data to a subsequent invocation, but has non-trivial execution costs as each execution environment must be initialized from scratch.  The `"groupByOrigin"` mode will attempt to re-use the execution environment for interest groups with the same script that were joined on the same top-level origin, which saves a lot of these initialization costs. However, to avoid cross-site information leaking into `generateBid`, attempts to join or leave an interest group in `"groupByOrigin"` mode from more than one top-level origin will result in all `"groupByOrigin"` interest groups that were joined from the same top-level origin being removed. When the execution environment is re-used the script top-level will not be re-executed, with only the `generateBid` function being run the subsequent times. This mode is intended for interest groups that are extremely likely to be joined or left from a single top-level origin only, with the probability high enough that the penalty of removal if the requirement doesn't hold to be low enough for the performance gains to be a worthwhile trade-off.
 
 The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time.
 
@@ -177,26 +194,33 @@ const myAuctionConfig = {
   'sellerTimeout': 100,
   'sellerExperimentGroupId': 12345,
   'perBuyerSignals': {'https://www.example-dsp.com': {...},
-                        'https://www.another-buyer.com': {...},
-                        ...},
+                      'https://www.another-buyer.com': {...},
+                      ...},
   'perBuyerTimeouts': {'https://www.example-dsp.com': 50,
-                        'https://www.another-buyer.com': 200,
-                        '*': 150,
-                        ...},
-  'perBuyerGroupLimits': {'https://www.example-dsp.com': 2,
-                        'https://www.another-buyer.com': 1000,
-                        '*': 15,
-                        ...},
-  'perBuyerExperimentGroupIds': {'https://www.example-dsp.com': 234,
-                       'https://www.another-buyer.com': 345,
-                       '*': 456,
+                       'https://www.another-buyer.com': 200,
+                       '*': 150,
                        ...},
+  'perBuyerGroupLimits': {'https://www.example-dsp.com': 2,
+                          'https://www.another-buyer.com': 1000,
+                          '*': 15,
+                          ...},
+  'perBuyerPrioritySignals': {'https://www.example-dsp.com': {'signal1': 2.5,
+                                                              'signal2': 2.5,
+                                                              ...},
+                              'https://www.another-buyer.com': {...},
+                              '*': {...},
+                              ...},
+  'perBuyerExperimentGroupIds': {'https://www.example-dsp.com': 234,
+                                 'https://www.another-buyer.com': 345,
+                                 '*': 456,
+                                 ...},
   'componentAuctions': [
     {'seller': 'https://www.some-other-ssp.com',
       'decisionLogicUrl': ...,
       ...},
     ...
-  ]
+  ],
+  'signal': /* optionally, an AbortSignal */...,
 };
 const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
 ```
@@ -212,9 +236,13 @@ The returned `auctionResultPromise` object is _opaque_: it is not possible for a
 
 Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
 
+Optionally, the `signal` field can be set to an [`AbortSignal`](https://dom.spec.whatwg.org/#interface-AbortSignal) object (generally from an [`AbortController`](https://dom.spec.whatwg.org/#interface-abortcontroller)'s [`signal`](https://dom.spec.whatwg.org/#dom-abortcontroller-signal) field) to permit aborting the execution of the auction.  When the [`abort()`](https://dom.spec.whatwg.org/#dom-abortcontroller-abort) method on the associated [`AbortController`](https://dom.spec.whatwg.org/#interface-abortcontroller) is called, an attempt to interrupt the auction will be made. Since the auction executes in parallel to the page, it's possible for this call to happen after the auction actually completed (perhaps unsuccessfully) but before this has been noticed by the caller of `runAdAuction`. In that case, the cancellation attempt is ignored. If the cancellation is successful, the promise is rejected, and no side effects of the whole auction (like reporting and bid statics) occur, though priority adjustments still take place. Calling `abort()` after the promise from `runAdAuction` has resolved has no effect.
+
 Optionally, `perBuyerGroupLimits` can be specified to limit the number of of interest groups from a particular buyer that participate in the auction. A key of `'*'` in `perBuyerGroupLimits` is used to set a limit for unspecified buyers. For each buyer, interest groups will be selected to participate in the auction in order of decreasing `priority` (larger priorities are selected first) up to the specfied limit. The selection of interest groups occurs independently for each buyer, so the priorities do not need to be comparable between buyers and could have a buyer-specific meaning. The value of the limits provided should be able to be represented by a 16 bit unsigned integer.
 
 Optionally, `sellerExperimentGroupId` can be specified by the seller to support coordinated experiments with the seller's trusted server. If specified, this must be an integer between zero and 65535 (16 bits). Optionally,`perBuyerExperimentGroupIds` can be specified to support coordinated experiments with buyers' trusted servers. If specified, this must also be an integer between zero and 65535 (16 bits).
+
+Optionally, `perBuyerPrioritySignals` is an object mapping string keys to Javascript numbers that can be used to dynamically compute interest group priorities before `perBuyerGroupLimits` are applied. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
 
 All fields that accept arbitrary metadata objects (`auctionSignals`, `sellerSignals`, and keys of `perBuyerSignals`) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`decisionLogicUrl` and `trustedScoringSignalsUrl`) must point to URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for loading FLEDGE resources.
@@ -304,7 +332,7 @@ While the browser ensures (using TLS) that information stored in a buyer's inter
 
 The optional `directFromSellerSignals` field can be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `directFromSellerSignals` are trusted to come from a seller because the content loads from a [subresource bundle](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md) loaded from a seller's origin. If present, `directFromSellerSignals` should be an HTTPS URL prefix using the seller's origin -- when combined with a browser-provided suffix (see details below), the resultant URL should be a resource in a subresource bundle that has been loaded by the current document, whose contents are of type `application/json`, with the following response headers: `X-Allow-Fledge: true` and `X-FLEDGE-Auction-Only: true`.
 
-The URL prefix should not have a query string (i.e. `?a=b&c=d`). The browser will append the following suffixes to the prefix:
+The URL prefix should not have a query string (i.e. `?a=b&c=d`). Different calls to `navigator.runAdAuction()` on a page may use different prefixes -- for instance, to give different signals to different ad slots. The browser will append the following suffixes to the prefix:
 
 *   `?perBuyerSignals=[origin]`, where [origin] is one of the origins in `interestGroupBuyers`: this corresponds to the `perBuyerSignals` for the buyer `origin`
 *   `?sellerSignals`: this corresponds to the `sellerSignals` only delivered to the seller
@@ -312,9 +340,9 @@ The URL prefix should not have a query string (i.e. `?a=b&c=d`). The browser wil
 
 `runAdAuction()` will check all of the above URLs (`perBuyerSignals` for all buyers, `sellerSignals`, and `auctionSignals`) to see if they have been pre-registered as a subresource URL via `<script type="application/webbundle">` tags (note that signals may come from separate bundle files, but each bundle must be served from the seller's origin) -- it's possible to register only a subset of all possible signals.
 
-If the signals subresource download somehow fails, the auction will fail -- the top-level auction may continue if the failure occurs in a component auction, as with other component auction failures.
-
 The signals will be passed as the parameter `directFromSellerSignals` on worklet functions. See [generateBid()](#32-on-device-bidding), [scoreAd()](#23-scoring-bids), [reportWin()](#52-buyer-reporting-on-render-and-ad-events), and [reportResult()](#51-seller-reporting-on-render).
+
+If the signals subresource download somehow fails for a given signal, null will be set on the corresponding field of the directFromSellerSignals object passed to worklet functions. Worklet scripts expecting signals can decide to score / bid / report anyways, or fail (i.e. throw an exception).
 
 As the name implies, subresource bundles are bundles of HTTPS subresources.  These HTTPS subresources can contain various HTTPS response headers, including ones meant to enforce basic Web principles, e.g. CORS headers.  To prevent bypassing these basic Web principles by loading the bundles directly with [fetch()](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) or [XMLHttpRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) and ignoring the HTTPS headers within, the bundles should only be served when requested with the header `Sec-Fetch-Dest: webbundle`.  To protect against cross-origin side channel attacks, like what CORB does, the browser requires the subresources from the bundle are served with the header `X-FLEDGE-Auction-Only` which ensures they are only loaded via `directFromSellerSignals`.
 
@@ -326,7 +354,7 @@ Worklet processes follow Chrome's standard site-isolation policies. On Android, 
 
 ##### CORS Required
 
-The origin of the frame that called `runAdAuction()` is not required to match the origin of `directFromSellerSignals`, so CORS is used when fetching `directFromSellerSignals`.  This means subresources in the bundle should include the [Access-Control-Allow-Origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin) header.
+The origin of the frame that called `runAdAuction()` is not required to match the origin of `directFromSellerSignals`, so CORS is used when fetching `directFromSellerSignals`.  This means subresources in the bundle should include the [Access-Control-Allow-Origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin) header to authorize the origin that calls `runAdAuction()` -- this should also be done on the bundle file itself.
 
 For the JSON response, only the `https` scheme is supported -- the `uuid-in-package` scheme isn't supported as that scheme doesn't support CORS.
 
@@ -352,9 +380,9 @@ Buyers have three basic jobs in the on-device ad auction:
 
 Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsUrl` and `trustedBiddingSignalsKeys` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
 
-    https://www.kv-server.example/getvalues?hostname=publisher.com&experimentGroupId=12345&keys=key1,key2
+    https://www.kv-server.example/getvalues?hostname=publisher.com&experimentGroupId=12345&keys=key1,key2&interestGroups=name1,name2
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `experimentGroupId` comes from `perBuyerExperimentGroupIds` if provided, and `keys` is a list of `trustedBiddingSignalsKeys` strings.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsUrl`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `experimentGroupId` comes from `perBuyerExperimentGroupIds` if provided, `keys` is a list of `trustedBiddingSignalsKeys` strings, and `interestGroupNames` is a list of the names of the interest groups that data is being fetched for.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsUrl` (which means they also share an owner).
 
 The response from the server should be a JSON object of the form:
 
@@ -362,13 +390,24 @@ The response from the server should be a JSON object of the form:
 { 'keys': {
       'key1': arbitrary_json,
       'key2': arbitrary_json,
-      ...}
+      ...},
+  'perInterestGroupData': {
+      'name1': {
+          'priorityVector': {
+              'signal1': number,
+              'signal2': number,
+              ...}
+      },
+      ...
+  }
 }
 ```
 
 and the server must include the HTTP response header `X-fledge-bidding-signals-format-version: 2`.  If the server does not include the header, the response will assumed to be an in older format, where the response is only the contents of the `keys` dictionary.
 
-The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no `trustedBiddingSignalsKeys` or `trustedBiddingSignalsUrl` in the interest group, then the `trustedBiddingSignals` argument to generateBid() will be null.
+The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed from the `keys` dictionary to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no `trustedBiddingSignalsKeys` or `trustedBiddingSignalsUrl` in the interest group, then the `trustedBiddingSignals` argument to generateBid() will be null.
+
+The `perInterestGroupData` dictionary contains optional data for interest groups whose names were included in the request URL. The `priorityVector` will be used to calculate the final priority for an interest group, if that interest group has `enableBiddingSignalsPrioritization` set to true in its definition. Otherwise, it's only used to filter out interest groups, if the dot product with `prioritySignals` is negative. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
 
 Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsUrl` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderUrls bids offered in the auction. It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
 
@@ -427,6 +466,7 @@ The arguments to `generateBid()` are:
 
 
 *   interestGroup: The interest group object, as saved during `joinAdInterestGroup()` and perhaps updated via the `dailyUpdateUrl`.
+    * `priority` and `prioritySignalsOverrides` are not included. They can be modified by `generatedBid()` calls, so could theoretically be used to create a cross-site profile of a user accessible to `generateBid()` methods, otherwise.
 *   auctionSignals: As provided by the seller in the call to `runAdAuction()`.  This is the opportunity for the seller to provide information about the page context (ad size, publisher ID, etc), the type of auction (first-price vs second-price), and so on.
 *   perBuyerSignals: The value for _this specific buyer_ as taken from the auction config passed to `runAdAuction()`.  This can include contextual signals about the page that come from the buyer's server, if the seller is an SSP which performs a real-time bidding call to buyer servers and pipes the response back, or if the publisher page contacts the buyer's server directly.  If so, the buyer may wish to check a cryptographic signature of those signals inside `generateBid()` as protection against tampering.
 *   trustedBiddingSignals: An object whose keys are the `trustedBiddingSignalsKeys` for the interest group, and whose values are those returned in the `trustedBiddingSignals` request.
@@ -456,6 +496,8 @@ The output of `generateBid()` contains the following fields:
 *   adComponents: (optional) A list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent renderUrl exactly. This field must not be present if the InterestGroup has no adComponent field. It is valid for this field not to be present even when adComponents is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
 *   allowComponentAuction: If this buyer is taking part of a component auction, this value must be present and true, or the bid is ignored. This value is ignored (and may be absent) if the buyer is part of a top-level auction.
 
+`generateBid()` has access to the `setPrioritySignalsOverride(key, value)` method. This adds an entry to the current interest group's `prioritySignalsOverrides` dictionary with the specified `key` and `value`, overwriting the previous value, if there was already an entry with `key`. If `value` is null, the entry with the specified key is deleted, if it exists.
+
 
 #### 3.3 Metadata with the Ad Bid
 
@@ -472,6 +514,71 @@ The [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PR
 
 The output of `generateBid()` can use the on-device ad composition flow through an optional adComponents field, listing additional URLs made available to the fenced frame the container URL is loaded in. The component URLs may be retrieved by calling `navigator.adAuctionComponents(numComponents)`, where numComponents is at most 20. To prevent bidder worklets from using this as a sidechannel to leak additional data to the fenced frame, exactly numComponents obfuscated URLs will be returned by this method, regardless of how many adComponent URLs were actually in the bid, even if the bid contained no adComponents, and the Interest Group itself had no adComponents either.
 
+
+#### 3.5 Filtering and Prioritizing Interest Groups
+
+When an interest group has a non-empty `priorityVector`, its priority is dynamically calculated before applying `perBuyerGroupLimits`. To do this, the browser computes the sparse dot product of the interest group's `priorityVector` and a `prioritySignals` vector. The __sparse dot product__ of two vectors `V` and `W` is the sum of the products `V[key] * W[key]` for each key in both `V` and `W`. For example, the sparse dot product of `{'x':3, 'y':7, 'z':12}` with `{'x':-2, 'y':1.7, 'teapot':418}` is `3*(-2) + 7*1.7 = 5.9`. The `prioritySignals` vector is the result of merging the following objects, which all have strings as keys and numbers as values, with entries in objects earlier in the list taking priority over entries later in the list:
+
+* The interest group's `prioritySignalsOverrides` field.
+* A browser-generated `prioritySignals` object, defined below.
+* The `auctionConfig`'s `perBuyerPrioritySignals` entry for the interest group owner.
+* The `auctionConfig`'s `perBuyerPrioritySignals` "\*" entry.
+
+Additionally, keys starting with "browserSignals." are reserved, and may only appear in `prioritySignalsOverrides` and the browser-generated `prioritySignals` object.
+
+The browser-generated `prioritySignals` object contains the following values:
+* `browserSignals.one`: This is always 1. It's useful for adding a constant to the dot product.
+* `browserSignals.basePriority`: The `priority` field in the interest group, which may have been modified by a `setPriority()` call.
+* `browserSignals.firstDotProductPriority`: The sparse dot product of the interest group's `priorityVector` and `prioritySignals`. Only non-zero when using a `priorityVector` from a trusted bidding signals fetch, and the interest group also has a `prioritySignals` field. See below for more details.
+* `browserSignals.ageInMinutes`: How long since the interest group was most recently joined, in minutes, as an integer. Guaranteed to be between 0 and 43200 (the number of minutes in 30 days, the maximum lifetime of an interest group), inclusive.
+* `browserSignals.ageInMinutesMax60`: Same as `browserSignals.ageInMinutes`, but with a maximum value of 60. 60 is returned if the group is more than an hour old.
+* `browserSignals.ageInHoursMax24`: The interest group's age in hours, as an integer, with a maximum value of 24. Always non-negative.
+* `browserSignals.ageInDaysMax30`: The interest group's age in days, as an integer, with a maximum value of 30. Always non-negative.
+
+If the resulting sparse dot product is negative, the interest group is immediately removed from the auction (note that if there's no `priorityVector`, interest groups with negative `priority` values currently are not filtered from auctions). After calculating new priorities as needed, and filtering out interest groups with negative calculated priorities, the `perBuyerGroupLimits` value is applied to all interest groups of a given owner, unless the interest group's `enableBiddingSignalsPrioritization` field is present and true.
+
+If `enableBiddingSignalsPrioritization` is true, then rather than applying `perBuyerGroupLimits` immediately after the calculating the sparse dot product as described above, group limit enforcement is delayed until after fetching the trusted bidding signals. In this case, if the trusted bidding signals specify a per-interest-group `priorityVector` for an interest group, the sparse dot product of that `priorityVector` and the `prioritySignals` vector is calculated. The `prioritySignals` vector is the same as in the first calculation, except that that there's an addition `browserSignals.firstDotProductPriority` value, which is the result of multiplying the interest group's `priorityVector`, if present, with the `prioritySignals` of the auction. If this new dot product is negative, the interest group is removed from the auction. If there is no `priorityVector` for an interest group, the priority from earlier in the auction is used instead. Once all priorities have been calculated, then `perBuyerGroupLimits` is applied, and the auction continues as normal.
+
+if `enableBiddingSignalsPrioritization` is false, then the `priorityVector` from the trusted bidding signals will still be multiplied by the `prioritySignals` as above, but it will only be used to skip the interest group if the result is less than 0. This parameter exists to improve performance - when it's false for all interest groups for a particular bidder in an auction, that bidder's interest groups can be filtered out before any bidding signals are fetched, reducing network usage and server load.
+
+For example, with the following interest groups and auction config:
+
+```
+auctionConfig = {
+  ...,
+  'interestGroupBuyers': {'https://buyer1.com/'},
+  'perBuyerPrioritySignals': {
+    '\*': {'politics': 1},
+  }
+}
+
+interestGroup1 = {
+  'owner': 'https://buyer1.com/',
+  'name': 'NoPolitics',
+  'priorityVector': {'politics': -1},
+  ...
+}
+
+interestGroup2 = {
+  'owner': 'https://buyer1.com/',
+  'name': 'BidFor240Minutes',
+  'priorityVector': {'browserSignals.ageInMinutes': -1, 'browserSignals.one': 240},
+  ...
+}
+
+interestGroup3 = {
+  'owner': 'https://buyer1.com/',
+  'name': 'FilterOnDataFromServer',
+  'trustedBiddingSignalsUrl': 'https://buyer1.com/bidder_signals',
+  ...
+}
+```
+
+The `NoPolitics` interest group will not get a chance to bid, since the `AuctionConfig` has `politics` set to 1, and `NoPolitics` multiplies that by -1, giving it a priority of -1.
+
+The `BidFor240Minutes` interest group will have a positive priority if it was joined during the first 240 minutes, starting with 240 right after being joined, and working its way down to 0 at the 240 minute mark, after which it will have a negative priority and so will not bid.
+
+The `FilterOnDataFromServer` interest group will result in fetching `https://buyer1.com/bidder_signals?publisher=<...>&interest_groups=FilterOnDataFromServer,<...>`, and then if that result has a `perInterestGroupData.FilterOnDataFromServer.priorityVector` object, then that is used just like the `priorityVector` field from the other two examples, except that it's only used for filtering, not to set the priority (unless the group has a true `enableBiddingSignalsPrioritization` field).  A [user defined function](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md#support-for-user-defined-functions-udfs) could be used on the FLEDGE Key-Value server to calculate that `priorityVector` value, and hence to decide if `FilterOnDataFromServer`'s `generateBid()` method is invoked or if it's filtered out.
 
 ### 4. Browsers Render the Winning Ad
 
