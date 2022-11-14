@@ -5,7 +5,7 @@
 
 
 
-*   Support reporting bid reject reason to buyers through calling `forDebuggingOnly.reportAdAuctionLoss()` API in `generateBid()` and including `${rejectReason}` in the report URL's query string.
+*   Support reporting bid reject reason to buyers through calling `forDebuggingOnly.reportAdAuctionLoss()` API in `generateBid()` and including `${rejectReason}` in the report URL's query string.  See [FOT#1 reporting details](https://github.com/WICG/turtledove/blob/main/Proposed_First_FLEDGE_OT_Details.md#reporting) for more information.
 
 
 ## Chrome M104

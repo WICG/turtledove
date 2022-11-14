@@ -67,7 +67,7 @@ The FOT#1 will include event-level reporting for both winning and losing bids. I
 
 If the bid being generated or scored loses the auction, the URL will be fetched. These worklets may also call a `forDebuggingOnly.reportAdAuctionWin()` API which operates similarly to `forDebuggingOnly.reportAdAuctionLoss()` API but only fetches the URL after a winning bid or score.
 
-If a seller rejects a bid from participating in an auction, the seller can optionally add a `rejectReason` field to its `scoreAd()` return object to convey to the bidder a more detailed reason why the bid was rejected. The buyer can learn about the reject reason by calling the `forDebuggingOnly.reportAdAuctionLoss()` API in `generateBid()` and including `${rejectReason}` in the report URL's query string. A component auction's bidders only get reject reasons from its component seller, but not reject reasons from the top-level seller. The reject reason returned by `scoreAd()` should be one of
+As of Chrome version 108, if a seller rejects a bid from participating in an auction, the seller can optionally add a `rejectReason` field to its `scoreAd()` return object to convey to the bidder a more detailed reason why the bid was rejected. The buyer can learn about the reject reason by calling the `forDebuggingOnly.reportAdAuctionLoss()` API in `generateBid()` and including `${rejectReason}` in the report URL's query string. A component auction's bidders only get reject reasons from its component seller, but not reject reasons from the top-level seller. The reject reason returned by `scoreAd()` should be one of:
 *   "not-available"
 *   "invalid-bid"
 *   "bid-below-auction-floor"
@@ -76,7 +76,7 @@ If a seller rejects a bid from participating in an auction, the seller can optio
 *   "blocked-by-publisher"
 *   "language-exclusions"
 *   "category-exclusions"
-The default value will be "not-available", in cases where a bid was not rejected, or it was rejected but the seller doesn't provide a reject reason.
+The default value will be "not-available", in cases where a bid was not rejected, it was rejected but the seller doesn't provide a reject reason, or the reason provided wasn't one of the above values.
 
 The FOT#1 will not include aggregate auction result reporting support for FLEDGE auctions. This is due to motivations relating to [promoting accurate measurement](#promoting-accurate-measurement-of-fledge-effectiveness.) and [availability of aggregate reporting technologies](#availability-of-other-technologies.). As discussed above, event-level reporting will be provided to winning and losing bids during the FOT#1. We’ll look to add support for aggregate reporting in a future version.
 
