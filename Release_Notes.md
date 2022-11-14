@@ -23,7 +23,7 @@
 
 
 *   Add `chrome://tracing` support for FLEDGE auctions (including worklets).
-*   Add basic `.well-known` support for determining if a site is allowed to join or leave interest groups for an owner.  `.well-known` ownership delegation is [documented in the explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#13-permission-delegation).
+*   [Add basic `.well-known` support](https://crbug.com/1315805) for determining if a site is allowed to join or leave interest groups for an owner.  `.well-known` ownership delegation is [documented in the explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#13-permission-delegation).
 *   `joinAdInterestGroup()` and `leaveAdInterestGroup()` changed to return promises (fulfilled or rejected based on whether the join or leave is allowed based on the `.well-known` lookup).
 *   Rate-limit report network requests, to prevent over-consuming networking resources and allow requests to be sent in parallel.
 *   Add `navigator.deprecatedReplaceInURN() `function.  For more information see [Issue #286](https://github.com/WICG/turtledove/issues/286).
