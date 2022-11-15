@@ -181,6 +181,8 @@ The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</d
   1. TODO: document .well-known fetches for cross-origin joins.
   1. If the browser is currently storing an interest group with `owner` and `name` that matches
     |interestGroup|, then remove the currently stored one.
+  1. TODO: Set |interestGroup|'s [=interest group/joining origin=] to top level page origin from
+    where the interest group was joined.
   1. Store |interestGroup| in the browser’s [=interest group set=].
   1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
 
@@ -271,9 +273,9 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   1. If |config|["{{AuctionAdConfig/signal}}"] is [=AbortSignal/aborted=], then [=reject=] |p| with
     |config|["{{AuctionAdConfig/signal}}"]'s [=AbortSignal/abort reason=].
   1. [=AbortSignal/Add=] an algorithm (TODO: define it) to |config|["{{AuctionAdConfig/signal}}"].
-1. TODO: Get the page's fenced frame urls map, and generate URN mapping to URL.
-1. Run [=start bidding and scoring=] with |auctionConfig|.
-1. TODO: add missing steps.
+1. Otherwise:
+  1. Run [=start bidding and scoring=] with |auctionConfig|.
+  1. TODO: add missing steps.
 
 </div>
 
@@ -397,32 +399,42 @@ To <dfn>start bidding and scoring</dfn> given an [=auction config=] |auctionConf
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=]:
     1. [=Start bidding and scoring=] with |component|.
   1. TODO: If the last |component|'s seller worklet is received, create a seller worklet.
-1. Let |bidGenerators| be a new [=ordered map=] whose [=map/keys=] are [=url/origins=], and whose
-  [=map/values=] are [=ordered maps=] whose [=map/keys=] are [=url/origins=] and whose
-  [=map/values=] are [=interest groups=] (TODO: Maybe let values be another map from joinedOrigin to
-  IG for groupByOrigin optimization).
+1. Let |bidGenerators| be a new [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose
+  [=map/values=] are [=per buyer bid generators=].
 1. [=list/For each=] |buyer| in [=auction config/interest group buyers=]:
   1. [=list/For each=] |ig| of the user agent's [=interest group set=] whose
     [=interest group/owner=] is |buyer|:
-    1. Let |biddingUrl| be |ig|'s [=interest group/bidding url=].
     1. Let |signalsUrl| be |ig|'s [=interest group/trusted bidding signals url=].
-    1. If |bidGenerators| does not [=map/contain=] |biddingUrl|:
-      1. Let |perSignalsUrlGenerators| be a new [=ordered map=].
-      1. [=map/Set=] |perSignalsUrlGenerators|[|signalsUrl|] to |ig|.
-      1. [=map/Set=] |bidGenerators|[|biddingUrl|] to |perSignalsUrlGenerators|.
+    1. Let |joiningOrigin| be |ig|'s [=interest group/joining origin=].
+    1. If |bidGenerators| does not [=map/contain=] |buyer|:
+      1. Let |perBuyerGenerator| be a new [=per buyer bid generator=].
+      1. Let |perSignalsUrlGenerator| be a new [=per signals url bid generator=].
+      1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to « |ig| ».
+      1. [=map/Set=] |perBuyerGenerator|[|signalsUrl|] to |perSignalsUrlGenerator|.
+      1. [=map/Set=] |bidGenerators|[|buyer|] to |perBuyerGenerator|.
     1. Otherwise:
-      1. Let |perSignalsUrlGenerators| be |bidGenerators|[|biddingUrl|].
-      1. If |perSignalsUrlGenerators| does not [=map/contain=] |signalsUrl|:
-        1. [=map/Set=] |perSignalsUrlGenerators|[|signalsUrl|] to |ig|.
-1. [=map/For each=] |biddingUrl| → |generators| of |bidGenerators|:
-  1. Let |biddingScript| be the result of [=fetch bidding or scoring javascript=] with |biddingUrl|.
-  1. If |biddingScript| is an error, [=iteration/continue=].
-  1. [=map/For each=] |signalsUrl| -> |ig| of |generators|:
-    1. TODO: Fetch |ig|'s [=interest group/trusted bidding signals url=] synchronously.
-    1. TODO: [=Execute script=] with [=execute script/script=] set to |biddingScript|,
-      [=execute script/function=] set to "generateBid", and [=execute script/arguments=] set to
-      generateBid's arguemnts.
-  1. TODO: Maybe rewrite this part.
+      1. Let |perBuyerGenerator| be |bidGenerators|[|buyer|].
+      1. If |perBuyerGenerator| does not [=map/contain=] |signalsUrl|:
+        1. Let |perSignalsUrlGenerator| be a new [=per signals url bid generator=].
+        1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to « |ig| ».
+        1. [=map/Set=] |perBuyerGenerator|[|signalsUrl|] to |perSignalsUrlGenerator|.
+      1. Otherwise:
+        1. Let |perSignalsUrlGenerator| be |perBuyerGenerator|[|signalsUrl|].
+        1. If |perSignalsUrlGenerator| does not [=map/contain=] |joiningOrigin|:
+          1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to « |ig| ».
+        1. Otherwise:
+          1. [=list/Append=] |ig| to |perSignalsUrlGenerator|[|joiningOrigin|].
+1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|:
+  1. [=map/For each=] |signalsUrl| -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
+    1. TODO: Fetch |signalsUrl| synchronously.
+    1. [=map/For each=] |joiningOrigin| -> |groups| of |perSignalsUrlGenerator|:
+      1. [=list/For each=] |ig| of |groups|: 
+        1. Let |biddingScript| be the result of [=fetch bidding or scoring javascript=] with |ig|'s
+          [=interest group/bidding url=].
+        1. If |biddingScript| is an error, [=iteration/continue=].
+      1. TODO: [=Evaluate script=] with [=evaluate script/script=] set to |biddingScript|,
+        [=evaluate script/functionName=] set to "generateBid", and [=evaluate script/arguments=] set
+        to generateBid's arguemnts.
 
 </div>
 
@@ -467,10 +479,10 @@ To <dfn>fetch bidding or scoring javascript</dfn> with given [=URL=] |url|:
   "us-ascii", return failure.
 1. Return |body|.
 
-To <dfn>execute script</dfn> with given [=string=] <dfn for="execute script">|script|</dfn>,
-[=string=] <dfn for="execute script">|function|</dfn>, and a [=list=]
-<dfn for="execute script">|arguments|</dfn>:
-1. TODO: Return an object or null, which is the result of executing |script|'s |function| with
+To <dfn>evaluate script</dfn> with given [=string=] <dfn for="evaluate script">|script|</dfn>,
+[=string=] <dfn for="evaluate script">|functionName|</dfn>, and a [=list=]
+<dfn for="evaluate script">|arguments|</dfn>:
+1. TODO: Return an object or null, which is the result of evaluating |script|'s |functionName| with
   |arguments|.
 
 
@@ -535,6 +547,8 @@ An interest group is a [=struct=] with the following items:
 :: Null or a [=list=] of [=interest group ad=]. Contains various ad components (or "products") that
   can be used to construct ads composed of multiple pieces — a top-level ad template "container"
   which includes some slots that can be filled in with specific "products".
+: <dfn> joining origin</dfn>
+:: An [=url/origin=].Top level page origin from when the interest group was joined.
 
 </dl>
 
@@ -602,5 +616,21 @@ An auction config is a [=struct=] with the following items:
   non-negative 16-bit integers.
 
 </dl>
+
+<h3 dfn-type=dfn>Per buyer bid generator</h3>
+
+A per buyer bid generator is an [=ordered map=] whose [=map/keys=] are
+[=url/origins=], and whose [=map/values=] are [=per signals url bid generator=].
+
+</dl>
+
+<h3 dfn-type=dfn>Per signals url bid generator</h3>
+
+A per signals url bid generator is an [=ordered map=] whose [=map/keys=] are
+[=url/origins=], and whose [=map/values=] are [=lists=] of [=interest groups=].
+
+</dl>
+
+
 
 TODO: Add short descriptions for fields of each structure above.
