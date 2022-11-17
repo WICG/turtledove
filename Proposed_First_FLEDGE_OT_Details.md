@@ -114,7 +114,7 @@ In the FOT#1, rendering these opaque URLs only in Fenced Frames will temporarily
 
   
 
-The FOT#1 will include temporary support for `navigator.deprecatedURNToURL()`, a method that takes as an argument an opaque URL resolved from a Promise returned from `navigator.runAdAuction()` and returns the URL of the auction winning ad creative. This is included to [promote accurate measurement](#promoting-accurate-measurement-of-fledge-effectiveness.) and comparison of FLEDGE API utility by allowing auction winning URLs to be treated and used as they are in today’s ad auctions.
+The FOT#1 will include temporary support for `navigator.deprecatedURNToURL(urn, sendReports)`, a method that takes as an argument an opaque URL resolved from a Promise returned from `navigator.runAdAuction()` and returns the URL of the auction winning ad creative. If `sendReports` is true, reports will be sent just as if the URN were loaded in a frame. This is included to [promote accurate measurement](#promoting-accurate-measurement-of-fledge-effectiveness.) and comparison of FLEDGE API utility by allowing auction winning URLs to be treated and used as they are in today’s ad auctions.
 
 #### Permissions-Policy
 
