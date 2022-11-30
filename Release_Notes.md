@@ -1,6 +1,13 @@
 # FLEDGE Release Notes
 
 
+## Chrome M109
+
+
+
+*   Since version 109.0.5414.16, the [`sendReports` parameter to `navigator.deprecatedURNToURL()`](https://github.com/WICG/turtledove/blob/main/Proposed_First_FLEDGE_OT_Details.md#advertisement-rendering) is respected.
+
+
 ## Chrome M108
 
 
