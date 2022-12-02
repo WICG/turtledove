@@ -248,7 +248,8 @@ In order for the seller to collect this additional information from buyers, we n
 buyers a way to express which sellers they’re comfortable sharing this information with, so we
 add a new mechanism which allows each buyer to declare a set of approved sellers: The interestGroup
 provided to `navigator.joinAdInterestGroup()` will contain a new field named `sellerCapabilities`, a
-dict keyed by seller origin with lists of permission strings as values (as described below).
+dict keyed by seller origin (or "*", to set defaults for non-specified seller origins) with lists of
+permission strings as values (as described below).
 
 For the seller to declare reporting, the `auctionConfig` passed to `runAdAuction` is amended to
 contain a configuration for the seller latency report.
