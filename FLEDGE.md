@@ -98,7 +98,7 @@ const myGroup = {
     'signal2': 0,
     ...
   }
-  `enableBiddingSignalsPrioritization` : true,
+  'enableBiddingSignalsPrioritization' : true,
   'biddingLogicUrl': ...,
   'biddingWasmHelperUrl': ...,
   'dailyUpdateUrl': ...,
