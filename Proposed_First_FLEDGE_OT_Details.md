@@ -76,6 +76,7 @@ As of Chrome version 108, if a seller rejects a bid from participating in an auc
 *   "blocked-by-publisher"
 *   "language-exclusions"
 *   "category-exclusions"
+
 The default value will be "not-available", in cases where a bid was not rejected, it was rejected but the seller doesn't provide a reject reason, or the reason provided wasn't one of the above values.
 
 The FOT#1 will not include aggregate auction result reporting support for FLEDGE auctions. This is due to motivations relating to [promoting accurate measurement](#promoting-accurate-measurement-of-fledge-effectiveness.) and [availability of aggregate reporting technologies](#availability-of-other-technologies.). As discussed above, event-level reporting will be provided to winning and losing bids during the FOT#1. We’ll look to add support for aggregate reporting in a future version.
