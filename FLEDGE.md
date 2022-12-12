@@ -452,8 +452,9 @@ generateBid(interestGroup, auctionSignals, perBuyerSignals,
   ...
   return {'ad': adObject,
           'bid': bidValue,
-          'render': renderUrl,
-          'adComponents': [adComponent1, adComponent2, ...],
+          'render': {url: renderUrl, size: {width: renderWidth, height: renderHeight}},
+          'adComponents': [{url: adComponent1, size: {width: componentWidth1, height: componentHeight1}},
+                           {url: adComponent2, size: {width: componentWidth2, height: componentHeight2}}, ...],
           'allowComponentAuction': false};
 }
 ```
@@ -490,7 +491,9 @@ The output of `generateBid()` contains the following fields:
 
 *   ad: (optional) Arbitrary metadata about the ad which this interest group wants to show. The seller uses this information in its auction and decision logic. If not present, it's treated as if the value were null.
 *   bid: A numerical bid that will enter the auction.  The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand").  If the bid is zero or negative, then this interest group will not participate in the seller's auction at all.  With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear.
-*   render: A URL which will be rendered to display the creative if this bid wins the auction.
+*   render: A dictionary describing the creative that should be rendered if this bid wins the auction. This includes:
+  * url: The creative's URL.
+  * size: A dictionary containing `width` and `height` fields, describing the creative's size.
 *   adComponents: (optional) A list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent renderUrl exactly. This field must not be present if the InterestGroup has no adComponent field. It is valid for this field not to be present even when adComponents is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
 *   allowComponentAuction: If this buyer is taking part of a component auction, this value must be present and true, or the bid is ignored. This value is ignored (and may be absent) if the buyer is part of a top-level auction.
 
