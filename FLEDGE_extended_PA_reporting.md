@@ -195,10 +195,11 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
     * 0: indicates ad creative URL did not meet the k-anonymity threshold
     * 1: indicates seller rejected bid because “Invalid Bid”
     * 2: indicates seller rejected bid because “Bid was Below Auction Floor”
-    * 3: indicates seller rejected bid because “Creative Filtered - Pending or Disapproved by Exchange”
-    * 4: indicates seller rejected bid because “Creative Filtered - Blocked by Publisher”
-    * 5: indicates seller rejected bid because “Creative Filtered - Language Exclusions”
-    * 6: indicates seller rejected bid because “Creative Filtered - Category Exclusions”
+    * 3: indicates seller rejected bid because “Creative Filtered - Pending Approval by Exchange”
+    * 4: indicates seller rejected bid because “Creative Filtered - Disapproved by Exchange”
+    * 5: indicates seller rejected bid because “Creative Filtered - Blocked by Publisher”
+    * 6: indicates seller rejected bid because “Creative Filtered - Language Exclusions”
+    * 7: indicates seller rejected bid because “Creative Filtered - Category Exclusions”
     * Perhaps other values indicating:
       * generateBid() hitting timeout
       * The auction was aborted (i.e. calling endAdAuction())
