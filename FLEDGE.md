@@ -645,6 +645,7 @@ The arguments to this function are:
       'componentSeller': 'https://www.some-other-ssp.com',
       'interestGroupOwner': 'https://www.example-dsp.com/',
       'renderUrl': 'https://cdn.com/url-of-winning-creative.wbn',
+      'renderSize': {width: 100, height: 200},
       'bid:' bidValue,
       'desirability': desirabilityScoreForWinningAd,
       'topLevelSellerSignals': outputOfTopLevelSellersReportResult,
@@ -678,7 +679,7 @@ The arguments to this function are:
 
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
-*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with an additional `seller` field. `browserSignals` may also contain the `interestGroupName` if the tuple of interest group owner, name, bidding script URL and ad creative URL were jointly k-anonymous.  The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.  If the winning bid was from a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction.  Additional fields could also include some buyer-specific signal like the second-highest bid from that particular buyer.
+*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with an additional `seller` field. `browserSignals` may also contain the `interestGroupName` if the tuple of interest group owner, name, bidding script URL and ad creative URL+size were jointly k-anonymous.  The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.  If the winning bid was from a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top level auction.  Additional fields could also include some buyer-specific signal like the second-highest bid from that particular buyer.
 *   directFromSellerSignals is an object that may contain the following fields:
     *   perBuyerSignals: Like auctionConfig.perBuyerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
     *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
