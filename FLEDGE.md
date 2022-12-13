@@ -106,8 +106,20 @@ const myGroup = {
   'trustedBiddingSignalsUrl': ...,
   'trustedBiddingSignalsKeys': ['key1', 'key2'],
   'userBiddingSignals': {...},
-  'ads': [shoesAd1, shoesAd2, shoesAd3],
-  'adComponents': [runningShoes1, runningShoes2, gymShoes, gymTrainers1, gymTrainers2],
+  'ads': [{renderUrl: shoesAd1, sizeGroup: 'size1', ...},
+          {renderUrl: shoesAd2, sizeGroup: 'size2', ...},
+          {renderUrl: shoesAd3, sizeGroup: 'size3', ...}],
+  'adComponents': [{renderUrl: runningShoes1, sizeGroup: 'group2', ...},
+                   {renderUrl: runningShoes2, sizeGroup: 'group2', ...},
+                   {renderUrl: gymShoes, sizeGroup; 'group2', ...},
+                   {renderUrl: gymTrainers1, sizeGroup: 'size4', ...},
+                   {renderUrl: gymTrainers2, sizeGroup: 'size4', ...}],
+  'adSizes': {'size1': {width: width1, height: height1},
+              'size2': {width: width2, height: height2},
+              'size3': {width: width3, height: height3},
+              'size4': {width: width4, height: height4}},
+  'sizeGroups:' {'group1': ['size1', 'size2', 'size3'],
+                 'group2': ['size3', 'size4']},
 };
 const joinPromise = navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
 ```
@@ -136,9 +148,13 @@ The `dailyUpdateUrl` provides a mechanism for the group's owner to periodically 
 
 The `executionMode` attribute is optional. The default value (`"compatibility"`) will run each invocation of `generateBid` in a totally fresh execution environment, which prevents one invocation from directly passing data to a subsequent invocation, but has non-trivial execution costs as each execution environment must be initialized from scratch.  The `"groupByOrigin"` mode will attempt to re-use the execution environment for interest groups with the same script that were joined on the same top-level origin, which saves a lot of these initialization costs. However, to avoid cross-site information leaking into `generateBid`, attempts to join or leave an interest group in `"groupByOrigin"` mode from more than one top-level origin will result in all `"groupByOrigin"` interest groups that were joined from the same top-level origin being removed. When the execution environment is re-used the script top-level will not be re-executed, with only the `generateBid` function being run the subsequent times. This mode is intended for interest groups that are extremely likely to be joined or left from a single top-level origin only, with the probability high enough that the penalty of removal if the requirement doesn't hold to be low enough for the performance gains to be a worthwhile trade-off.
 
-The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time.
+The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes a rendering URL, a size group (see below), and arbitrary metadata that can be used at bidding time.
 
-The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similarly to the `ads` field, each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time. Thanks to `ads` and `adsComponents` being separate fields, the buyer is able to update the `ads` field via daily update without losing `adComponents` stored in the interest group.
+The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similarly to the `ads` field, each entry is an object that includes a rendering URL, a size group (see below), and arbitrary metadata that can be used at bidding time. Thanks to `ads` and `adsComponents` being separate fields, the buyer is able to update the `ads` field via daily update without losing `adComponents` stored in the interest group.
+
+The `adSizes` field contains a dictionary of named ad sizes. Each size has the format `{width: widthVal, height: heightVal}`, TODO
+
+The `sizeGroups` field contains a dictionary of named lists of ad sizes. TODO
 
 All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`biddingLogicUrl`, `biddingWasmHelperUrl`, and `trustedBiddingSignalsUrl`) must point to URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for loading FLEDGE resources.
