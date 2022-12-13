@@ -203,6 +203,7 @@ const myAuctionConfig = {
   'trustedScoringSignalsUrl': ...,
   'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
   'auctionSignals': {...},
+  'requestedSize': {width: 100, height: 200},
   'directFromSellerSignals: 'https://www.example-ssp.com/...',
   'sellerSignals': {...},
   'sellerTimeout': 100,
@@ -241,6 +242,8 @@ const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
 
 
 This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auctionSignals`, `sellerSignals`, and `perBuyerSignals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auctionSignals` are made available to everyone, while the other signals are given only to one party.
+
+The optional `requestedSize` field recommends a frame size for the auction, which will be available to bidders in browser signals. Bidders inside the auction may pick a different size, but that resulting size will be scaled to fit inside the requested size. The returned fenced frame config will automatically populate a `<fencedframe>` with the right size when loaded, unless the size is overridden with the element attributes.
 
 The optional `directFromSellerSignals` field can also be used to pass signals to the auction, similar to `sellerSignals`,  `perBuyerSignals`, and `auctionSignals`. The difference is that `directFromSellerSignals` are trusted to come from the seller because the content loads from a [subresource bundle](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md) loaded from a seller's origin, ensuring the authenticity and integrity of the signals. For more details, see [2.5 directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals).
 
