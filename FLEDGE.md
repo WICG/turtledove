@@ -493,6 +493,7 @@ The arguments to `generateBid()` are:
     { 'topWindowHostname': 'www.example-publisher.com',
       'seller': 'https://www.example-ssp.com',
       'topLevelSeller': 'https://www.another-ssp.com',
+      'requestedSize': {width: 100, height: 200},
       'joinCount': 3,
       'bidCount': 17,
       'prevWins': [[time1,ad1],[time2,ad2],...],
@@ -512,8 +513,8 @@ The output of `generateBid()` contains the following fields:
 *   bid: A numerical bid that will enter the auction.  The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand").  If the bid is zero or negative, then this interest group will not participate in the seller's auction at all.  With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear.
 *   render: A dictionary describing the creative that should be rendered if this bid wins the auction. This includes:
   * url: The creative's URL.
-  * size: A dictionary containing `width` and `height` fields, describing the creative's size.
-*   adComponents: (optional) A list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent renderUrl exactly. This field must not be present if the InterestGroup has no adComponent field. It is valid for this field not to be present even when adComponents is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
+  * size: A dictionary containing `width` and `height` fields, describing the creative's size (see the interest group declaration above).
+*   adComponents: (optional) A list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent renderUrl and size exactly. This field must not be present if the InterestGroup has no adComponent field. It is valid for this field not to be present even when adComponents is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
 *   allowComponentAuction: If this buyer is taking part of a component auction, this value must be present and true, or the bid is ignored. This value is ignored (and may be absent) if the buyer is part of a top-level auction.
 
 `generateBid()` has access to the `setPrioritySignalsOverride(key, value)` method. This adds an entry to the current interest group's `prioritySignalsOverrides` dictionary with the specified `key` and `value`, overwriting the previous value, if there was already an entry with `key`. If `value` is null, the entry with the specified key is deleted, if it exists.
