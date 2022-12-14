@@ -36,7 +36,7 @@ issue](https://github.com/WICG/turtledove/issues/312#issuecomment-1307471709).
 
 Beyond FLEDGE there are also plans to use k-anonymity thresholds in [shared
 storage](https://github.com/WICG/shared-storage).  The shared storage
-`selectURL` API will require that the returned URL meets a k-anonymity
+`selectURL` API may require that the returned URL meets a k-anonymity
 threshold.  Other browser features, like [`start_url` parameters for
 progressive web apps](https://github.com/w3c/manifest/issues/399), might
 benefit from applying k-anonymity thresholds as well.
@@ -50,31 +50,22 @@ and users, and reporting back to all browsers the results of this counting.
 This counting requires a central server to take individual input from browsers
 and serve back aggregate counts.
 
-This counting is a feature of the browser itself. Unlike most browser features
-it needs to work on data generated across all browsers, which means it needs
-to be implemented on a server.  Traditionally web browsers were known as
-[user agents](https://en.wikipedia.org/wiki/User_agent), meaning they act
-on behalf of the user to retrieve a webpage and offer a secure boundary
-between the user's device and the servers the user is interacting with.
-This heritage is still present today in HTTP headers sent by web browsers,
-with the `User-Agent` string telling a server the name of the browser that
-it's communicating with.  In modern times we can think of user agents more
-broadly, with platform APIs on mobile operating systems also falling under
-this user agent umbrella--with "apps" analogous to web pages.
-
-k-anonymity is a feature of the user agent.  The user is the person that
-benefits from k-anonymity, and the user agent is the software that is enforcing
-and implementing it.  For Chrome we're implementing k-anonymity with a server,
-and as the provider of Chrome we're planning to operate the k-anonymity
-server in a similar model to how other server-based Chrome features operate:
-as a service offered by Google Chrome.  Other Google Chrome services already
-in production include [Safe Browsing](https://safebrowsing.google.com/) and
-[Chrome Sync](https://support.google.com/chrome/answer/185277).
-
-Unlike other [FLEDGE
+This counting towards k-anonymity is a feature of the browser itself. Unlike
+most browser features it needs to work on data generated across all
+browsers, which means it needs to be implemented on a server.  The user
+is the person that benefits from k-anonymity, and the browser is the
+software that can choose to implement and enforce it.  For Chrome we're
+implementing k-anonymity with a server, and as the provider of Chrome
+we're planning to operate the k-anonymity server in a similar model to
+how other server-based Chrome features operate: as a service offered
+by Google Chrome.  Other Google Chrome services already in production
+include [Safe Browsing](https://safebrowsing.google.com/) and [Chrome
+Sync](https://support.google.com/chrome/answer/185277).  Unlike other [FLEDGE
 services](https://github.com/privacysandbox/fledge-docs/blob/main/trusted_services_overview.md),
-which are operated by adtech companies, the k-anonymity service will not
-run inside of a Trusted Execution Environment (TEE) with open sourced code.
+which are operated by adtech companies, the k-anonymity service will
+not initially run inside of a Trusted Execution Environment (TEE)
+with open, sourced code.  See the [other privacy enhancements we're
+exploring](#privacy-enhancements-we-are-exploring).
 
 In this explainer we'll discuss details of the system design, how we're
 thinking about privacy, and the impact of our privacy decisions on advertisers.
