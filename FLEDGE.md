@@ -31,6 +31,8 @@ We plan to hold regular meetings under the auspices of the WICG to go through th
     - [5.1 Seller Reporting on Render](#51-seller-reporting-on-render)
     - [5.2 Buyer Reporting on Render and Ad Events](#52-buyer-reporting-on-render-and-ad-events)
     - [5.3 Losing Bidder Reporting](#53-losing-bidder-reporting)
+  - [6. Permissions policy within the worklet](#6-permissions-policy-within-the-worklet)
+    - [6.1 Affected features (for now)](#61-affected-features-for-now)
 
 
 ## Summary
@@ -671,4 +673,10 @@ We also need to provide a mechanism for the _losing_ bidders in the auction to l
 
 This could be handled by a `reportLoss()` function running in the worklet.  Alternatively, the model of [SPURFOWL](https://github.com/AdRoll/privacy/blob/main/SPURFOWL.md) (an append-only datastore and later aggregate log processing) could be a good fit for this use case.  The details here are yet to be determined.
 
+### 6. Permissions policy within the worklet
+The permissions policy in the FLEDGE worklet will be derived from running the [Is feature enabled in document for origin](https://www.w3.org/TR/permissions-policy/#algo-is-feature-enabled) algorithm with `document` set to the auction initiator document and `origin` set to the worklet origin (i.e. buyer or seller’s origin).
 
+#### 6.1 Affected features (for now)
+If the "shared-storage" permissions policy feature (for the [Shared Storage API](https://github.com/WICG/shared-storage)) is disabled, then the `sharedStorage` methods will throw an exception.
+
+If the "private-aggregation" permissions policy feature (for the [Private Aggregation API ](https://github.com/patcg-individual-drafts/private-aggregation-api/)) is disabled, then the `privateAggregation` methods will throw an exception.
