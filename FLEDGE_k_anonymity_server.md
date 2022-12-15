@@ -4,8 +4,9 @@
 
 [k-anonymity](https://en.wikipedia.org/wiki/K-anonymity) is a privacy concept
 that provides some protection against users being individually reidentified
-within a data set.  The concept itself is simple: to meet a k-anonymity
-threshold at least $k$ different users must be present in the same data set.
+within a data set.  The concept itself is simple: for an object to meet a
+k-anonymity threshold at least $k$ different users must be counted for the
+object.
 
 A data set in this context is quite general.  It might be a set of user
 information published from a database or, in the case of the Privacy Sandbox,
@@ -16,12 +17,12 @@ where the crowd consists of $k$ users.
 ## Use cases in the Privacy Sandbox
 
 The [FLEDGE](FLEDGE.md) proposal calls for k-anonymity thresholds on several
-features.  The first threshold is before interest groups are updated.  A browser
-should not request an interest group update unless there are at least $k$
-other browsers also requesting the same interest group update.  This allows
-the browser for a particular user to _hide in the crowd_ of other users also
-requesting the same update.  To implement this k-anonymity thresholds are
-applied to the `dailyUpdateUrl`.
+features.  The first threshold is before interest groups are updated.
+A browser should not request an interest group update from an untrusted
+server unless there are at least $k$ other browsers also requesting the
+same interest group update.  This allows the browser for a particular user
+to _hide in the crowd_ of other users also requesting the same update.
+To implement this k-anonymity thresholds are applied to the `dailyUpdateUrl`.
 
 k-anonymity is also applied to the `renderUrl` for ad creatives.  One of the
 goals of [FLEDGE](FLEDGE.md) is to offer microtargeting protection; that is,
@@ -45,10 +46,10 @@ benefit from applying k-anonymity thresholds as well.
 
 Each of these use cases is aggregating counts of users towards $k$ across
 many browsers.  They require taking local browser state, i.e. data generated
-within browser platform APIs, counting aggregates among the set of all browsers
-and users, and reporting back to all browsers the results of this counting.
-This counting requires a central server to take individual input from browsers
-and serve back aggregate counts.
+within browser platform APIs, counting aggregates among the set of browsers
+and users contributing to the counts, and reporting back to all interested
+browsers the results of this counting.  This counting requires a central
+server to take individual input from browsers and serve back aggregate counts.
 
 This counting towards k-anonymity is a feature of the browser itself. Unlike
 most browser features it needs to work on data generated across all
