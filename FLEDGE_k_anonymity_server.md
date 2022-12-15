@@ -1,33 +1,87 @@
 # Privacy Sandbox k-Anonymity Server
 
-## The k-anonymity server
+## What is k-anonymity?
 
-The [FLEDGE](FLEDGE.md) proposal calls for k-anonymity thresholds on network
-updates to interest groups.  A browser should not request interest group
-updates unless there are at least $k$ other browsers that reported being in
-the same interest group within a TTL period.  Joining an interest group is
-a local action stored by the user's browser, so implementing k-anonymity
-thresholds requires a central server to count how many different browsers
-have joined a given interest group and reveal to all browsers when that count
-becomes at least k.  In this explainer we discuss this counting server and
-how we're taking a private approach to its design.
+[k-anonymity](https://en.wikipedia.org/wiki/K-anonymity) is a privacy concept
+that provides some protection against users being individually reidentified
+within a data set.  The concept itself is simple: for an object to meet a
+k-anonymity threshold at least $k$ different users must be counted for the
+object.
 
-Interest groups are one use case for k-anonymity thresholds.  FLEDGE also
-calls for thresholds on the `renderUrl` that won an auction, and there
-are other Privacy Sandbox APIs, such as Shared Storage, that may impose
-k-anonymity thresholds.  Other browser features, like [`start_url` parameters
-for progressive web apps](https://github.com/w3c/manifest/issues/399),
-might benefit from k-anonymity thresholds as well.
+A data set in this context is quite general.  It might be a set of user
+information published from a database or, in the case of the Privacy Sandbox,
+it might be the set of users that are going to reveal some information to an
+untrusted party.  k-anonymity provides an ability to _hide among the crowd_,
+where the crowd consists of $k$ users.
 
-Given the variety of use cases, we intend to implement a k-anonymity server
-that's quite general.  Let's define an object as the browser-stored state
-(e.g. an interest group) that we wish to have a k-anonymity threshold for.
-We'll design the server to operate on integers `s = Hash(object)`; that
-is, every **object** will be hashed consistently across browsers.  On the
-server each hash will map to a single **set**, where that set contains all the
-browsers that have told the server they have the object as local browser-state.
-To support different use cases, with possibly different server-side behavior,
-we'll define a **type** for each set.
+## Use cases in the Privacy Sandbox
+
+The [FLEDGE](FLEDGE.md) proposal calls for k-anonymity thresholds on several
+features.  The first threshold is before interest groups are updated.
+A browser should not request an interest group update from an untrusted
+server unless there are at least $k$ other browsers also requesting the
+same interest group update.  This allows the browser for a particular user
+to _hide in the crowd_ of other users also requesting the same update.
+To implement this k-anonymity thresholds are applied to the `dailyUpdateUrl`.
+
+k-anonymity is also applied to the `renderUrl` for ad creatives.  One of the
+goals of [FLEDGE](FLEDGE.md) is to offer microtargeting protection; that is,
+a user won't be shown an ad unless some minimum number, $k$, of other users
+are also being shown the same ad.  This is accomplished by applying k-anonymity
+thresholds to the `renderUrl` prior to showing the ad to the user.  In addition
+to microtargeting protection of FLEDGE auctions, k-anonymity might in the
+future also prevent user-identifying information from the embedding site from
+being passed to an ad's fenced frame via parameters like `size`.  Adding `size`
+to the k-anonymity check of the `renderUrl` is under discussion in [this
+issue](https://github.com/WICG/turtledove/issues/312#issuecomment-1307471709).
+
+Beyond FLEDGE there are also plans to use k-anonymity thresholds in [shared
+storage](https://github.com/WICG/shared-storage).  The shared storage
+`selectURL` API may require that the returned URL meets a k-anonymity
+threshold.  Other browser features, like [`start_url` parameters for
+progressive web apps](https://github.com/w3c/manifest/issues/399), might
+benefit from applying k-anonymity thresholds as well.
+
+## Server ownership
+
+Each of these use cases is aggregating counts of users towards $k$ across
+many browsers.  They require taking local browser state, i.e. data generated
+within browser platform APIs, counting aggregates among the set of browsers
+and users contributing to the counts, and reporting back to all interested
+browsers the results of this counting.  This counting requires a central
+server to take individual input from browsers and serve back aggregate counts.
+
+This counting towards k-anonymity is a feature of the browser itself. Unlike
+most browser features it needs to work on data generated across all
+browsers, which means it needs to be implemented on a server.  The user
+is the person that benefits from k-anonymity, and the browser is the
+software that can choose to implement and enforce it.  For Chrome we're
+implementing k-anonymity with a server, and as the provider of Chrome
+we're planning to operate the k-anonymity server in a similar model to
+how other server-based Chrome features operate: as a service offered
+by Google Chrome.  Other Google Chrome services already in production
+include [Safe Browsing](https://safebrowsing.google.com/) and [Chrome
+Sync](https://support.google.com/chrome/answer/185277).  Unlike other [FLEDGE
+services](https://github.com/privacysandbox/fledge-docs/blob/main/trusted_services_overview.md),
+which are operated by adtech companies, the k-anonymity service will
+not initially run inside of a Trusted Execution Environment (TEE)
+with open, sourced code.  See the [other privacy enhancements we're
+exploring](#privacy-enhancements-we-are-exploring).
+
+In this explainer we'll discuss details of the system design, how we're
+thinking about privacy, and the impact of our privacy decisions on advertisers.
+
+## System design
+
+Given the variety of use cases for k-anonymity thresholds, we intend to
+implement a k-anonymity server that's quite general.  Let's define an object
+as the browser-stored state (e.g. an interest group) that we wish to have a
+k-anonymity threshold for.  We'll design the server to operate on integers
+`s = Hash(object)`; that is, every **object** will be hashed consistently
+across browsers.  On the server each hash will map to a single **set**,
+where that set contains all the browsers that have told the server they have
+the object as local browser-state.  To support different use cases, with
+possibly different server-side behavior, we'll define a **type** for each set.
 
 The diagram below shows the write path, which we call **`Join`**, from a
 browser to the server.  The browser has an identifier or token, `b`, that is
