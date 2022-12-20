@@ -78,14 +78,14 @@ The buyer can then do the following during generateBid (when the above informati
 ```
 function generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
  …
-  privateAggregation.reportContributionsForEvent({eventType: “reserved.win”, contributions: {
-      bucket: getImpressionReportBucket()
+  privateAggregation.reportContributionForEvent(“reserved.win”, {
+      bucket: getImpressionReportBucket(),
       value: 1
-  };
-  privateAggregation.reportContributionsForEvent({eventType: "click", contributions: {
+  });
+  privateAggregation.reportContributionForEvent("click", {
       bucket: getClickReportBuckets(), // 128-bit integer
       value: 1
-    });
+  });
 ```
 
 The above logic will trigger a report if the generated bid wins (see [reserved.win](#reporting-bidding-data-for-wins)). And another one,
@@ -112,17 +112,17 @@ following example shows how to return the gap between an ad bid and the winning 
 
 ```
 function generateBid(...) {
-  bid = 100
-  privateAggregation.reportContributionsForEvent({
-    eventType: "reserved.loss"
-    contributions: {
-      bucket: 1596 // represents a bucket for interest group x winning bid price
+  bid = 100;
+  privateAggregation.reportContributionForEvent(
+    "reserved.loss",
+    {
+      bucket: 1596n, // represents a bucket for interest group x winning bid price
       value: {
         baseValue: "winningBid",
         scale: 2, // Number which will be multiplied by browser value
         offset: -bid // Numbers which will be added to browser value, prior to scaling
        }
-    }});
+    });
 
   return bid;
 }
@@ -132,7 +132,7 @@ In the event this bid does not win the auction, and the winning bid was 200, the
 contribution would be generated as:
 
 ```
-bucket: 1596
+bucket: 1596n
 value: 200 // = (winningBid + -bid) * scale = (200 - 100) * 2 
 ```
 This would correspond to the gap by which the advertiser lost the auction, scaled by 2.
@@ -150,15 +150,15 @@ throttled due to not passing a k-anonymity threshold.
 
 ```
 function generateBid(...) {
-  privateAggregation.reportContributionsForEvent({
-    eventType: "reserved.loss"
-    contributions: {
+  privateAggregation.reportContributionForEvent(
+    "reserved.loss",
+    {
       bucket: {
         baseValue: "bidRejectReason",
         offset: 255 // Offset buckets
        },
       value: 1
-    }});
+    });
 
   return bid;
 }
@@ -167,7 +167,7 @@ If the bid is rejected for not reaching the k-anonymity threshold, this would re
 contribution being generated:
 
 ```
-bucket: 255 // 255 + 0 (0 is the value associated with not reaching the threshold, see bidRejectReason below)
+bucket: 255n // 255 + 0 (0 is the value associated with not reaching the threshold, see bidRejectReason below)
 value: 1
 ```
 
@@ -219,7 +219,7 @@ by calling into a new API:
 window.fence.reportPrivateAggregationEvent("click");
 ```
 
-This will cause any contributions associated with a call to `reportContributionsForEvent()`
+This will cause any contributions associated with a call to `reportContributionForEvent()`
 with an event-type of `click` to be reported/sent. 
 
 In this example, `"click"` is an event-name chosen by the auction bidder. There are a number
