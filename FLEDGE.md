@@ -332,7 +332,7 @@ The optional `directFromSellerSignals` field can be used to pass signals to the 
 
 The URL prefix should not have a query string (i.e. `?a=b&c=d`). Different calls to `navigator.runAdAuction()` on a page may use different prefixes -- for instance, to give different signals to different ad slots. The browser will append the following suffixes to the prefix:
 
-*   `?perBuyerSignals=[origin]`, where [origin] is one of the **URL encoded** origins in `interestGroupBuyers`: this corresponds to the `perBuyerSignals` for the buyer `origin`
+*   `?perBuyerSignals=[origin]`, where [origin] is one of the origins in `interestGroupBuyers` (encoded as a URL component): this corresponds to the `perBuyerSignals` for the buyer `origin`
 *   `?sellerSignals`: this corresponds to the `sellerSignals` only delivered to the seller
 *   `?auctionSignals`: this corresponds to `auctionSignals` delivered to the seller, and all buyers
 
