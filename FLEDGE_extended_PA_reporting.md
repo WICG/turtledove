@@ -239,6 +239,12 @@ The `reserved.loss` event-type is a special value that indicates a report should
 bid does not win the auction. If the bid does not win, the browser will trigger reporting for
 the `loss` contributions.
 
+### Reporting bidding data no matter whether wins or not
+
+The `reserved.always` event-type is a special value that indicates a report should be sent no
+matter whether a bid wins the auction or not. The browser will always trigger reporting for the
+`always` contributions.
+
 ## Reporting Per-Buyer Latency and Statistics to the Seller
 
 The seller may want to collect aggregate statistics on latency and bids for their auctions.
