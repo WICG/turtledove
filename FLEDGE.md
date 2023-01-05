@@ -154,7 +154,7 @@ The `adComponents` field contains the various ad components (or "products") that
 
 The `adSizes` field contains a dictionary of named ad sizes. Each size has the format `{width: widthVal, height: heightVal}`, where the values can have either pixel units (e.g. `100` or `'100px'`) or screen dimension coordinates (e.g. `100sw` or `100sh`). For example, the size `{width: '100sw', height: 50}` describes an ad that is the width of the screen and 50 pixels tall. The size `{width: '100sw', height: '200sw'}` describes an ad that is the width of the screen and has a 1:2 aspect ratio.
 
-The `sizeGroups` field contains a dictionary of named lists of ad sizes. Each ad declared above must specify a size group, saying which sizes it might be loaded at (for filtering during the auction and k-anonymity checks). Each named ad size is also considered a size group, so you don't need to manually define singleton size groups.
+The `sizeGroups` field contains a dictionary of named lists of ad sizes. Each ad declared above must specify a size group, saying which sizes it might be loaded at (for prefetching k-anonymity checks). Each named ad size is also considered a size group, so you don't need to manually define singleton size groups.
 
 All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`biddingLogicUrl`, `biddingWasmHelperUrl`, and `trustedBiddingSignalsUrl`) must point to URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for loading FLEDGE resources.
