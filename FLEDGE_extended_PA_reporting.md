@@ -192,7 +192,7 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
   * `scriptRunTime`: milliseconds of CPU time that the calling function required, when called.
   * `signalsFetchTime`: milliseconds required to fetch the trusted bidding or scoring signals, when called from `generateBid()` or `scoreAd()` respectively.
   * `bidRejectReason`: one of the following values:
-    * 0: indicates ad creative URL did not meet the k-anonymity threshold
+    * 0: indicates seller rejected bid without providing a reason, i.e., bid reject reason not available.
     * 1: indicates seller rejected bid because “Invalid Bid”
     * 2: indicates seller rejected bid because “Bid was Below Auction Floor”
     * 3: indicates seller rejected bid because “Creative Filtered - Pending Approval by Exchange”
