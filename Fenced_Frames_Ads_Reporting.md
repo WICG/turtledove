@@ -54,7 +54,7 @@ The browser processes the beacon by sending an HTTP POST request, like the exist
 
 ### Parameters
 
-**Event type and data:** Includes the event type and data associated with an event. When an event type e.g. click matches to the event type registered in registerAdBeacon, the data will be used by the browser as the data sent in the beacon sent to the registered URL.
+**Event type and data:** Includes the event type and data associated with an event. When an event type e.g. click matches to the event type registered in registerAdBeacon, the data will be used by the browser as the request body in the request sent to the registered URL.
 
 **Destination type:** List of values to determine whose registered beacons are reported, can be a combination of 'buyer', 'seller', or 'component-seller'.
 
@@ -105,9 +105,11 @@ registerAdBeacon({
 *   While fenced frames still have unrestricted network access and FLEDGE supports event-level reporting, the solution below takes advantage of registerAdBeacon/reportEvent information flow to enable [registering attribution sources](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#registering-attribution-sources). [ARA attribution triggering](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#triggering-attribution) is unchanged for registered FLEDGE impressions.
 *   Improve the ergonomics of triggering ad beacons based on clicks.
 
-### registerAdBeacon changes
+**As of writing this, the changes are not yet implemented in Chrome.**
 
-The registerAdBeacon API surface itself will not change but worklet code can now register a new event called “reserved.top_navigation” via registerAdBeacon. 
+### registerAdBeacon
+
+The worklet code will be able to register an event called “reserved.top_navigation” via registerAdBeacon. 
 
 ```
 registerAdBeacon({
@@ -118,11 +120,13 @@ registerAdBeacon({
 The new event, if registered, implies that an automatic beacon will be sent by the browser to the registered url when a top-level navigation is invoked from within the fenced frame. This will impact top-level navigation initiated from the fenced frame in the same tab (via [unfencedTop target](https://github.com/WICG/fenced-frame/blob/master/explainer/integration_with_web_platform.md#top-level-navigation)) or in a different tab. Note that this beacon is gated on a transient user activation. More details about the beacon are below.
 
 
-### reportEvent changes
+### reportEvent
 
-The reportEvent API does not have any API surface change. However, the beacons that are generated from reportEvent invocation or via the automatic reserved.top\_navigation event will now be automatically eligible for attribution, i.e. they would be appended with `Attribution-Reporting-Eligible` request header. The beacon responses can then register sources as usual, as described [here](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#registering-attribution-sources).
+The beacons that are generated from reportEvent invocation or via the automatic reserved.top_navigation event will now be automatically eligible for attribution, i.e. they would be appended with `Attribution-Reporting-Eligible` request header. The beacon responses can then register sources as usual, as described [here](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#registering-attribution-sources).
 
-Note that the beacons will continue to be POST requests and any server redirects via 302 will lead to a GET request. Also, the redirect GET request will not carry the event data that is part of the initial POST. This is as per the browser's behavior.
+#### Redirects
+
+As mentioned in the explainer above, reportEvent beacons are POST requests and carry eventData in the request's body. The same will be true for automatic reserved.top_navigation requests. Note that for any server redirects of the initial request, the browser sends a GET request and does not include the initial request's body. For attribution registration flow, if the data needs to be used as part of the redirected request, it must be explicitly passed on as part of the redirect URL.
 
 ### New API to populate event data for reserved.top_navigation
 
