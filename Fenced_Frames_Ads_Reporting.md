@@ -122,6 +122,7 @@ The new event, if registered, implies that an automatic beacon will be sent by t
 
 The reportEvent API does not have any API surface change. However, the beacons that are generated from reportEvent invocation or via the automatic reserved.top\_navigation event will now be automatically eligible for attribution, i.e. they would be appended with `Attribution-Reporting-Eligible` request header. The beacon responses can then register sources as usual, as described [here](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#registering-attribution-sources).
 
+Note that the beacons will continue to be POST requests and any server redirects via 302 will lead to a GET request. Also, the redirect GET request will not carry the event data that is part of the initial POST. This is as per the browser's behavior.
 
 ### New API to populate event data for reserved.top_navigation
 
