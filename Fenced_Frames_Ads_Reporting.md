@@ -126,7 +126,7 @@ The beacons that are generated from a `reportEvent` invocation or via the automa
 
 #### Redirects
 
-As mentioned in the explainer above, reportEvent beacons are POST requests and carry eventData in the request's body. The same will be true for automatic reserved.top_navigation requests. Note that for any server redirects of the initial request, the browser sends a GET request and does not include the initial request's body. For attribution registration flow, if the eventData needs to be used as part of the redirected request, it must be explicitly passed on as part of the redirect URL.
+As mentioned in the explainer above, `reportEvent` beacons are POST requests and carry `eventData` in the request's body. The same will be true for automatic `reserved.top_navigation` requests. Note that for any server redirects of the initial request, the browser sends a GET request and does not include the initial request's body. For attribution registration flow, if the `eventData` needs to be used as part of the redirected request, it must be explicitly passed on as part of the redirect URL.
 
 ### API to populate event data for reserved.top_navigation
 
