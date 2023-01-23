@@ -142,7 +142,7 @@ window.fence.setReportEventDataForAutomaticBeacons({
 ```
 
 
-Currently, this only allows `'reserved.top_navigation'` as a valid event type. Note that the script invoking this API can volunteer this information to a given destination type or not, similar to reportEvent, using the destination field.
+Currently, the only `eventType` that `setReportEventDataForAutomaticBeacons` allows is `'reserved.top_navigation'`. Note that the script invoking this API can volunteer this information to a given destination type or not, similar to `reportEvent`, using the `destination` field.
 
 If invoked multiple times, the latest invocation before the top-level navigation would be the one that’s honored.
 
