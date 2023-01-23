@@ -109,7 +109,7 @@ registerAdBeacon({
 
 ### registerAdBeacon
 
-The worklet code will be able to register an event called “reserved.top_navigation” via registerAdBeacon. 
+The `reportResult` and `reportWin` worklet code will be able to register an event called `reserved.top_navigation` via `registerAdBeacon`. 
 
 ```
 registerAdBeacon({
