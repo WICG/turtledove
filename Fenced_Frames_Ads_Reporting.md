@@ -117,7 +117,7 @@ registerAdBeacon({
 });
 ```
 
-The new event, if registered, implies that an automatic beacon will be sent by the browser to the registered url when a top-level navigation is invoked from within the fenced frame. This will impact top-level navigation initiated from the fenced frame in the same tab (via [unfencedTop target](https://github.com/WICG/fenced-frame/blob/master/explainer/integration_with_web_platform.md#top-level-navigation)) or in a different tab. Note that this beacon is gated on a transient user activation. More details about the beacon are below.
+The new event, if registered, implies that an automatic beacon will be sent by the browser to the registered URL when a top-level navigation is invoked from within the fenced frame. This will impact top-level navigation initiated from the fenced frame in the same tab (via [unfencedTop target](https://github.com/WICG/fenced-frame/blob/master/explainer/integration_with_web_platform.md#top-level-navigation)) or in a different tab. Note that this beacon is gated on a transient user activation. More details about the beacon are below.
 
 
 ### reportEvent
