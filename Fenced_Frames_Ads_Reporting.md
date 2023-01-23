@@ -122,7 +122,7 @@ The new event, if registered, implies that an automatic beacon will be sent by t
 
 ### reportEvent
 
-The beacons that are generated from reportEvent invocation or via the automatic reserved.top_navigation event will now be automatically eligible for attribution, i.e. they would be appended with `Attribution-Reporting-Eligible` request header. The beacon responses can then register sources as usual, as described [here](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#registering-attribution-sources).
+The beacons that are generated from a `reportEvent` invocation or via the automatic `reserved.top_navigation` event will now be automatically eligible for attribution, i.e. the browser appends the `Attribution-Reporting-Eligible` HTTP request header. The beacon responses can then register attribution sources as usual, as described [here](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#registering-attribution-sources).
 
 #### Redirects
 
