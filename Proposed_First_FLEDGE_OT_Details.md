@@ -56,7 +56,7 @@ As the FLEDGE explainer talks about, the FOT#1 will include event-level reportin
 
   
 
-The FOT#1 will include event-level reporting for both winning and losing bids. Implementations of the `generateBid()` and `scoreAd()` worklets, provided by the buyers and sellers respectively in the auction, may call a `forDebuggingOnly.reportAdAuctionLoss()` API which takes a single string argument representing a URL. The text placeholders below will be replaced with the corresponding value from the auction when found in the reporting URL (right now this replacement only happens in the path of the URL, but when http://crbug.com/1338233 is fixed the replacement should only happen in the query parameters of the URL).
+The FOT#1 will include event-level reporting for both winning and losing bids. Implementations of the `generateBid()` and `scoreAd()` worklets, provided by the buyers and sellers respectively in the auction, may call a `forDebuggingOnly.reportAdAuctionLoss()` API which takes a single string argument representing a URL. The text placeholders below will be replaced with the corresponding value from the auction when found in the reporting URL's query parameters (note that due to http://crbug.com/1338233, prior to Chrome version 107.0.5286.0, the replacements only took place in the path of the URL)
 
 *   “${winningBid}” - The value of the winning bid.  In component auctions, this value comes from the component auction and not the top-level auction.
 *   “${madeWinningBid}” - A boolean value representing whether the owner of this interest group made the winning bid, either via this interest group, or another interest group with the same owner.  In component auctions, this value comes from the component auction and not the top-level auction.
@@ -66,6 +66,18 @@ The FOT#1 will include event-level reporting for both winning and losing bids. I
 *   “${topLevelMadeWinningBid}” - A boolean value representing whether the owner of this interest group made the bid that won the top-level auction, either via this interest group, or another interest group with the same owner. This value is only reported in component auctions.
 
 If the bid being generated or scored loses the auction, the URL will be fetched. These worklets may also call a `forDebuggingOnly.reportAdAuctionWin()` API which operates similarly to `forDebuggingOnly.reportAdAuctionLoss()` API but only fetches the URL after a winning bid or score.
+
+As of Chrome version 108, if a seller rejects a bid from participating in an auction, the seller can optionally add a `rejectReason` field to its `scoreAd()` return object to convey to the bidder a more detailed reason why the bid was rejected. The buyer can learn about the reject reason by calling the `forDebuggingOnly.reportAdAuctionLoss()` API in `generateBid()` and including `${rejectReason}` in the report URL's query string. A component auction's bidders only get reject reasons from its component seller, but not reject reasons from the top-level seller. The reject reason returned by `scoreAd()` should be one of:
+*   "not-available"
+*   "invalid-bid"
+*   "bid-below-auction-floor"
+*   "pending-approval-by-exchange"
+*   "disapproved-by-exchange"
+*   "blocked-by-publisher"
+*   "language-exclusions"
+*   "category-exclusions"
+
+The default value will be "not-available", in cases where a bid was not rejected, it was rejected but the seller doesn't provide a reject reason, or the reason provided wasn't one of the above values.
 
 The FOT#1 will not include aggregate auction result reporting support for FLEDGE auctions. This is due to motivations relating to [promoting accurate measurement](#promoting-accurate-measurement-of-fledge-effectiveness.) and [availability of aggregate reporting technologies](#availability-of-other-technologies.). As discussed above, event-level reporting will be provided to winning and losing bids during the FOT#1. We’ll look to add support for aggregate reporting in a future version.
 
@@ -103,7 +115,7 @@ In the FOT#1, rendering these opaque URLs only in Fenced Frames will temporarily
 
   
 
-The FOT#1 will include temporary support for `navigator.deprecatedURNToURL()`, a method that takes as an argument an opaque URL resolved from a Promise returned from `navigator.runAdAuction()` and returns the URL of the auction winning ad creative. This is included to [promote accurate measurement](#promoting-accurate-measurement-of-fledge-effectiveness.) and comparison of FLEDGE API utility by allowing auction winning URLs to be treated and used as they are in today’s ad auctions.
+The FOT#1 will include temporary support for `navigator.deprecatedURNToURL(urn, sendReports)`, a method that takes as an argument an opaque URL resolved from a Promise returned from `navigator.runAdAuction()` and returns the URL of the auction winning ad creative. If `sendReports` is true, reports will be sent just as if the URN were loaded in a frame. Note that the `sendReports` parameter is only respected in Chrome since versions 109.0.5414.16 and 110.0.5433.0. This is included to [promote accurate measurement](#promoting-accurate-measurement-of-fledge-effectiveness.) and comparison of FLEDGE API utility by allowing auction winning URLs to be treated and used as they are in today’s ad auctions.
 
 #### Permissions-Policy
 
@@ -121,7 +133,7 @@ Usage in iframe can be disabled by adding the allow="join-ad-interest-group 'non
 
 `<iframe src="https://example.com" allow="join-ad-interest-group 'none'; run-ad-auction 'none'"></iframe>`
 
-The FOT#1 will not include support for delegating interest group access via a .well-known URL as the explainer describes.
+The FOT#1 also supports, since Chrome version 104, delegating interest group access via a .well-known URL as the explainer describes.
 
 #### K-anonymity Enforcement
 

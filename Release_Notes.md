@@ -1,6 +1,28 @@
 # FLEDGE Release Notes
 
 
+## Chrome M109
+
+
+
+*   Since version 109.0.5414.16, the [`sendReports` parameter to `navigator.deprecatedURNToURL()`](https://github.com/WICG/turtledove/blob/main/Proposed_First_FLEDGE_OT_Details.md#advertisement-rendering) is respected.
+
+
+## Chrome M108
+
+
+
+*   Support reporting bid reject reason to buyers through calling `forDebuggingOnly.reportAdAuctionLoss()` API in `generateBid()` and including `${rejectReason}` in the report URL's query string.  See [FOT#1 reporting details](https://github.com/WICG/turtledove/blob/main/Proposed_First_FLEDGE_OT_Details.md#reporting) for more information.
+
+
+## Chrome M107
+
+
+
+*   Bug fixes:
+    *   [The `forDebuggingOnly.reportAdAuctionLoss()` and `forDebuggingOnly.reportAdAuctionWin()` APIs were fixed to perform post-auction signal parameter replacement on URL query parameters instead of the URL path](http://crbug.com/1338233).
+
+
 ## Chrome M104
 
 
@@ -15,7 +37,7 @@
 
 
 *   Add `chrome://tracing` support for FLEDGE auctions (including worklets).
-*   Add basic `.well-known` support for determining if a site is allowed to join or leave interest groups for an owner.  `.well-known` ownership delegation is [documented in the explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#13-permission-delegation).
+*   [Add basic `.well-known` support](https://crbug.com/1315805) for determining if a site is allowed to join or leave interest groups for an owner.  `.well-known` ownership delegation is [documented in the explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#13-permission-delegation).
 *   `joinAdInterestGroup()` and `leaveAdInterestGroup()` changed to return promises (fulfilled or rejected based on whether the join or leave is allowed based on the `.well-known` lookup).
 *   Rate-limit report network requests, to prevent over-consuming networking resources and allow requests to be sent in parallel.
 *   Add `navigator.deprecatedReplaceInURN() `function.  For more information see [Issue #286](https://github.com/WICG/turtledove/issues/286).
