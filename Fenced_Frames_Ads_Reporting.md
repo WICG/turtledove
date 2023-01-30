@@ -78,7 +78,7 @@ window.fence.reportEvent({
 });
 ```
 
-Note `window.fence` here is a new namepsace for APIs that are only available from within a fenced frame. 
+Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. 
 
 ## registerAdBeacon
 
