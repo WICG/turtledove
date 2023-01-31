@@ -144,7 +144,8 @@ be added to various aggregation keys.
 Similar to the above example, sometimes, the key that we want to aggregate over may depend
 on the outcome of an auction. To solve this use case we provide an object called `signalBucket`.
 The final bucket id of the bucket will depend on the outcome of the auction. The following
-example allows the buyer to keep track of how many times an ad was not shown because the buyer provided an invalid bid.
+example allows the buyer to keep track of how many times an ad was not shown because the buyer
+provided an invalid bid.
 
 
 ```
@@ -162,7 +163,7 @@ function generateBid(...) {
   return "not a valid bid";
 }
 ```
-If the bid is rejected for being an invalid bid, this would result in a contribution being generated:
+If the bid is rejected for invalid bid, this would result in a contribution being generated:
 
 ```
 bucket: 256n // 255n + 1n (1n is the value associated with invalid bid, see bidRejectReason below)
