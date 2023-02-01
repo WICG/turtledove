@@ -88,10 +88,12 @@ function generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBidd
   });
 ```
 
-The above logic will trigger a report if the generated bid wins (see [reserved.win](#reporting-bidding-data-for-wins)). And another one,
-if the user later clicks on the winning ad (this needs to be triggered by the fenced frame itself, see
-reporting for post-auction signals). When the buyer receives an aggregated report they can infer what
-the click-through-rate (CTR) was for users on different “interest group age” buckets.
+The above logic will trigger a report if the generated bid wins (see
+[reserved.win](#reporting-bidding-data-for-wins)). And another one, if the user later clicks on the
+winning ad (this needs to be triggered by the fenced frame itself, see
+[reportPrivateAggregationEvent](#reporting-bidding-data-associated-with-an-event-in-a-frame). When
+the buyer receives an aggregated report they can infer what the click-through-rate (CTR) was for
+users on different “interest group age” buckets.
 
 ### Example 2: Getting the average bid gap for an ad. 
 
