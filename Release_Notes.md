@@ -1,9 +1,9 @@
 # FLEDGE Release Notes
 
 
-## Chrome M111
+## Chrome M112
 
-* Size-related API changes would target M111 (and be backwards compatible + opt-in). We will update this with more concrete details after the implementation is done.
+* Size-related API changes are targeting M112 (and will be backwards compatible + opt-in). We will update this with more concrete details after the implementation is done.
 
 ## Chrome M109
 
