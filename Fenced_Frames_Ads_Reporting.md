@@ -45,14 +45,16 @@ The following new APIs will be added for achieving this.
 
 ## reportEvent
 
-Fenced frame can invoke this API for the browser to be able to send a beacon with the data in this API, to the URL registered by the worklet in registerAdBeacon (see below). Depending on the ‘destination type’ present here, the beacon will be sent to either the buyer’s or the seller’s registered URL. Examples of such events are mouse hovers, clicks that may or may not lead to navigation e.g. video player control element clicks etc.
+Fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon with event data to a URL registered by the worklet in `registerAdBeacon` (see below). Depending on the declared `destination`, the beacon is sent to either the buyer's or the seller's registered URL. Examples of such events are mouse hovers, clicks (which may or may not lead to navigation e.g. video player control element clicks), etc.
 
-Browser will process this similar to how the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon) works via sending an HTTP POST request.
+This API is available from same-origin frames within the initial rendered ad document and across subsequent same-origin navigations, but it's no longer available after cross-origin navigations or in cross-origin subframes. (For this API, for chains of redirects, the requestor is considered same-origin with the target only if it is same-origin with all redirect URLs in the chain.) This way, the ad may redirect itself without losing access to reporting, but other sites can't send spurious reports.
+
+The browser processes the beacon by sending an HTTP POST request, like the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
 
 
 ### Parameters
 
-**Event type and data:** Includes the event type and data associated with an event. When an event type e.g. click matches to the event type registered in registerAdBeacon, the data will be used by the browser as the data sent in the beacon sent to the registered URL.
+**Event type and data:** Includes the event type and data associated with an event. When an event type e.g. click matches to the event type registered in registerAdBeacon, the data will be used by the browser as the request body in the request sent to the registered URL.
 
 **Destination type:** List of values to determine whose registered beacons are reported, can be a combination of 'buyer', 'seller', or 'component-seller'.
 
@@ -76,7 +78,7 @@ window.fence.reportEvent({
 });
 ```
 
-Note `window.fence` here is a new namepsace for APIs that are only available from within a fenced frame. 
+Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. 
 
 ## registerAdBeacon
 
@@ -97,5 +99,51 @@ registerAdBeacon({
  'click': 'https://adtech.example/click?buyer_event_id=123',
 });
 ```
+
+## Support for Attribution Reporting 
+### Goals
+*   While fenced frames still have unrestricted network access and FLEDGE supports event-level reporting, the solution below takes advantage of the `registerAdBeacon`/`reportEvent` information flow to enable [registering attribution sources](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#registering-attribution-sources). [ARA attribution triggering](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#triggering-attribution) is unchanged for registered FLEDGE impressions.
+*   Improve the ergonomics of triggering ad beacons based on clicks.
+
+**As of writing this, the changes below are not yet implemented in Chrome.**
+
+### registerAdBeacon
+
+The `reportResult` and `reportWin` worklet code will be able to register an event called `reserved.top_navigation` via `registerAdBeacon`. 
+
+```
+registerAdBeacon({
+ 'reserved.top_navigation': 'https://adtech.example/click?buyer_event_id=123',
+});
+```
+
+The new event, if registered, implies that an automatic beacon will be sent by the browser to the registered URL when a top-level navigation is invoked from within the fenced frame. This will impact top-level navigation initiated from the fenced frame in the same tab (via [unfencedTop target](https://github.com/WICG/fenced-frame/blob/master/explainer/integration_with_web_platform.md#top-level-navigation)) or in a different tab. Note that this beacon is gated on a transient user activation. More details about the beacon are below.
+
+
+### reportEvent
+
+The beacons that are generated from a `reportEvent` invocation or via the automatic `reserved.top_navigation` event will now be automatically eligible for attribution, i.e. the browser appends the `Attribution-Reporting-Eligible` HTTP request header. The beacon responses can then register attribution sources as usual, as described [here](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#registering-attribution-sources).
+
+#### Redirects
+
+As mentioned in the explainer above, `reportEvent` beacons are POST requests and carry `eventData` in the request's body. The same will be true for automatic `reserved.top_navigation` requests. Note that for any server redirects of the initial request, the browser sends a GET request and does not include the initial request's body. For attribution registration flow, if the `eventData` needs to be used as part of the redirected request, it must be explicitly passed on as part of the redirect URL.
+
+### API to populate event data for reserved.top_navigation
+
+Since the `reserved.top_navigation` beacons are automatically generated by the browser, there needs to be some way for those beacons to be associated with and include event data, as it happens in `reportEvent` generated beacons. To achieve this, a new `setReportEventDataForAutomaticBeacons` API can be invoked from within the fenced frame:
+
+
+```
+window.fence.setReportEventDataForAutomaticBeacons({
+  'eventType': 'reserved.top_navigation',
+  'eventData': 'an example string',
+  'destination':['seller', 'buyer']
+});
+```
+
+
+Currently, the only `eventType` that `setReportEventDataForAutomaticBeacons` allows is `'reserved.top_navigation'`. Note that the script invoking this API can volunteer this information to a given destination type or not, similar to `reportEvent`, using the `destination` field.
+
+If invoked multiple times, the latest invocation before the top-level navigation would be the one that’s honored.
 
 

@@ -1,33 +1,87 @@
 # Privacy Sandbox k-Anonymity Server
 
-## The k-anonymity server
+## What is k-anonymity?
 
-The [FLEDGE](FLEDGE.md) proposal calls for k-anonymity thresholds on network
-updates to interest groups.  A browser should not request interest group
-updates unless there are at least $k$ other browsers that reported being in
-the same interest group within a TTL period.  Joining an interest group is
-a local action stored by the user's browser, so implementing k-anonymity
-thresholds requires a central server to count how many different browsers
-have joined a given interest group and reveal to all browsers when that count
-becomes at least k.  In this explainer we discuss this counting server and
-how we're taking a private approach to its design.
+[k-anonymity](https://en.wikipedia.org/wiki/K-anonymity) is a privacy concept
+that provides some protection against users being individually reidentified
+within a data set.  The concept itself is simple: for an object to meet a
+k-anonymity threshold at least $k$ different users must be counted for the
+object.
 
-Interest groups are one use case for k-anonymity thresholds.  FLEDGE also
-calls for thresholds on the `renderUrl` that won an auction, and there
-are other Privacy Sandbox APIs, such as Shared Storage, that may impose
-k-anonymity thresholds.  Other browser features, like [`start_url` parameters
-for progressive web apps](https://github.com/w3c/manifest/issues/399),
-might benefit from k-anonymity thresholds as well.
+A data set in this context is quite general.  It might be a set of user
+information published from a database or, in the case of the Privacy Sandbox,
+it might be the set of users that are going to reveal some information to an
+untrusted party.  k-anonymity provides an ability to _hide among the crowd_,
+where the crowd consists of $k$ users.
 
-Given the variety of use cases, we intend to implement a k-anonymity server
-that's quite general.  Let's define an object as the browser-stored state
-(e.g. an interest group) that we wish to have a k-anonymity threshold for.
-We'll design the server to operate on integers `s = Hash(object)`; that
-is, every **object** will be hashed consistently across browsers.  On the
-server each hash will map to a single **set**, where that set contains all the
-browsers that have told the server they have the object as local browser-state.
-To support different use cases, with possibly different server-side behavior,
-we'll define a **type** for each set.
+## Use cases in the Privacy Sandbox
+
+The [FLEDGE](FLEDGE.md) proposal calls for k-anonymity thresholds on several
+features.  The first threshold is before interest groups are updated.
+A browser should not request an interest group update from an untrusted
+server unless there are at least $k$ other browsers also requesting the
+same interest group update.  This allows the browser for a particular user
+to _hide in the crowd_ of other users also requesting the same update.
+To implement this k-anonymity thresholds are applied to the `dailyUpdateUrl`.
+
+k-anonymity is also applied to the `renderUrl` for ad creatives.  One of the
+goals of [FLEDGE](FLEDGE.md) is to offer microtargeting protection; that is,
+a user won't be shown an ad unless some minimum number, $k$, of other users
+are also being shown the same ad.  This is accomplished by applying k-anonymity
+thresholds to the `renderUrl` prior to showing the ad to the user.  In addition
+to microtargeting protection of FLEDGE auctions, k-anonymity might in the
+future also prevent user-identifying information from the embedding site from
+being passed to an ad's fenced frame via parameters like `size`.  Adding `size`
+to the k-anonymity check of the `renderUrl` is under discussion in [this
+issue](https://github.com/WICG/turtledove/issues/312#issuecomment-1307471709).
+
+Beyond FLEDGE there are also plans to use k-anonymity thresholds in [shared
+storage](https://github.com/WICG/shared-storage).  The shared storage
+`selectURL` API may require that the returned URL meets a k-anonymity
+threshold.  Other browser features, like [`start_url` parameters for
+progressive web apps](https://github.com/w3c/manifest/issues/399), might
+benefit from applying k-anonymity thresholds as well.
+
+## Server ownership
+
+Each of these use cases is aggregating counts of users towards $k$ across
+many browsers.  They require taking local browser state, i.e. data generated
+within browser platform APIs, counting aggregates among the set of browsers
+and users contributing to the counts, and reporting back to all interested
+browsers the results of this counting.  This counting requires a central
+server to take individual input from browsers and serve back aggregate counts.
+
+This counting towards k-anonymity is a feature of the browser itself. Unlike
+most browser features it needs to work on data generated across all
+browsers, which means it needs to be implemented on a server.  The user
+is the person that benefits from k-anonymity, and the browser is the
+software that can choose to implement and enforce it.  For Chrome we're
+implementing k-anonymity with a server, and as the provider of Chrome
+we're planning to operate the k-anonymity server in a similar model to
+how other server-based Chrome features operate: as a service offered
+by Google Chrome.  Other Google Chrome services already in production
+include [Safe Browsing](https://safebrowsing.google.com/) and [Chrome
+Sync](https://support.google.com/chrome/answer/185277).  Unlike other [FLEDGE
+services](https://github.com/privacysandbox/fledge-docs/blob/main/trusted_services_overview.md),
+which are operated by adtech companies, the k-anonymity service will
+not initially run inside of a Trusted Execution Environment (TEE)
+with open, sourced code.  See the [other privacy enhancements we're
+exploring](#privacy-enhancements-we-are-exploring).
+
+In this explainer we'll discuss details of the system design, how we're
+thinking about privacy, and the impact of our privacy decisions on advertisers.
+
+## System design
+
+Given the variety of use cases for k-anonymity thresholds, we intend to
+implement a k-anonymity server that's quite general.  Let's define an object
+as the browser-stored state (e.g. an interest group) that we wish to have a
+k-anonymity threshold for.  We'll design the server to operate on integers
+`s = Hash(object)`; that is, every **object** will be hashed consistently
+across browsers.  On the server each hash will map to a single **set**,
+where that set contains all the browsers that have told the server they have
+the object as local browser-state.  To support different use cases, with
+possibly different server-side behavior, we'll define a **type** for each set.
 
 The diagram below shows the write path, which we call **`Join`**, from a
 browser to the server.  The browser has an identifier or token, `b`, that is
@@ -79,17 +133,46 @@ as research areas advance and new technologies and tools become available.
 
 ### What we're doing now
 
-#### Willful IP blindness
+#### Oblivious HTTP
 
-First, this server will adhere to the [willful IP blindness
-principles](https://github.com/bslassey/ip-blindness/blob/master/proposed_willful_ip_blindness_principles.md).
-The server doesn't need to know the IP address of a client, and
-we won't store it or use it for any purpose except the conforming
-use cases described in the principles.  When [Chrome's Near-path
-NAT](https://github.com/bslassey/ip-blindness/blob/master/near_path_nat.md)
-launches we expect that calls to this server will be routed through that
-proxy for users that turn it on, further hiding those users' IP addresses
-from this server.
+For requests to the k-anonymity server that are intended to be anonymous, such
+as `Join` and `Query` requests described above, we plan to use an [Oblivious
+HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-ohttp/) relay so Google
+is blind to the IP addresses of end users.  The payload for `Join` and `Query`
+requests contain set hashes, which we consider sensitive browsing behavior,
+so we'd like Google to know as little as possible about user requests.
+Oblivious HTTP is well suited to this use case, where we have small, anonymous,
+stateless, requests and we don't need the server that knows the browsing data,
+i.e. the set hashes, privy to identifying information, including IP address,
+of the user making the request.  To implement Oblivious HTTP we're engaging
+a third-party company to operate a _relay_ resource on our behalf.  Chrome
+browsers, when making `Join` or `Query` requests, send to this relay, in the
+body of an HTTP `POST` message, an encrypted payload for the k-anonymity server.
+The payload is a [Binary HTTP](https://datatracker.ietf.org/doc/rfc9292/)
+message that has been encrypted using [Hybrid Public Key
+Encryption](https://datatracker.ietf.org/doc/rfc9180/).    Chrome will encrypt
+the message using keys fetched directly from the k-anonymity server (on the
+Google domain, not through the relay).  The relay will forward the request
+to a _gateway_ that will run on Google servers near the k-anonymity server.
+The relay is therefore oblivious to the content of the request but privy
+to the requestor's IP address and the k-anonymity server (and gateway)
+are oblivious to the requestor but privy to the request content.
+
+
+![ohttp diagram](assets/kanon_ohttp_diagram.svg)
+
+This design lets us separate between two entities user identifying data that
+we can't remove by other means (such as the IP address) and the content of
+the user's request.  No single entity sees both, and we expect a contractual
+relationship that ensures these entities don't collude to share request data.
+
+We evaluated several other proxying designs that could avoid Google becoming
+privy to user IP addresses.  Among the other options we considered, Oblivious
+HTTP stood out as offering a solution with the most coverage for Chrome users
+in restrictive network environments, such as those with existing forward
+proxies required to access the internet.  As a normal, small, `POST` request
+to the relay, Oblivious HTTP traffic is expected to work in more restricted
+environments than, say, HTTP CONNECT or MASQUE proxy requests.
 
 #### Low-entropy identifiers
 
@@ -127,14 +210,14 @@ will be bound to a specific low-entropy identifier, `b`.  Each browser will
 be issued tokens with its assigned `b`, and it can spend those tokens as it
 wishes to make `Join` calls to the server.
 
-We will operate a Trust Token issuer specific to this server and these tokens;
-we'll call this issuer **`Sign`**.  In our current proposal, `Sign` will
-require, at least initially for desktop Chrome, that the user be signed-in
-to Chrome with a Google Account.  Requiring sign-in lets us rate limit the
-number of tokens issued to a given user, assign each user a stable, but
-resettable, value for `b`, and prevent naive abuse of `Join` by anonymous
-users.  Even though the user is signed-in, and Google Account credentials
-are used to issue Trust Tokens, the Trust Tokens received by `Join` [cannot be
+We will operate a Trust Token issuer specific to this server and these
+tokens; we'll call this issuer **`Sign`**.  In our current proposal,
+`Sign` will require, at least initially for desktop Chrome, that the user
+be signed-in to Chrome with a Google Account.  Requiring sign-in lets us
+rate limit the number of tokens issued to a given user, assign each user a
+stable value for `b`, and prevent naive abuse of `Join` by anonymous users.
+Even though the user is signed-in, and Google Account credentials are
+used to issue Trust Tokens, the Trust Tokens received by `Join` [cannot be
 linked](https://github.com/WICG/trust-token-api#cryptographic-property-unlinkability)
 back to the Google Account they were issued to.  The Trust Token issuer can
 learn which users join a large number of interest groups.  To guard against
@@ -178,21 +261,43 @@ of network and computational overhead, and multi-party PIR, which has less
 overhead but the additional complexity of operating two non-colluding servers
 with consistent copies of the dataset.
 
-#### Anonymous tokens to replace low entropy identifiers
+#### Anonymous Counting Tokens to replace low-entropy identifiers
 
-We're working on researching and testing a privacy improvement to low-entropy
-browser identifiers.  The $j$-bit identifier, `b`, is constant for a given
-browser, which allows some inferences to be made by the `Join` server, in
-spite of collisions between users.  To improve the privacy of this scheme
-and increase the accuracy of our cardinality calculations, while maintaining
-our ability to prevent abusive traffic, we're researching additions to Trust
-Token APIs.
+We're working on researching and testing a privacy improvement to
+[low-entropy](#low-entropy-identifiers) browser identifiers.  The $j$-bit
+identifier, `b`, is constant for a given browser, which allows some inferences
+to be made by the `Join` server, in spite of collisions between users.
+To improve the privacy of this scheme and increase the accuracy of our
+cardinality calculations, while maintaining our ability to prevent abusive
+traffic, we're developing a new token scheme that we're calling _Anonymous
+Counting Tokens_.
 
-We are working on extending anonymous tokens in a way that enables users to
-obtain signatures on the set being joined without revealing the set to `Sign`.
-We also aim to enable additional functionality that prevents users from
-obtaining multiple tokens for the same set, letting us verify on the server
-that browsers aren't joining the same set more frequently than they should.
+Anonymous Counting Tokens will allow a token issuer (the `Sign` server)
+to issue tokens to a client that are associated with a value that the
+client provides.  The issuer will be able to ensure that the client
+can obtain only a single token for a given value without knowing
+the value the client is requesting a token for, i.e. the tokens are
+[blind](https://en.wikipedia.org/wiki/Blinding_(cryptography)).
+
+The `Sign` server will use Anonymous Counting Tokens to issue tokens signed
+for a single set hash, in contrast to the low-entropy identifier design
+where tokens are signed for a value derived from a first party identity the
+`Sign` server is given by the client.  Each user will be able to request
+only a single token for each set hash and the `Join` server will verify, in
+what will become a `Join(t, s)` call, that the token was issued for the set
+hash `s` that the client is attempting to join.  It may be surprising that
+this behavior is even possible without the token issuer learning anything
+about the set hashes joined by a particular user.  A forthcoming paper will
+describe the cryptographic technique that makes this possible.
+
+To support validity periods for the Anonymous Counting Tokens where each
+client can get one token per value per period, we will have a registration
+mechanism which will enable clients to refresh their parameters per TTL
+period and obtain a fresh token for each period.
+
+Similar to low-entropy identifiers, `Sign` will require with Anonymous Counting
+Tokens that the server has a first party identity with the user (a Google
+Account or other trusted identity provider) for the server to issue tokens.
 
 #### Trusted execution environments
 
