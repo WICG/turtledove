@@ -251,7 +251,7 @@ In the case of a component auction, all `AuctionConfig` parameters for that comp
 
 ##### 2.1.1 Providing Signals Asynchronously
 
-The values of some signals (those configured by fields `auctionSignals`, `sellerSignals`, `perBuyerSignals`, `perBuyerTimeouts`, and `directFromSellerSignals`) can optionally be provided not as concrete values, but as promises.  This permits some parts of the auction, such as loading of scripts and trusted signals, and lunching of isolated worklet processes, to overlap the computation (or network retreival) of those values.  The worklet scripts will only see the resolved values; if any such promise rejects the auction will be aborted (unless it managed to fail already or get otherwise aborted anyway).
+The values of some signals (those configured by fields `auctionSignals`, `sellerSignals`, `perBuyerSignals`, `perBuyerTimeouts`, and `directFromSellerSignals`) can optionally be provided not as concrete values, but as [Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).  This permits some parts of the auction, such as loading of scripts and trusted signals, and launching of isolated worklet processes, to overlap the computation (or network retrieval) of those values.  The worklet scripts will only see the resolved values; if any such Promise rejects the auction will be aborted (unless it managed to fail already or get otherwise aborted anyway).
 
 
 #### 2.2 Auction Participants
