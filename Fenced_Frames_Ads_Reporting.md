@@ -78,7 +78,7 @@ window.fence.reportEvent({
 });
 ```
 
-Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. 
+Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. In the interim period when FLEDGE supports rendering the winning ad in an iframe, window.fence will also be available in such an iframe.
 
 ## registerAdBeacon
 
