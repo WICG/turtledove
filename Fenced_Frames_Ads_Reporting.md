@@ -146,8 +146,8 @@ Currently, the only `eventType` that `setReportEventDataForAutomaticBeacons` all
 
 If invoked multiple times, the latest invocation before the top-level navigation would be the one that’s honored.
 
-eventData can be empty. In that case, the automatic beacon will still be sent but without an event data body in the HTTP request.
+`eventData` can be empty, in which case the automatic beacon will still be sent but without an event data body in the HTTP request.
 
-If this API is not invoked, destination for the automatic beacon will be empty and so no beacon request can be sent by the browser. 
+If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon because the `destination` is unknown.
 
 
