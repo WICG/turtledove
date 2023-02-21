@@ -110,7 +110,7 @@ before `offset` is added.
 * `offset`: Optional offset to add to the auction result value.
 
 
-After the auction happens, the final value of the generated report is `baseValue` * `scale` + `offset`.
+After the auction happens, the final value of the generated report is (`baseValue` * `scale`) + `offset`.
 The following example shows how to return the gap between an ad bid and the winning bid:
 
 ```
@@ -136,7 +136,7 @@ contribution would be generated as:
 
 ```
 bucket: 1596n
-value: 200 // = winningBid * scale + -bid = 200 * 2 + (-100 * 2)
+value: 200 // = (winningBid * scale) + offset = (200 * 2) + (-100 * 2)
 ```
 This would correspond to the gap by which the advertiser lost the auction, scaled by 2.
 Scaling is important as it allows bidders to better control the amount of noise which will
