@@ -155,7 +155,7 @@ function generateBid(...) {
     {
       bucket: {
         baseValue: "bidRejectReason",
-        offset: 255n // Offset buckets
+        offset: 500n // Offset buckets
        },
       value: 1
     });
