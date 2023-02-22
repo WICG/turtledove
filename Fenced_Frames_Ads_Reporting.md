@@ -56,7 +56,7 @@ The browser processes the beacon by sending an HTTP POST request, like the exist
 
 **Event type and data:** Includes the event type and data associated with an event. When an event type e.g. click matches to the event type registered in registerAdBeacon, the data will be used by the browser as the request body in the request sent to the registered URL.
 
-**Destination type:** List of values to determine whose registered beacons are reported, can be a combination of 'buyer', 'seller', or 'component-seller'.
+**Destination type:** List of values to determine whose registered beacons are reported, can be a combination of 'buyer', 'seller', 'direct-seller' or 'component-seller'. The 'buyer' is the bidder in the FLEDGE auction. The 'seller' is the top-level seller that is running the auction. The 'component-seller' is the seller for a component auction in a multi-level auction. The 'direct-seller' is the seller that ran the auction that they 'buyer' bid in, whether that was a top-level auction or a component auction.
 
 
 ### Example
