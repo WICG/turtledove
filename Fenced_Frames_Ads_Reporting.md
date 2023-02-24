@@ -105,7 +105,7 @@ registerAdBeacon({
 *   While fenced frames still have unrestricted network access and FLEDGE supports event-level reporting, the solution below takes advantage of the `registerAdBeacon`/`reportEvent` information flow to enable [registering attribution sources](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#registering-attribution-sources). [ARA attribution triggering](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#triggering-attribution) is unchanged for registered FLEDGE impressions.
 *   Improve the ergonomics of triggering ad beacons based on clicks.
 
-**As of writing this, the changes below are not yet implemented in Chrome.**
+**The changes below will be available in Chrome starting M112.**
 
 ### registerAdBeacon
 
