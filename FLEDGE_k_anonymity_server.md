@@ -138,7 +138,7 @@ as research areas advance and new technologies and tools become available.
 For requests to the k-anonymity server that are intended to be anonymous, such
 as `Join` and `Query` requests described above, we plan to use an [Oblivious
 HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-ohttp/) relay so Google
-is blind to the IP addresses of end users.  The payload for `Join` and `Query`
+is oblivious to the IP addresses of end users.  The payload for `Join` and `Query`
 requests contain set hashes, which we consider sensitive browsing behavior,
 so we'd like Google to know as little as possible about user requests.
 Oblivious HTTP is well suited to this use case, where we have small, anonymous,
@@ -185,14 +185,14 @@ We expect $8\leq j\leq 16$, meaning there are no more than 65,536 different
 possible identifiers; which is far lower than the number of 1-day active
 users of desktop Chrome.
 
-With our IP blindness principles, we have no way of distinguishing users that
-share a `b` when they call `Join(b, t, s)`.  When we count the cardinality
-of a set on the server, each distinct `b` will be counted only once, even if
-multiple users join the same set with identical values of `b`.  This means
-that our cardinality calculation may undercount and that we can only count
-up to a limit of $2^j$.  We expect all the k-anonymity thresholds we need to
-enforce will have $k\leq 2^j$.  Chrome code that calls `Join` will be part of
-the Chromium open source codebase, and can enforce on the user's device that
+With Oblivious HTTP, we have no way of distinguishing users that share a `b`
+when they call `Join(b, t, s)`.  When we count the cardinality of a set on
+the server, each distinct `b` will be counted only once, even if multiple
+users join the same set with identical values of `b`.  This means that our
+cardinality calculation may undercount and that we can only count up to a
+limit of $2^j$.  We expect all the k-anonymity thresholds we need to enforce
+will have $k\leq 2^j$.  Chrome code that calls `Join` will be part of the
+Chromium open source codebase, and can enforce on the user's device that
 `b` is not longer than $j$ bits.
 
 #### Abuse and invalid traffic
