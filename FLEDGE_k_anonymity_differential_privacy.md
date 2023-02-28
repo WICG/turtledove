@@ -17,7 +17,7 @@ We employ the following techniques to protect user's privacy:
 
 * The status of each set is only updated at periodic intervals (such as once an
 hour) rather than continuously. This limits the ability of tying a specific set
-status change (from no to yes) to a specific Join action based on timing.
+status change (from no to yes) to a specific `Join` action based on timing.
 
 * We add a calibrated amount of noise to both the true set size and the
 k-anonymity threshold when evaluating the status of a set. This ensures
@@ -52,7 +52,7 @@ algorithm:
 ## The AboveThresholdWithPeriodRestartAlgorithm
 
 The following paragraphs describe the algorithm at a high level. For further details,
-see [Differentially Private Algorithms][1] for $k$-Anonymity Server.
+see [Differentially Private Algorithms for $k$-Anonymity Server][1].
 
 Let $A_t(S)$ be the evaluation of the $k$-anonymity query for set $S$ at time $t$.
 
@@ -106,6 +106,6 @@ $p$, $w$, and $k$ above.
 
 
 We verified that these parameters resulted in a limited amount of noise (as
-shown in our document [Differentially Private Algorithms][1]).
+shown in our document [Differentially Private Algorithms for $k$-Anonymity Server][1]).
 
 [1]: DP_kanon_server.pdf

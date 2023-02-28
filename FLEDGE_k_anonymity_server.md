@@ -203,39 +203,39 @@ group when, in fact, the other members of the group are not real.  It is
 important that we protect `Join` against malicious write traffic, and,
 to maintain privacy, that we do this in an anonymous way.
 
-To protect this endpoint we will use [Trust
+To protect this endpoint we will use [Private State
 Tokens](https://github.com/WICG/trust-token-api).  Every write to Join will
-require a one-time-use Trust Token be attached to the request, and tokens
+require a one-time-use Private State Token be attached to the request, and tokens
 will be bound to a specific low-entropy identifier, `b`.  Each browser will
 be issued tokens with its assigned `b`, and it can spend those tokens as it
 wishes to make `Join` calls to the server.
 
-We will operate a Trust Token issuer specific to this server and these
+We will operate a Private State Token issuer specific to this server and these
 tokens; we'll call this issuer **`Sign`**.  In our current proposal,
 `Sign` will require, at least initially for desktop Chrome, that the user
 be signed-in to Chrome with a Google Account.  Requiring sign-in lets us
 rate limit the number of tokens issued to a given user, assign each user a
 stable value for `b`, and prevent naive abuse of `Join` by anonymous users.
 Even though the user is signed-in, and Google Account credentials are
-used to issue Trust Tokens, the Trust Tokens received by `Join` [cannot be
+used to issue Private State Tokens, the Private State Tokens received by `Join` [cannot be
 linked](https://github.com/WICG/trust-token-api#cryptographic-property-unlinkability)
-back to the Google Account they were issued to.  The Trust Token issuer can
+back to the Google Account they were issued to.  The Private State Token issuer can
 learn which users join a large number of interest groups.  To guard against
 this, we're exploring options that include having the client request tokens
 at a constant rate and discard unused tokens.
 
 `Query` is a read-only API, so it doesn't have the same abuse concerns as
-`Join`.  We won't require Trust Tokens, or a Google Account, for a browser
+`Join`.  We won't require Private State Tokens, or a Google Account, for a browser
 to call `Query`.
 
 #### Differential privacy of public data
 
-To protect the user data exposed through the Query server we use the
+To protect the user data exposed through the `Query` server we use the
 [AboveThresholdWithPeriodicRestartAlgorithm](FLEDGE_k_anonymity_differential_privacy.md)
 algorithm to generate the server’s public output. The algorithm is differentially
 private in the continual release setting. This means that we bound the ability of an
 observer with access to the periodically updated k-anonymity status of a set — that is,
-the stream of Query server outputs over time — to determine if a user joined that set
+the stream of `Query` server outputs over time — to determine whether a user joined that set
 in a given period.
 
 A user joining a set may flip its k-anonymity status from “not k-anonymous” to
@@ -341,7 +341,7 @@ other server functions like counting cardinalities and persisting state.
 
 #### Device attestations
 
-Our initial reliance on Google Accounts to issue Trust Tokens
+Our initial reliance on Google Accounts to issue Private State Tokens
 that authenticate writes is necessary partly because we
 don't have other methods of authenticating a Chrome browser
 to a server.  Some platforms, like Android with [SafetyNet
@@ -388,7 +388,7 @@ interest groups that might be more popular with signed-out users. Over time
 we expect to reduce, or otherwise eliminate, this potential bias by adding
 support for device attestation or other approaches to device-level trust.
 
-The Trust Token issuer, `Sign`, will enforce limits on token issuance to
+The Private State Token issuer, `Sign`, will enforce limits on token issuance to
 each Google Account.  Tokens are one-time-use, so these limits will restrict
 the number of `Join` calls a browser can make in a given period of time.
 This doesn't necessarily limit the number of interest groups the browser can
