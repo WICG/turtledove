@@ -52,7 +52,7 @@ algorithm:
 ## The AboveThresholdWithPeriodRestartAlgorithm
 
 The following paragraphs describe the algorithm at a high level. For further details,
-see [Differentially Private Algorithms for $k$-Anonymity Server][1].
+see [Differentially Private Algorithms for 𝑘-Anonymity Server][1].
 
 Let $A_t(S)$ be the evaluation of the $k$-anonymity query for set $S$ at time $t$.
 
@@ -106,6 +106,6 @@ $p$, $w$, and $k$ above.
 
 
 We verified that these parameters resulted in a limited amount of noise (as
-shown in our document [Differentially Private Algorithms for $k$-Anonymity Server][1]).
+shown in our document [Differentially Private Algorithms for 𝑘-Anonymity Server][1]).
 
 [1]: DP_kanon_server.pdf
