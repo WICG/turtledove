@@ -455,6 +455,7 @@ generateBid(interestGroup, auctionSignals, perBuyerSignals,
     trustedBiddingSignals, browserSignals, directFromSellerSignals) {
   ...
   return {'ad': adObject,
+          'adCost': optionalAdCost,
           'bid': bidValue,
           'render': renderUrl,
           'adComponents': [adComponent1, adComponent2, ...],
@@ -493,6 +494,7 @@ In the case of component auctions, an interest group's `generateBid()` function 
 The output of `generateBid()` contains the following fields:
 
 *   ad: (optional) Arbitrary metadata about the ad which this interest group wants to show. The seller uses this information in its auction and decision logic. If not present, it's treated as if the value were null.
+*   adCost: (optional) A numerical value used to pass reporting advertiser click or conversion cost from generateBid to reportWin. The precision of this number is limited to an 8-bit mantissa and 8-bit exponent, with any rounding performed stochastically.
 *   bid: A numerical bid that will enter the auction.  The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand").  If the bid is zero or negative, then this interest group will not participate in the seller's auction at all.  With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear.
 *   render: A URL which will be rendered to display the creative if this bid wins the auction.
 *   adComponents: (optional) A list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent renderUrl exactly. This field must not be present if the InterestGroup has no adComponent field. It is valid for this field not to be present even when adComponents is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
@@ -664,7 +666,8 @@ The arguments to this function are:
 
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
-*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `seller`, `madeHighestScoringOtherBid` and potentially `interestGroupName` fields.
+*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `adCost`, `seller`, `madeHighestScoringOtherBid` and potentially `interestGroupName` fields.
+    *   The `adCost` field contains the value that was returned by `generateBid` (or the bid value if no value was specified), stochastically rounded to fit into a floating point number with an 8 bit mantissa and 16 bit exponent.
     *   The `interestGroupName` may be included if the tuple of interest group owner, name, bidding script URL and ad creative URL were jointly k-anonymous.
     *   The `madeHighestScoringOtherBid` field is true if the interest group owner was the only bidder that made bids with the second highest score.
     *   The `highestScoringOtherBid` and `madeHighestScoringOtherBid` fields are based on the auction the interest group was directly part of. If that was a component auction, they're from the component auction. If that was the top-level auction, then they're from the top-level auction. Component bidders do not get these signals from top-level auctions since it is the auction seller joining the top-level auction, instead of winning component bidders joining the top-level auction directly.
