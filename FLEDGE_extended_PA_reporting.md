@@ -257,9 +257,10 @@ add a new mechanism which allows each buyer to declare a set of approved sellers
 provided to `navigator.joinAdInterestGroup()` will contain a new field named `sellerCapabilities`, a
 dict keyed by seller origin (or "*", to set defaults for non-specified seller origins) with lists of
 permission strings as values (as described below). Sellers might want to only score bids from
-buyers that will share aggregate statistics, so a field, `requiredSellerCapabilities` will also
-be added to the auction config. Any buyer that doesn't permit (for the auction's seller) all the
-`sellerCapabilities` listed in `requiredSellerCapabilities` will not participate in the auction.
+interest groups that will share aggregate statistics, so a field, `requiredSellerCapabilities` will
+also be added to the auction config. Any interest group that doesn't permit (for the auction's seller)
+all the `sellerCapabilities` listed in `requiredSellerCapabilities` will not participate in the
+auction.
 
 For the seller to declare reporting, the `auctionConfig` passed to `runAdAuction` is amended to
 contain a configuration for the seller latency report.
