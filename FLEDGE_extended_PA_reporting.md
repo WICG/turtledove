@@ -187,11 +187,11 @@ be sent (see [Triggering reports](#triggering-reports) below), and
 
 Where `signalBucket` and `signalValue` is a dictionary which consists of:
 * a `baseValue` field indicating which value the browser should use to calculate the resulting bucket or value.  A `signalValue.baseValue` or `signalBucket.baseValue` may be any of the following:
-  * `winningBid`: the value used  is the winning bid value.
-  * `highestScoringOtherBid`: the value used is the bid value that was scored as second highest.
-  * `scriptRunTime`: milliseconds of CPU time that the calling function required, when called.
-  * `signalsFetchTime`: milliseconds required to fetch the trusted bidding or scoring signals, when called from `generateBid()` or `scoreAd()` respectively.
-  * `bidRejectReason`: one of the following values:
+  * `winning-bid`: the value used is the winning bid value.
+  * `highest-scoring-other-bid`: the value used is the bid value that was scored as second highest.
+  * `script-run-time`: milliseconds of CPU time that the calling function required, when called.
+  * `signals-fetch-time`: milliseconds required to fetch the trusted bidding or scoring signals, when called from `generateBid()` or `scoreAd()` respectively.
+  * `bid-reject-reason`: one of the following values:
     * 0: indicates ad creative URL did not meet the k-anonymity threshold
     * 1: indicates seller rejected bid because “Invalid Bid”
     * 2: indicates seller rejected bid because “Bid was Below Auction Floor”
@@ -216,7 +216,7 @@ A fenced frame can trigger the sending of contributions associated with an arbit
 by calling into a new API:
 
 ```
-window.fence.reportPrivateAggregationEvent("click");
+window.fence.reportEvent("click");
 ```
 
 This will cause any contributions associated with a call to `reportContributionForEvent()`
