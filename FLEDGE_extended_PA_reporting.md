@@ -88,10 +88,12 @@ function generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBidd
   });
 ```
 
-The above logic will trigger a report if the generated bid wins (see [reserved.win](#reporting-bidding-data-for-wins)). And another one,
-if the user later clicks on the winning ad (this needs to be triggered by the fenced frame itself, see
-reporting for post-auction signals). When the buyer receives an aggregated report they can infer what
-the click-through-rate (CTR) was for users on different “interest group age” buckets.
+The above logic will trigger a report if the generated bid wins (see
+[reserved.win](#reporting-bidding-data-for-wins)). And another one, if the user later clicks on the
+winning ad (this needs to be triggered by the fenced frame itself, see
+[reportPrivateAggregationEvent](#reporting-bidding-data-associated-with-an-event-in-a-frame). When
+the buyer receives an aggregated report they can infer what the click-through-rate (CTR) was for
+users on different “interest group age” buckets.
 
 ### Example 2: Getting the average bid gap for an ad. 
 
@@ -102,13 +104,14 @@ do this, we introduce a field to the “contributions” object called `signalVa
 the report to depend on post auction information. A `signalValue` object is composed of the following
 values:
 * `baseValue`: The name of the auction result value we want to report. For instance, winningBid. 
-* `offset`: Optional offset to add/subtract to the auction result value
-* `scale`: Optional scale factor by which we want to multiply the output. This is useful for
-controlling the amount of noise added by the aggregation service. Scale is applied after `offset`
-is subtracted.
+* `scale`: Optional scale factor by which we want to multiply the auction result value. This is
+useful for controlling the amount of noise added by the aggregation service. Scale is applied
+before `offset` is added.
+* `offset`: Optional offset to add to the auction result value.
 
-After the auction happens, the final value of the generated report is `scale`*(`baseValue` + `offset`). The
-following example shows how to return the gap between an ad bid and the winning bid:
+
+After the auction happens, the final value of the generated report is (`baseValue` * `scale`) + `offset`.
+The following example shows how to return the gap between an ad bid and the winning bid:
 
 ```
 function generateBid(...) {
@@ -120,7 +123,7 @@ function generateBid(...) {
       value: {
         baseValue: "winningBid",
         scale: 2, // Number which will be multiplied by browser value
-        offset: -bid // Numbers which will be added to browser value, prior to scaling
+        offset: -bid * 2 // Numbers which will be added to browser value, after scaling
        }
     });
 
@@ -133,7 +136,7 @@ contribution would be generated as:
 
 ```
 bucket: 1596n
-value: 200 // = (winningBid + -bid) * scale = (200 - 100) * 2 
+value: 200 // = (winningBid * scale) + offset = (200 * 2) + (-100 * 2)
 ```
 This would correspond to the gap by which the advertiser lost the auction, scaled by 2.
 Scaling is important as it allows bidders to better control the amount of noise which will
@@ -182,7 +185,7 @@ The parameters consist of:
 be sent (see [Triggering reports](#triggering-reports) below), and
 * a `contribution` object which contains:
   * a `bucket` which is a 128bit ID or a `signalBucket`  which tells the browser how to calculate the bucket (represented as BigInt) and
-  * a `value` which is an integer or a `signalValue` which tells the browser how to calculate the value.
+  * a `value` which is a non-negative integer or a `signalValue` which tells the browser how to calculate the value.
 
 
 Where `signalBucket` and `signalValue` is a dictionary which consists of:
@@ -205,8 +208,8 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
       * The auction was aborted (i.e. calling endAdAuction())
       * an auction that never rendered the ad
 * optional `offset` and `scale` that allow the reporter to manipulate the browser signal to customize the buckets and values they will receive in reports:
-  * `scale` will be multiplied by the browser provided value
-  * `offset` will be added to the browser provided value (allows you to shift buckets, etc)
+  * `scale` will be multiplied by the browser provided value. Scale is applied before `offset` is added. Default value is 1.0.
+  * `offset` will be added to the browser provided value (allows you to shift buckets, etc). Default value is 0.
 
 ## Triggering reports
 
@@ -224,7 +227,7 @@ with an event-type of `click` to be reported/sent.
 
 In this example, `"click"` is an event-name chosen by the auction bidder. There are a number
 of event names that are reserved and invoked directly by the browser. All reserved values will
-have the `"reserved."` prefix.
+have the `"reserved."` prefix, and all non-reserved values cannot have the `"reserved."` prefix.
 
 ### Reporting bidding data for wins
 
