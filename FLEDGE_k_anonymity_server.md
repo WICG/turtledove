@@ -205,38 +205,66 @@ to maintain privacy, that we do this in an anonymous way.
 
 To protect this endpoint we will use [Private State
 Tokens](https://github.com/WICG/trust-token-api).  Every write to Join will
-require a one-time-use Private State Token be attached to the request, and
-tokens will be bound to a specific low-entropy identifier, `b`.  Each browser
-will be issued tokens with its assigned `b`, and it can spend those tokens
-as it wishes to make `Join` calls to the server.
+require a one-time-use Private State Token be attached to the request, and tokens
+will be bound to a specific low-entropy identifier, `b`.  Each browser will
+be issued tokens with its assigned `b`, and it can spend those tokens as it
+wishes to make `Join` calls to the server.
 
-We will operate a Private State Token issuer specific to this server and
-these tokens; we'll call this issuer **`Sign`**.  In our current proposal,
-`Sign` will require, at least initially for desktop Chrome, that the user be
-signed-in to Chrome with a Google Account.  Requiring sign-in lets us rate
-limit the number of tokens issued to a given user, assign each user a stable
-value for `b`, and prevent naive abuse of `Join` by anonymous users.  Even
-though the user is signed-in, and Google Account credentials are used to issue
-Private State Tokens, the Private State Tokens received by `Join` [cannot be
+We will operate a Private State Token issuer specific to this server and these
+tokens; we'll call this issuer **`Sign`**.  In our current proposal,
+`Sign` will require, at least initially for desktop Chrome, that the user
+be signed-in to Chrome with a Google Account.  Requiring sign-in lets us
+rate limit the number of tokens issued to a given user, assign each user a
+stable value for `b`, and prevent naive abuse of `Join` by anonymous users.
+Even though the user is signed-in, and Google Account credentials are
+used to issue Private State Tokens, the Private State Tokens received by `Join` [cannot be
 linked](https://github.com/WICG/trust-token-api#cryptographic-property-unlinkability)
-back to the Google Account they were issued to.  The Private State Token
-issuer can learn which users join a large number of interest groups.  To guard
-against this, we're exploring options that include having the client request
-tokens at a constant rate and discard unused tokens.
+back to the Google Account they were issued to.  The Private State Token issuer can
+learn which users join a large number of interest groups.  To guard against
+this, we're exploring options that include having the client request tokens
+at a constant rate and discard unused tokens.
 
 `Query` is a read-only API, so it doesn't have the same abuse concerns as
-`Join`.  We won't require Private State Tokens, or a Google Account, for a
-browser to call `Query`.
+`Join`.  We won't require Private State Tokens, or a Google Account, for a browser
+to call `Query`.
 
 #### Differential privacy of public data
 
-We're working to ensure that the data this server exposes through `Query`, that
-is the set of k-anonymous hashes, meets a quantifiable level of [differential
-privacy](https://medium.com/georgian-impact-blog/a-brief-introduction-to-differential-privacy-eacf8722283b)
-and does not reveal information about what sets a non-malicious user may have
-joined.  In addition, we want to bound false negatives and false positives
-within the set of k-anonymous hashes because false positives pose a privacy
-risk and false negatives limit the utility of FLEDGE.
+To protect the user data exposed through the `Query` server we use the
+[AboveThresholdWithPeriodicRestartAlgorithm](FLEDGE_k_anonymity_differential_privacy.md)
+algorithm to generate the server’s public output. The algorithm is differentially
+private in the continual release setting. This means that we bound the ability of an
+observer with access to the periodically updated k-anonymity status of a set — that is,
+the stream of `Query` server outputs over time — to determine whether a user joined that set
+in a given period.
+
+A user joining a set may flip its k-anonymity status from “not k-anonymous” to
+“k-anonymous”. Intuitively, observing the k-anonymity status of a set accurately
+right before and right after the join event may infer exactly that a user has joined
+a set. To reduce information leakage risks, the algorithm applies noise to the correct
+evaluation of the k-anonymity query and limits the update frequency to period
+intervals. The noise is carefully calibrated so that the total leaked information
+from the continual observations of Query responses is bounded. The algorithm also
+guarantees limits to the probability of false negative and false positive responses.
+
+The algorithm for a single set is built upon the
+[AboveThreshold](https://dl.acm.org/doi/10.1561/0400000042) (Theorem 3.23) algorithm
+which is provably differentially private for a single monotone run, ending at the
+first positive (“set is k-anonymous”) output. The noise used in the algorithm is
+[truncated Laplace noise](https://proceedings.mlr.press/v108/geng20a.html). To provide
+accurate k-anonymity evaluation in the streaming setting, [FLEDGE](FLEDGE.md) uses
+the novel algorithm composed of serially executed AboveThreshold instances. An
+AboveThreshold algorithm instance runs for a limited time period. If the algorithm
+returns a positive k-anonymity status for a set during this period, the response
+remains positive until the end of the AboveThreshold instance run. At the end of the
+period, the instance is refreshed. The restart ensures that the k-anonymity query
+for each set is noisily evaluated with a guaranteed minimum frequency, and past set
+joins do not impact the set k-anonymity status for an unlimited period of time. The
+complete details on the novel algorithm are available in
+[Differentially Private Algorithms for 𝑘-Anonymity Server](DP_kanon_server.pdf).
+This algorithm is related to our research on the more general problem of
+differentially private estimation of counting queries in continual release. For
+further details, see our [research paper](https://arxiv.org/abs/2301.05605).
 
 ### Privacy enhancements we are exploring
 
