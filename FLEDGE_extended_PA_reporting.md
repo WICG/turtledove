@@ -198,6 +198,7 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
     * 5: indicates seller rejected bid because “Creative Filtered - Blocked by Publisher”
     * 6: indicates seller rejected bid because “Creative Filtered - Language Exclusions”
     * 7: indicates seller rejected bid because “Creative Filtered - Category Exclusions”
+    * 8: indicates seller rejected bid because "Creative Filtered - Did Not Meet The K-anonymity Threshold"
     * Perhaps other values indicating:
       * generateBid() hitting timeout
       * The auction was aborted (i.e. calling endAdAuction())
