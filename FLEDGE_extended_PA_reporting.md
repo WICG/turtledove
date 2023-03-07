@@ -103,7 +103,7 @@ which do not win](#reporting-for-bids-which-do-not-win)), but also have the valu
 do this, we introduce a field to the “contributions” object called `signalValue`. This field allows
 the report to depend on post auction information. A `signalValue` object is composed of the following
 values:
-* `baseValue`: The name of the auction result value we want to report. For instance, winningBid. 
+* `baseValue`: The name of the auction result value we want to report. For instance, winning-bid. 
 * `scale`: Optional scale factor by which we want to multiply the auction result value. This is
 useful for controlling the amount of noise added by the aggregation service. Scale is applied
 before `offset` is added.
@@ -121,7 +121,7 @@ function generateBid(...) {
     {
       bucket: 1596n, // represents a bucket for interest group x winning bid price
       value: {
-        baseValue: "winningBid",
+        baseValue: "winning-bid",
         scale: 2, // Number which will be multiplied by browser value
         offset: -bid * 2 // Numbers which will be added to browser value, after scaling
        }
@@ -136,7 +136,7 @@ contribution would be generated as:
 
 ```
 bucket: 1596n
-value: 200 // = (winningBid * scale) + offset = (200 * 2) + (-100 * 2)
+value: 200 // = (winning-bid * scale) + offset = (200 * 2) + (-100 * 2)
 ```
 This would correspond to the gap by which the advertiser lost the auction, scaled by 2.
 Scaling is important as it allows bidders to better control the amount of noise which will
@@ -157,7 +157,7 @@ function generateBid(...) {
     "reserved.loss",
     {
       bucket: {
-        baseValue: "bidRejectReason",
+        baseValue: "bid-reject-reason",
         offset: 255n // Offset buckets
        },
       value: 1
@@ -170,7 +170,7 @@ If the bid is rejected for not reaching the k-anonymity threshold, this would re
 contribution being generated:
 
 ```
-bucket: 255n // 255n + 0n (0n is the value associated with not reaching the threshold, see bidRejectReason below)
+bucket: 255n // 255n + 0n (0n is the value associated with not reaching the threshold, see bid-reject-reason below)
 value: 1
 ```
 
