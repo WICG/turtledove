@@ -823,7 +823,7 @@ We will use [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-oh
 
 *   0x0020 DHKEM(X25519, HKDF-SHA256) for KEM (Key encapsulation mechanisms)
 *   0x0001 HKDF-SHA256 for KDF (key derivation functions)
-*   AES128GCM for AEAD scheme.
+*   AES256GCM for AEAD scheme.
 
 ## Server Internal APIs and procedures
 
