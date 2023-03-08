@@ -241,6 +241,8 @@ much more likely when the number of keys in a request is small.
 
 ## Query API version 2
 
+__Query versions 2 and beyond are specifically designed for the trusted TEE key/value service as part of the trust model, published here for explanatory purposes. BYOS servers do not need to implement these.__
+
 ### Background
 
 In this version we present a protocol that enables trusted communication between Chrome and the trusted key/value service. The protocol assumes a functioning trust model as described in [the key/value service explainer](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md) is in place, primarily that only service implementations recognized by Privacy Sandbox can obtain private decryption keys, and the mechanism for the client and service to obtain cryptographic keys is available but outside the scope of this document.
