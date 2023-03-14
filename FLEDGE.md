@@ -687,7 +687,7 @@ The arguments to this function are:
     * The `joinCount` field is the number of times this device has joined this interest group while the interest group has been continuously stored (that is, there are no gaps in the storage of the interest group on the device due to leaving or membership expiring), using the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
     * The `recency` field is duration of time (in minutes) from when this device joined this interest group until now, using the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
 *   `directFromSellerSignals` is an object that may contain the following fields:
-    *   `perBuyerSignals`: Like auctionConfig.perBuyerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
+    *   `perBuyerSignals`: Like `auctionConfig.perBuyerSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
     *   `auctionSignals`: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
 * `modelingSignals` is the `modelingSignals` returned from `generateBid()`, using the [noising scheme](#521-noised-and-bucketed-signals).
 
