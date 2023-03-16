@@ -271,13 +271,13 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   1. If |signal| is [=AbortSignal/aborted=], then [=reject=] |p| with |signal|'s
     [=AbortSignal/abort reason=] and return |p|.
   1. [=AbortSignal/Add|Add the following abort steps=] to |signal|:
-    1. Aborts the auction.
+    1. TODO: Abort the auction.
     1. [=Reject=] |p| with |signal|’s [=AbortSignal/abort reason=].
 1. Let |winning_ad_url| be the result of running [=generate and score bids=] with |auctionConfig|.
 1. TODO: Let [=generate and score bids=] return a bool manually_aborted as well, to allow aborting
   the auction.
 1. TODO: UpdateInterestGroupsPostAuction.
-1. If |winning_ad_url| is not null, resolve |p| with |winning_ad_url|.
+1. Resolve |p| with |winning_ad_url|.
 1. Return |p|.
 
 </div>
@@ -399,14 +399,15 @@ To <dfn>parse an origin</dfn> given a [=string=] |input|:
 <div algorithm="generate and score bids">
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|:
-1. If |auctionConfig|'s [=auction config/component auctions=] are empty:
-  1. TODO: Create a seller worklet.
+1. If |auctionConfig|'s [=auction config/component auctions=] are [=list/is empty|empty=]:
+  1. TODO: Create a seller script runner.
 1. Otherwise:
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=]:
     1. [=generate and score bids=] with |component|.
-  1. TODO: If the last |component|'s seller worklet is received, create a seller worklet.
-1. Let |decisionLogicScript| be the result of [=fetch a javascript=] with |auctionConfig|'s
-  [=auction config/decision logic url=].
+  1. TODO: If the last |component|'s seller script runner is received, create a seller script
+    runner.
+1. Let |decisionLogicScript| be the result of [=fetch resource=] with |auctionConfig|'s
+  [=auction config/decision logic url=], and "text/javascript".
 1. Let |bidGenerators| be a new [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose
   [=map/values=] are [=per buyer bid generators=].
 1. [=list/For each=] |buyer| in [=auction config/interest group buyers=]:
@@ -439,19 +440,29 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|:
   1. [=map/For each=] |signalsUrl| -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
-    1. TODO: Fetch |signalsUrl| asynchronously.
+    1. Let |keys| be a new [=ordered set=].
+    1. Let |igNames| be a new [=ordered set=].
+    1. [=set/For each=] |ig| of |groups|:
+      1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
+      1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
+    1. Let |fullSignalsUrl| be the result of calling [=build trusted bidding signals url=] with
+      |signalsUrl|, |keys| and |igNames|.
+    1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl| and
+      "application/json".
     1. [=map/For each=] |joiningOrigin| -> |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-          1. TODO: create bidder worklet. If failed, [=iteration/continue=].
-          1. Let |biddingScript| be the result of [=fetch a javascript=] with |ig|'s
-            [=interest group/bidding url=]. If |biddingScript| is an error, [=iteration/continue=].
-          1. Let |generatedBid| be the result of running [=evaluate script=] with
+          1. TODO: create bidder script runner. If failed, [=iteration/continue=].
+          1. Let |biddingScript| be the result of [=fetching resource=] with |ig|'s
+            [=interest group/bidding url=], and "text/javascript". If |biddingScript| is an error,
+            [=iteration/continue=].
+          1. TODO: Let |generatedBid| be the result of running [=evaluate script=] with
             [=evaluate script/script=] set to |biddingScript|, [=evaluate script/functionName=] set
-            to "generateBid", and [=evaluate script/arguments=] set to generateBid's arguements.
+            to "generateBid", and [=evaluate script/arguments=] set to |trustedBiddingSignals|.
           1. If |generatedBid|'s [=generate bid output/bid=] is negative or 0,
             [=iteration/continue=].
-          1. Let |score| be the result of running [=evaluate script=] with
+          1. TODO: Validate other fields of |generatedBid|.
+          1. TODO: Let |score| be the result of running [=evaluate script=] with
             [=evaluate script/script=] set to |decisionLogicScript|,
             [=evaluate script/functionName=] set to "scoreAd", and [=evaluate script/arguments=] set
             to scoreAd's arguements.
@@ -490,9 +501,11 @@ To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for=
     :: "`error`"
 1. Return |request|.
 
-To <dfn>fetch a javascript</dfn> with given [=URL=] |url|:
+<div algorithm="fetch resource">
+
+To <dfn>fetch resource</dfn> given a [=URL=] |url|, and a [=string=] |mimeType|:
 1. Let |request| be the result of [=creating a request=] with |url|, and [=create a request/accept=]
-  set to "`application/javascript`".
+  set to |mimeType|.
 1. [=Fetch=] |request|.
 1. Wait for the [=fetch/processResponseConsumeBody=] algorithm to finish. TODO: use 
   [=fetch/processResponseConsumeBody=] as argument to [=fetch=].
@@ -502,11 +515,42 @@ To <dfn>fetch a javascript</dfn> with given [=URL=] |url|:
 1. Let |headers| be |response|'s [=response/header list=].
 1. If [=header list/getting a structured field value=] "X-Allow-FLEDGE" from |headers| does not
   return true, return failure.
-1. Let |mimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
-1. If |mimeType| is failure or not a [=JavaScript MIME type=], return failure.
-1. If |mimeType|'s [=MIME type/parameters=]["`charset`"] [=map/exists=], and is not "utf-8" or
-  "us-ascii", return failure.
+1. Let |headerMimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
+1. Return failure if any of:
+  1. |headerMimeType| is failure.
+  1. |mimeType| is "`application/javascript`" and |headerMimeType| is not a [=JavaScript MIME type=].
+  1. |mimeType| is "`application/json`" and |headerMimeType| is not a [=JSON MIME type=].
+1. Let |mimeTypeCharset| be |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
+1. Return failure if any of:
+  1. If |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and |body| is not
+    [=UTF-8=] encoded.
+  1. If |mimeTypeCharset| is "us-ascii", and |body| is not [=ascii string=].
 1. Return |body|.
+
+</div>
+
+<div algorithm="build trusted bidding signals url">
+
+To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
+[=strings=] |keys|, and an [=ordered set=] of [=strings=] |igNames|:
+1. Let |queryParamsList| be a new [=list/is empty|empty=] [=list=].
+1. [=list/Append=] "hostname=" to |queryParamsList|.
+1. [=list/Append=] (escape) [=this=]'s [=relevant settings object=]'s
+  [=environment/top-level origin=] to |queryParamsList|.
+1. If |keys| is not [=set/is empty|empty=]:
+  1. [=list/Append=] "&keys=" to |queryParamsList|.
+  1. [=list/Append=] the result of (escape) [=string/concatenate=] |keys| with separator set to ","
+    to |queryParamsList|.
+1. If |igNames| is not [=set/is empty|empty]:
+  1. [=list/Append=] "&interestGroupNames=" to |queryParamsList|.
+  1. [=list/Append=] the result of (escape) [=string/concatenate=] |igNames| with separator set to
+    "," to |queryParamsList|.
+1. TODO: Do we want to add [=auction config/seller experiment group id=]?
+1. Let |fullSignalsUrl| be |signalsUrl|.
+1. Set |fullSignalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
+1. return |fullSignalsUrl|.
+
+</div>
 
 To <dfn>evaluate script</dfn> with given [=string=] <dfn for="evaluate script">|script|</dfn>,
 [=string=] <dfn for="evaluate script">|functionName|</dfn>, and a [=list=]
