@@ -259,10 +259,9 @@ dictionary AuctionAdConfig {
 
 The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 
-1. Assert: These steps are running [=in parallel=].
-1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
-  "[=run-ad-auction=]" [=policy-controlled feature=], then [=exception/throw=] a
-  "{{NotAllowedError}}" {{DOMException}}.
+1. Let |global| be [=this=]'s [=relevant global object=].
+1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=run-ad-auction=]"
+  [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
 1. Let |auctionConfig| be the result of running [=validate and convert auction ad config=] with
   |config| and [=validate and convert auction ad config/isTopLevel=] set to true.
 1. If |auctionConfig| is failure, then return [=a promise rejected with=] a {{TypeError}}.
@@ -275,12 +274,11 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     1. TODO: Abort the auction.
     1. [=Reject=] |p| with |signal|’s [=AbortSignal/abort reason=].
 1. Let |bidGenerators| be the result of running [=build bid generators map=] with |auctionConfig|.
-1. Let |winningAdUrl| be the result of running [=generate and score bids=] with |auctionConfig|, and
-  |bidGenerators|.
-  TODO: Let [=generate and score bids=] return a bool manually_aborted as well, to allow aborting
-  the auction.
-1. TODO: UpdateInterestGroupsPostAuction.
-1. Resolve |p| with |winningAdUrl|.
+1. Run the following steps [=in parallel=]:
+  1. Run [=generate and score bids=] with |auctionConfig|, |bidGenerators|, and |global|.
+    TODO: Let [=generate and score bids=] return a bool manually_aborted as well, to allow aborting
+    the auction.
+  1. TODO: UpdateInterestGroupsPostAuction.
 1. Return |p|.
 
 </div>
@@ -435,35 +433,36 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 
 <div algorithm="generate and score bids">
 
-To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, and an
-[=ordered map=] |bidGenerators|:
+To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
+[=ordered map=] |bidGenerators|, and [=global object=] |global|:
 1. Let |topScore|, and |numTopBids| be 0.
 1. Let |winningAdUrl| be null.
 1. Let |allBidsGeneratedAndScored| be null.
 1. Let |queue| be the result of [=starting a new parallel queue=].
-1. If |auctionConfig|'s [=auction config/component auctions=] are [=list/is empty|empty=]:
-  1. TODO: Create a seller script runner.
-1. Otherwise:
-  1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=]:
-    1. [=generate and score bids=] with |component|.
-  1. TODO: If the last |component|'s seller script runner is received, create a seller script
-    runner.
-1. Let |decisionLogicScript| be the result of [=fetch resource=] with |auctionConfig|'s
-  [=auction config/decision logic url=], and "text/javascript".
-1. [=map/For each=] buyer → |perBuyerGenerator| of |bidGenerators|:
-  1. [=map/For each=] |signalsUrl| -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
-    1. Let |keys| be a new [=ordered set=].
-    1. Let |igNames| be a new [=ordered set=].
-    1. [=set/For each=] |ig| of |groups|:
-      1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
-      1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
-    1. Let |fullSignalsUrl| be the result of calling [=build trusted bidding signals url=] with
-      |signalsUrl|, |keys| and |igNames|.
-    1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl| and
-      "application/json".
-    1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
-      1. [=list/For each=] |ig| of |groups|:
-        1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
+1. Let |p| be [=a new promise=].
+1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
+  1. If |auctionConfig|'s [=auction config/component auctions=] are [=list/is empty|empty=]:
+    1. TODO: Create a seller script runner.
+  1. Otherwise:
+    1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=]:
+      1. [=generate and score bids=] with |component|.
+    1. TODO: If the last |component|'s seller script runner is received, create a seller script
+      runner.
+  1. Let |decisionLogicScript| be the result of [=fetch resource=] with |auctionConfig|'s
+    [=auction config/decision logic url=], and "text/javascript".
+  1. [=map/For each=] buyer → |perBuyerGenerator| of |bidGenerators|:
+    1. [=map/For each=] |signalsUrl| -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
+      1. Let |keys| be a new [=ordered set=].
+      1. Let |igNames| be a new [=ordered set=].
+      1. [=set/For each=] |ig| of |groups|:
+        1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
+        1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
+      1. Let |fullSignalsUrl| be the result of calling [=build trusted bidding signals url=] with
+        |signalsUrl|, |keys| and |igNames|.
+      1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl|
+        and "application/json".
+      1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
+        1. [=list/For each=] |ig| of |groups|:
           1. TODO: create bidder script runner. If failed, [=iteration/continue=].
           1. Let |biddingScript| be the result of [=fetching resource=] with |ig|'s
             [=interest group/bidding url=], and "text/javascript". If |biddingScript| is an error,
@@ -487,7 +486,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. If there is no more interest group waiting to be generated, waiting to be scored, or
             still being scored, set |allBidsGeneratedAndScored| to true.
 1. Wait until |allBidsGeneratedAndScored| is set.
-1. return |winningAdUrl|.
+1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p| with
+  |winningAdUrl|.
 
 </div>
 
