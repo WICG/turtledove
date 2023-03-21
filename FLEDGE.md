@@ -223,7 +223,7 @@ const myAuctionConfig = {
     ...
   ],
   'signal': /* optionally, an AbortSignal */...,
-  resolveToConfig: /* optionally, a boolean */...,
+  'resolveToConfig': /* optionally, a boolean */...,
 };
 const auctionResult = await navigator.runAdAuction(myAuctionConfig);
 
