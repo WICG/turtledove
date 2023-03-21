@@ -147,8 +147,7 @@ be added to various aggregation keys.
 Similar to the above example, sometimes, the key that we want to aggregate over may depend
 on the outcome of an auction. To solve this use case we provide an object called `signalBucket`.
 The final bucket id of the bucket will depend on the outcome of the auction. The following
-example allows the buyer to keep track of how many times an ad was not shown because it was
-throttled due to not passing a k-anonymity threshold.
+example allows the buyer to keep track of how many times their bid was rejected for particular reasons.
 
 
 ```
@@ -158,7 +157,7 @@ function generateBid(...) {
     {
       bucket: {
         baseValue: "bid-reject-reason",
-        offset: 255n // Offset buckets
+        offset: 500n // Offset buckets
        },
       value: 1
     });
@@ -166,11 +165,10 @@ function generateBid(...) {
   return bid;
 }
 ```
-If the bid is rejected for not reaching the k-anonymity threshold, this would result in a
-contribution being generated:
+If the bid is rejected for being below auction floor, this would result in a contribution being generated:
 
 ```
-bucket: 255n // 255n + 0n (0n is the value associated with not reaching the threshold, see bid-reject-reason below)
+bucket: 502n // 500n + 2n (2n is the value associated with bids below auction floor, see bid-reject-reason below)
 value: 1
 ```
 
@@ -195,7 +193,7 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
   * `script-run-time`: milliseconds of CPU time that the calling function required, when called.
   * `signals-fetch-time`: milliseconds required to fetch the trusted bidding or scoring signals, when called from `generateBid()` or `scoreAd()` respectively.
   * `bid-reject-reason`: one of the following values:
-    * 0: indicates ad creative URL did not meet the k-anonymity threshold
+    * 0: indicates seller rejected bid without providing a reason, i.e., bid reject reason not available
     * 1: indicates seller rejected bid because “Invalid Bid”
     * 2: indicates seller rejected bid because “Bid was Below Auction Floor”
     * 3: indicates seller rejected bid because “Creative Filtered - Pending Approval by Exchange”
@@ -203,6 +201,7 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
     * 5: indicates seller rejected bid because “Creative Filtered - Blocked by Publisher”
     * 6: indicates seller rejected bid because “Creative Filtered - Language Exclusions”
     * 7: indicates seller rejected bid because “Creative Filtered - Category Exclusions”
+    * 8: indicates seller rejected bid because "Creative Filtered - Did Not Meet The K-anonymity Threshold"
     * Perhaps other values indicating:
       * generateBid() hitting timeout
       * The auction was aborted (i.e. calling endAdAuction())
