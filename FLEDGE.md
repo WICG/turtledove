@@ -225,7 +225,7 @@ const myAuctionConfig = {
   'signal': /* optionally, an AbortSignal */...,
   'resolveToConfig': /* optionally, a boolean */...,
 };
-const auctionResult = await navigator.runAdAuction(myAuctionConfig);
+const result = await navigator.runAdAuction(myAuctionConfig);
 
 // If `result` is a `FencedFrameConfig` object, it must be used with fenced frame
 // element via its `config` attribute. Otherwise, it's a `urn:uuid` for an iframe.
