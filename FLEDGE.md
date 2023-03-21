@@ -260,7 +260,7 @@ Optionally, `resolveToConfig` is a boolean directing the promise to resolve to a
 If the `window.FencedFrameConfig` interface is not exposed (because e.g., the script is running in an older version of Chrome that does not yet implement `FencedFrameConfig`, then the auction will _always_ yield a URN.
 Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame element, you have two options:
 
-1. Only pass `resolveToConfig: true` in if you detect that `window.FencedFrameConfig != undefined`, or;
+1. Only pass `resolveToConfig: true` in if you detect that `window.FencedFrameConfig != undefined`, or
 1. Unconditionally pass in `resolveToConfig: true` and check whether the auction result is a config or a URN
 
 All fields that accept arbitrary metadata objects (`auctionSignals`, `sellerSignals`, and keys of `perBuyerSignals`) must be JSON-serializable.
