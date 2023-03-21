@@ -315,8 +315,9 @@ only a single token for each set hash and the `Join` server will verify, in
 what will become a `Join(t, s)` call, that the token was issued for the set
 hash `s` that the client is attempting to join.  It may be surprising that
 this behavior is even possible without the token issuer learning anything
-about the set hashes joined by a particular user.  A forthcoming paper will
-describe the cryptographic technique that makes this possible.
+about the set hashes joined by a particular user.  See our
+[research paper](https://eprint.iacr.org/2023/320) for the new cryptographic
+protocol that makes this possible.
 
 To support validity periods for the Anonymous Counting Tokens where each
 client can get one token per value per period, we will have a registration
