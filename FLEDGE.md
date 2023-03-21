@@ -261,7 +261,7 @@ If the `window.FencedFrameConfig` interface is not exposed (because e.g., the sc
 Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame element, you have two options:
 
 1. Only pass `resolveToConfig: true` in if you detect that `window.FencedFrameConfig != undefined`, or
-1. Unconditionally pass in `resolveToConfig: true` and check whether the auction result is a config or a URN
+1. Unconditionally pass in `resolveToConfig: true` and check whether the auction result is a config or a URN.
 
 All fields that accept arbitrary metadata objects (`auctionSignals`, `sellerSignals`, and keys of `perBuyerSignals`) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`decisionLogicUrl` and `trustedScoringSignalsUrl`) must point to URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for loading FLEDGE resources.
