@@ -227,7 +227,7 @@ const myAuctionConfig = {
 };
 const result = await navigator.runAdAuction(myAuctionConfig);
 
-// If `result` is a `FencedFrameConfig` object, it must be used with fenced frame
+// If `result` is a `FencedFrameConfig` object, it must be used with a fenced frame
 // element via its `config` attribute. Otherwise, it's a `urn:uuid` for an iframe.
 if (window.FencedFrameConfig && result instanceof FencedFrameConfig)
   fencedFrame.config = result;
