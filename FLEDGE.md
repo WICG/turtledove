@@ -256,7 +256,7 @@ Optionally, `sellerExperimentGroupId` can be specified by the seller to support 
 
 Optionally, `perBuyerPrioritySignals` is an object mapping string keys to Javascript numbers that can be used to dynamically compute interest group priorities before `perBuyerGroupLimits` are applied. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
 
-Optionally, `resolveToConfig` is a boolean directing the promise to resolve to a `FencedFrameConfig` if true, for use in a `<fencedframe>`, or an opaque `urn:uuid` URL otherwise, for use in an `<iframe>`.
+Optionally, `resolveToConfig` is a boolean directing the promise returned from `runAdAuction()` to resolve to a `FencedFrameConfig` if true, for use in a `<fencedframe>`, or if false to an opaque `urn:uuid` URL, for use in an `<iframe>`.  If `resolveToConfig` is not set, it defaults to false.
 If the `window.FencedFrameConfig` interface is not exposed (because e.g., the script is running in an older version of Chrome that does not yet implement `FencedFrameConfig`, then the auction will _always_ yield a URN.
 Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame element, you have two options:
 
