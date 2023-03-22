@@ -103,7 +103,7 @@ New agenda items:
 *   The current fledge on device flow - reseller code. The seller creates an auction config and then there is the auction on device, select winning ad, winning impression, and rendering the ad.
 *   B&A is another performance optimization option - offloading the network compute to a TEE. Networking will be done within servers and not on a device. It is a new drop-in replacement for adtech.
 *   **[Deck Presentation]**
-    *   https://drive.google.com/file/d/1W1qXvdis--yyRyV1sO\_PmUqXoUg9z00g/view?usp=sharing 
+    *   https://drive.google.com/file/d/1W1qXvdis--yyRyV1sO_PmUqXoUg9z00g/view
 *   Near Drop In Replacement
     *   DSP
         *   Same
