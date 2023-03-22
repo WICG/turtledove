@@ -88,7 +88,7 @@ New agenda items:
 
 *   Bidding and Auction Services (Itay Sharfi, Priyanka Chatterjee) 
 
-    Updated Explainer: https://github.com/privacysandbox/fledge-docs/blob/main/bidding\_auction\_services\_api.md
+    Updated Explainer: https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md
 
 *   Migrating from URNs to FencedFrameConfigs to navigate fenced frames (Dominic Farolino). Summary doc: [FencedFrameConfig Transition](https://docs.google.com/document/d/1a6DFN3d4EEuWFM8lnk7uCeRmPFwniTGirilG33DjOM8/edit#)
 *   Creative Macros proposal (Shawn Hong)
