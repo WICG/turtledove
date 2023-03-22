@@ -434,12 +434,11 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 <div algorithm="generate and score bids">
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
-[=ordered map=] |bidGenerators|, and [=global object=] |global|:
+[=ordered map=] |bidGenerators|, a [=global object=] |global|, and a [=promise type=] |p|:
 1. Let |topScore|, and |numTopBids| be 0.
 1. Let |winningAdUrl| be null.
 1. Let |allBidsGeneratedAndScored| be null.
 1. Let |queue| be the result of [=starting a new parallel queue=].
-1. Let |p| be [=a new promise=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. If |auctionConfig|'s [=auction config/component auctions=] are [=list/is empty|empty=]:
     1. TODO: Create a seller script runner.
@@ -450,15 +449,23 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       runner.
   1. Let |decisionLogicScript| be the result of [=fetch resource=] with |auctionConfig|'s
     [=auction config/decision logic url=], and "text/javascript".
-  1. [=map/For each=] buyer → |perBuyerGenerator| of |bidGenerators|:
+  1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
+    [=auction config/all buyer experiment group id=].
+  1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|:
+    1. Let |buyerExperimentGroupId| be |allBuyersExperimentGroupId|.
+    1. Let |perBuyerExperimentGroupIds| be |auctionConfig|'s
+      [=auction config/per buyer experiment group ids=].
+    1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|] exists:
+      1. Set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
     1. [=map/For each=] |signalsUrl| -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
       1. Let |keys| be a new [=ordered set=].
       1. Let |igNames| be a new [=ordered set=].
-      1. [=set/For each=] |ig| of |groups|:
-        1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
-        1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
+      1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
+        1. [=list/For each=] |ig| of |groups|:
+          1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
+          1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
       1. Let |fullSignalsUrl| be the result of calling [=build trusted bidding signals url=] with
-        |signalsUrl|, |keys| and |igNames|.
+        |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|.
       1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl|
         and "application/json".
       1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
@@ -546,7 +553,8 @@ To <dfn>fetch resource</dfn> given a [=URL=] |url|, and a [=string=] |mimeType|:
 <div algorithm="build trusted bidding signals url">
 
 To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
-[=strings=] |keys|, and an [=ordered set=] of [=strings=] |igNames|:
+[=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, and a non-negative 16-bit integer
+|experimentGroupId|:
 1. Let |queryParamsList| be a new [=list/is empty|empty=] [=list=].
 1. [=list/Append=] "hostname=" to |queryParamsList|.
 1. [=list/Append=] the result of [=UTF-8 percent encode=] [=this=]'s [=relevant settings object=]'s
@@ -559,12 +567,20 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
   1. [=list/Append=] "&interestGroupNames=" to |queryParamsList|.
   1. Let |igNamesStr| be the result of [=string/concatenate=] |igNames| with separator set to ",".
   1. [=list/Append=] the result of [=UTF-8 percent encode=] |igNamesStr| to |queryParamsList|.
-1. TODO: Do we want to add [=auction config/seller experiment group id=]?
+1. If |experimentGroupId| is not null:
+  1. [=list/Append=] "&experimentGroupId=" to |queryParamsList|.
+  1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
 1. Let |fullSignalsUrl| be |signalsUrl|.
 1. Set |fullSignalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
 1. return |fullSignalsUrl|.
 
 </div>
+
+To <dfn>serialize an integer</dfn>, represent it as a string of the shortest possible decimal
+number.
+
+Issue: This would ideally be replaced by a more descriptive algorithm in Infra. See
+<a href="https://github.com/whatwg/infra/issues/201">infra/201</a>
 
 <div algorithm="UTF-8 percent encode">
 
