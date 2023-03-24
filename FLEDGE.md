@@ -223,8 +223,16 @@ const myAuctionConfig = {
     ...
   ],
   'signal': /* optionally, an AbortSignal */...,
+  'resolveToConfig': /* optionally, a boolean */...,
 };
-const auctionResultPromise = navigator.runAdAuction(myAuctionConfig);
+const result = await navigator.runAdAuction(myAuctionConfig);
+
+// If `result` is a `FencedFrameConfig` object, it must be used with a fenced frame
+// element via its `config` attribute. Otherwise, it's a `urn:uuid` for an iframe.
+if (FencedFrameConfig && result instanceof FencedFrameConfig)
+  fencedFrame.config = result;
+else
+  iframe.src = result;
 ```
 
 
@@ -234,7 +242,7 @@ The optional `directFromSellerSignals` field can also be used to pass signals to
 
 In some cases, multiple SSPs may want to participate in an auction, with the winners of separate auctions being passed up to another auction, run by another SSP. To facilitate these "component auctions", `componentAuctions` can optionally contain additional auction configurations for each seller's "component auction". The winning bid of each of these "component auctions" will be passed to the "top-level" auction. How bids are scored in this case is further described in [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions). The `AuctionConfig` of component auctions may not have their own `componentAuctions`. When `componentAuctions` is non-empty, `interestGroupBuyers` must be empty.  That is, for any particular FLEDGE auction, either there is a single seller and no component auctions, or else all bids come from component auctions and the top-level auction can only choose among the component auctions' winners.
 
-The returned `auctionResultPromise` object is _opaque_: it is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents, but it can be passed to a Fenced Frame for rendering.  (The [Fenced Frame Opaque Source explainer](https://github.com/shivanigithub/fenced-frame/blob/master/explainer/opaque_src.md) has initial thoughts about how this could be implemented.)  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
+The promise returned from `runAdAuction()` is _opaque_. Specifically, it resolves to a [`FencedFrameConfig`](https://github.com/WICG/fenced-frame/blob/master/explainer/fenced_frame_config.md) object or a `urn:uuid` string, depending on the `resolveToConfig` boolean is passed into `runAdAuction()`.  It is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents from this config or `urn:uuid`, but a `FencedFrameConfig` can be passed to a fenced frame element via its `config` attribute for rendering.  The [Fenced Frame Opaque-ads explainer](https://github.com/WICG/fenced-frame/blob/master/explainer/use_cases.md#opaque-ads) describes this in more detail. Similarly, a `urn:uuid` can be passed to an iframe element via its `src` attribute for rendering.  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
 Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
 
@@ -247,6 +255,13 @@ Optionally, `perBuyerGroupLimits` can be specified to limit the number of of int
 Optionally, `sellerExperimentGroupId` can be specified by the seller to support coordinated experiments with the seller's trusted server. If specified, this must be an integer between zero and 65535 (16 bits). Optionally,`perBuyerExperimentGroupIds` can be specified to support coordinated experiments with buyers' trusted servers. If specified, this must also be an integer between zero and 65535 (16 bits).
 
 Optionally, `perBuyerPrioritySignals` is an object mapping string keys to Javascript numbers that can be used to dynamically compute interest group priorities before `perBuyerGroupLimits` are applied. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
+
+Optionally, `resolveToConfig` is a boolean directing the promise returned from `runAdAuction()` to resolve to a `FencedFrameConfig` if true, for use in a `<fencedframe>`, or if false to an opaque `urn:uuid` URL, for use in an `<iframe>`.  If `resolveToConfig` is not set, it defaults to false.
+If the `window.FencedFrameConfig` interface is not exposed (because e.g., the script is running in an older version of Chrome that does not yet implement `FencedFrameConfig`, then the auction will _always_ yield a URN.
+Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame element, you have two options:
+
+1. Only pass `resolveToConfig: true` in if you detect that `window.FencedFrameConfig != undefined`, or
+1. Unconditionally pass in `resolveToConfig: true` and check whether the auction result is a config or a URN.
 
 All fields that accept arbitrary metadata objects (`auctionSignals`, `sellerSignals`, and keys of `perBuyerSignals`) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`decisionLogicUrl` and `trustedScoringSignalsUrl`) must point to URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for loading FLEDGE resources.
