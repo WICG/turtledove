@@ -172,15 +172,16 @@ are:
 1. If |interestGroup|'s [=interest group/estimated size=] is greater than 50 KB, then
   [=exception/throw=] a {{TypeError}}.
 1. Let |p| be [=a new promise=].
-1. Return |p| and run the following steps [=in parallel=]: (TODO: Enqueue the steps to a
-  [=parallel queue=] instead.)
+1. Let |queue| be the result of [=starting a new parallel queue=].
+1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. TODO: document .well-known fetches for cross-origin joins.
   1. If the browser is currently storing an interest group with `owner` and `name` that matches
     |interestGroup|, then remove the currently stored one.
-  1. TODO: Set |interestGroup|'s [=interest group/joining origin=] to top level page origin from
-    where the interest group was joined.
+  1. Set |interestGroup|'s [=interest group/joining origin=] to [=this=]'s
+    [=relevant settings object=]'s [=environment/top-level origin=]
   1. Store |interestGroup| in the browser’s [=interest group set=].
   1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
+1. Return |p|.
 
 </div>
 
@@ -530,7 +531,7 @@ An interest group is a [=struct=] with the following items:
 : <dfn>execution mode</dfn>
 :: A [=string=], defaulting to "compatibility".
 : <dfn>bidding url</dfn>
-:: Null or a [=URL=]. The URL to fetch the buyer's Javascript from.
+:: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from.
 : <dfn>bidding wasm helper url</dfn>
 :: Null or a [=URL=]. Lets the bidder provide computationally-expensive subroutines in WebAssembly,
   rather than JavaScript, to be driven from the JavaScript function provided by
@@ -579,46 +580,75 @@ An auction config is a [=struct=] with the following items:
 <dl dfn-for="auction config">
 : <dfn>seller</dfn>
 :: An [=url/origin=].
+  The entity running the ad auction.
 : <dfn>decision logic url</dfn>
 :: A [=URL=].
+  The URL to fetch the seller's JavaScript from.
 : <dfn>trusted scoring signals url</dfn>
 :: Null or a [=URL=].
 : <dfn>interest group buyers</dfn>
 :: Null or a [=list=] of [=url/origin=].
+  Owners of interest groups allowed to participate in the auction.
 : <dfn>auction signals</dfn>
 :: Null or a [=string=].
+  Opaque JSON data passed to both seller and buyers script runners.
 : <dfn>seller signals</dfn>
 :: Null or a [=string=].
+  Opaque JSON data passed to the seller's script runner.
 : <dfn>seller timeout</dfn>
 :: A duration. Defaulting to 50.
+  Restricts the runtime of the seller's scoreAd() script.
 : <dfn>per buyer signals</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
   [=strings=].
+  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
+  passed to corresponding buyer's script runner.
 : <dfn>per buyer timeouts</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
-  durations.
+  durations. 
+  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the runtime of
+  corresponding buyer's generateBid() script.
 : <dfn>all buyers timeout</dfn>
 :: A duration. Defaulting to 50.
+  Restricts generateBid() script's runtime of all buyers with unspecified timeouts.
 : <dfn>per buyer group limits</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
   non-negative 16-bit integers.
+  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the number of
+  bidding interest groups for a particular buyer that can participate in an auction.
 : <dfn>per buyer priority signals</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
   [=ordered maps=], whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}}.
+  Per-buyer sparse vector that, along with a similar per-interest group sparse vector
+  [=interest group/priority vector=], has its dot product taken to calculate interest group
+  priorities. No signals key start with "browserSignals.", which is reserved for values coming from
+  the browser.
 : <dfn>all buyers priority signals</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   {{double}}.
+  Merged with [=auction config/per buyer priority signals=] before calculating per-interest group
+  priorities. In the case both have entries with the same key, the entry in
+  `per_buyer_priority_signals` takes precedence. No signals key start with "browserSignals.", which
+  is reserved for values coming from the browser.
 : <dfn>all buyers group limit</dfn>
 :: A non-negative 16-bit integer.
+  Limit on the number of bidding interest groups for any buyer.
 : <dfn>component auctions</dfn>
 :: A [=list=] of [=auction config=]s.
+  Nested auctions whose results will also be fed to [=auction config/seller=]. Only the top level
+  [=auction config=] can have component auctions.
 : <dfn>seller experiment group id</dfn>
 :: A non-negative 16-bit integer.
+  Optional identifier for an experiment group to support coordinated experiments with the seller's
+  trusted server.
 : <dfn>all buyer experiment group id</dfn>
 :: A non-negative 16-bit integer.
+  Optional identifier for an experiment group.
 : <dfn>per buyer experiment group ids</dfn>
 :: An [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
   non-negative 16-bit integers.
+  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are identifiers for
+  experiment groups, to support coordinated experiments with buyers' trusted servers.
 
 </dl>
 
@@ -637,5 +667,3 @@ representing [=interest group/joining origins=], and whose [=map/values=] are [=
 [=interest groups=].
 
 </dl>
-
-TODO: Add short descriptions for fields of each structure above.
