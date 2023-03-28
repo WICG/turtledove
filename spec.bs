@@ -273,10 +273,15 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   1. [=AbortSignal/Add|Add the following abort steps=] to |signal|:
     1. TODO: Abort the auction.
     1. [=Reject=] |p| with |signal|’s [=AbortSignal/abort reason=].
-1. Run the following steps [=in parallel=]:
-  1. Run [=generate and score bids=] with |auctionConfig|, |global|, and |p|.
-    TODO: Let [=generate and score bids=] return a bool manually_aborted as well, to allow aborting
-    the auction.
+1. Let |queue| be the result of [=starting a new parallel queue=].
+1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
+  1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|,
+    |global|, and true.
+  1. TODO: If |winner| is failure, fail the auction with manually_aborted set to true.
+  1. TODO: If |winner| is null, fail the auction with manually_aborted set to false.
+  1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
+    with |winner|'s [=generated bid/render=]. TODO: resolve |p| with urn-uuid, instead of a
+    URL.
   1. TODO: UpdateInterestGroupsPostAuction.
 1. Return |p|.
 
@@ -433,36 +438,31 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 <div algorithm>
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, a
-[=global object=] |global|, and a [=promise type=] |p|:
+[=global object=] |global|, and a [=boolean=] |isTopLevel|:
 1. [=Assert=] that these steps are running [=in parallel=].
-
-1. Let |topScore|, and |numTopBids| be 0.
-1. Let |winningAdUrl| be null.
-1. Let |allBidsGeneratedAndScored| be null.
-1. Let |queue| be the result of [=starting a new parallel queue=].
-1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-1. Let |winningAdUrl| be the result of running [=start generating and scoring bids=] with
-  |auctionConfig|, |glocal|, and true.
-1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p| with
-  |winningAdUrl|. TODO: resolve |p| with urn-uuid, instead of a URL.
-
-</div>
-
-<div algorithm>
-
-To <dfn>start generating and scoring bids</dfn> given an [=auction config=] |auctionConfig|, a
-[=global object=] |global|, and a [=boolean=] |isTopLevel|.
 1. Let |bidGenerators| be the result of running [=build bid generators map=] with |auctionConfig|.
+1. Let |hasComponentAuctions| be false.
+1. Let |componentWinners| be an [=list/is empty|empty=] list.
+1. Let |decisionLogicScript| be null.
 1. If |auctionConfig|'s [=auction config/component auctions=] are [=list/is empty|empty=]:
-  1. Let |decisionLogicScript| be the result of creating a seller script runner.
-  1. If |decisionLogicScript| is failure, [=Queue a global task=] on
-    [=DOM manipulation task source=], given |global|, to resolve |p| with `undefined`, and return.
+  1. Set |decisionLogicScript| to the result of [=creating a seller script runner=] with
+    |auctionConfig|'s [=auction config/decision logic url=].
+  1. If |decisionLogicScript| is failure, return null.
 1. Otherwise:
-  1. [=Assert=] |isTopLevel| being false.
+  1. [=Assert=] |isTopLevel| being true.
+  1. Set |hasComponentAuctions| to true.
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=]:
-    1. [=generate and score bids=] with |component|, |global|, and false.
-  1. TODO: If the last |component|'s seller script runner is received, [=create a seller script
-    runner=].
+    1. Let |compWinner| be the result of [=generate and score bids=] with |component|, |global|, and
+      false.
+    1. If |compWinner| is not failure, [=list/append=] |compWinner| to |componentWinners|.
+1. If |hasComponentAuctions| is true, set |decisionLogicScript| to the result of
+  [=creating a seller script runner=].
+1. If |decisionLogicScript| is failure, return failure.
+1. Let |leadingBidInfo| be a new [=leading bid info=].
+1. If |hasComponentAuctions| is true:
+  1. [=list/For each=] |cw| of |componentWinners|:
+    1. [=Score and rank a bid=] given |cw|, |leadingBidInfo|, and true.
+  1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|:
@@ -482,6 +482,8 @@ To <dfn>start generating and scoring bids</dfn> given an [=auction config=] |auc
       |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|.
     1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl|
       and "application/json".
+    1. TODO: If |trustedBiddingSignals| is failure, fail the auction with manually_aborted set to
+      true.
     1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. TODO: create bidder script runner. If failed, [=iteration/continue=].
@@ -491,29 +493,40 @@ To <dfn>start generating and scoring bids</dfn> given an [=auction config=] |auc
         1. TODO: Let |generatedBid| be the result of [=evaluating script=] with
           [=evaluate script/script=] set to |biddingScript|, [=evaluate script/functionName=] set
           to "generateBid", and [=evaluate script/arguments=] set to |trustedBiddingSignals|.
-        1. If |generatedBid|'s [=generate bid output/bid=] is negative or 0,
-          [=iteration/continue=].
+        1. If |generatedBid|'s [=generated bid/bid=] is negative or 0, [=iteration/continue=].
         1. TODO: Validate other fields of |generatedBid|.
-        1. TODO: Let |score| be the result of [=evaluating script=] with
-          [=evaluate script/script=] set to |decisionLogicScript|,
-          [=evaluate script/functionName=] set to "scoreAd", and [=evaluate script/arguments=] set
-          to scoreAd's arguements.
-        1. If |score| is negative or 0, [=iteration/continue=].
-        1. If |score| is greater than |topScore|, then set |topScore| to |score|, set
-          |winningAdUrl| to |generatedBid|'s [=generate bid output/render=], and increment
-          |numTopBids| by 1.
-        1. Otherwise, if |score| equals to |topScore|, then set |winningAdUrl| to
-          |generatedBid|'s [=generate bid output/render=] with 1 in |numTopBids| chance.
-        1. If there is no more interest group waiting to be generated, waiting to be scored, or
-          still being scored, set |allBidsGeneratedAndScored| to true.
-1. Wait until |allBidsGeneratedAndScored| is set.
-1. Return |winningAdUrl|.
+        1. [=Score and rank a bid=] with |generatedBid|, |leadingBidInfo| and
+          |hasComponentAuctions|.
+1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
+
 </div>
 
-To <dfn>create a seller script runner</dfn> given a [=URL=] |url|:
+To <dfn>score and rank a bid</dfn> given a [=generated bid=] |generatedBid|, a [=leading bid info=]
+|leadingBidInfo|, and a [=boolean=] |hasComponentAuction|:
+1. TODO: Let |scoreAdOutput| be the result of [=evaluating script=] with
+  [=evaluate script/script=] set to |decisionLogicScript|,
+  [=evaluate script/functionName=] set to "scoreAd", and [=evaluate script/arguments=] set to
+  scoreAd's arguements (including |generatedBid|).
+1. If |hasComponentAuction| is true, and |scoreAdOutput|'s
+  [=score ad output/allow component auction=] is false, return.
+1. Let |score| be |scoreAdOutput=|'s [=score ad output/desirability=].
+1. If |score| is negative or 0, return.
+1. Let |maybeModifiedBid| be |generatedBid|.
+1. If |hasComponentAuction| is true and |scoreAdOutput|'s [=score ad output/bid=] is not null:
+  1. Set |maybeModifiedBid|'s [=generated bid/bid=] to |scoreAdOutput|'s [=score ad output/bid=].
+1. If |score| is greater than |leadingBidInfo|'s [=leading bid info/top score=]:
+  1. Set |leadingBidInfo|'s [=leading bid info/top score=] to |score|.
+  1. Set |leadingBidInfo|'s [=leading bid info/leading bid=] to |maybeModifiedBid|.
+  1. Set |leadingBidInfo|'s [=leading bid info/top bids count=] to 1.
+1. Otherwise if |score| equals to |leadingBidInfo|'s [=leading bid info/top score=]:
+  1. Increment |leadingBidInfo|'s [=leading bid info/top bids count=] by 1.
+  1. Set |leadingBidInfo|'s [=leading bid info/leading bid=] to |maybeModifiedBid| with 1 in
+    |leadingBidInfo|'s [=leading bid info/top bids count=] chance.
+
+To <dfn>create a seller script runner</dfn> given a [=URL=] |decisionLogicUrl|:
 1. TODO: create the script runner and set up environment.
-1. Let |decisionLogicScript| be the result of [=fetching resource=] with |auctionConfig|'s
-  [=auction config/decision logic url=], and "text/javascript".
+1. Let |decisionLogicScript| be the result of [=fetching resource=] with |decisionLogicUrl|, and
+  "text/javascript".
 1. Return |decisionLogicScript|.
 
 To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for="create a request">
@@ -759,16 +772,53 @@ representing [=interest group/joining origins=], and whose [=map/values=] are [=
 
 </dl>
 
-<h3 dfn-type=dfn>Generate bid output</h3>
+<h3 dfn-type=dfn>Generated bid</h3>
 
-The output of running a FLEDGE generateBid() script.
+The output of running a FLEDGE generateBid() script, which needs to be scored by the seller.
 
-<dl dfn-for="generate bid output">
+<dl dfn-for="generated bid">
 : <dfn>bid</dfn>
 :: A {{double}}. If the bid is zero or negative, then this interest group will not participate in
   the auction.
 : <dfn>render</dfn>
 :: A [=URL=], which will be rendered to display the creative if this bid wins the auction.
+
+</dl>
+
+<h3 dfn-type=dfn>Score ad output</h3>
+
+The output of running a FLEDGE scoreAd() script.
+
+<dl dfn-for="score ad output">
+: <dfn>desirability</dfn>
+:: A {{double}}.
+  Numeric score of the bid. Must be positive or the ad will be rejected. The winner of the auction
+  is the bid which was given the highest score.
+: <dfn>allow component auction</dfn>
+:: A [=boolean=].
+   If the bid being scored is from a component auction and this value is not true, the bid is
+   ignored. This field must be present and true both when the component seller scores a bid, and
+   when that bid is being scored by the top-level auction.
+: <dfn>bid</dfn>
+:: Null or a {{double}}. 
+  Is null if the auction has no component auction, or if the auction is a top-level auction.
+  Modified bid value to provide to the top-level seller script. If present, this will be passed to
+  the top-level seller's scoreAd() and reportResult() methods instead of the original bid, if the ad
+  wins the component auction and top-level auction, respectively.
+
+</dl>
+
+<h3 dfn-type=dfn>Leading bid info</h3>
+
+Information of the auction's leading bid so far when ranking scored bids.
+
+<dl dfn-for="leading bid info">
+: <dfn>top score</dfn>
+:: A {{double}}. Defaulting to 0.0. The highest score so far.
+: <dfn>top bids count</dfn>
+:: An integer. Defaulting to 0. The number of bids with the same `top score`.
+: <dfn>leading bid</dfn>
+:: Null or a [=generated bid=]. The leading bid of the auction so far.
 
 </dl>
 
