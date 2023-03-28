@@ -437,7 +437,7 @@ To <dfn>start bidding and scoring</dfn> given an [=auction config=] |auctionConf
         1. If |biddingScript| is an error, [=iteration/continue=].
         1. TODO: [=Evaluate script=] with [=evaluate script/script=] set to |biddingScript|,
           [=evaluate script/functionName=] set to "generateBid", and [=evaluate script/arguments=]
-          set to generateBid's arguemnts.
+          set to `generateBid()`'s arguemnts.
 
 </div>
 
@@ -586,7 +586,8 @@ An auction config is a [=struct=] with the following items:
   The URL to fetch the seller's JavaScript from.
 : <dfn>trusted scoring signals url</dfn>
 :: Null or a [=URL=].
-  Provide a mechanism for making real-time data available for use at scoring time.
+  Provide a mechanism for making real-time data (information about a specific creative) available
+  for use at scoring time, e.g. the results of some ad scanning system.
 : <dfn>interest group buyers</dfn>
 :: Null or a [=list=] of [=url/origin=].
   Owners of interest groups allowed to participate in the auction.
@@ -597,8 +598,8 @@ An auction config is a [=struct=] with the following items:
 :: Null or a [=string=].
   Opaque JSON data passed to the seller's script runner.
 : <dfn>seller timeout</dfn>
-:: A duration. Defaulting to 50 milliseconds.
-  Restricts the runtime of the seller's scoreAd() script.
+:: A [=duration=]. Defaulting to 50 milliseconds.
+  Restricts the runtime of the seller's `scoreAd()` script.
 : <dfn>per buyer signals</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
   [=strings=].
@@ -608,10 +609,11 @@ An auction config is a [=struct=] with the following items:
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
   durations. 
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the runtime of
-  corresponding buyer's generateBid() script.
+  corresponding buyer's `generateBid()` script.
 : <dfn>all buyers timeout</dfn>
-:: A duration. Defaulting to 50 milliseconds.
-  Restricts generateBid() script's runtime of all buyers with unspecified timeouts.
+:: A [=duration=]. Defaulting to 50 milliseconds.
+  Restricts the `generateBid()` script's runtime for all buyers without a timeouts specified in
+  [=auction config/per buyer timeouts=].
 : <dfn>per buyer group limits</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
   non-negative 16-bit integers.
@@ -619,14 +621,14 @@ An auction config is a [=struct=] with the following items:
   bidding interest groups for a particular buyer that can participate in an auction.
 : <dfn>all buyers group limit</dfn>
 :: A non-negative 16-bit integer.
-  Limit on the number of bidding interest groups for any buyer with unspecified limit.
+  Limit on the number of bidding interest groups for all buyers without a limit specified in
+  [=auction config/per buyer group limits=].
 : <dfn>per buyer priority signals</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
   [=ordered maps=], whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}}.
-  Per-buyer sparse vector that, along with a similar per-interest group sparse vector
-  [=interest group/priority vector=], has its dot product taken to calculate interest group
-  priorities. No signals keys start with "browserSignals.", which is reserved for values coming from
-  the browser.
+  Per-buyer sparse vector whose dot product with [=interest group/priority vector=] is used to
+  calculate interest group priorities. No signal's key starts with "browserSignals.", which is
+  reserved for values coming from the browser.
 : <dfn>all buyers priority signals</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   {{double}}.
