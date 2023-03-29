@@ -705,6 +705,8 @@ For bucketing, the browser signal `joinCount` has 16 buckets (4 bits), and the b
 
 When `joinCount` is passed to `generateBid()`, no noising or bucketing is applied.
 
+These signals were requested in [issue 435](https://github.com/WICG/turtledove/issues/435). The signals are intented to ship in Chrome M114, they will no longer be available for event level reporting when event level reporting is retired.
+
 #### 5.3 Losing Bidder Reporting
 
 We also need to provide a mechanism for the _losing_ bidders in the auction to learn aggregate outcomes.  Certainly they should be able to count the number of times they bid, and losing ads should also be able to learn (in aggregate) some seller-provided information about e.g. the auction clearing price.  Likewise, a reporting mechanism should be available to buyers who attempted to bid with a creative that had not yet reached the k-anonymity threshold.
