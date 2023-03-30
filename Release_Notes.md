@@ -1,9 +1,9 @@
 # FLEDGE Release Notes
 
 
-## Chrome M112
+## Chrome M113
 
-* Size-related API changes are targeting M113 (and will be backwards compatible + opt-in). We will update this with more concrete details after the implementation is done.
+* Some of the size-related API changes (the ability to declare ad sizes in joinAdInterestGroup, include sizes with bids in generateBid, and have those sizes macro'd into the url with AD_WIDTH and AD_HEIGHT macros) will be added in M113 (and will be backwards compatible + opt-in). The ability to specify a requestedSize in the auction config (and downstream effects in browser signals and fenced frame configs) is targeting M114, because it is only a convenience feature.
 
 ## Chrome M109
 
