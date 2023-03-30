@@ -440,28 +440,30 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, a
 [=global object=] |global|, and a [=boolean=] |isTopLevel|:
 1. [=Assert=] that these steps are running [=in parallel=].
-1. Let |bidGenerators| be the result of running [=build bid generators map=] with |auctionConfig|.
-1. Let |hasComponentAuctions| be false.
-1. Let |componentWinners| be an [=list/is empty|empty=] list.
-1. If |auctionConfig|'s [=auction config/component auctions=] are not [=list/is empty|empty=]:
-  1. [=Assert=] |isTopLevel| being true.
-  1. Set |hasComponentAuctions| to true.
-  1. Run the following steps [=in parallel=]:
-  1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=]:
-    1. Let |compWinner| be the result of [=generate and score bids=] with |component|, |global|, and
-      false.
-    1. If |compWinner| is not failure, [=list/append=] |compWinner| to |componentWinners|.
-1. Let |decisionLogicScript| to the result of [=creating a seller script runner=] with
+1. Let |decisionLogicScript| be the result of [=creating a seller script runner=] with
   |auctionConfig|'s [=auction config/decision logic url=].
 1. If |decisionLogicScript| is failure, return null.
+1. Let |bidGenerators| be the result of running [=build bid generators map=] with |auctionConfig|.
 1. Let |leadingBidInfo| be a new [=leading bid info=].
-1. If |hasComponentAuctions| is true:
-  1. [=list/For each=] |cw| of |componentWinners|:
-    1. [=Score and rank a bid=] given |cw|, |leadingBidInfo|, and true.
+1. Let |queue| be the result of [=starting a new parallel queue=].
+1. If |auctionConfig|'s [=auction config/component auctions=] are not [=list/is empty|empty=]:
+  1. [=Assert=] |isTopLevel| being true.
+  1. Let |pendingComponentAuctions| be the [=list/size=] of |auctionConfig|'s
+    [=auction config/component auctions=].
+  1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
+    [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
+    1. Let |compWinner| be the result of [=generate and score bids=] with |component|, |global|, and
+      false.
+    1. If |compWinner| is not failure or null, [=score and rank a bid=] with |compWinner|,
+      |leadingBidInfo|, |desisionLogicScript|, and true.
+    1. Decrement |pendingComponentAuctions| by 1.
+  1. Wait until |pendingComponentAuctions| is 0.
   1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
-1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|:
+1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
+1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
+  [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
   1. Let |buyerExperimentGroupId| be |allBuyersExperimentGroupId|.
   1. Let |perBuyerExperimentGroupIds| be |auctionConfig|'s
     [=auction config/per buyer experiment group ids=].
@@ -491,14 +493,18 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           to "generateBid", and [=evaluate script/arguments=] set to |trustedBiddingSignals|.
         1. If |generatedBid|'s [=generated bid/bid=] is negative or 0, [=iteration/continue=].
         1. TODO: Validate other fields of |generatedBid|.
-        1. [=Score and rank a bid=] with |generatedBid|, |leadingBidInfo| and
-          |hasComponentAuctions|.
+        1. [=Score and rank a bid=] with |generatedBid|, |leadingBidInfo|, |desisionLogicScript| and
+          false.
+  1. Decrement |pendingBuyers| by 1.
+1. Wait until |pendingBuyers| is 0.
 1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 
 </div>
 
+<div algorithm>
+
 To <dfn>score and rank a bid</dfn> given a [=generated bid=] |generatedBid|, a [=leading bid info=]
-|leadingBidInfo|, and a [=boolean=] |hasComponentAuction|:
+|leadingBidInfo|, a [=string=] |decisionLogicScript|, and a [=boolean=] |hasComponentAuction|:
 1. TODO: Let |scoreAdOutput| be the result of [=evaluating script=] with
   [=evaluate script/script=] set to |decisionLogicScript|,
   [=evaluate script/functionName=] set to "scoreAd", and [=evaluate script/arguments=] set to
@@ -518,6 +524,8 @@ To <dfn>score and rank a bid</dfn> given a [=generated bid=] |generatedBid|, a [
   1. Increment |leadingBidInfo|'s [=leading bid info/top bids count=] by 1.
   1. Set |leadingBidInfo|'s [=leading bid info/leading bid=] to |maybeModifiedBid| with 1 in
     |leadingBidInfo|'s [=leading bid info/top bids count=] chance.
+
+</div>
 
 To <dfn>create a seller script runner</dfn> given a [=URL=] |decisionLogicUrl|:
 1. TODO: create the script runner and set up environment.
@@ -550,7 +558,7 @@ To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for=
     :: "`error`"
 1. Return |request|.
 
-<div algorithm="fetch resource">
+<div algorithm>
 
 To <dfn>fetch resource</dfn> given a [=URL=] |url|, and a [=string=] |mimeType|:
 1. Let |request| be the result of [=creating a request=] with |url|, and [=create a request/accept=]
@@ -578,7 +586,7 @@ To <dfn>fetch resource</dfn> given a [=URL=] |url|, and a [=string=] |mimeType|:
 
 </div>
 
-<div algorithm="build trusted bidding signals url">
+<div algorithm>
 
 To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
 [=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, and a non-negative 16-bit integer
@@ -593,7 +601,7 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
   1. Let |keysStr| be the result of [=string/concatenating=] |keys| with separator set to ",".
   1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keysStr| using
     [=component percent-encode set=] to |queryParamsList|.
-1. If |igNames| is not [=set/is empty|empty]:
+1. If |igNames| is not [=set/is empty|empty=]:
   1. [=list/Append=] "&interestGroupNames=" to |queryParamsList|.
   1. Let |igNamesStr| be the result of [=string/concatenating=] |igNames| with separator set to ",".
   1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |igNamesStr| using
