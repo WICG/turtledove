@@ -490,6 +490,45 @@ To <dfn>evaluate script</dfn> with given [=string=] <dfn for="evaluate script">|
   |arguments|.
 
 
+# Interest Group Updates # {#interest-group-updates}
+
+TODO: specify.
+
+Interest groups define a field, dailyUpdateUrl, that allows updating the interest group definition
+stored on disk with information periodically retrieved from the dailyUpdateUrl.
+
+These updates have 2 triggers; the navigator.updateAdInterestGroups() API, which updates all interest
+groups owned by the origin of the current frame, and post-auction updates, which, at the conclusion
+of navigator.runAdAuction(), updates the interest groups of all bidder origins that participated in the
+auction.
+
+Both update methods trigger the same algorithm, which is described below, and takes a list of owners to
+update called "owners":
+
+1. For each interest group "owner" in "owners":
+  1. Load the interest groups of "owner" where the interest group's "next update after" is before now.
+    Implementations may consider loading only a portion of these interest groups at a time to avoid
+    issuing too many requests at once. While the loaded set isn't empty:
+    1. For each loaded interest group:
+      1. Fetch the dailyUpdateUrl of the interest group from the network.
+      1. If the network fetch failed, continue to the next interest group.
+      1. Parse the response body as JSON. If parsing fails, continue to the next interest group.
+      1. If the response JSON object is not a JSON dict, continue to the next interest group.
+      1. If "name" and or "owner" keys are present in the response dict, they must match the "name" and "owner" of
+        the original interest group, respectively. If they don't, continue to the next interest group.
+      1. For each remaining field, if the field is one of {priority, enableBiddingSignalsPrioritization,
+        priorityVector, prioritySignalsOverrides, sellerCapabilities, executionMode, biddingLogicUrl,
+        biddingWasmHelperUrl, trustedBiddingSignalsUrl, trustedBiddingSignalsKeys, ads,
+        adComponents, adSizes, sizeGroups}:
+        1. If the field is prioritySignalsOverrides, merge with the stored value: for each key, value pair in the JSON prioritySignalsOverrides:
+          1. If the value is null, delete the stored prioritySignalsOverrides key, value pair.
+          2. Otherise, update the stored value for key to be the new value. 
+        1. Otherwise, replace the current value of the field in the interest group with that field from the received
+          interest group update JSON. (Fields that are not specified in the update JSON will remain unmodified).
+        1. Set the "last updated" of the interest group to the current time, and set the "next update after" to
+          the update rate limit period + the current time.
+
+
 # Permissions Policy integration # {#permissions-policy-integration}
 
 This specification defines two [=policy-controlled features=] identified by the string
