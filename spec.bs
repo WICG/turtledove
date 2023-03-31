@@ -221,6 +221,9 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
     [=interest group ad/render url=].
   1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
 
+<h2 id="leaving-interest-groups">Leaving Interest Groups</h2>
+
+TODO: add this section
 
 <h2 id="running-ad-auctions">Running Ad Auctions</h2>
 
@@ -462,6 +465,11 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
+1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
+1. TODO: Let |browserSignals| be empty?
+1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
+1. TODO: Set |browserSignals|'s "seller" to the seller
+1. TODO: Set |browserSignals|'s "topLevelSeller" to the top level seller
 1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -470,6 +478,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     [=auction config/per buyer experiment group ids=].
   1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|] exists:
     1. Set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
+  1. TODO: Let |perBuyerSignals| be null/empty
+  1. TODO: If |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] exists:
+    1. TODO: Set |perBuyerSignals| be |auctionConfig|'s [=auction config/per buyer signals=][|buyer|].
   1. [=map/For each=] |signalsUrl| -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
     1. Let |keys| be a new [=ordered set=].
     1. Let |igNames| be a new [=ordered set=].
@@ -486,12 +497,18 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. TODO: create bidder script runner. If failed, [=iteration/continue=].
+        1. TODO: Let |interestGroup| be ... from |ig| ... minus priority and prioritySignalsOverrides and any browser-defined pieces
+        1. TODO: Set |browserSignals|'s "joinCount" to |ig|'s ...need to add and maintain joinCount in interest groups
+        1. TODO: Set |browserSignals|'s "bidCount" to |ig|'s ...need to add and maintain bidCount in interest groups
+        1. TODO: Set |browserSignals|'s "prevWins" to |ig|'s ...need to add and maintain prevWins in interest groups
+        1. TODO: Set |browserSignals|'s "wasmHelper" ...need to fetch and prepare WebAssembly.Module object based on |ig|'s [=interest group/bidding wasm helper url=]
+        1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted bidding signals server's response(s)
         1. Let |biddingScript| be the result of [=fetching resource=] with |ig|'s
           [=interest group/bidding url=], and "text/javascript". If |biddingScript| is an error,
           [=iteration/continue=].
         1. TODO: Let |generatedBid| be the result of [=evaluating script=] with
           [=evaluate script/script=] set to |biddingScript|, [=evaluate script/functionName=] set
-          to "generateBid", and [=evaluate script/arguments=] set to |trustedBiddingSignals|.
+          to "generateBid", and [=evaluate script/arguments=] set to « |interestGroup|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|, |browserSignals| ».
         1. If |generatedBid|'s [=generated bid/bid=] is negative or 0, [=iteration/continue=].
         1. TODO: Validate other fields of |generatedBid|.
         1. [=Score and rank a bid=] with |generatedBid|, |leadingBidInfo|, |desisionLogicScript| and
@@ -506,10 +523,22 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 
 To <dfn>score and rank a bid</dfn> given a [=generated bid=] |generatedBid|, a [=leading bid info=]
 |leadingBidInfo|, a [=string=] |decisionLogicScript|, and a [=boolean=] |hasComponentAuction|:
+1. TODO: Assemble and fetch trusted scoring signals
+1. TODO: Let |adMetadata| be ... maybe include in [=generated bid=]
+1. Let |bid| be |generatedBid|'s [=generated bid/bid=].
+1. TODO: Let |auctionConfig| be ... need to pass in
+1. TODO: Let |trustedScoringSignals| ... need to assemble and fetch these
+1. TODO: Let |browserSignals| be empty?
+1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
+1. TODO: Set |browserSignals|'s "interestGroupOwner" to ...need to pass in IG
+1. TODO: Set |browserSignals|'s "renderUrl" to |generatedBid|'s [=generated bid/render=]
+1. TODO: Set |browserSignals|'s "adComponents" to ...need to pass in as part of |generatedBid|
+1. TODO: Set |browserSignals|'s "biddingDurationMsec" to ...need to calculate nad pass in
+1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted scoring signals server's response
 1. TODO: Let |scoreAdOutput| be the result of [=evaluating script=] with
   [=evaluate script/script=] set to |decisionLogicScript|,
   [=evaluate script/functionName=] set to "scoreAd", and [=evaluate script/arguments=] set to
-  scoreAd's arguements (including |generatedBid|).
+  « |adMetadata|, |bid|, |auctionConfig|, |trustedScoringSignals|, |browserSignals| ».
 1. If |hasComponentAuction| is true, and |scoreAdOutput|'s
   [=score ad output/allow component auction=] is false, return.
 1. Let |score| be |scoreAdOutput|'s [=score ad output/desirability=].
