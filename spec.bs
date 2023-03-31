@@ -280,7 +280,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|,
-    |global|, and true.
+    null, |global|, and true.
   1. TODO: If |winner| is failure, fail the auction with manually_aborted set to true.
   1. TODO: If |winner| is null, fail the auction with manually_aborted set to false.
   1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
@@ -441,8 +441,9 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 
 <div algorithm>
 
-To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, a
-[=global object=] |global|, and a [=boolean=] |isTopLevel|:
+To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
+[=auction config=] |topLevelAuctionConfig|, a [=global object=] |global|, and a [=boolean=]
+|isTopLevel|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |decisionLogicScript| be the result of [=creating a seller script runner=] with
   |auctionConfig|'s [=auction config/decision logic url=].
@@ -456,8 +457,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     [=auction config/component auctions=].
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
-    1. Let |compWinner| be the result of [=generate and score bids=] with |component|, |global|, and
-      false.
+    1. Let |compWinner| be the result of [=generate and score bids=] with |component|,
+      |auctionConfig|, |global|, and false.
     1. If |compWinner| is not failure or null, [=score and rank a bid=] with |compWinner|,
       |leadingBidInfo|, |desisionLogicScript|, and true.
     1. Decrement |pendingComponentAuctions| by 1.
@@ -466,10 +467,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
-1. TODO: Let |browserSignals| be empty?
+1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
+  [=map/values=] are {{any}}.
 1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
-1. TODO: Set |browserSignals|'s "seller" to the seller
-1. TODO: Set |browserSignals|'s "topLevelSeller" to the top level seller
+1. [=map/Set=] |browserSignals|["seller"] to |auctionConfig|'s [=auction config/seller=].
+1. If not |isTopLevel|:
+  1. [=map/Set=] |browserSignals|["topLevelSeller"] to |topLevelAuctionConfig|'s [=auction config/seller=].
 1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -478,9 +481,10 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     [=auction config/per buyer experiment group ids=].
   1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|] exists:
     1. Set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
-  1. TODO: Let |perBuyerSignals| be null/empty
-  1. TODO: If |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] exists:
-    1. TODO: Set |perBuyerSignals| be |auctionConfig|'s [=auction config/per buyer signals=][|buyer|].
+  1. If |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] exists:
+    1. Let |perBuyerSignals| be |auctionConfig|'s [=auction config/per buyer signals=][|buyer|].
+  1. Otherwise:
+    1. Let |perBuyerSignals| be null
   1. [=map/For each=] |signalsUrl| -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
     1. Let |keys| be a new [=ordered set=].
     1. Let |igNames| be a new [=ordered set=].
@@ -528,10 +532,11 @@ To <dfn>score and rank a bid</dfn> given a [=generated bid=] |generatedBid|, a [
 1. Let |bid| be |generatedBid|'s [=generated bid/bid=].
 1. TODO: Let |auctionConfig| be ... need to pass in
 1. TODO: Let |trustedScoringSignals| ... need to assemble and fetch these
-1. TODO: Let |browserSignals| be empty?
+1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
+  [=map/values=] are {{any}}.
 1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
 1. TODO: Set |browserSignals|'s "interestGroupOwner" to ...need to pass in IG
-1. TODO: Set |browserSignals|'s "renderUrl" to |generatedBid|'s [=generated bid/render=]
+1. [=map/Set=] |browserSignals|["renderUrl"] to |generatedBid|'s [=generated bid/render=].
 1. TODO: Set |browserSignals|'s "adComponents" to ...need to pass in as part of |generatedBid|
 1. TODO: Set |browserSignals|'s "biddingDurationMsec" to ...need to calculate nad pass in
 1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted scoring signals server's response
