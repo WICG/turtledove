@@ -236,25 +236,47 @@ bid in the auction for the chance to display their advertisement.
 <h3 id="script-runners">Script Runners</h3>
 
 <xmp class="idl">
-[Exposed=Window, Global=Window]
-interface InterestGroupBiddingScriptRunnerGlobalScope{
+[Exposed=Window, SecureContext]
+interface InterestGroupBiddingScriptRunner {
+  [NewObject] Promise<undefined> createScriptRunner(USVString script);
 };
 
-[Exposed=Window, Global=Window]
-interface InterestGroupScoringScriptRunnerGlobalScope{
+interface InterestGroupScoringScriptRunner {
+  [NewObject] Promise<undefined> createScriptRunner(USVString script);
 };
 
-[Exposed=Window, Global=Window]
-interface InterestGroupReportingScriptRunnerGlobalScope{
+interface InterestGroupReportingScriptRunner {
+  [NewObject] Promise<undefined> createScriptRunner(USVString script);
+};
+
+interface InterestGroupScriptRunner {
 };
 </xmp>
 
-Issue: where do these interfaces above get exposed to?
-
-TODO: modelingSignals
+Note: WebIDL APIs exposed to `*` are not exposed to interest group script runners defined above.
 
 <xmp class="idl">
-[Exposed=InterestGroupBiddingScriptRunnerGlobalScope]
+[Exposed=InterestGroupBiddingScriptRunner,
+Global=(InterestGroupScriptRunner, InterestGroupBiddingScriptRunner)]
+interface InterestGroupBiddingScriptRunnerGlobalScope{
+  boolean setBid(optional GenerateBidOutput bid);
+  undefined setPriority(double priority);
+  undefined setPrioritySignalsOverride(DOMString key, double priority);
+};
+
+[Exposed=InterestGroupScoringScriptRunner,
+Global=(InterestGroupScriptRunner, InterestGroupScoringScriptRunner)]
+interface InterestGroupScoringScriptRunnerGlobalScope{
+};
+
+[Exposed=InterestGroupReportingScriptRunner,
+Global=(InterestGroupScriptRunner, InterestGroupReportingScriptRunner)]
+interface InterestGroupReportingScriptRunnerGlobalScope{
+  attribute DOMString reportWinURL;
+  attribute DOMString reportSellerURL;
+  undefined sendReportTo(DOMString url);
+};
+
 dictionary AdSize {
   required double width;
   required DOMString widthUnits;
@@ -262,29 +284,26 @@ dictionary AdSize {
   required DOMString heightUnits;
 };
 
-[Exposed=InterestGroupBiddingScriptRunnerGlobalScope]
 dictionary AdDescriptor {
   required DOMString render;
   AdSize adSize;
 };
 
-[Exposed=InterestGroupBiddingScriptRunnerGlobalScope]
 dictionary GenerateBidOutput {
   required double bid;
-  required AdDescriptor adDescriptor;
+  required (DOMString or AdDescriptor) adDescriptor;
   DOMString ad;
   double adCost;
   sequence<AdDescriptor> adComponentDescriptors;
   boolean allowComponentAuction = false;
 };
-
 </xmp>
 
+issue: TODO: modelingSignals.
 TODO: define an enum LengthUnit for AdSize's widthUnits and heightUnits.
 
-<xmp class="idl">
-[Exposed=(InterestGroupBiddingScriptRunnerGlobalScope, InterestGroupScoringScriptRunnerGlobalScope, 
-InterestGroupReportingScriptRunnerGlobalScope)]
+<pre class="idl">
+[Exposed=InterestGroupScriptRunner]
 interface ForDebuggingOnly {
   attribute DOMString? winReportUrl;
   attribute DOMString? lossReportUrl;
@@ -293,39 +312,34 @@ interface ForDebuggingOnly {
   DOMString? takeWinReportUrl();
   DOMString? takeLossReportUrl();
 };
-</xmp>
+</pre>
 
 TODO: reportAdAuctionWin/loss steps.
 
-partial interface InterestGroupBiddingScriptRunnerGlobalScope {
-  boolean setBid(GenerateBidOutput bid);
-};
-
-TODO: setbid method steps.
-
-<xmp class="idl">
-partial interface InterestGroupBiddingScriptRunnerGlobalScope {
-  undefined setPriority(double priority);
-};
-</xmp>
+TODO: turn those into spec language.
+The setBid steps are: 
+1. Treat no arguments as an undefined argument, which should clear the bid.
+1. If bid is null or undefined, return true.
+1. If bid is less than or equal to 0, return true.
+1. If bid's ad is not null but cannot be converted to json, return false.
+1. If it's a component auction, but allowComponentAuction is not true, return false.
+1. Let |renderURL| be null.
+1. If bid's adDescriptor is DOMString:
+  1. Let |renderURLString| be converting adDescriptor.
+  1. If |renderURLString| is failure, return false.
+  1. Let |renderURL| be parsing |renderURLString|.
+1. TODO: Otherwise:
+  1. Let |adDescriptor| be the result of try parsing bid's adDescriptor.
+  1. If |adDescriptor| is failure, return false.
+  1. Let |parsedAdDescriptor| be the result of try parsing adDescriptor.
+  1. If |parsedAdDescriptor| is failure, return false.
+  1. Let |renderURL| be parsing |parsedAdDescriptor|'s render.
+1. If |renderURL| is not an allowed ad url, return false.
+1. adcomponents
 
 TODO: setPriority method steps.
 
-<xmp class="idl">
-partial interface InterestGroupBiddingScriptRunnerGlobalScope {
-  undefined setPrioritySignalsOverride(DOMString key, double priority);
-};
-</xmp>
-
 TODO: setPrioritySignalsOverride method steps.
-
-<xmp class="idl">
-partial interface InterestGroupReportingScriptRunnerGlobalScope {
-  attribute DOMString reportWinURL;
-  attribute DOMString reportSellerURL;
-  undefined sendReportTo(DOMString url);
-};
-</xmp>
 
 TODO: sendReportTo method steps.
 
