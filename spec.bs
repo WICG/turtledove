@@ -259,20 +259,31 @@ dictionary AuctionAdConfig {
 
 The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 
-1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
-  "[=run-ad-auction=]" [=policy-controlled feature=], then [=exception/throw=] a
-  "{{NotAllowedError}}" {{DOMException}}.
+1. Let |global| be [=this=]'s [=relevant global object=].
+1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=run-ad-auction=]"
+  [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
 1. Let |auctionConfig| be the result of running [=validate and convert auction ad config=] with
   |config| and [=validate and convert auction ad config/isTopLevel=] set to true.
-1. If |config|["{{AuctionAdConfig/signal}}"] [=map/exists=]:
-  1. If |config|["{{AuctionAdConfig/signal}}"] is [=AbortSignal/aborted=], then return
-    [=a promise rejected with=] |config|["{{AuctionAdConfig/signal}}"]'s
-    [=AbortSignal/abort reason=].
-1. [=AbortSignal/Add=] an algorithm (TODO: define it) to |config|["{{AuctionAdConfig/signal}}"].
+1. If |auctionConfig| is failure, then return [=a promise rejected with=] a {{TypeError}}.
 1. Let |p| be [=a new promise=].
-1. Return |p|, and run the remaining steps [=in parallel=].
-1. Run [=start bidding and scoring=] with |auctionConfig|.
-1. TODO: add missing steps.
+1. If |config|["{{AuctionAdConfig/signal}}"] [=map/exists=], then:
+  1. Let |signal| be |config|["{{AuctionAdConfig/signal}}"].
+  1. If |signal| is [=AbortSignal/aborted=], then [=reject=] |p| with |signal|'s
+    [=AbortSignal/abort reason=] and return |p|.
+  1. [=AbortSignal/Add|Add the following abort steps=] to |signal|:
+    1. TODO: Abort the auction.
+    1. [=Reject=] |p| with |signal|’s [=AbortSignal/abort reason=].
+1. Let |queue| be the result of [=starting a new parallel queue=].
+1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
+  1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|,
+    |global|, and true.
+  1. TODO: If |winner| is failure, fail the auction with manually_aborted set to true.
+  1. TODO: If |winner| is null, fail the auction with manually_aborted set to false.
+  1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
+    with |winner|'s [=generated bid/render=]. TODO: resolve |p| with urn-uuid, instead of a
+    URL.
+  1. TODO: UpdateInterestGroupsPostAuction.
+1. Return |p|.
 
 </div>
 
@@ -335,8 +346,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   |value| of |config|["{{AuctionAdConfig/perBuyerSignals}}"]:
   1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is an error,
     [=exception/throw=] a {{TypeError}}.
-  1. Let |signalsString| be the result of
-    [=serializing a JavaScript value to a JSON string=], given |value|.
+  1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=], given
+    |value|.
   1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to
     |signalsString|.
 1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] [=map/exists=], [=map/for each=] |key| →
@@ -390,18 +401,12 @@ To <dfn>parse an origin</dfn> given a [=string=] |input|:
 1. If |url| is an error, then return failure.
 1. Return |url|'s [=url/origin=].
 
-<div algorithm="start bidding and scoring">
+<div algorithm>
 
-To <dfn>start bidding and scoring</dfn> given an [=auction config=] |auctionConfig|:
-1. If |auctionConfig|'s [=auction config/component auctions=] are empty:
-  1. TODO: Create a seller worklet.
-1. Otherwise:
-  1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=]:
-    1. [=Start bidding and scoring=] with |component|.
-  1. TODO: If the last |component|'s seller worklet is received, create a seller worklet.
+To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfig|:
 1. Let |bidGenerators| be a new [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose
   [=map/values=] are [=per buyer bid generators=].
-1. [=list/For each=] |buyer| in [=auction config/interest group buyers=]:
+1. [=list/For each=] |buyer| in |auctionConfig|'s [=auction config/interest group buyers=]:
   1. [=list/For each=] |ig| of the user agent's [=interest group set=] whose
     [=interest group/owner=] is |buyer|:
     1. Let |signalsUrl| be |ig|'s [=interest group/trusted bidding signals url=].
@@ -426,19 +431,107 @@ To <dfn>start bidding and scoring</dfn> given an [=auction config=] |auctionConf
           1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to « |ig| ».
         1. Otherwise:
           1. [=list/Append=] |ig| to |perSignalsUrlGenerator|[|joiningOrigin|].
-1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|:
-  1. [=map/For each=] |signalsUrl| -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
-    1. TODO: Fetch |signalsUrl| synchronously.
-    1. [=map/For each=] |joiningOrigin| -> |groups| of |perSignalsUrlGenerator|:
-      1. [=list/For each=] |ig| of |groups|: 
-        1. Let |biddingScript| be the result of [=fetch bidding or scoring javascript=] with |ig|'s
-          [=interest group/bidding url=].
-        1. If |biddingScript| is an error, [=iteration/continue=].
-        1. TODO: [=Evaluate script=] with [=evaluate script/script=] set to |biddingScript|,
-          [=evaluate script/functionName=] set to "generateBid", and [=evaluate script/arguments=]
-          set to generateBid's arguemnts.
+1. Return |bidGenerators|.
 
 </div>
+
+<div algorithm>
+
+To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, a
+[=global object=] |global|, and a [=boolean=] |isTopLevel|:
+1. [=Assert=] that these steps are running [=in parallel=].
+1. Let |decisionLogicScript| be the result of [=creating a seller script runner=] with
+  |auctionConfig|'s [=auction config/decision logic url=].
+1. If |decisionLogicScript| is failure, return null.
+1. Let |bidGenerators| be the result of running [=build bid generators map=] with |auctionConfig|.
+1. Let |leadingBidInfo| be a new [=leading bid info=].
+1. Let |queue| be the result of [=starting a new parallel queue=].
+1. If |auctionConfig|'s [=auction config/component auctions=] are not [=list/is empty|empty=]:
+  1. [=Assert=] |isTopLevel| being true.
+  1. Let |pendingComponentAuctions| be the [=list/size=] of |auctionConfig|'s
+    [=auction config/component auctions=].
+  1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
+    [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
+    1. Let |compWinner| be the result of [=generate and score bids=] with |component|, |global|, and
+      false.
+    1. If |compWinner| is not failure or null, [=score and rank a bid=] with |compWinner|,
+      |leadingBidInfo|, |desisionLogicScript|, and true.
+    1. Decrement |pendingComponentAuctions| by 1.
+  1. Wait until |pendingComponentAuctions| is 0.
+  1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
+1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
+  [=auction config/all buyer experiment group id=].
+1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
+1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
+  [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
+  1. Let |buyerExperimentGroupId| be |allBuyersExperimentGroupId|.
+  1. Let |perBuyerExperimentGroupIds| be |auctionConfig|'s
+    [=auction config/per buyer experiment group ids=].
+  1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|] exists:
+    1. Set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
+  1. [=map/For each=] |signalsUrl| -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
+    1. Let |keys| be a new [=ordered set=].
+    1. Let |igNames| be a new [=ordered set=].
+    1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
+      1. [=list/For each=] |ig| of |groups|:
+        1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
+        1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
+    1. Let |fullSignalsUrl| be the result of [=building trusted bidding signals url=] with
+      |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|.
+    1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl|
+      and "application/json".
+    1. TODO: If |trustedBiddingSignals| is failure, fail the auction with manually_aborted set to
+      true.
+    1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
+      1. [=list/For each=] |ig| of |groups|:
+        1. TODO: create bidder script runner. If failed, [=iteration/continue=].
+        1. Let |biddingScript| be the result of [=fetching resource=] with |ig|'s
+          [=interest group/bidding url=], and "text/javascript". If |biddingScript| is an error,
+          [=iteration/continue=].
+        1. TODO: Let |generatedBid| be the result of [=evaluating script=] with
+          [=evaluate script/script=] set to |biddingScript|, [=evaluate script/functionName=] set
+          to "generateBid", and [=evaluate script/arguments=] set to |trustedBiddingSignals|.
+        1. If |generatedBid|'s [=generated bid/bid=] is negative or 0, [=iteration/continue=].
+        1. TODO: Validate other fields of |generatedBid|.
+        1. [=Score and rank a bid=] with |generatedBid|, |leadingBidInfo|, |desisionLogicScript| and
+          false.
+  1. Decrement |pendingBuyers| by 1.
+1. Wait until |pendingBuyers| is 0.
+1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
+
+</div>
+
+<div algorithm>
+
+To <dfn>score and rank a bid</dfn> given a [=generated bid=] |generatedBid|, a [=leading bid info=]
+|leadingBidInfo|, a [=string=] |decisionLogicScript|, and a [=boolean=] |hasComponentAuction|:
+1. TODO: Let |scoreAdOutput| be the result of [=evaluating script=] with
+  [=evaluate script/script=] set to |decisionLogicScript|,
+  [=evaluate script/functionName=] set to "scoreAd", and [=evaluate script/arguments=] set to
+  scoreAd's arguements (including |generatedBid|).
+1. If |hasComponentAuction| is true, and |scoreAdOutput|'s
+  [=score ad output/allow component auction=] is false, return.
+1. Let |score| be |scoreAdOutput|'s [=score ad output/desirability=].
+1. If |score| is negative or 0, return.
+1. Let |maybeModifiedBid| be |generatedBid|.
+1. If |hasComponentAuction| is true and |scoreAdOutput|'s [=score ad output/bid=] is not null:
+  1. Set |maybeModifiedBid|'s [=generated bid/bid=] to |scoreAdOutput|'s [=score ad output/bid=].
+1. If |score| is greater than |leadingBidInfo|'s [=leading bid info/top score=]:
+  1. Set |leadingBidInfo|'s [=leading bid info/top score=] to |score|.
+  1. Set |leadingBidInfo|'s [=leading bid info/leading bid=] to |maybeModifiedBid|.
+  1. Set |leadingBidInfo|'s [=leading bid info/top bids count=] to 1.
+1. Otherwise if |score| equals to |leadingBidInfo|'s [=leading bid info/top score=]:
+  1. Increment |leadingBidInfo|'s [=leading bid info/top bids count=] by 1.
+  1. Set |leadingBidInfo|'s [=leading bid info/leading bid=] to |maybeModifiedBid| with 1 in
+    |leadingBidInfo|'s [=leading bid info/top bids count=] chance.
+
+</div>
+
+To <dfn>create a seller script runner</dfn> given a [=URL=] |decisionLogicUrl|:
+1. TODO: create the script runner and set up environment.
+1. Let |decisionLogicScript| be the result of [=fetching resource=] with |decisionLogicUrl|, and
+  "text/javascript".
+1. Return |decisionLogicScript|.
 
 To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for="create a request">
 |accept|</dfn>:
@@ -465,23 +558,68 @@ To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for=
     :: "`error`"
 1. Return |request|.
 
-To <dfn>fetch bidding or scoring javascript</dfn> with given [=URL=] |url|:
+<div algorithm>
+
+To <dfn>fetch resource</dfn> given a [=URL=] |url|, and a [=string=] |mimeType|:
 1. Let |request| be the result of [=creating a request=] with |url|, and [=create a request/accept=]
-  set to "`application/javascript`".
-1. [=Fetch=] |request|.
-1. Wait for the [=fetch/processResponseConsumeBody=] algorithm to finish. TODO: use 
-  [=fetch/processResponseConsumeBody=] as argument to [=fetch=].
-1. Let |response| be the result of [=fetch=] when it asynchronously completes.
-1. Let |body| be |response|’s [=response/body=].
-1. If |body| is null, return failure.
-1. Let |headers| be |response|'s [=response/header list=].
-1. If [=header list/getting a structured field value=] "X-Allow-FLEDGE" from |headers| does not
-  return true, return failure.
-1. Let |mimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
-1. If |mimeType| is failure or not a [=JavaScript MIME type=], return failure.
-1. If |mimeType|'s [=MIME type/parameters=]["`charset`"] [=map/exists=], and is not "utf-8" or
-  "us-ascii", return failure.
-1. Return |body|.
+  set to |mimeType|.
+1. Let |resource| be null.
+1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
+  [=response=] |response| and |responseBody|:
+  1. If |responseBody| is null or failure, set |resource| to failure and return.
+  1. Let |headers| be |response|'s [=response/header list=].
+  1. If [=header list/getting a structured field value=] "X-Allow-FLEDGE" from |headers| does not
+    return true, set |resource| to failure and return.
+  1. Let |headerMimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
+  1. Set |resource| to failure and return, if any of:
+    1. |headerMimeType| is failure.
+    1. |mimeType| is "`text/javascript`" and |headerMimeType| is not a [=JavaScript MIME type=].
+    1. |mimeType| is "`application/json`" and |headerMimeType| is not a [=JSON MIME type=].
+  1. Let |mimeTypeCharset| be |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
+  1. Set |resource| to failure and return if any of:
+    1. If |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and
+      |responseBody| is not [=UTF-8=] encoded.
+    1. If |mimeTypeCharset| is "us-ascii", and |responseBody| is not [=ascii string=].
+  1. Set |resource| to |responseBody|.
+1. Wait for |resource| to be set.
+1. Return |resource|.
+
+</div>
+
+<div algorithm>
+
+To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
+[=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, and a non-negative 16-bit integer
+|experimentGroupId|:
+1. Let |queryParamsList| be a new [=list/is empty|empty=] [=list=].
+1. [=list/Append=] "hostname=" to |queryParamsList|.
+1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] [=this=]'s
+  [=relevant settings object=]'s [=environment/top-level origin=] using
+  [=component percent-encode set=] to |queryParamsList|.
+1. If |keys| is not [=set/is empty|empty=]:
+  1. [=list/Append=] "&keys=" to |queryParamsList|.
+  1. Let |keysStr| be the result of [=string/concatenating=] |keys| with separator set to ",".
+  1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keysStr| using
+    [=component percent-encode set=] to |queryParamsList|.
+1. If |igNames| is not [=set/is empty|empty=]:
+  1. [=list/Append=] "&interestGroupNames=" to |queryParamsList|.
+  1. Let |igNamesStr| be the result of [=string/concatenating=] |igNames| with separator set to ",".
+  1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |igNamesStr| using
+    [=component percent-encode set=] to |queryParamsList|.
+1. If |experimentGroupId| is not null:
+  1. [=list/Append=] "&experimentGroupId=" to |queryParamsList|.
+  1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
+1. Let |fullSignalsUrl| be |signalsUrl|.
+1. Set |fullSignalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
+1. return |fullSignalsUrl|.
+
+</div>
+
+To <dfn>serialize an integer</dfn>, represent it as a string of the shortest possible decimal
+number.
+
+Issue: This would ideally be replaced by a more descriptive algorithm in Infra. See
+<a href="https://github.com/whatwg/infra/issues/201">infra/201</a>
 
 To <dfn>evaluate script</dfn> with given [=string=] <dfn for="evaluate script">|script|</dfn>,
 [=string=] <dfn for="evaluate script">|functionName|</dfn>, and a [=list=]
@@ -635,6 +773,56 @@ A per buyer bid generator is an [=ordered map=] whose [=map/keys=] are [=URLs=] 
 A per signals url bid generator is an [=ordered map=] whose [=map/keys=] are [=url/origins=]
 representing [=interest group/joining origins=], and whose [=map/values=] are [=lists=] of
 [=interest groups=].
+
+</dl>
+
+<h3 dfn-type=dfn>Generated bid</h3>
+
+The output of running a FLEDGE generateBid() script, which needs to be scored by the seller.
+
+<dl dfn-for="generated bid">
+: <dfn>bid</dfn>
+:: A {{double}}. If the bid is zero or negative, then this interest group will not participate in
+  the auction.
+: <dfn>render</dfn>
+:: A [=URL=], which will be rendered to display the creative if this bid wins the auction.
+
+</dl>
+
+<h3 dfn-type=dfn>Score ad output</h3>
+
+The output of running a FLEDGE scoreAd() script.
+
+<dl dfn-for="score ad output">
+: <dfn>desirability</dfn>
+:: A {{double}}.
+  Numeric score of the bid. Must be positive or the ad will be rejected. The winner of the auction
+  is the bid which was given the highest score.
+: <dfn>allow component auction</dfn>
+:: A [=boolean=].
+   If the bid being scored is from a component auction and this value is not true, the bid is
+   ignored. This field must be present and true both when the component seller scores a bid, and
+   when that bid is being scored by the top-level auction.
+: <dfn>bid</dfn>
+:: Null or a {{double}}. 
+  Is null if the auction has no component auction, or if the auction is a top-level auction.
+  Modified bid value to provide to the top-level seller script. If present, this will be passed to
+  the top-level seller's scoreAd() and reportResult() methods instead of the original bid, if the ad
+  wins the component auction and top-level auction, respectively.
+
+</dl>
+
+<h3 dfn-type=dfn>Leading bid info</h3>
+
+Information of the auction's leading bid so far when ranking scored bids.
+
+<dl dfn-for="leading bid info">
+: <dfn>top score</dfn>
+:: A {{double}}. Defaulting to 0.0. The highest score so far.
+: <dfn>top bids count</dfn>
+:: An integer. Defaulting to 0. The number of bids with the same `top score`.
+: <dfn>leading bid</dfn>
+:: Null or a [=generated bid=]. The leading bid of the auction so far.
 
 </dl>
 
