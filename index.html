@@ -6,7 +6,7 @@
   <link href="https://www.w3.org/StyleSheets/TR/2021/cg-draft" rel="stylesheet">
   <meta content="Bikeshed version d9bd89757, updated Thu Mar 23 10:06:53 2023 -0700" name="generator">
   <link href="https://wicg.github.io/turtledove/" rel="canonical">
-  <meta content="53c6703cb8c6bb4aa0a4f87f313d8756924b2670" name="document-revision">
+  <meta content="8850c171b81fd1a9acd103794c49da0414447d7f" name="document-revision">
 <style>/* style-autolinks */
 .css.css, .property.property, .descriptor.descriptor {
     color: var(--a-normal-text);
@@ -1612,6 +1612,60 @@ number.</p>
     <li data-md>
      <p>TODO: Return an object or null, which is the result of evaluating <var>script</var>’s <var>functionName</var> with <var>arguments</var>.</p>
    </ol>
+   <p>TODO: something like the steps below that need spec-ifying, though some pieces like fetching the
+script should likely be pulled out:</p>
+   <ol>
+    <li data-md>
+     <p>Allocate the right process/thread (these are called agent clusters/agents respectively, in ES
+land) that’s going to host the script. That’s basically one of the algorithms in:
+https://html.spec.whatwg.org/multipage/webappapis.html#integration-with-the-javascript-agent-cluster-formalism.
+Might actually literally be able to re-use
+https://html.spec.whatwg.org/multipage/webappapis.html#obtaining-a-worker/worklet-agent, but not
+sure; otherwise make a new one. This is done in step 6 of [1]</p>
+    <li data-md>
+     <p>Create a new realm and execution
+context. Realms are basically ES environments that run script. This is where the global object in
+the environment is defined, so something like FledgeScriptRunner IDL interface that has to create
+and define (non-user-supplied) methods on. See step 7 of [1], but step 8 substep 5 of [2] is maybe
+better:
+https://html.spec.whatwg.org/multipage/document-lifecycle.html#shared-document-creation-infrastructure:creating-a-new-javascript-realm.</p>
+    <li data-md>
+     <p>Setup the environment or environment settings object. So in HTML an "environment settings
+object" is-a "environment". It is used to set a special internal slot on the ES "realm" so that ES
+can call back up into the HTML Standard when it needs things that aren’t defined in HTML. May not
+need this at all — assuming script doesn’t resolve URLs, fetch things from within the worklet, or
+access anything time-related. A realm’s default "\[\[HostDefined\]\]" slot is undefined
+(https://tc39.es/ecma262/#table-realm-record-fields) which is likely valid for this use-case.</p>
+    <li data-md>
+     <p>Fetch the script resource. Everything under step 5 of
+https://html.spec.whatwg.org/multipage/webappapis.html#fetch-a-classic-script can give some idea of
+how to do this and extract the string body appropriately etc</p>
+    <li data-md>
+     <p>Create the "script". This basically
+means parsing the source text inside the ES realm that was created earlier. See this step for more
+information, though it won’t need much of the rest of that algorithm:
+https://html.spec.whatwg.org/multipage/webappapis.html#creating-a-classic-script:~:text=Let%20result%20be%20ParseScript(source%2C%20settings%27s%20realm%2C%20script),
+since this spec wants to create "a classic script" as defined by HTML.</p>
+    <li data-md>
+     <p>Run the script: basically call ES’s ScriptEvaluation(), like
+https://html.spec.whatwg.org/multipage/webappapis.html#run-a-classic-script does), although it’ll
+probably need to do some of what that algorithm’s step 3 ("Prepare to run a script") does (pushing
+the current realm’s execution context on the stack). This will produce something called a
+CompletionRecord which will contain any value that the script contained
+(https://tc39.es/ecma262/#sec-completion-record-specification-type).</p>
+    <li data-md>
+     <p>Run user-provided function.
+I think just "running the script" isn’t probably appropriate here though. This step will want to
+actually run a specific function inside the script. In that case, an example of doing this is the
+last 3 steps of:
+https://html.spec.whatwg.org/multipage/worklets.html#fakeworkletglobalscope-process. Not clear how
+to pluck the generateBid() function off the global though. Maybe something like "Let function be
+Get(realm.\[\[Global\]\], "generateBid"). Rethrow any exceptions." and then either invoke it
+directly or covert it to a WebIDL function and use WebIDL to "invoke" that.</p>
+   </ol>
+   <p>[1]: https://html.spec.whatwg.org/multipage/workers.html#run-a-worker
+[2]:
+https://html.spec.whatwg.org/multipage/document-lifecycle.html#shared-document-creation-infrastructure</p>
    <h2 class="heading settled" data-level="5" id="interest-group-updates"><span class="secno">5. </span><span class="content">Interest Group Updates</span><a class="self-link" href="#interest-group-updates"></a></h2>
    <p>TODO: specify, including move 2 trigger sections out and add updateAdInterestGroup WebIDL.</p>
    <p>Interest groups define a field, dailyUpdateUrl, that allows updating the interest group definition
