@@ -236,47 +236,41 @@ bid in the auction for the chance to display their advertisement.
 <h3 id="script-runners">Script Runners</h3>
 
 <xmp class="idl">
-[SecureContext]
+[Exposed=InterestGroupBiddingScriptRunner]
 interface InterestGroupBiddingScriptRunner {
   [NewObject] Promise<undefined> createScriptRunner(USVString script);
 };
 
-[SecureContext]
+[Exposed=InterestGroupScoringScriptRunner]
 interface InterestGroupScoringScriptRunner {
   [NewObject] Promise<undefined> createScriptRunner(USVString script);
 };
 
-[SecureContext]
+[Exposed=InterestGroupReportingScriptRunner]
 interface InterestGroupReportingScriptRunner {
   [NewObject] Promise<undefined> createScriptRunner(USVString script);
 };
-
-[SecureContext]
-interface InterestGroupScriptRunner {
-};
 </xmp>
 
-Note: WebIDL interfaces exposed to `*` are not exposed to interest group script runners.
+An additional requirement to the interest group script runner globals defined in this specification
+is that they must not expose any interfaces from other specifications whose own exposure set is the
+special value "*". The only interfaces that can be exposed inside of the globals defined in this
+specification are those that explicitly list the global names provided here.
 
 <xmp class="idl">
-[Exposed=InterestGroupBiddingScriptRunner,
-Global=(InterestGroupScriptRunner, InterestGroupBiddingScriptRunner)]
+[Exposed=InterestGroupBiddingScriptRunner]
 interface InterestGroupBiddingScriptRunnerGlobalScope{
-  boolean setBid(optional GenerateBidOutput bid);
+  boolean setBid(optional GenerateBidOutput generateBidOutput);
   undefined setPriority(double priority);
   undefined setPrioritySignalsOverride(DOMString key, double priority);
 };
 
-[Exposed=InterestGroupScoringScriptRunner,
-Global=(InterestGroupScriptRunner, InterestGroupScoringScriptRunner)]
+[Exposed=InterestGroupScoringScriptRunner]
 interface InterestGroupScoringScriptRunnerGlobalScope{
 };
 
-[Exposed=InterestGroupReportingScriptRunner,
-Global=(InterestGroupScriptRunner, InterestGroupReportingScriptRunner)]
+[Exposed=InterestGroupReportingScriptRunner]
 interface InterestGroupReportingScriptRunnerGlobalScope{
-  attribute DOMString reportWinURL;
-  attribute DOMString reportSellerURL;
   undefined sendReportTo(DOMString url);
 };
 
@@ -305,20 +299,6 @@ dictionary GenerateBidOutput {
 issue: TODO: modelingSignals.
 TODO: define an enum LengthUnit for AdSize's widthUnits and heightUnits.
 
-<pre class="idl">
-[Exposed=InterestGroupScriptRunner]
-interface ForDebuggingOnly {
-  attribute DOMString? winReportUrl;
-  attribute DOMString? lossReportUrl;
-  undefined reportAdAuctionWin(DOMString url);
-  undefined reportAdAuctionLoss(DOMString url);
-  DOMString? takeWinReportUrl();
-  DOMString? takeLossReportUrl();
-};
-</pre>
-
-TODO: reportAdAuctionWin/loss steps.
-
 TODO: turn those into spec language.
 The setBid steps are: 
 1. Treat no arguments as an undefined argument, which should clear the bid.
@@ -338,7 +318,11 @@ The setBid steps are:
   1. If |parsedAdDescriptor| is failure, return false.
   1. Let |renderURL| be parsing |parsedAdDescriptor|'s render.
 1. If |renderURL| is not an allowed ad url, return false.
-1. adcomponents
+1. Let |adComponents| be generateBidOutput's adComponentDescriptors.
+1. If |adComponents| is not null or undefined:
+  1. If biddingScriptRunner's adComonents parameter does not exist, return false.
+1. If |adComponents| is not an array, return false.
+
 
 TODO: setPriority method steps.
 
@@ -1110,3 +1094,6 @@ Information of the auction's leading bid so far when ranking scored bids.
 :: Null or a [=generated bid=]. The leading bid of the auction so far.
 
 </dl>
+
+
+# Vendor-Specific Values # {#vendor-specific-values}
