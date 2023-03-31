@@ -232,7 +232,97 @@ to conduct an auction to select an advertisement to display to the user, they ca
 {{Window/navigator}}.{{Navigator/runAdAuction()}} function, providing an auction configuration that
 tells the browser how to conduct the auction and which on-device recorded interests are allowed to
 bid in the auction for the chance to display their advertisement.
-  
+
+<h3 id="script-runners">Script Runners</h3>
+
+<xmp class="idl">
+[Exposed=?, Global=?]
+interface InterestGroupBiddingScriptRunnerGlobalScope{
+};
+
+[Exposed=?, Global=?]
+interface InterestGroupScoringScriptRunnerGlobalScope{
+};
+
+[Exposed=?, Global=?]
+interface InterestGroupReportingScriptRunnerGlobalScope{
+};
+</xmp>
+
+// TODO: modelingSignals
+[Exposed=InterestGroupBiddingScriptRunnerGlobalScope]
+dictionary GenerateBidOutput {
+  required double bid;
+  required AdDescriptor adDescriptor;
+  DOMString ad;
+  double adCost;
+  sequence<AdDescriptor> adComponentDescriptors;
+  boolean allowComponentAuction = false;
+};
+
+[Exposed=InterestGroupBiddingScriptRunnerGlobalScope]
+dictionary AdDescriptor {
+  required DOMString render;
+  AdSize adSize;
+};
+
+[Exposed=InterestGroupBiddingScriptRunnerGlobalScope]
+dictionary AdSize {
+  required double width;
+  required DOMString width_units;  (todo: an enum LengthUnit).
+  required double height;
+  required DOMString height_units;  (todo: an enum LengthUnit).
+};
+
+<xmp class="idl">
+[Exposed=(InterestGroupBiddingScriptRunnerGlobalScope, InterestGroupScoringScriptRunnerGlobalScope, 
+InterestGroupReportingScriptRunnerGlobalScope)]
+interface ForDebuggingOnly {
+  attribute DOMString? winReportUrl;
+  attribute DOMString? lossReportUrl;
+  undefined reportAdAuctionWin(DOMString url);
+  undefined reportAdAuctionLoss(DOMString url);
+  DOMString? takeWinReportUrl();
+  DOMString? takeLossReportUrl();
+};
+</xmp>
+
+TODO: reportAdAuctionWin/loss steps.
+
+partial interface InterestGroupBiddingScriptRunnerGlobalScope {
+  boolean setBid(GenerateBidOutput bid);
+};
+
+TODO: setbid method steps.
+
+<xmp class="idl">
+partial interface InterestGroupBiddingScriptRunnerGlobalScope {
+  undefined setPriority(double priority);
+};
+</xmp>
+
+TODO: setPriority method steps.
+
+<xmp class="idl">
+partial interface InterestGroupBiddingScriptRunnerGlobalScope {
+  undefined setPrioritySignalsOverride(DOMString key, double priority);
+};
+</xmp>
+
+TODO: setPrioritySignalsOverride method steps.
+
+<xmp class="idl">
+partial interface InterestGroupReportingScriptRunnerGlobalScope {
+  attribute DOMString reportWinURL;
+  attribute DOMString reportSellerURL;
+  undefined sendReportTo(DOMString url);
+};
+</xmp>
+
+TODO: sendReportTo method steps.
+
+<h3 id=run-ad-auction">Run Ad Auction</h3> 
+
 <xmp class="idl">
 [SecureContext]
 partial interface Navigator {
