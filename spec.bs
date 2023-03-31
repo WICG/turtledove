@@ -283,7 +283,7 @@ dictionary AdSize {
 };
 
 dictionary AdDescriptor {
-  required DOMString render;
+  required DOMString url;
   AdSize adSize;
 };
 
@@ -291,49 +291,95 @@ dictionary GenerateBidOutput {
   required double bid;
   required (DOMString or AdDescriptor) adDescriptor;
   DOMString ad;
+  sequence<(DOMString or AdDescriptor)> adComponentDescriptors;
   double adCost;
-  sequence<AdDescriptor> adComponentDescriptors;
+  double modelingSignals;
   boolean allowComponentAuction = false;
 };
 </xmp>
 
-issue: TODO: modelingSignals.
-TODO: define an enum LengthUnit for AdSize's widthUnits and heightUnits.
+Issue: TODO: Turn the follwing methods into spec language.
 
-TODO: The setBid (with no argument) steps are:
+The setBid() method steps are:
 1. Clear the bid.
 1. Return true.
 
-TODO: turn those into spec language.
-The setBid given |generateBidOutput| steps are: 
+The setBid(|generateBidOutput|) method steps are (TODO: Finish this. Some steps are not in spec
+language yet):
 1. Clear the bid.
 1. If |generateBidOutput| is null or undefined, return true.
-1. If |generateBidOutput|'s bid is less than or equal to 0, return true.
-1. If |generateBidOutput|'s ad is not null but cannot be converted to json, return false.
-1. If it's a component auction, but allowComponentAuction is not true, return false.
+1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] is less than or equal to 0, return true.
+1. If it's a component auction, but
+  |generateBidOutput|["{{GenerateBidOutput/allowComponentAuction}}"] is false, return false.
+1. Let |bidToSet| be a new [=generated bid=].
+1. Set |bidToSet|'s [=generated bid/bid=] to |generateBidOutput|["{{GenerateBidOutput/bid}}"].
+1. If |generateBidOutput|["{{GenerateBidOutput/ad}}"] [=map/exists=]:
+  1. Let |adJson| be the result of [=serializing a JavaScript value to a JSON string=], given
+    |generateBidOutput|["{{GenerateBidOutput/ad}}"].
+  1. If |adJson| is failure, return failure.
+  1. Set |bidToSet|'s [=generated bid/ad=] to |adJson|.
 1. Let |renderURL| be null.
-1. If |generateBidOutput|'s adDescriptor is DOMString:
-  1. Let |renderURLString| be converting adDescriptor.
-  1. If |renderURLString| is failure, return false.
-  1. Let |renderURL| be parsing |renderURLString|.
-1. TODO: Otherwise:
-  1. Let |adDescriptor| be the result of parsing |generateBidOutput|'s adDescriptor.
+1. If |generateBidOutput|["{{GenerateBidOutput/adDescriptor}}"] is a {{DOMString}}:
+  1. Let |renderURL| be the result of running the [=URL parser=] on
+    |generateBidOutput|["{{GenerateBidOutput/adDescriptor}}"].
+1. Otherwise:
+  1. TODO: Let |adDescriptor| be the result of [=converting an ad descriptor=] given
+    |generateBidOutput|["{{GenerateBidOutput/adDescriptor}}"].
   1. If |adDescriptor| is failure, return false.
-  1. Let |parsedAdDescriptor| be the result of try parsing adDescriptor.
+  1. Let |parsedAdDescriptor| be the result of parsing |adDescriptor|.
   1. If |parsedAdDescriptor| is failure, return false.
-  1. Let |renderURL| be parsing |parsedAdDescriptor|'s render.
-1. If |renderURL| is not an allowed ad url, return false.
-1. Let |adComponents| be generateBidOutput's adComponentDescriptors.
+  1. Let |renderURL| be the result of running the [=URL parser=] on |parsedAdDescriptor|'s render.
+1. If |renderURL| is not an allowed ad url (TODO: expand), return false.
+1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponentDescriptors}}"].
 1. If |adComponents| is not null or undefined:
   1. If biddingScriptRunner's adComonents parameter does not exist, return false.
 1. If |adComponents| is not an array, return false.
+1. If |adComponents|'s size is greater than MaxAdAuctionAdComponents (20, TODO: define this as a
+  vendor specific value?), return false.
+1. Let |internalAdComponents| be a new [=list=] of [=ad descriptors=].
+1. For |component| in |adComponents|:
+  1. Let |internalComponent| be a new [=ad descriptor=].
+  1. If |component| is string:
+    1. Set |internalComponent|'s [=ad descriptor/url=] to |component|.
+    1. Set |internalComponent|'s [=ad descriptor/size=] to null.
+  1. Otherwise:
+    1. Let |parsedComponent| be the result of [=converting an ad descriptor=] given |component|.
+    1. If |parsedComponent|'s adSize is invalid, return false.
+    1. If |parsedComponent|'s render is not allowed, return false.
+    1. Set |internalComponent| to |parsedComponent|.
+  1. [=list/Append] |internalComponent| to |internalAdComponents|.
+1. Set |bidToSet|'s [=generated bid/ad component descriptors=] to |internalAdComponents|.
+1. If |generateBidOutput|["{{GenerateBidOutput/adCost}}"] [=map/exists=]:
+  1. Set |bidToSet|'s [=generated bid/ad cost=] to
+    |generateBidOutput|["{{GenerateBidOutput/adCost}}"].
+1. If |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"] [=map/exists=]:
+  1. Let |modelingSignals| be |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"].
+  1. If |modelingSignals| is greater than 0 and less than 4096:
+    1. Set |bidToSet|'s [=generated bid/modeling signals=] to |modelingSignals|
+1. Set bid to |bidToSet|.
+1. Return true.
 
+To <dfn>convert an ad descriptor</dfn> given an {{AdDescriptor}} |adDescriptor|:
+1. If |adDescriptor|["{{AdDescriptor/url}}"] does not [=map/exist=], return false.
+1. TODO: Convert |adDescriptor|["{{AdDescriptor/adSize}}"] to [=ad descriptor/size=], which have
+  [=ad size/height=], [=ad size/width=], [=ad size/height units=] and [=ad size/width units=].
 
-TODO: setPriority method steps.
+The setPriority(|priority|) method steps are:
+1. If not first time calling this method:
+  1. Reset priority and return.
+1. Set priority to |priority|. TODO: figure out how to integrate this into
+  generateBid().
 
-TODO: setPrioritySignalsOverride method steps.
+The setPrioritySignalsOverride(|key|, |priority|) method steps are:
+1. Update (insert or assign) prioritySignals[key] to |priority|. TODO: figure
+  out how to integrate this into generateBid().
 
-TODO: sendReportTo method steps.
+The sendReportTo(|url|) method steps are:
+1. Throw a typeerror and clears report url if any of:
+  1. The API is called more than once.
+  1. `url` is not a valid HTTPS url.
+1. If called in reportWin(), set reportWinURL to url.
+1. If called in reportResult(), set reportResultURL to url.
 
 <h3 id="runadauction">runAdAuction()</h3> 
 
@@ -388,7 +434,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   1. TODO: If |winner| is failure, fail the auction with manually_aborted set to true.
   1. TODO: If |winner| is null, fail the auction with manually_aborted set to false.
   1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
-    with |winner|'s [=generated bid/render=]. TODO: resolve |p| with urn-uuid, instead of a
+    with |winner|'s [=generated bid/ad descriptor=]. TODO: resolve |p| with urn-uuid, instead of a
     URL.
   1. Run [=generate reporting URLs=] with |auctionConfig| and |winner|.
   1. TODO: UpdateInterestGroupsPostAuction.
@@ -642,7 +688,7 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
   [=map/values=] are {{any}}.
 1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
 1. TODO: Set |browserSignals|'s "interestGroupOwner" to ...need to pass in IG
-1. [=map/Set=] |browserSignals|["renderUrl"] to |generatedBid|'s [=generated bid/render=].
+1. [=map/Set=] |browserSignals|["renderUrl"] to |generatedBid|'s ad descriptor's url.
 1. TODO: Set |browserSignals|'s "adComponents" to ...need to pass in as part of |generatedBid|
 1. TODO: Set |browserSignals|'s "biddingDurationMsec" to ...need to calculate nad pass in
 1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted scoring signals server's response
@@ -1040,15 +1086,11 @@ A per buyer bid generator is an [=ordered map=] whose [=map/keys=] are [=URLs=] 
 [=interest group/trusted bidding signals urls=], and whose [=map/values=] are
 [=per signals url bid generators=].
 
-</dl>
-
 <h3 dfn-type=dfn>Per signals url bid generator</h3>
 
 A per signals url bid generator is an [=ordered map=] whose [=map/keys=] are [=url/origins=]
 representing [=interest group/joining origins=], and whose [=map/values=] are [=lists=] of
 [=interest groups=].
-
-</dl>
 
 <h3 dfn-type=dfn>Generated bid</h3>
 
@@ -1058,8 +1100,45 @@ The output of running a FLEDGE generateBid() script, which needs to be scored by
 : <dfn>bid</dfn>
 :: A {{double}}. If the bid is zero or negative, then this interest group will not participate in
   the auction.
-: <dfn>render</dfn>
+: <dfn>ad</dfn>
+:: A [=string=]. JSON string to be passed to the scoring function.
+: <dfn>ad descriptor</dfn>
+:: An [=ad descriptor=].
+: <dfn>ad component descriptors</dfn>
+:: Null or a [=list=] of [=ad descriptors=].
+: <dfn>ad cost</dfn>
+:: Null or a {{double}}. Advertiser click or conversion cost passed from generateBid() to
+  reportWin().
+: <dfn>modeling signals</dfn>
+:: Null or a non-negative 16-bit integer.
+
+</dl>
+
+<h3 dfn-type=dfn>Ad descriptor</h3>
+
+The render URL and size of an ad.
+
+<dl dfn-for="ad descriptor">
+: <dfn>url</dfn>
 :: A [=URL=], which will be rendered to display the creative if this bid wins the auction.
+: <dfn>size</dfn>
+:: Null or an [=ad size=].
+
+</dl>
+
+<h3 dfn-type=dfn>Ad size</h3>
+
+Width and height of an ad.
+
+<dl dfn-for="ad size">
+: <dfn>width</dfn>
+:: A {{double}}.
+: <dfn>width units</dfn>
+:: A [=string=]. Can only be one of "px" (pixel) and "sw" (screen width).
+: <dfn>height</dfn>
+:: A {{double}}.
+: <dfn>height units</dfn>
+:: A [=string=]. Can only be one of "px" (pixel) and "sw" (screen width).
 
 </dl>
 
@@ -1078,7 +1157,7 @@ The output of running a FLEDGE scoreAd() script.
    ignored. This field must be present and true both when the component seller scores a bid, and
    when that bid is being scored by the top-level auction.
 : <dfn>bid</dfn>
-:: Null or a {{double}}. 
+:: Null or a {{double}}.
   Is null if the auction has no component auction, or if the auction is a top-level auction.
   Modified bid value to provide to the top-level seller script. If present, this will be passed to
   the top-level seller's scoreAd() and reportResult() methods instead of the original bid, if the ad
@@ -1099,6 +1178,3 @@ Information of the auction's leading bid so far when ranking scored bids.
 :: Null or a [=generated bid=]. The leading bid of the auction so far.
 
 </dl>
-
-
-# Vendor-Specific Values # {#vendor-specific-values}
