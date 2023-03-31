@@ -235,85 +235,66 @@ bid in the auction for the chance to display their advertisement.
 
 <h3 id="script-runners">Script Runners</h3>
 
-<pre class="idl">
-[Exposed=InterestGroupBiddingScriptRunner]
-interface InterestGroupBiddingScriptRunner {
-};
-
-[Exposed=InterestGroupScoringScriptRunner]
-interface InterestGroupScoringScriptRunner {
-};
-
-[Exposed=InterestGroupReportingScriptRunner]
-interface InterestGroupReportingScriptRunner {
-};
-
-[Exposed=InterestGroupScriptRunner]
-interface InterestGroupScriptRunner {
-};
-</pre>
-
 An additional requirement to the interest group script runner globals defined in this specification
 is that they must not expose any interfaces from other specifications whose own exposure set is the
 special value "*". The only interfaces that can be exposed inside of the globals defined in this
 specification are those that explicitly list the global names provided here.
 
 <pre class="idl">
-[Exposed=InterestGroupBiddingScriptRunner,
-Global=(InterestGroupScriptRunner, InterestGroupBiddingScriptRunner)]
-interface InterestGroupBiddingScriptRunnerGlobalScope{
+[Exposed=InterestGroupBiddingScriptRunnerGlobalScope,
+Global=InterestGroupBiddingScriptRunnerGlobalScope]
+interface InterestGroupBiddingScriptRunnerGlobalScope {
   boolean setBid();
   boolean setBid(GenerateBidOutput generateBidOutput);
   undefined setPriority(double priority);
   undefined setPrioritySignalsOverride(DOMString key, double priority);
 };
 
-[Exposed=InterestGroupScoringScriptRunner,
-Global=(InterestGroupScriptRunner, InterestGroupScoringScriptRunner)]
-interface InterestGroupScoringScriptRunnerGlobalScope{
+[Exposed=InterestGroupScoringScriptRunnerGlobalScope,
+Global=InterestGroupScoringScriptRunnerGlobalScope]
+interface InterestGroupScoringScriptRunnerGlobalScope {
 };
 
-[Exposed=InterestGroupReportingScriptRunner,
-Global=(InterestGroupScriptRunner, InterestGroupReportingScriptRunner)]
-interface InterestGroupReportingScriptRunnerGlobalScope{
+[Exposed=InterestGroupReportingScriptRunnerGlobalScope,
+Global=InterestGroupReportingScriptRunnerGlobalScope]
+interface InterestGroupReportingScriptRunnerGlobalScope {
   undefined sendReportTo(DOMString url);
 };
 
-dictionary AdSize {
-  required double width;
-  required DOMString widthUnits;
-  required double height;
-  required DOMString heightUnits;
-};
-
-dictionary AdDescriptor {
+dictionary AdRender {
   required DOMString url;
-  AdSize adSize;
+  required DOMString width;
+  required DOMString height;
 };
 
 dictionary GenerateBidOutput {
   required double bid;
-  required (DOMString or AdDescriptor) adDescriptor;
+  required (DOMString or AdRender) adRender;
   DOMString ad;
-  sequence<(DOMString or AdDescriptor)> adComponentDescriptors;
+  sequence<(DOMString or AdRender)> adComponents;
   double adCost;
   double modelingSignals;
   boolean allowComponentAuction = false;
 };
 </pre>
 
-Issue: TODO: Turn the follwing methods into spec language.
+Issue: TODO: Turn the following methods into spec language.
+
+<div algorithm="setBidNoParameter()">
 
 The setBid() method steps are:
-1. Clear the bid.
+1. Clear the bid. TODO: figure out how to integrate this with runAdAuction.
 1. Return true.
 
-The setBid(|generateBidOutput|) method steps are (TODO: Finish this. Some steps are not in spec
-language yet):
-1. Clear the bid.
-1. If |generateBidOutput| is null or undefined, return true.
+</div>
+
+<div algorithm="setBid()">
+
+The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid(|generateBidOutput|)</dfn>
+method steps are:
+1. Clear the bid. TODO: expand.
 1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] is less than or equal to 0, return true.
-1. If it's a component auction, but
+1. If it's a component auction (TODO: how to integrate with runAdAuction), but
   |generateBidOutput|["{{GenerateBidOutput/allowComponentAuction}}"] is false, return false.
 1. Let |bidToSet| be a new [=generated bid=].
 1. Set |bidToSet|'s [=generated bid/bid=] to |generateBidOutput|["{{GenerateBidOutput/bid}}"].
@@ -322,37 +303,38 @@ language yet):
     |generateBidOutput|["{{GenerateBidOutput/ad}}"].
   1. If |adJson| is failure, return failure.
   1. Set |bidToSet|'s [=generated bid/ad=] to |adJson|.
-1. Let |renderURL| be null.
-1. If |generateBidOutput|["{{GenerateBidOutput/adDescriptor}}"] is a {{DOMString}}:
-  1. Let |renderURL| be the result of running the [=URL parser=] on
-    |generateBidOutput|["{{GenerateBidOutput/adDescriptor}}"].
+1. Let |adDescriptor| be a new [=ad descriptor=].
+1. If |generateBidOutput|["{{GenerateBidOutput/adRender}}"] is a {{DOMString}}:
+  1. Let |adUrl| be the result of running the [=URL parser=] on
+    |generateBidOutput|["{{GenerateBidOutput/adRender}}"].
+  1. If |adUrl| is an error, return false.
+  1. If [=validating an ad url=] given |adUrl| returns false, return false.
+  1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
 1. Otherwise:
-  1. TODO: Let |adDescriptor| be the result of [=converting an ad descriptor=] given
-    |generateBidOutput|["{{GenerateBidOutput/adDescriptor}}"].
+  1. Set |adDescriptor| to the result of [=converting an ad render=] given
+    |generateBidOutput|["{{GenerateBidOutput/adRender}}"].
   1. If |adDescriptor| is failure, return false.
-  1. Let |parsedAdDescriptor| be the result of parsing |adDescriptor|.
-  1. If |parsedAdDescriptor| is failure, return false.
-  1. Let |renderURL| be the result of running the [=URL parser=] on |parsedAdDescriptor|'s render.
-1. If |renderURL| is not an allowed ad url (TODO: expand), return false.
-1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponentDescriptors}}"].
-1. If |adComponents| is not null or undefined:
-  1. If biddingScriptRunner's adComonents parameter does not exist, return false.
-1. If |adComponents| is not an array, return false.
-1. If |adComponents|'s size is greater than MaxAdAuctionAdComponents (20, TODO: define this as a
-  vendor specific value?), return false.
-1. Let |internalAdComponents| be a new [=list=] of [=ad descriptors=].
-1. For |component| in |adComponents|:
-  1. Let |internalComponent| be a new [=ad descriptor=].
-  1. If |component| is string:
-    1. Set |internalComponent|'s [=ad descriptor/url=] to |component|.
-    1. Set |internalComponent|'s [=ad descriptor/size=] to null.
-  1. Otherwise:
-    1. Let |parsedComponent| be the result of [=converting an ad descriptor=] given |component|.
-    1. If |parsedComponent|'s adSize is invalid, return false.
-    1. If |parsedComponent|'s render is not allowed, return false.
-    1. Set |internalComponent| to |parsedComponent|.
-  1. [=list/Append] |internalComponent| to |internalAdComponents|.
-1. Set |bidToSet|'s [=generated bid/ad component descriptors=] to |internalAdComponents|.
+1. Set |bidToSet|'s [=generated bid/ad descriptor=] to |adDescriptor|.
+1. If |generateBidOutput|["{{GenerateBidOutput/adComponents}}"] [=map/exists=]:
+  1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponents}}"].
+  1. Return false if any of:
+    1. biddingScriptRunner's adComonents parameter does not exist. TODO: rewrite.
+    1. |adComponents| is not an array.
+    1. |adComponents|'s size is greater than 20 (MaxAdAuctionAdComponents, TODO: define this as a
+      vendor specific value?).
+  1. Let |adComponentDescriptors| be a new [=list=] of [=ad descriptors=].
+  1. For |component| in |adComponents|:
+    1. Let |componentDescriptor| be a new [=ad descriptor=].
+    1. If |component| is {{DOMString}}:
+      1. Let |componentUrl| be the result of running the [=URL parser=] on |component|.
+      1. If |componentUrl| is an error, return false.
+      1. If [=validating an ad url=] given |componentUrl| returns false, return false.
+      1. Set |componentDescriptor|'s [=ad descriptor/url=] to |componentUrl|.
+    1. Otherwise:
+      1. Set |componentDescriptor| to the result of [=converting an ad render=] given |component|.
+      1. If |componentDescriptor| is failure, return false.
+    1. [=list/Append] |componentDescriptor| to |adComponentDescriptors|.
+  1. Set |bidToSet|'s [=generated bid/ad component descriptors=] to |adComponentDescriptors|.
 1. If |generateBidOutput|["{{GenerateBidOutput/adCost}}"] [=map/exists=]:
   1. Set |bidToSet|'s [=generated bid/ad cost=] to
     |generateBidOutput|["{{GenerateBidOutput/adCost}}"].
@@ -363,10 +345,39 @@ language yet):
 1. Set bid to |bidToSet|.
 1. Return true.
 
-To <dfn>convert an ad descriptor</dfn> given an {{AdDescriptor}} |adDescriptor|:
-1. If |adDescriptor|["{{AdDescriptor/url}}"] does not [=map/exist=], return false.
-1. TODO: Convert |adDescriptor|["{{AdDescriptor/adSize}}"] to [=ad descriptor/size=], which have
-  [=ad size/height=], [=ad size/width=], [=ad size/height units=] and [=ad size/width units=].
+To <dfn>convert an ad render</dfn> given an {{AdRender}} |adRender|:
+1. If |adRender|["{{AdRender/url}}"] does not [=map/exist=], return false.
+1. Let |adUrl| be the result of running the [=URL parser=] on |adRender|["{{AdRender/url}}"].
+1. If |adUrl| is an error, return failure.
+1. If [=validating an ad url=] given |adUrl| returns false, return failure.
+1. Let |adDescriptor| be a new [=ad descriptor=].
+1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
+1. If |adRender|["{{AdRender/width}}"] [=map/exists=]:
+  1. If |adRender|["{{AdRender/height}}"] does not [=map/exist=], return failure.
+  1. Let |width| and |widthUnit| be the result of parsing (TODO) |adRender|["{{AdRender/width}}"].
+  1. Let |height| and |heightUnit| be the result of parsing (TODO)
+    |adRender|["{{AdRender/height}}"].
+  1. Return failure if any of:
+    1. |width| is non-positive, or non-finite.
+    1. |height| is non-positive, or non-finite.
+    1. |widthUnit| is not "px" or "sw".
+    1. |heightUnit| is not "px" or "sw".
+  1. Let |adSize| be a new [=ad size=].
+  1. Set |adSize|'s [=ad size/width=] to |width|, [=ad size/width units=] to |widthUnit|,
+    [=ad size/height=] to |height|, [=ad size/height units=] to |heightUnit|.
+  1. Set |adDescriptor|'s [=ad descriptor/size=] to |adSize|.
+1. Return |adDescriptor|.
+
+To <dfn>validate an ad url</dfn> given a [=URL=] |adUrl|:
+1. If |adUrl|'s [=url/scheme=] is not "`https`", return false.
+1. TODO: If it's not in the interest group's ads, or is not excluded, return false.
+1. Return true.
+
+</div>
+
+TODO: Use {{InterestGroupBiddingScriptRunnerGlobalScope/setBid()}} in runAdAuction.
+
+<div algorithm="setPriority()">
 
 The setPriority(|priority|) method steps are:
 1. If not first time calling this method:
@@ -374,16 +385,26 @@ The setPriority(|priority|) method steps are:
 1. Set priority to |priority|. TODO: figure out how to integrate this into
   generateBid().
 
+</div>
+
+<div algorithm="setPrioritySignalsOverride()">
+
 The setPrioritySignalsOverride(|key|, |priority|) method steps are:
-1. Update (insert or assign) prioritySignals[key] to |priority|. TODO: figure
+1. Update (insert or assign) prioritySignals[|key|] to |priority|. TODO: figure
   out how to integrate this into generateBid().
+
+</div>
+
+<div algorithm="sendReportTo()">
 
 The sendReportTo(|url|) method steps are:
 1. Throw a typeerror and clears report url if any of:
   1. The API is called more than once.
-  1. `url` is not a valid HTTPS url.
+  1. |url|'s [=url/scheme=] is not "`https`".
 1. If called in reportWin(), set reportWinURL to url.
 1. If called in reportResult(), set reportResultURL to url.
+
+</div>
 
 <h3 id="runadauction">runAdAuction()</h3> 
 
@@ -460,14 +481,14 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   |config|["{{AuctionAdConfig/decisionLogicUrl}}"].
   1. [=exception/Throw=] a {{TypeError}} if |decisionLogicUrl| is an error, or it is not
     [=same origin=] with |auctionConfig|'s [=auction config/seller=].
-  1. Assert: |decisionLogicUrl|'s [=url/scheme=] is "`https`".
+  1. [=Assert=]: |decisionLogicUrl|'s [=url/scheme=] is "`https`".
   1. Set |auctionConfig|'s [=auction config/decision logic url=] to |decisionLogicUrl|.
 1. If |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"] [=map/exists=]:
   1. Let |trustedScoringSignalsUrl| be the result of running the [=URL parser=] on
     |config|["{{AuctionAdConfig/trustedScoringSignalsUrl}}"].
   1. [=exception/Throw=] a {{TypeError}} if |trustedScoringSignalsUrl| is an error,
     or it is not [=same origin=] with |auctionConfig|'s [=auction config/seller=].
-  1. Assert: |trustedScoringSignalsUrl|'s [=url/scheme=] is "`https`".
+  1. [=Assert=]: |trustedScoringSignalsUrl|'s [=url/scheme=] is "`https`".
   1. Set |auctionConfig|'s [=auction config/trusted scoring signals url=] to
     |trustedScoringSignalsUrl|.
 1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=], let |buyers| be a new
@@ -493,7 +514,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     * |directFromSellerSignalsPrefix| is not [=same origin=] with |auctionConfig|'s
       [=auction config/seller=].
     * |directFromSellerSignalsPrefix|'s [=url/query=] is not null.
-  1. Assert: |directFromSellerSignalsPrefix|'s [=url/scheme=] is "`https`".
+  1. [=Assert=]: |directFromSellerSignalsPrefix|'s [=url/scheme=] is "`https`".
   1. TODO: Figure out how to deal with DirectFromSellerSignals.
 1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
   [=auction config/seller timeout=] to min(|config|["{{AuctionAdConfig/sellerTimeout}}"], 500)
@@ -781,7 +802,7 @@ To <dfn>fetch resource</dfn> given a [=URL=] |url|, and a [=string=] |mimeType|:
 <div algorithm>
 
 To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
-[=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, and a non-negative 16-bit integer
+[=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, and a {{unsigned short}}
 |experimentGroupId|:
 1. Let |queryParamsList| be a new [=list/is empty|empty=] [=list=].
 1. [=list/Append=] "hostname=" to |queryParamsList|.
@@ -1044,11 +1065,11 @@ An auction config is a [=struct=] with the following items:
   [=auction config/per buyer timeouts=].
 : <dfn>per buyer group limits</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
-  non-negative 16-bit integers.
+  {{unsigned short}}s.
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the number of
   bidding interest groups for a particular buyer that can participate in an auction.
 : <dfn>all buyers group limit</dfn>
-:: A non-negative 16-bit integer.
+:: A {{unsigned short}}.
   Limit on the number of bidding interest groups for all buyers without a limit specified in
   [=auction config/per buyer group limits=].
 : <dfn>per buyer priority signals</dfn>
@@ -1069,16 +1090,16 @@ An auction config is a [=struct=] with the following items:
   Nested auctions whose results will also participate in a top level auction. Only the top level
   [=auction config=] can have component auctions.
 : <dfn>seller experiment group id</dfn>
-:: A non-negative 16-bit integer.
+:: A {{unsigned short}}.
   Optional identifier for an experiment group to support coordinated experiments with the seller's
   trusted server.
 : <dfn>per buyer experiment group ids</dfn>
 :: An [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
-  non-negative 16-bit integers.
+  {{unsigned short}}s.
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are identifiers for
   experiment groups, to support coordinated experiments with buyers' trusted servers.
 : <dfn>all buyer experiment group id</dfn>
-:: A non-negative 16-bit integer.
+:: A {{unsigned short}}.
   Optional identifier for an experiment group to support coordinated experiments with buyers'
   trusted servers for buyers without a specified experiment group.
 
@@ -1114,7 +1135,7 @@ The output of running a FLEDGE generateBid() script, which needs to be scored by
 :: Null or a {{double}}. Advertiser click or conversion cost passed from generateBid() to
   reportWin().
 : <dfn>modeling signals</dfn>
-:: Null or a non-negative 16-bit integer.
+:: Null or a {{unsigned short}}.
 
 </dl>
 
@@ -1126,7 +1147,7 @@ The render URL and size of an ad.
 : <dfn>url</dfn>
 :: A [=URL=], which will be rendered to display the creative if this bid wins the auction.
 : <dfn>size</dfn>
-:: Null or an [=ad size=].
+:: Null or an [=ad size=]. Defaulting to null.
 
 </dl>
 
