@@ -442,7 +442,7 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 <div algorithm>
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
-[=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|:
+[=auction config=]-or-null |topLevelAuctionConfig|, and a [=global object=] |global|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |decisionLogicScript| be the result of [=creating a seller script runner=] with
   |auctionConfig|'s [=auction config/decision logic url=].
@@ -451,7 +451,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |leadingBidInfo| be a new [=leading bid info=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. If |auctionConfig|'s [=auction config/component auctions=] are not [=list/is empty|empty=]:
-  1. [=Assert=] |topLevelAuctionConfig| being null.
+  1. [=Assert=] |topLevelAuctionConfig| is null.
   1. Let |pendingComponentAuctions| be the [=list/size=] of |auctionConfig|'s
     [=auction config/component auctions=].
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
@@ -471,7 +471,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
 1. [=map/Set=] |browserSignals|["seller"] to |auctionConfig|'s [=auction config/seller=].
 1. If |topLevelAuctionConfig| is not null:
-  1. [=map/Set=] |browserSignals|["topLevelSeller"] to |topLevelAuctionConfig|'s [=auction config/seller=].
+  1. [=map/Set=] |browserSignals|["topLevelSeller"] to the [=serialization of an origin|serialization=] of |topLevelAuctionConfig|'s [=auction config/seller=].
 1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -480,10 +480,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     [=auction config/per buyer experiment group ids=].
   1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|] exists:
     1. Set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
-  1. If |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] exists:
+  1. Let |perBuyerSignals| be |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] if that
+    member [=map/exists=], and null otherwise.
+  1. If |auctionConfig|'s [=auction config/per buyer signals=] is not null and [=auction config/per buyer signals=][|buyer|] [=map/exists=]:
     1. Let |perBuyerSignals| be |auctionConfig|'s [=auction config/per buyer signals=][|buyer|].
   1. Otherwise:
-    1. Let |perBuyerSignals| be null
+    1. Let |perBuyerSignals| be null.
   1. [=map/For each=] |signalsUrl| -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
     1. Let |keys| be a new [=ordered set=].
     1. Let |igNames| be a new [=ordered set=].
