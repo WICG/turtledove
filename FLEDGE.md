@@ -145,8 +145,10 @@ The `executionMode` attribute is optional, and may contain one of the following 
    Essentially the browser calls `Object.freeze()` on every JavaScript object that
    is still reachable and checks for data types or variable bindings that could carry
    state between runs. If these checks fail then the bid execution will also
-   fail. This execution mode has similar performance to the `"group-by-origin"` execution mode, but
-   does not have the same limitations on what top-level sites can join or leave
+   fail. This execution mode has similar performance to the `"group-by-origin"
+   execution mode with the addition of the additional overhead from freezing
+   the context (roughly equal to the cost of context creation). This execution
+   mode does not have the same limitations on what top-level sites can join or leave
    the interest group.
 
 The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time.
