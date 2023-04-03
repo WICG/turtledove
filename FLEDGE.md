@@ -6,6 +6,7 @@ This first experiment is currently a Chrome [Origin Trial](https://github.com/Go
 
 We plan to hold regular meetings under the auspices of the WICG to go through the details of this proposal and quickly make any needed changes.  Please comment on the timing question in Issue [#88](https://github.com/WICG/turtledove/issues/88) if you want to attend these meetings to be involved in hammering out details.
 
+See [the in progress FLEDGE specification](https://wicg.github.io/turtledove/).
 
 - [Summary](#summary)
 - [Background](#background)
