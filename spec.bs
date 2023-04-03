@@ -171,10 +171,13 @@ are:
       1. [=list/Append=] |igAd| to |interestGroup|'s |interestGroupField|.
 1. If |interestGroup|'s [=interest group/estimated size=] is greater than 50 KB, then
   [=exception/throw=] a {{TypeError}}.
+1. Let |frameOrigin| be [=this=]'s [=relevant global object=]'s `origin` property.
+1. Let |permission| be the result of [=checking interest group permissions=] with 
+|ownerUrl|'s [=url/origin=], |frameOrigin|, and |true|.
+1. If |permission| is false, then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
 1. Let |p| be [=a new promise=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. TODO: document .well-known fetches for cross-origin joins.
   1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
   1. If the browser is currently storing an interest group with `owner` and `name` that matches
     |interestGroup|, then remove the currently stored one.
@@ -220,6 +223,35 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
     [=interest group ad/render url=].
   1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
+
+<div algorithm="check interest group permissions">
+
+To <dfn>check interest group permissions</dfn> given a [=string=] <dfn
+for="fetch interest group permissions">|ownerOrigin|</dfn>, a [=string=] <dfn
+for="fetch interest group permissions">|frameOrigin|</dfn>, and a [=boolean=]
+<dfn for="fetch interest group permissions">|isJoin|</dfn>:
+1. If |ownerOrigin| is equal to |frameOrigin|, then return true.
+1. Let |permissionsUrl| be the result of [building an interest group permissions url=]
+  with |ownerOrigin| and |frameOrigin|.
+1. Let |resource| be the result of [=fetching resource=] with |permissionsUrl|
+  and "`application/json`". (TODO: use cors mode)
+1. If |resource| is failure, then return false.
+1. Let |permissions| be the result of parsing |resource| as JSON, returning false on failure.
+1. If |isJoin| is true and |permissions| is a JSON object containing key
+  "`joinAdInterestGroup`" with value `true`, return true.
+1. If |isJoin| is false and |permissions| is a JSON object containing key
+  "`leaveAdInterestGroup`" with value `true`, return true.
+1. Return false.
+
+</div>
+
+<div algorithm="build an interest group permissions url">
+
+To <dfn>build an interest group permissions url</dfn> given a [=string=] |ownerOrigin| and a [=string=] |frameOrigin|:
+1. Return the string formed by [=string/concatenating=] "`https://`", |ownerOrigin|,
+  "`/.well-known/interest-group/permissions/?origin=`", and |frameOrigin|.
+
+</div>
 
 <h2 id="leaving-interest-groups">Leaving Interest Groups</h2>
 
