@@ -9,7 +9,7 @@ The TURTLEDOVE effort is about offering a new API to address this use case while
 *   Advertisers can serve ads based on an interest, but cannot combine that interest with other information about the person — in particular, with who they are or what page they are visiting.
 *   Web sites the person visits, and the ad networks those sites use, cannot learn about their visitors' ad interests.
 
-**Chrome expects to build and ship a first experiment in this direction during 2021.  For details of the current design, see [FLEDGE](FLEDGE.md).**
+**Chrome expects to build and ship a first experiment in this direction during 2021.  For details of the current design, see the [FLEDGE explainer](FLEDGE.md) or the [in progress FLEDGE specification](https://wicg.github.io/turtledove/).**
 
 The FLEDGE design draws on many discussions and proposals published during 2020, most notably:
 *  The [original TURTLEDOVE](Original-TURTLEDOVE.md) from Chrome.
