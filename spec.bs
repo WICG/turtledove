@@ -378,12 +378,13 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|,
-    |global|, and true.
+    null, and |global|.
   1. TODO: If |winner| is failure, fail the auction with manually_aborted set to true.
   1. TODO: If |winner| is null, fail the auction with manually_aborted set to false.
   1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
     with |winner|'s [=generated bid/render=]. TODO: resolve |p| with urn-uuid, instead of a
     URL.
+  1. Run [=generate reporting URLs=] with |auctionConfig| and |winner|.
   1. TODO: UpdateInterestGroupsPostAuction.
 1. Return |p|.
 
@@ -539,8 +540,8 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 
 <div algorithm>
 
-To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, a
-[=global object=] |global|, and a [=boolean=] |isTopLevel|:
+To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
+[=auction config=]-or-null |topLevelAuctionConfig|, and a [=global object=] |global|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |decisionLogicScript| be the result of [=creating a seller script runner=] with
   |auctionConfig|'s [=auction config/decision logic url=].
@@ -549,25 +550,27 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |leadingBidInfo| be a new [=leading bid info=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. If |auctionConfig|'s [=auction config/component auctions=] are not [=list/is empty|empty=]:
-  1. [=Assert=] |isTopLevel| being true.
+  1. [=Assert=] |topLevelAuctionConfig| is null.
   1. Let |pendingComponentAuctions| be the [=list/size=] of |auctionConfig|'s
     [=auction config/component auctions=].
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
-    1. Let |compWinner| be the result of [=generate and score bids=] with |component|, |global|, and
-      false.
-    1. If |compWinner| is not failure or null, [=score and rank a bid=] with |compWinner|,
-      |leadingBidInfo|, |desisionLogicScript|, and true.
+    1. Let |compWinner| be the result of [=generate and score bids=] with |component|,
+      |auctionConfig|, and |global|.
+    1. If |compWinner| is not failure or null, [=score and rank a bid=] with |auctionConfig|,
+      |compWinner|, |leadingBidInfo|, |desisionLogicScript|, and true.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
   1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
-1. TODO: Let |browserSignals| be empty?
+1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
+  [=map/values=] are {{any}}.
 1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
-1. TODO: Set |browserSignals|'s "seller" to the seller
-1. TODO: Set |browserSignals|'s "topLevelSeller" to the top level seller
+1. [=map/Set=] |browserSignals|["seller"] to |auctionConfig|'s [=auction config/seller=].
+1. If |topLevelAuctionConfig| is not null:
+  1. [=map/Set=] |browserSignals|["topLevelSeller"] to the [=serialization of an origin|serialization=] of |topLevelAuctionConfig|'s [=auction config/seller=].
 1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -576,9 +579,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     [=auction config/per buyer experiment group ids=].
   1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|] exists:
     1. Set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
-  1. TODO: Let |perBuyerSignals| be null/empty
-  1. TODO: If |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] exists:
-    1. TODO: Set |perBuyerSignals| be |auctionConfig|'s [=auction config/per buyer signals=][|buyer|].
+  1. Let |perBuyerSignals| be |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] if that
+    member [=map/exists=], and null otherwise.
+  1. If |auctionConfig|'s [=auction config/per buyer signals=] is not null and [=auction config/per buyer signals=][|buyer|] [=map/exists=]:
+    1. Let |perBuyerSignals| be |auctionConfig|'s [=auction config/per buyer signals=][|buyer|].
+  1. Otherwise:
+    1. Let |perBuyerSignals| be null.
   1. [=map/For each=] |signalsUrl| -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
     1. Let |keys| be a new [=ordered set=].
     1. Let |igNames| be a new [=ordered set=].
@@ -609,8 +615,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           to "generateBid", and [=evaluate script/arguments=] set to « |interestGroup|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|, |browserSignals| ».
         1. If |generatedBid|'s [=generated bid/bid=] is negative or 0, [=iteration/continue=].
         1. TODO: Validate other fields of |generatedBid|.
-        1. [=Score and rank a bid=] with |generatedBid|, |leadingBidInfo|, |desisionLogicScript| and
-          false.
+        1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
+          |desisionLogicScript| and false.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until |pendingBuyers| is 0.
 1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
@@ -619,20 +625,22 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 
 <div algorithm>
 
-To <dfn>score and rank a bid</dfn> given a [=generated bid=] |generatedBid|, a [=leading bid info=]
-|leadingBidInfo|, a [=string=] |decisionLogicScript|, and a [=boolean=] |hasComponentAuction|:
+To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
+|generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, and a
+[=boolean=] |hasComponentAuction|:
 1. TODO: Assemble and fetch trusted scoring signals
 1. TODO: Let |adMetadata| be ... maybe include in [=generated bid=]
 1. Let |bid| be |generatedBid|'s [=generated bid/bid=].
-1. TODO: Let |auctionConfig| be ... need to pass in
 1. TODO: Let |trustedScoringSignals| ... need to assemble and fetch these
-1. TODO: Let |browserSignals| be empty?
+1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
+  [=map/values=] are {{any}}.
 1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
 1. TODO: Set |browserSignals|'s "interestGroupOwner" to ...need to pass in IG
-1. TODO: Set |browserSignals|'s "renderUrl" to |generatedBid|'s [=generated bid/render=]
+1. [=map/Set=] |browserSignals|["renderUrl"] to |generatedBid|'s [=generated bid/render=].
 1. TODO: Set |browserSignals|'s "adComponents" to ...need to pass in as part of |generatedBid|
 1. TODO: Set |browserSignals|'s "biddingDurationMsec" to ...need to calculate nad pass in
 1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted scoring signals server's response
+1. TODO: Remove fields of |auctionConfig| that don't pass through.
 1. TODO: Let |scoreAdOutput| be the result of [=evaluating script=] with
   [=evaluate script/script=] set to |decisionLogicScript|,
   [=evaluate script/functionName=] set to "scoreAd", and [=evaluate script/arguments=] set to
@@ -754,7 +762,67 @@ To <dfn>evaluate script</dfn> with given [=string=] <dfn for="evaluate script">|
 <dfn for="evaluate script">|arguments|</dfn>:
 1. TODO: Return an object or null, which is the result of evaluating |script|'s |functionName| with
   |arguments|.
+  
+TODO: something like the steps below that need spec-ifying, though some pieces like fetching the
+script should likely be pulled out:
 
+1. Allocate the right process/thread (these are called agent clusters/agents respectively, in ES
+  land) that's going to host the script. That's basically one of the algorithms in:
+  https://html.spec.whatwg.org/multipage/webappapis.html#integration-with-the-javascript-agent-cluster-formalism.
+  Might actually literally be able to re-use
+  https://html.spec.whatwg.org/multipage/webappapis.html#obtaining-a-worker/worklet-agent, but not
+  sure; otherwise make a new one. This is done in step 6 of [1]
+1. Create a new realm and execution
+  context. Realms are basically ES environments that run script. This is where the global object in
+  the environment is defined, so something like FledgeScriptRunner IDL interface that has to create
+  and define (non-user-supplied) methods on. See step 7 of [1], but step 8 substep 5 of [2] is maybe
+  better:
+  https://html.spec.whatwg.org/multipage/document-lifecycle.html#shared-document-creation-infrastructure:creating-a-new-javascript-realm.
+1. Setup the environment or environment settings object. So in HTML an "environment settings
+  object" is-a "environment". It is used to set a special internal slot on the ES "realm" so that ES
+  can call back up into the HTML Standard when it needs things that aren't defined in HTML. May not
+  need this at all — assuming script doesn't resolve URLs, fetch things from within the worklet, or
+  access anything time-related. A realm's default "\[\[HostDefined\]\]" slot is undefined
+  (https://tc39.es/ecma262/#table-realm-record-fields) which is likely valid for this use-case.
+1. Fetch the script resource. Everything under step 5 of
+  https://html.spec.whatwg.org/multipage/webappapis.html#fetch-a-classic-script can give some idea of
+  how to do this and extract the string body appropriately etc
+1. Create the "script". This basically
+  means parsing the source text inside the ES realm that was created earlier. See this step for more
+  information, though it won't need much of the rest of that algorithm:
+  https://html.spec.whatwg.org/multipage/webappapis.html#creating-a-classic-script:~:text=Let%20result%20be%20ParseScript(source%2C%20settings%27s%20realm%2C%20script),
+  since this spec wants to create "a classic script" as defined by HTML.
+1. Run the script: basically call ES's ScriptEvaluation(), like
+  https://html.spec.whatwg.org/multipage/webappapis.html#run-a-classic-script does), although it'll
+  probably need to do some of what that algorithm's step 3 ("Prepare to run a script") does (pushing
+  the current realm's execution context on the stack). This will produce something called a
+  CompletionRecord which will contain any value that the script contained
+  (https://tc39.es/ecma262/#sec-completion-record-specification-type).
+1. Run user-provided function.
+  I think just "running the script" isn't probably appropriate here though. This step will want to
+  actually run a specific function inside the script. In that case, an example of doing this is the
+  last 3 steps of:
+  https://html.spec.whatwg.org/multipage/worklets.html#fakeworkletglobalscope-process. Not clear how
+  to pluck the generateBid() function off the global though. Maybe something like "Let function be
+  Get(realm.\[\[Global\]\], "generateBid"). Rethrow any exceptions." and then either invoke it
+  directly or covert it to a WebIDL function and use WebIDL to "invoke" that.
+
+[1]: https://html.spec.whatwg.org/multipage/workers.html#run-a-worker
+[2]:
+https://html.spec.whatwg.org/multipage/document-lifecycle.html#shared-document-creation-infrastructure
+
+<div algorithm>
+
+To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and a [=generated bid=]
+|bid|:
+1. TODO: Fetch buyer reporting script...though first we need the IG.
+1. TODO: Calculate all params to reportWin() using |bid|.
+1. TODO: Evaluate reportWin() with params and scope that includes sendReportTo().
+1. TODO: Fetch seller reporting script from |config|'s field.
+1. TODO: Calculate all params to reportResult().
+1. TODO: Evaluate reportResult() with params and scope that includes sendReportTo().
+
+</div>
 
 # Interest Group Updates # {#interest-group-updates}
 
