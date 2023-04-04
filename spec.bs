@@ -234,7 +234,27 @@ To <dfn>check interest group permissions</dfn> given an [=url/origin=]
 1. Let |permissionsUrl| be the result of [=building an interest group permissions url=]
   with |ownerOrigin| and |frameOrigin|.
 1. Let |resource| be the result of [=fetching resource=] with |permissionsUrl|
-  and "`application/json`". (TODO: use cors mode)
+  and "`application/json`".
+1. Let |request| be the result of [=creating a request=] with |permissionsUrl|, [=create a request/accept=]
+  set to "`application/json`"| and [=create a request/corsMode=] set to true.
+1. Let |resource| be null.
+1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
+  [=response=] |response| and |responseBody|:
+  1. If |responseBody| is null or failure, set |resource| to failure and return.
+  1. Let |headers| be |response|'s [=response/header list=].
+  1. If [=header list/getting a structured field value=] "X-Allow-FLEDGE" from |headers| does not
+    return true, set |resource| to failure and return.
+  1. Let |headerMimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
+  1. Set |resource| to failure and return, if any of:
+    1. |headerMimeType| is failure.
+    1. |headerMimeType| is not a [=JSON MIME type=].
+  1. Let |mimeTypeCharset| be |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
+  1. Set |resource| to failure and return if any of:
+    1. If |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and
+      |responseBody| is not [=UTF-8=] encoded.
+    1. If |mimeTypeCharset| is "us-ascii", and |responseBody| is not [=ascii string=].
+  1. Set |resource| to |responseBody|.
+1. Wait for |resource| to be set.
 1. If |resource| is failure, then return false.
 1. Let |permissions| be the result of [=parsing a JSON string to an Infra value=], returning false on failure.
 1. If |isJoin| is true and |permissions| is a JSON object containing key
@@ -605,8 +625,8 @@ To <dfn>create a seller script runner</dfn> given a [=URL=] |decisionLogicUrl|:
   "text/javascript".
 1. Return |decisionLogicScript|.
 
-To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for="create a request">
-|accept|</dfn>:
+To <dfn>create a request</dfn> given a [=URL=] |url|, a [=string=] <dfn for="create a request">
+|accept|</dfn> and a [=boolean=] <dfn for="create a request">|corsMode|</dfn>:
 1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
     ::  |url|
@@ -628,13 +648,15 @@ To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for=
     ::  "`no-store`"
     :   [=request/redirect mode=]
     :: "`error`"
+    :   [=request/mode=]
+    :: If |corsMode| is true, then "`cors`", else "`same-origin`".
 1. Return |request|.
 
 <div algorithm>
 
 To <dfn>fetch resource</dfn> given a [=URL=] |url|, and a [=string=] |mimeType|:
-1. Let |request| be the result of [=creating a request=] with |url|, and [=create a request/accept=]
-  set to |mimeType|.
+1. Let |request| be the result of [=creating a request=] with |url|, [=create a request/accept=]
+  set to |mimeType|, and [=create a request/corsMode=] set to false.
 1. Let |resource| be null.
 1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
   [=response=] |response| and |responseBody|:
