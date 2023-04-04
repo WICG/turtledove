@@ -964,9 +964,10 @@ An interest group is a [=struct=] with the following items:
 : <dfn>expiry</dfn>
 :: A point in time at which the browser will forget about this interest group.
 : <dfn>owner</dfn>
-:: An [=url/origin=].
+:: An [=url/origin=]. Frames that join interest groups owned by `owner` must either be served from origin `owner`,
+  or another origin delegated by `owner`. The scheme must be https.
 : <dfn>name</dfn>
-:: A [=string=].
+:: A [=string=]. The (owner, name) tuple is a key that uniquely defines each interest group.
 : <dfn>priority</dfn>
 :: A {{double}}. Defaulting to 0.0. Used to select which interest groups participate in an auction
   when the number of interest groups are limited by {{AuctionAdConfig/perBuyerGroupLimits}}.
@@ -981,23 +982,24 @@ An interest group is a [=struct=] with the following items:
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
 : <dfn>execution mode</dfn>
-:: A [=string=], defaulting to "compatibility".
+:: A [=string=], defaulting to "compatibility". Acceptable values are "compatibility" and "group-by-origin".
 : <dfn>bidding url</dfn>
-:: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from.
+:: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from. Must be of origin `owner`.
 : <dfn>bidding wasm helper url</dfn>
 :: Null or a [=URL=]. Lets the bidder provide computationally-expensive subroutines in WebAssembly,
-  rather than JavaScript, to be driven from the JavaScript function provided by
-  [=interest group/bidding url=].
+  in addition JavaScript, to be driven from the JavaScript function provided by
+  [=interest group/bidding url=]. Must be of origin `owner`.
 : <dfn>daily update url</dfn>
 :: Null or a [=URL=]. Provides a mechanism for the group's owner to periodically update the
-  attributes of the interest group.
+  attributes of the interest group. See [interest group updates](#interest-group-updates).
 : <dfn>trusted bidding signals url</dfn>
 :: Null or a [=URL=]. Provide a mechanism for making real-time data available for use at bidding
-  time.
+  time. See [=building trusted bidding signals url=].
 : <dfn>trusted bidding signals keys</dfn>
-:: Null or a [=list=] of [=string=].
+:: Null or a [=list=] of [=string=]. See [=building trusted bidding signals url=].
 : <dfn>user bidding signals</dfn>
-:: Null or a [=string=]. Additional metadata that the owner can use during on-device bidding.
+:: Null or an {{any}}. Additional JSON-serializable object metadata that the owner can used during
+  on-device bidding.
 : <dfn>ads</dfn>
 :: Null or a [=list=] of [=interest group ad=]. Contains various ads that the interest group might
   show.
@@ -1010,7 +1012,7 @@ An interest group is a [=struct=] with the following items:
 
 </dl>
 
-TODO: Update the short descriptions of some fields above, and add links when runAdAuction() section
+TODO: Specify the short descriptions of some fields above and below, and add links when runAdAuction() section
 is ready.
 
 <h3 dfn-type=dfn>Interest group ad</h3>
@@ -1019,9 +1021,10 @@ An interest group ad is a [=struct=] with the following items:
 
 <dl dfn-for="interest group ad">
 : <dfn>render url</dfn>
-:: A [=URL=].
+:: A [=URL=]. If this ad wins the auction, this URL (or a URN that maps to this URL) will be returned by
+  `runAdAuction()`. This URL is intended to be loaded into an ad iframe (or a fenced frame).
 : <dfn>metadata</dfn>
-:: Null or a [=string=].
+:: Null or {{any}}. Extra arbitary information about this ad, passed to `generateBid()`.
 
 </dl>
 
@@ -1035,7 +1038,7 @@ An auction config is a [=struct=] with the following items:
   The origin of the seller running the ad auction.
 : <dfn>decision logic url</dfn>
 :: A [=URL=].
-  The URL to fetch the seller's JavaScript from.
+  The URL to fetch the seller's JavaScript from. Must be of origin `seller`.
 : <dfn>trusted scoring signals url</dfn>
 :: Null or a [=URL=].
   Provide a mechanism for making real-time data (information about a specific creative) available
@@ -1044,27 +1047,27 @@ An auction config is a [=struct=] with the following items:
 :: Null or a [=list=] of [=url/origin=].
   Owners of interest groups allowed to participate in the auction.
 : <dfn>auction signals</dfn>
-:: Null or a [=string=].
-  Opaque JSON data passed to both sellers' and buyers' script runners.
+:: Null or an {{any}}.
+  Opaque JSON-serializable object passed to both sellers' and buyers' script runners.
 : <dfn>seller signals</dfn>
-:: Null or a [=string=].
-  Opaque JSON data passed to the seller's script runner.
+:: Null or an {{any}}.
+  Opaque JSON-serializable object passed to the seller's script runner.
 : <dfn>seller timeout</dfn>
-:: A [=duration=]. Defaulting to 50 milliseconds.
+:: A [=duration=] in milliseconds. Defaulting to 50 milliseconds.
   Restricts the runtime of the seller's `scoreAd()` script.
 : <dfn>per buyer signals</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
-  [=strings=].
-  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
+  {{any}}.
+  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON-serializable objects
   passed to corresponding buyer's script runner.
 : <dfn>per buyer timeouts</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
-  durations. 
+  durations in milliseconds. 
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the runtime of
   corresponding buyer's `generateBid()` script.
 : <dfn>all buyers timeout</dfn>
-:: A [=duration=]. Defaulting to 50 milliseconds.
-  Restricts the `generateBid()` script's runtime for all buyers without a timeouts specified in
+:: A [=duration=] in milliseconds. Defaulting to 50 milliseconds.
+  Restricts the `generateBid()` script's runtime for all buyers without a timeout specified in
   [=auction config/per buyer timeouts=].
 : <dfn>per buyer group limits</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
