@@ -516,6 +516,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           [=evaluate script/script=] set to |biddingScript|, [=evaluate script/functionName=] set
           to "generateBid", and [=evaluate script/arguments=] set to « |interestGroup|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|, |browserSignals| ».
         1. If |generatedBid|'s [=generated bid/bid=] is negative or 0, [=iteration/continue=].
+        1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
         1. TODO: Validate other fields of |generatedBid|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
           |desisionLogicScript| and false.
@@ -537,10 +538,10 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
 1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
-1. TODO: Set |browserSignals|'s "interestGroupOwner" to ...need to pass in IG
+1. [=map/Set=] |browserSignals|["interestGroupOwner"] to |generatedBid|'s [=generated bid/interest group]'s [=interest group/owner=].
 1. [=map/Set=] |browserSignals|["renderUrl"] to |generatedBid|'s [=generated bid/render=].
 1. TODO: Set |browserSignals|'s "adComponents" to ...need to pass in as part of |generatedBid|
-1. TODO: Set |browserSignals|'s "biddingDurationMsec" to ...need to calculate nad pass in
+1. TODO: Set |browserSignals|'s "biddingDurationMsec" to ...need to calculate and pass in
 1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted scoring signals server's response
 1. TODO: Remove fields of |auctionConfig| that don't pass through.
 1. TODO: Let |scoreAdOutput| be the result of [=evaluating script=] with
@@ -717,12 +718,16 @@ https://html.spec.whatwg.org/multipage/document-lifecycle.html#shared-document-c
 
 To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and a [=generated bid=]
 |bid|:
-1. TODO: Fetch buyer reporting script...though first we need the IG.
-1. TODO: Calculate all params to reportWin() using |bid|.
+1. Let |sellerReportingScript| be the result of [=fetching resource=] with |config|'s
+  [=auction config/decision logic url=], and "text/javascript".
+1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
+1. TODO: Calculate |browserSignals|
+1. TODO: Let |sellerSignals| be the result of evaluating reportResult() with params and scope that includes sendReportTo().
+1. Let |buyerReportingScript| be the result of [=fetching resource=] with |bid|'s
+  [=generated bid/interest group=|'s [=interest group/bidding url=], and "text/javascript".
+1. TODO: Calculate |perBuyerSignals|
+1. TODO: Update |browserSignals| for buyer
 1. TODO: Evaluate reportWin() with params and scope that includes sendReportTo().
-1. TODO: Fetch seller reporting script from |config|'s field.
-1. TODO: Calculate all params to reportResult().
-1. TODO: Evaluate reportResult() with params and scope that includes sendReportTo().
 
 </div>
 
