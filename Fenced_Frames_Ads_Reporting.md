@@ -169,7 +169,7 @@ When rendered ad is composed of [multiple pieces](https://github.com/WICG/turtle
 
 ## Design
 ### Event Type and Reporting Destination
-For fenced frames rendering the ad components under the top-level ad fenced frame, the event types and reporting destinations registered for the top-level fenced frame is reused when beacons are sent from the ad component fenced frames.
+For fenced frames rendering the ad components under the top-level ad fenced frame, the event types and reporting destinations registered for the top-level fenced frame are reused when beacons are sent from the ad component fenced frames.
 
 ### Restricted to send `reserved.top_navigation` beacons only
 * Invocation of `reportEvent` API from an ad component fenced frame is disallowed.
