@@ -87,8 +87,7 @@ are:
   "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
   "{{NotAllowedError}}" {{DOMException}}.
 1. Let |frameOrigin| be the [=relevant settings object=]'s [=environment settings object/origin=].
-1. If |frameOrigin| is an [=opaque origin=], then [=exception/throw=] a
-  "{{NotAllowedError}}" {{DOMException}}.
+1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and that the [=origin/scheme=] of |frameOrigin| is "https".
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
   1. Set |interestGroup|'s [=interest group/expiry=] to now plus |durationSeconds|.
@@ -96,7 +95,7 @@ are:
     |group|["{{AuctionAdInterestGroup/owner}}"].
     1. If |ownerUrl| is an error, or its [=url/scheme=] is not "`https`", [=exception/throw=] a
       {{TypeError}}.
-    1. Set |interestGroup|'s [=interest group/owner=] to |ownerUrl|'s [=url/origin=].
+    1. Set |interestGroup|'s [=interest group/owner=] to |ownerUrl|'s [=origin=].
   1. Set |interestGroup|'s [=interest group/name=] to |group|["{{AuctionAdInterestGroup/name}}"].
   1. Set |interestGroup|'s [=interest group/priority=] to
     |group|["{{AuctionAdInterestGroup/priority}}"].
@@ -228,15 +227,13 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 
 <div algorithm>
 
-To <dfn>check interest group permissions</dfn> given an [=url/origin=]
-|ownerOrigin|, an [=url/origin=] |frameOrigin|, and a [=boolean=] |isJoin|:
+To <dfn>check interest group permissions</dfn> given an [=origin=]
+|ownerOrigin|, an [=origin=] |frameOrigin|, and a [=boolean=] |isJoin|:
 1. If |ownerOrigin| is [=same origin=] to |frameOrigin|, then return true.
 1. Let |permissionsUrl| be the result of [=building an interest group permissions url=]
   with |ownerOrigin| and |frameOrigin|.
-1. Let |resource| be the result of [=fetching resource=] with |permissionsUrl|
-  and "`application/json`".
 1. Let |request| be the result of [=creating a request=] with |permissionsUrl|, [=create a request/accept=]
-  set to "`application/json`"| and [=create a request/corsMode=] set to true.
+  set to "`application/json`"|. TODO: [maybe](https://source.chromium.org/chromium/chromium/src/+/main:content/browser/interest_group/interest_group_permissions_checker.cc;drc=adac219925ef5d9c9a954d189c2e4b8852a4bbed;l=123) require cors mode here?
 1. Let |resource| be null.
 1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
   [=response=] |response| and |responseBody|:
@@ -263,15 +260,22 @@ To <dfn>check interest group permissions</dfn> given an [=url/origin=]
   "`leaveAdInterestGroup`" with value `true`, return true.
 1. Return false.
 
+The browser may cache requests for |permissionsUrl| within a network partition.
+
+In order to prevent leaking data, the browser must request |permissionsUrl|
+regardless of whether the user is a member of the ad interest group. This
+prevents a leak of the user's ad interest group membership to the server.
+
 </div>
 
 <div algorithm>
 
-To <dfn>build an interest group permissions url</dfn> given a [=url/origin=] |ownerOrigin| and a [=url/origin=] |frameOrigin|:
+To <dfn>build an interest group permissions url</dfn> given a [=origin=] |ownerOrigin| and a [=origin=] |frameOrigin|:
+1. Let |serializedFrameOrigin| be the result of [ =serialization of an origin|serializing=] |frameOrigin|.
 1. Return the string formed by [=string/concatenating=]
   * The [=serialization of an origin|serialization=] of |ownerOrigin|,
   * The string "`/.well-known/interest-group/permissions/?origin=`", and
-  * The [=serialization of an origin|serialization=] of |frameOrigin|.
+  * The result of [=string/UTF-8 percent-encoding=] |serializedFrameOrigin| using [=component percent-encode set=].
 
 </div>
 
@@ -625,8 +629,8 @@ To <dfn>create a seller script runner</dfn> given a [=URL=] |decisionLogicUrl|:
   "text/javascript".
 1. Return |decisionLogicScript|.
 
-To <dfn>create a request</dfn> given a [=URL=] |url|, a [=string=] <dfn for="create a request">
-|accept|</dfn> and a [=boolean=] <dfn for="create a request">|corsMode|</dfn>:
+To <dfn>create a request</dfn> given a [=URL=] |url| and a [=string=] <dfn for="create a request">
+|accept|</dfn>:
 1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
     ::  |url|
@@ -648,15 +652,13 @@ To <dfn>create a request</dfn> given a [=URL=] |url|, a [=string=] <dfn for="cre
     ::  "`no-store`"
     :   [=request/redirect mode=]
     :: "`error`"
-    :   [=request/mode=]
-    :: If |corsMode| is true, then "`cors`", else "`same-origin`".
 1. Return |request|.
 
 <div algorithm>
 
 To <dfn>fetch resource</dfn> given a [=URL=] |url|, and a [=string=] |mimeType|:
 1. Let |request| be the result of [=creating a request=] with |url|, [=create a request/accept=]
-  set to |mimeType|, and [=create a request/corsMode=] set to false.
+  set to |mimeType|.
 1. Let |resource| be null.
 1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
   [=response=] |response| and |responseBody|:
