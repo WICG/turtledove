@@ -493,7 +493,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
     with |winner|'s [=generated bid/ad descriptor=]. TODO: resolve |p| with urn-uuid, instead of a
     URL.
-  1. Run [=generate reporting URLs=] with |auctionConfig| and |winner|.
+  1. Run [=generate reporting URLs=] with |auctionConfig|, |winner|, and |browserSignals|.
   1. TODO: UpdateInterestGroupsPostAuction.
 1. Return |p|.
 
@@ -927,31 +927,21 @@ https://html.spec.whatwg.org/multipage/document-lifecycle.html#shared-document-c
 <div algorithm>
 
 To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and a [=generated bid=]
-|bid|:
+|bid|, and an [=ordered map=] |browserSignals| whose [=map/keys=] are [=strings=] and whose
+[=map/values=] are {{any}}:
 1. Let |sellerReportingScript| be the result of [=fetching resource=] with |config|'s
   [=auction config/decision logic url=], and "text/javascript".
-1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
-1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
-  [=map/values=] are {{any}}.
-1. TODO: [=map/Set=] |browserSignals|["topWindowHostname"] to hostname of top window.
+1. Let |auctionSignals| be |config|'s [=auction config/auction signals=].
 1. TODO: [=map/Set=] |browserSignals|["topLevelSeller"] to the top level seller.
 1. TODO: [=map/Set=] |browserSignals|["componentSeller"] to the component seller.
-1. [=map/Set=] |browserSignals|["interestGroupOwner"] to |bid|'s [=generated bid/interest group=]'s
-  [=interest group/owner=].
-1. [=map/Set=] |browserSignals|["renderUrl"] to |bid|'s [=generated bid/ad descriptor=]'s
-  [=ad descriptor/url=].
-1. [=map/Set=] |browserSignals|["bid"] to |bid|'s [=generated bid/bid=].
-1. TODO: [=map/Set=] |browserSignals|["desirability"] to the desirability score.
 1. TODO: [=map/Set=] |browserSignals|["topLevelSellerSignals] to the top level sellers signals.
 1. TODO: [=map/Set=] |browserSignals|["dataVersion"] to the version from the key value response.
 1. TODO: [=map/Set=] |browserSignals|["modifiedBid"] to the modified bid value.
-1. TODO: [=map/Set=] |browserSignals|["highestScoringOtherBid"] to the highest scoring other bid
-  value.
 1. TODO: Let |sellerSignals| be the result of [=evaluating script=] with
   [=evaluate script/script=] set to |sellerReportingScript|, [=evaluate script/functionName=] set
   to "reportResult", and [=evaluate script/arguments=] set to « |auctionSignals|, |browserSignals| ».
 1. Let |buyerReportingScript| be the result of [=fetching resource=] with |bid|'s
-  [=generated bid/interest group=|'s [=interest group/bidding url=], and "text/javascript".
+  [=generated bid/interest group=]'s [=interest group/bidding url=], and "text/javascript".
 1. Let |perBuyerSignals| be |auctionConfig|'s
   [=auction config/per buyer signals=][|browserSignals|["interestGroupOwner"]] if that member
   [=map/exists=], and null otherwise.
@@ -1299,5 +1289,19 @@ Information of the auction's leading bid so far when ranking scored bids.
 :: An integer. Defaulting to 0. The number of bids with the same `top score`.
 : <dfn>leading bid</dfn>
 :: Null or a [=generated bid=]. The leading bid of the auction so far.
+
+</dl>
+
+<dl dfn-for="browser signal">
+: <dfn>interest group owner</dfn>
+:: An [=origin=]. The owner of the interest group that offered the winning bid.
+: <dfn>render url</dfn>
+:: A [=URL=]. The render URL provided by the winning bid.
+: <dfn>bid</dfn>
+:: A {{double}}. The numeric value of the winning bid.
+: <dfn>desirability</dfn>
+:: A {{double}}. Numeric score of the winning bid.
+: <dfn>highest_scoring_other_bid</dfn>
+:: A {{double}}. The numeric value of the bid that got the second highest score.
 
 </dl>
