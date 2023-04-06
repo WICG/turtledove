@@ -163,4 +163,16 @@ If invoked multiple times, the latest invocation before the top-level navigation
 
 If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon because the `destination` is unknown.
 
+# Support for Ad Components
+## Goal
+When rendered ad is composed of [multiple pieces](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces), it is useful to detect user clicks happened on ad components.
+
+## Design
+### Event Type and Reporting Destination
+For fenced frames rendering the ad components under the top-level ad fenced frame, the event types and reporting destinations registered for the top-level fenced frame is reused when beacons are sent from the ad component fenced frames.
+
+### Restricted to send `reserved.top_navigation` beacons only
+* Invocation of `reportEvent` API from an ad component fenced frame is disallowed.
+* The only supported reportEvent beacon to be sent from an ad component fenced frame is the `reserved.top_navigation` automatic beacon. Note this beacon is gated on a transient user activation. 
+* To ensure that there is no arbitrary data that can be received at the server from the component ad, the `eventData` field will be ignored.
 
