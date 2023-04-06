@@ -964,8 +964,9 @@ An interest group is a [=struct=] with the following items:
 : <dfn>expiry</dfn>
 :: A point in time at which the browser will forget about this interest group.
 : <dfn>owner</dfn>
-:: An [=url/origin=]. Frames that join interest groups owned by `owner` must either be served from origin `owner`,
-  or another origin delegated by `owner`. The scheme must be https.
+:: An [=origin=]. Frames that join interest groups owned by `owner` must either be served from origin
+  `owner`, or another origin delegated by `owner` (TODO: update to link to delegation section when done).
+  The [=origin/scheme=] must be "<code>https</code>".
 : <dfn>name</dfn>
 :: A [=string=]. The (owner, name) tuple is a key that uniquely defines each interest group.
 : <dfn>priority</dfn>
@@ -982,24 +983,40 @@ An interest group is a [=struct=] with the following items:
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
 : <dfn>execution mode</dfn>
-:: A [=string=], defaulting to "compatibility". Acceptable values are "compatibility" and "group-by-origin".
+:: A [=string=], defaulting to "<code>compatibility</code>". Acceptable values are
+  "<code>compatibility</code>" and "<code>group-by-origin</code>".
 : <dfn>bidding url</dfn>
-:: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from. Must be of origin `owner`.
+:: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from. 
+
+Note: The [=interest group/bidding url=] [=origin=] will always be [=same origin=] with
+  [=interest group/owner=].
+
 : <dfn>bidding wasm helper url</dfn>
 :: Null or a [=URL=]. Lets the bidder provide computationally-expensive subroutines in WebAssembly,
-  in addition JavaScript, to be driven from the JavaScript function provided by
-  [=interest group/bidding url=]. Must be of origin `owner`.
+  in addition to JavaScript, to be driven from the JavaScript function provided by
+  [=interest group/bidding url=].
+
+Note:  The [=interest group/bidding wasm helper url=] [=origin=] will always be [=same origin=] with
+  [=interest group/owner=].
+
 : <dfn>daily update url</dfn>
 :: Null or a [=URL=]. Provides a mechanism for the group's owner to periodically update the
   attributes of the interest group. See [interest group updates](#interest-group-updates).
+
+Note: The [=interest group/daily update url=] [=origin=] will always be [=same origin=] with
+  [=interest group/owner=].
+
 : <dfn>trusted bidding signals url</dfn>
 :: Null or a [=URL=]. Provide a mechanism for making real-time data available for use at bidding
   time. See [=building trusted bidding signals url=].
+
+Note: The [=interest group/trusted bidding signals url=] [=origin=] will always be [=same origin=] with
+  [=interest group/owner=].
+
 : <dfn>trusted bidding signals keys</dfn>
 :: Null or a [=list=] of [=string=]. See [=building trusted bidding signals url=].
 : <dfn>user bidding signals</dfn>
-:: Null or an {{any}}. Additional JSON-serializable object metadata that the owner can used during
-  on-device bidding.
+:: Null or a [=string=]. Additional metadata that the owner can used during on-device bidding.
 : <dfn>ads</dfn>
 :: Null or a [=list=] of [=interest group ad=]. Contains various ads that the interest group might
   show.
@@ -1024,7 +1041,7 @@ An interest group ad is a [=struct=] with the following items:
 :: A [=URL=]. If this ad wins the auction, this URL (or a URN that maps to this URL) will be returned by
   `runAdAuction()`. This URL is intended to be loaded into an ad iframe (or a fenced frame).
 : <dfn>metadata</dfn>
-:: Null or {{any}}. Extra arbitary information about this ad, passed to `generateBid()`.
+:: Null or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
 
 </dl>
 
@@ -1034,31 +1051,40 @@ An auction config is a [=struct=] with the following items:
 
 <dl dfn-for="auction config">
 : <dfn>seller</dfn>
-:: An [=url/origin=].
-  The origin of the seller running the ad auction.
+:: An [=origin=].
+  The origin of the seller running the ad auction. The [=origin/scheme=] must be "<code>https</code>".
 : <dfn>decision logic url</dfn>
 :: A [=URL=].
-  The URL to fetch the seller's JavaScript from. Must be of origin `seller`.
+  The URL to fetch the seller's JavaScript from.
+
+Note: The [=auction config/decision logic url=] [=origin=] will always be [=same origin=] with
+  [=auction config/seller=].
+
 : <dfn>trusted scoring signals url</dfn>
 :: Null or a [=URL=].
   Provide a mechanism for making real-time data (information about a specific creative) available
   for use at scoring time, e.g. the results of some ad scanning system.
+
+Note: The [=auction config/trusted scoring signals url=] [=origin=] will always be [=same origin=] with
+  [=auction config/seller=].
+
 : <dfn>interest group buyers</dfn>
 :: Null or a [=list=] of [=url/origin=].
-  Owners of interest groups allowed to participate in the auction.
+  Owners of interest groups allowed to participate in the auction. Each [=origin's=] [=origin/scheme=]
+  must be "<code>https</code>".
 : <dfn>auction signals</dfn>
-:: Null or an {{any}}.
-  Opaque JSON-serializable object passed to both sellers' and buyers' script runners.
+:: Null or a [=string=].
+  Opaque JSON data passed to both sellers' and buyers' script runners.
 : <dfn>seller signals</dfn>
-:: Null or an {{any}}.
-  Opaque JSON-serializable object passed to the seller's script runner.
+:: Null or a [=string=].
+  Opaque JSON data passed to the seller's script runner.
 : <dfn>seller timeout</dfn>
 :: A [=duration=] in milliseconds. Defaulting to 50 milliseconds.
   Restricts the runtime of the seller's `scoreAd()` script.
 : <dfn>per buyer signals</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
-  {{any}}.
-  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON-serializable objects
+  [=strings=].
+  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
   passed to corresponding buyer's script runner.
 : <dfn>per buyer timeouts</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
@@ -1070,7 +1096,7 @@ An auction config is a [=struct=] with the following items:
   Restricts the `generateBid()` script's runtime for all buyers without a timeout specified in
   [=auction config/per buyer timeouts=].
 : <dfn>per buyer group limits</dfn>
-:: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
+:: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   {{unsigned short}}s.
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the number of
   bidding interest groups for a particular buyer that can participate in an auction.
@@ -1079,7 +1105,7 @@ An auction config is a [=struct=] with the following items:
   Limit on the number of bidding interest groups for all buyers without a limit specified in
   [=auction config/per buyer group limits=].
 : <dfn>per buyer priority signals</dfn>
-:: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
+:: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   [=ordered maps=], whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}}.
   Per-buyer sparse vector whose dot product with [=interest group/priority vector=] is used to
   calculate interest group priorities. No signal's key starts with "browserSignals.", which is
@@ -1100,7 +1126,7 @@ An auction config is a [=struct=] with the following items:
   Optional identifier for an experiment group to support coordinated experiments with the seller's
   trusted server.
 : <dfn>per buyer experiment group ids</dfn>
-:: An [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
+:: An [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   {{unsigned short}}s.
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are identifiers for
   experiment groups, to support coordinated experiments with buyers' trusted servers.
