@@ -475,14 +475,16 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
 1. Let |auctionConfig| be the result of running [=validate and convert auction ad config=] with
   |config| and [=validate and convert auction ad config/isTopLevel=] set to true.
-1. If |auctionConfig| is failure, then return [=a promise rejected with=] a {{TypeError}}.
+1. If |auctionConfig| is failure, then [=exception/throw=] a {{TypeError}}.
 1. Let |p| be [=a new promise=].
 1. If |config|["{{AuctionAdConfig/signal}}"] [=map/exists=], then:
   1. Let |signal| be |config|["{{AuctionAdConfig/signal}}"].
   1. If |signal| is [=AbortSignal/aborted=], then [=reject=] |p| with |signal|'s
     [=AbortSignal/abort reason=] and return |p|.
   1. [=AbortSignal/Add|Add the following abort steps=] to |signal|:
-    1. TODO: Abort the auction.
+    1. TODO: Specify. Abort the auction. If the auction has already completed, this has no
+      effect. Otherwise, stop running new worklet functions, and do not cause side-effects, like
+      reporting and updating bid statistics.
     1. [=Reject=] |p| with |signal|’s [=AbortSignal/abort reason=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
@@ -494,7 +496,9 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     with |winner|'s [=generated bid/ad descriptor=]. TODO: resolve |p| with urn-uuid, instead of a
     URL.
   1. Run [=generate reporting URLs=] with |auctionConfig| and |winner|.
-  1. TODO: UpdateInterestGroupsPostAuction.
+  1. Update interest groups post-auction. Execute the algorithm [=interest group update=] using
+    |config|["{{AuctionAdConfig/interestGroupBuyers}}"] as `owners`.
+  1. TODO: Update bidCount and prevWins for interest groups that participated in the auction.
 1. Return |p|.
 
 </div>
@@ -982,7 +986,7 @@ To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and 
 
 # Interest Group Updates # {#interest-group-updates}
 
-TODO: specify, including move 2 trigger sections out and add updateAdInterestGroup WebIDL.
+TODO: specify, including remove 2 trigger section and add updateAdInterestGroup WebIDL.
 
 Interest groups define a field, dailyUpdateUrl, that allows updating the interest group definition
 stored on disk with information periodically retrieved from the dailyUpdateUrl.
@@ -992,7 +996,9 @@ groups owned by the origin of the current frame, and post-auction updates, which
 of navigator.runAdAuction(), updates the interest groups of all bidder origins that participated in the
 auction.
 
-Both update methods trigger the same algorithm, which is described below, and takes a list of owners to
+<div algorithm="interest group update">
+
+Both update methods trigger the same algorithm, <dfn>interest group update</dfn> which is described below, and takes a list of owners to
 update called "owners":
 
 1. For each interest group "owner" in "owners":
@@ -1017,6 +1023,8 @@ update called "owners":
           interest group update JSON. (Fields that are not specified in the update JSON will remain unmodified).
         1. Set the "last updated" of the interest group to the current time, and set the "next update after" to
           the update rate limit period + the current time.
+
+</div>
 
 
 # Permissions Policy integration # {#permissions-policy-integration}
