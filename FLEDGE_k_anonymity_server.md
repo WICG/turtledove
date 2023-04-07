@@ -1,33 +1,87 @@
 # Privacy Sandbox k-Anonymity Server
 
-## The k-anonymity server
+## What is k-anonymity?
 
-The [FLEDGE](FLEDGE.md) proposal calls for k-anonymity thresholds on network
-updates to interest groups.  A browser should not request interest group
-updates unless there are at least $k$ other browsers that reported being in
-the same interest group within a TTL period.  Joining an interest group is
-a local action stored by the user's browser, so implementing k-anonymity
-thresholds requires a central server to count how many different browsers
-have joined a given interest group and reveal to all browsers when that count
-becomes at least k.  In this explainer we discuss this counting server and
-how we're taking a private approach to its design.
+[k-anonymity](https://en.wikipedia.org/wiki/K-anonymity) is a privacy concept
+that provides some protection against users being individually reidentified
+within a data set.  The concept itself is simple: for an object to meet a
+k-anonymity threshold at least $k$ different users must be counted for the
+object.
 
-Interest groups are one use case for k-anonymity thresholds.  FLEDGE also
-calls for thresholds on the `renderUrl` that won an auction, and there
-are other Privacy Sandbox APIs, such as Shared Storage, that may impose
-k-anonymity thresholds.  Other browser features, like [`start_url` parameters
-for progressive web apps](https://github.com/w3c/manifest/issues/399),
-might benefit from k-anonymity thresholds as well.
+A data set in this context is quite general.  It might be a set of user
+information published from a database or, in the case of the Privacy Sandbox,
+it might be the set of users that are going to reveal some information to an
+untrusted party.  k-anonymity provides an ability to _hide among the crowd_,
+where the crowd consists of $k$ users.
 
-Given the variety of use cases, we intend to implement a k-anonymity server
-that's quite general.  Let's define an object as the browser-stored state
-(e.g. an interest group) that we wish to have a k-anonymity threshold for.
-We'll design the server to operate on integers `s = Hash(object)`; that
-is, every **object** will be hashed consistently across browsers.  On the
-server each hash will map to a single **set**, where that set contains all the
-browsers that have told the server they have the object as local browser-state.
-To support different use cases, with possibly different server-side behavior,
-we'll define a **type** for each set.
+## Use cases in the Privacy Sandbox
+
+The [FLEDGE](FLEDGE.md) proposal calls for k-anonymity thresholds on several
+features.  The first threshold is before interest groups are updated.
+A browser should not request an interest group update from an untrusted
+server unless there are at least $k$ other browsers also requesting the
+same interest group update.  This allows the browser for a particular user
+to _hide in the crowd_ of other users also requesting the same update.
+To implement this k-anonymity thresholds are applied to the `dailyUpdateUrl`.
+
+k-anonymity is also applied to the `renderUrl` for ad creatives.  One of the
+goals of [FLEDGE](FLEDGE.md) is to offer microtargeting protection; that is,
+a user won't be shown an ad unless some minimum number, $k$, of other users
+are also being shown the same ad.  This is accomplished by applying k-anonymity
+thresholds to the `renderUrl` prior to showing the ad to the user.  In addition
+to microtargeting protection of FLEDGE auctions, k-anonymity might in the
+future also prevent user-identifying information from the embedding site from
+being passed to an ad's fenced frame via parameters like `size`.  Adding `size`
+to the k-anonymity check of the `renderUrl` is under discussion in [this
+issue](https://github.com/WICG/turtledove/issues/312#issuecomment-1307471709).
+
+Beyond FLEDGE there are also plans to use k-anonymity thresholds in [shared
+storage](https://github.com/WICG/shared-storage).  The shared storage
+`selectURL` API may require that the returned URL meets a k-anonymity
+threshold.  Other browser features, like [`start_url` parameters for
+progressive web apps](https://github.com/w3c/manifest/issues/399), might
+benefit from applying k-anonymity thresholds as well.
+
+## Server ownership
+
+Each of these use cases is aggregating counts of users towards $k$ across
+many browsers.  They require taking local browser state, i.e. data generated
+within browser platform APIs, counting aggregates among the set of browsers
+and users contributing to the counts, and reporting back to all interested
+browsers the results of this counting.  This counting requires a central
+server to take individual input from browsers and serve back aggregate counts.
+
+This counting towards k-anonymity is a feature of the browser itself. Unlike
+most browser features it needs to work on data generated across all
+browsers, which means it needs to be implemented on a server.  The user
+is the person that benefits from k-anonymity, and the browser is the
+software that can choose to implement and enforce it.  For Chrome we're
+implementing k-anonymity with a server, and as the provider of Chrome
+we're planning to operate the k-anonymity server in a similar model to
+how other server-based Chrome features operate: as a service offered
+by Google Chrome.  Other Google Chrome services already in production
+include [Safe Browsing](https://safebrowsing.google.com/) and [Chrome
+Sync](https://support.google.com/chrome/answer/185277).  Unlike other [FLEDGE
+services](https://github.com/privacysandbox/fledge-docs/blob/main/trusted_services_overview.md),
+which are operated by adtech companies, the k-anonymity service will
+not initially run inside of a Trusted Execution Environment (TEE)
+with open, sourced code.  See the [other privacy enhancements we're
+exploring](#privacy-enhancements-we-are-exploring).
+
+In this explainer we'll discuss details of the system design, how we're
+thinking about privacy, and the impact of our privacy decisions on advertisers.
+
+## System design
+
+Given the variety of use cases for k-anonymity thresholds, we intend to
+implement a k-anonymity server that's quite general.  Let's define an object
+as the browser-stored state (e.g. an interest group) that we wish to have a
+k-anonymity threshold for.  We'll design the server to operate on integers
+`s = Hash(object)`; that is, every **object** will be hashed consistently
+across browsers.  On the server each hash will map to a single **set**,
+where that set contains all the browsers that have told the server they have
+the object as local browser-state.  To support different use cases, with
+possibly different server-side behavior, we'll define a **type** for each set.
 
 The diagram below shows the write path, which we call **`Join`**, from a
 browser to the server.  The browser has an identifier or token, `b`, that is
@@ -84,7 +138,7 @@ as research areas advance and new technologies and tools become available.
 For requests to the k-anonymity server that are intended to be anonymous, such
 as `Join` and `Query` requests described above, we plan to use an [Oblivious
 HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-ohttp/) relay so Google
-is blind to the IP addresses of end users.  The payload for `Join` and `Query`
+is oblivious to the IP addresses of end users.  The payload for `Join` and `Query`
 requests contain set hashes, which we consider sensitive browsing behavior,
 so we'd like Google to know as little as possible about user requests.
 Oblivious HTTP is well suited to this use case, where we have small, anonymous,
@@ -131,14 +185,14 @@ We expect $8\leq j\leq 16$, meaning there are no more than 65,536 different
 possible identifiers; which is far lower than the number of 1-day active
 users of desktop Chrome.
 
-With our IP blindness principles, we have no way of distinguishing users that
-share a `b` when they call `Join(b, t, s)`.  When we count the cardinality
-of a set on the server, each distinct `b` will be counted only once, even if
-multiple users join the same set with identical values of `b`.  This means
-that our cardinality calculation may undercount and that we can only count
-up to a limit of $2^j$.  We expect all the k-anonymity thresholds we need to
-enforce will have $k\leq 2^j$.  Chrome code that calls `Join` will be part of
-the Chromium open source codebase, and can enforce on the user's device that
+With Oblivious HTTP, we have no way of distinguishing users that share a `b`
+when they call `Join(b, t, s)`.  When we count the cardinality of a set on
+the server, each distinct `b` will be counted only once, even if multiple
+users join the same set with identical values of `b`.  This means that our
+cardinality calculation may undercount and that we can only count up to a
+limit of $2^j$.  We expect all the k-anonymity thresholds we need to enforce
+will have $k\leq 2^j$.  Chrome code that calls `Join` will be part of the
+Chromium open source codebase, and can enforce on the user's device that
 `b` is not longer than $j$ bits.
 
 #### Abuse and invalid traffic
@@ -149,40 +203,68 @@ group when, in fact, the other members of the group are not real.  It is
 important that we protect `Join` against malicious write traffic, and,
 to maintain privacy, that we do this in an anonymous way.
 
-To protect this endpoint we will use [Trust
+To protect this endpoint we will use [Private State
 Tokens](https://github.com/WICG/trust-token-api).  Every write to Join will
-require a one-time-use Trust Token be attached to the request, and tokens
+require a one-time-use Private State Token be attached to the request, and tokens
 will be bound to a specific low-entropy identifier, `b`.  Each browser will
 be issued tokens with its assigned `b`, and it can spend those tokens as it
 wishes to make `Join` calls to the server.
 
-We will operate a Trust Token issuer specific to this server and these
+We will operate a Private State Token issuer specific to this server and these
 tokens; we'll call this issuer **`Sign`**.  In our current proposal,
 `Sign` will require, at least initially for desktop Chrome, that the user
 be signed-in to Chrome with a Google Account.  Requiring sign-in lets us
 rate limit the number of tokens issued to a given user, assign each user a
 stable value for `b`, and prevent naive abuse of `Join` by anonymous users.
 Even though the user is signed-in, and Google Account credentials are
-used to issue Trust Tokens, the Trust Tokens received by `Join` [cannot be
+used to issue Private State Tokens, the Private State Tokens received by `Join` [cannot be
 linked](https://github.com/WICG/trust-token-api#cryptographic-property-unlinkability)
-back to the Google Account they were issued to.  The Trust Token issuer can
+back to the Google Account they were issued to.  The Private State Token issuer can
 learn which users join a large number of interest groups.  To guard against
 this, we're exploring options that include having the client request tokens
 at a constant rate and discard unused tokens.
 
 `Query` is a read-only API, so it doesn't have the same abuse concerns as
-`Join`.  We won't require Trust Tokens, or a Google Account, for a browser
+`Join`.  We won't require Private State Tokens, or a Google Account, for a browser
 to call `Query`.
 
 #### Differential privacy of public data
 
-We're working to ensure that the data this server exposes through `Query`, that
-is the set of k-anonymous hashes, meets a quantifiable level of [differential
-privacy](https://medium.com/georgian-impact-blog/a-brief-introduction-to-differential-privacy-eacf8722283b)
-and does not reveal information about what sets a non-malicious user may have
-joined.  In addition, we want to bound false negatives and false positives
-within the set of k-anonymous hashes because false positives pose a privacy
-risk and false negatives limit the utility of FLEDGE.
+To protect the user data exposed through the `Query` server we use the
+[AboveThresholdWithPeriodicRestartAlgorithm](FLEDGE_k_anonymity_differential_privacy.md)
+algorithm to generate the server’s public output. The algorithm is differentially
+private in the continual release setting. This means that we bound the ability of an
+observer with access to the periodically updated k-anonymity status of a set — that is,
+the stream of `Query` server outputs over time — to determine whether a user joined that set
+in a given period.
+
+A user joining a set may flip its k-anonymity status from “not k-anonymous” to
+“k-anonymous”. Intuitively, observing the k-anonymity status of a set accurately
+right before and right after the join event may infer exactly that a user has joined
+a set. To reduce information leakage risks, the algorithm applies noise to the correct
+evaluation of the k-anonymity query and limits the update frequency to period
+intervals. The noise is carefully calibrated so that the total leaked information
+from the continual observations of Query responses is bounded. The algorithm also
+guarantees limits to the probability of false negative and false positive responses.
+
+The algorithm for a single set is built upon the
+[AboveThreshold](https://dl.acm.org/doi/10.1561/0400000042) (Theorem 3.23) algorithm
+which is provably differentially private for a single monotone run, ending at the
+first positive (“set is k-anonymous”) output. The noise used in the algorithm is
+[truncated Laplace noise](https://proceedings.mlr.press/v108/geng20a.html). To provide
+accurate k-anonymity evaluation in the streaming setting, [FLEDGE](FLEDGE.md) uses
+the novel algorithm composed of serially executed AboveThreshold instances. An
+AboveThreshold algorithm instance runs for a limited time period. If the algorithm
+returns a positive k-anonymity status for a set during this period, the response
+remains positive until the end of the AboveThreshold instance run. At the end of the
+period, the instance is refreshed. The restart ensures that the k-anonymity query
+for each set is noisily evaluated with a guaranteed minimum frequency, and past set
+joins do not impact the set k-anonymity status for an unlimited period of time. The
+complete details on the novel algorithm are available in
+[Differentially Private Algorithms for 𝑘-Anonymity Server](DP_kanon_server.pdf).
+This algorithm is related to our research on the more general problem of
+differentially private estimation of counting queries in continual release. For
+further details, see our [research paper](https://arxiv.org/abs/2301.05605).
 
 ### Privacy enhancements we are exploring
 
@@ -233,8 +315,9 @@ only a single token for each set hash and the `Join` server will verify, in
 what will become a `Join(t, s)` call, that the token was issued for the set
 hash `s` that the client is attempting to join.  It may be surprising that
 this behavior is even possible without the token issuer learning anything
-about the set hashes joined by a particular user.  A forthcoming paper will
-describe the cryptographic technique that makes this possible.
+about the set hashes joined by a particular user.  See our
+[research paper](https://eprint.iacr.org/2023/320) for the new cryptographic
+protocol that makes this possible.
 
 To support validity periods for the Anonymous Counting Tokens where each
 client can get one token per value per period, we will have a registration
@@ -259,7 +342,7 @@ other server functions like counting cardinalities and persisting state.
 
 #### Device attestations
 
-Our initial reliance on Google Accounts to issue Trust Tokens
+Our initial reliance on Google Accounts to issue Private State Tokens
 that authenticate writes is necessary partly because we
 don't have other methods of authenticating a Chrome browser
 to a server.  Some platforms, like Android with [SafetyNet
@@ -306,7 +389,7 @@ interest groups that might be more popular with signed-out users. Over time
 we expect to reduce, or otherwise eliminate, this potential bias by adding
 support for device attestation or other approaches to device-level trust.
 
-The Trust Token issuer, `Sign`, will enforce limits on token issuance to
+The Private State Token issuer, `Sign`, will enforce limits on token issuance to
 each Google Account.  Tokens are one-time-use, so these limits will restrict
 the number of `Join` calls a browser can make in a given period of time.
 This doesn't necessarily limit the number of interest groups the browser can

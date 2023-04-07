@@ -78,20 +78,22 @@ The buyer can then do the following during generateBid (when the above informati
 ```
 function generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
  …
-  privateAggregation.reportContributionsForEvent({eventType: “reserved.win”, contributions: {
-      bucket: getImpressionReportBucket()
+  privateAggregation.reportContributionForEvent(“reserved.win”, {
+      bucket: getImpressionReportBucket(),
       value: 1
-  };
-  privateAggregation.reportContributionsForEvent({eventType: "click", contributions: {
-      bucket: getClickReportBuckets(), // 128-bit integer
+  });
+  privateAggregation.reportContributionForEvent("click", {
+      bucket: getClickReportBuckets(), // 128-bit integer as BigInt
       value: 1
-    });
+  });
 ```
 
-The above logic will trigger a report if the generated bid wins (see [reserved.win](#reporting-bidding-data-for-wins)). And another one,
-if the user later clicks on the winning ad (this needs to be triggered by the fenced frame itself, see
-reporting for post-auction signals). When the buyer receives an aggregated report they can infer what
-the click-through-rate (CTR) was for users on different “interest group age” buckets.
+The above logic will trigger a report if the generated bid wins (see
+[reserved.win](#reporting-bidding-data-for-wins)). And another one, if the user later clicks on the
+winning ad (this needs to be triggered by the fenced frame itself, see
+[reportPrivateAggregationEvent](#reporting-bidding-data-associated-with-an-event-in-a-frame). When
+the buyer receives an aggregated report they can infer what the click-through-rate (CTR) was for
+users on different “interest group age” buckets.
 
 ### Example 2: Getting the average bid gap for an ad. 
 
@@ -101,28 +103,29 @@ which do not win](#reporting-for-bids-which-do-not-win)), but also have the valu
 do this, we introduce a field to the “contributions” object called `signalValue`. This field allows
 the report to depend on post auction information. A `signalValue` object is composed of the following
 values:
-* `baseValue`: The name of the auction result value we want to report. For instance, winningBid. 
-* `offset`: Optional offset to add/subtract to the auction result value
-* `scale`: Optional scale factor by which we want to multiply the output. This is useful for
-controlling the amount of noise added by the aggregation service. Scale is applied after `offset`
-is subtracted.
+* `baseValue`: The name of the auction result value we want to report. For instance, winning-bid. 
+* `scale`: Optional scale factor by which we want to multiply the auction result value. This is
+useful for controlling the amount of noise added by the aggregation service. Scale is applied
+before `offset` is added.
+* `offset`: Optional offset to add to the auction result value.
 
-After the auction happens, the final value of the generated report is `scale`*(`baseValue` + `offset`). The
-following example shows how to return the gap between an ad bid and the winning bid:
+
+After the auction happens, the final value of the generated report is (`baseValue` * `scale`) + `offset`.
+The following example shows how to return the gap between an ad bid and the winning bid:
 
 ```
 function generateBid(...) {
-  bid = 100
-  privateAggregation.reportContributionsForEvent({
-    eventType: "reserved.loss"
-    contributions: {
-      bucket: 1596 // represents a bucket for interest group x winning bid price
+  bid = 100;
+  privateAggregation.reportContributionForEvent(
+    "reserved.loss",
+    {
+      bucket: 1596n, // represents a bucket for interest group x winning bid price
       value: {
-        baseValue: "winningBid",
+        baseValue: "winning-bid",
         scale: 2, // Number which will be multiplied by browser value
-        offset: -bid // Numbers which will be added to browser value, prior to scaling
+        offset: -bid * 2 // Numbers which will be added to browser value, after scaling
        }
-    }});
+    });
 
   return bid;
 }
@@ -132,8 +135,8 @@ In the event this bid does not win the auction, and the winning bid was 200, the
 contribution would be generated as:
 
 ```
-bucket: 1596
-value: 200 // = (winningBid + -bid) * scale = (200 - 100) * 2 
+bucket: 1596n
+value: 200 // = (winning-bid * scale) + offset = (200 * 2) + (-100 * 2)
 ```
 This would correspond to the gap by which the advertiser lost the auction, scaled by 2.
 Scaling is important as it allows bidders to better control the amount of noise which will
@@ -144,30 +147,28 @@ be added to various aggregation keys.
 Similar to the above example, sometimes, the key that we want to aggregate over may depend
 on the outcome of an auction. To solve this use case we provide an object called `signalBucket`.
 The final bucket id of the bucket will depend on the outcome of the auction. The following
-example allows the buyer to keep track of how many times an ad was not shown because it was
-throttled due to not passing a k-anonymity threshold.
+example allows the buyer to keep track of how many times their bid was rejected for particular reasons.
 
 
 ```
 function generateBid(...) {
-  privateAggregation.reportContributionsForEvent({
-    eventType: "reserved.loss"
-    contributions: {
+  privateAggregation.reportContributionForEvent(
+    "reserved.loss",
+    {
       bucket: {
-        baseValue: "bidRejectReason",
-        offset: 255 // Offset buckets
+        baseValue: "bid-reject-reason",
+        offset: 500n // Offset buckets
        },
       value: 1
-    }});
+    });
 
   return bid;
 }
 ```
-If the bid is rejected for not reaching the k-anonymity threshold, this would result in a
-contribution being generated:
+If the bid is rejected for being below auction floor, this would result in a contribution being generated:
 
 ```
-bucket: 255 // 255 + 0 (0 is the value associated with not reaching the threshold, see bidRejectReason below)
+bucket: 502n // 500n + 2n (2n is the value associated with bids below auction floor, see bid-reject-reason below)
 value: 1
 ```
 
@@ -181,31 +182,33 @@ The parameters consist of:
 * an `eventType` which is a string identifying the event type that triggers this report to
 be sent (see [Triggering reports](#triggering-reports) below), and
 * a `contribution` object which contains:
-  * a `bucket` which is a 128bit ID or a `signalBucket`  which tells the browser how to calculate the bucket and
-  * a `value` which is an integer or a `signalValue` which tells the browser how to calculate the value.
+  * a `bucket` which is a 128bit ID or a `signalBucket`  which tells the browser how to calculate the bucket (represented as BigInt) and
+  * a `value` which is a non-negative integer or a `signalValue` which tells the browser how to calculate the value.
 
 
 Where `signalBucket` and `signalValue` is a dictionary which consists of:
 * a `baseValue` field indicating which value the browser should use to calculate the resulting bucket or value.  A `signalValue.baseValue` or `signalBucket.baseValue` may be any of the following:
-  * `winningBid`: the value used  is the winning bid value.
-  * `highestScoringOtherBid`: the value used is the bid value that was scored as second highest.
-  * `scriptRunTime`: milliseconds of CPU time that the calling function required, when called.
-  * `signalsFetchTime`: milliseconds required to fetch the trusted bidding or scoring signals, when called from `generateBid()` or `scoreAd()` respectively.
-  * `bidRejectReason`: one of the following values:
-    * 0: indicates ad creative URL did not meet the k-anonymity threshold
+  * `winning-bid`: the value used is the winning bid value.
+  * `highest-scoring-other-bid`: the value used is the bid value that was scored as second highest.
+  * `script-run-time`: milliseconds of CPU time that the calling function required, when called.
+  * `signals-fetch-time`: milliseconds required to fetch the trusted bidding or scoring signals, when called from `generateBid()` or `scoreAd()` respectively.
+  * `bid-reject-reason`: one of the following values:
+    * 0: indicates seller rejected bid without providing a reason, i.e., bid reject reason not available
     * 1: indicates seller rejected bid because “Invalid Bid”
     * 2: indicates seller rejected bid because “Bid was Below Auction Floor”
-    * 3: indicates seller rejected bid because “Creative Filtered - Pending or Disapproved by Exchange”
-    * 4: indicates seller rejected bid because “Creative Filtered - Blocked by Publisher”
-    * 5: indicates seller rejected bid because “Creative Filtered - Language Exclusions”
-    * 6: indicates seller rejected bid because “Creative Filtered - Category Exclusions”
+    * 3: indicates seller rejected bid because “Creative Filtered - Pending Approval by Exchange”
+    * 4: indicates seller rejected bid because “Creative Filtered - Disapproved by Exchange”
+    * 5: indicates seller rejected bid because “Creative Filtered - Blocked by Publisher”
+    * 6: indicates seller rejected bid because “Creative Filtered - Language Exclusions”
+    * 7: indicates seller rejected bid because “Creative Filtered - Category Exclusions”
+    * 8: indicates seller rejected bid because "Creative Filtered - Did Not Meet The K-anonymity Threshold"
     * Perhaps other values indicating:
       * generateBid() hitting timeout
       * The auction was aborted (i.e. calling endAdAuction())
       * an auction that never rendered the ad
 * optional `offset` and `scale` that allow the reporter to manipulate the browser signal to customize the buckets and values they will receive in reports:
-  * `scale` will be multiplied by the browser provided value
-  * `offset` will be added to the browser provided value (allows you to shift buckets, etc)
+  * `scale` will be multiplied by the browser provided value. Scale is applied before `offset` is added. Default value is 1.0.
+  * `offset` will be added to the browser provided value (allows you to shift buckets, etc). Default value is 0.
 
 ## Triggering reports
 
@@ -215,15 +218,15 @@ A fenced frame can trigger the sending of contributions associated with an arbit
 by calling into a new API:
 
 ```
-window.fence.reportPrivateAggregationEvent("click");
+window.fence.reportEvent("click");
 ```
 
-This will cause any contributions associated with a call to `reportContributionsForEvent()`
+This will cause any contributions associated with a call to `reportContributionForEvent()`
 with an event-type of `click` to be reported/sent. 
 
 In this example, `"click"` is an event-name chosen by the auction bidder. There are a number
 of event names that are reserved and invoked directly by the browser. All reserved values will
-have the `"reserved."` prefix.
+have the `"reserved."` prefix, and all non-reserved values cannot have the `"reserved."` prefix.
 
 ### Reporting bidding data for wins
 
@@ -238,6 +241,12 @@ The `reserved.loss` event-type is a special value that indicates a report should
 bid does not win the auction. If the bid does not win, the browser will trigger reporting for
 the `loss` contributions.
 
+### Reporting bidding data no matter whether wins or not
+
+The `reserved.always` event-type is a special value that indicates a report should be sent no
+matter whether a bid wins the auction or not. The browser will always trigger reporting for the
+`always` contributions.
+
 ## Reporting Per-Buyer Latency and Statistics to the Seller
 
 The seller may want to collect aggregate statistics on latency and bids for their auctions.
@@ -247,10 +256,13 @@ granular level and give helpful guidance and feedback to their bidders.
 In order for the seller to collect this additional information from buyers, we need to give
 buyers a way to express which sellers they’re comfortable sharing this information with, so we
 add a new mechanism which allows each buyer to declare a set of approved sellers: The interestGroup
-provided to `navigator.joinAdInterestGroup()` will contain a new field named `approvedSellers`, a
-list of seller origins  that the interest group owner is comfortable working with and sharing
-additional latency statistics with.  This is essentially the buy-side counterpart to the sell-side
-`interestGroupBuyers`.
+provided to `navigator.joinAdInterestGroup()` will contain a new field named `sellerCapabilities`, a
+dict keyed by seller origin (or "*", to set defaults for non-specified seller origins) with lists of
+permission strings as values (as described below). Sellers might want to only score bids from
+interest groups that will share aggregate statistics, so a field, `requiredSellerCapabilities` will
+also be added to the auction config. Any interest group that doesn't permit (for the auction's seller)
+all the `sellerCapabilities` listed in `requiredSellerCapabilities` will not participate in the
+auction.
 
 For the seller to declare reporting, the `auctionConfig` passed to `runAdAuction` is amended to
 contain a configuration for the seller latency report.
@@ -262,28 +274,28 @@ const auctionConfig = {
   ‘interestGroupBuyers’: ['https://buyer1.com', 'https://buyer2.com', …],
   // An aggregation key for each buyer. This represents the starting contribution bucket
   // associated with the corresponding buyer.
-  ‘auctionReportBuyerKeys’: [100, // key for buyer1.com
-                             105, // key for buyer2.com
+  ‘auctionReportBuyerKeys’: [100n, // key for buyer1.com
+                             105n, // key for buyer2.com
                              …],
   // Configures what values will be reported for each buyer. The key declares what signal will be
   // measured, and the bucket declares the bucket this will be placed relative to the
   // buyer key and the scale determines how the value is scaled.
   `auctionReportBuyers`: {
-    `interestGroupCount`:       { `bucket`: 0, `scale`: 1,  },
-    ‘bidCount’:                 { `bucket`: 1, `scale`: 1,  },
-    ‘totalGenerateBidLatency’:  { `bucket`: 2, `scale`: 1,  },
-    ‘totalSignalsFetchLatency’: { `bucket`: 3, `scale`: .1, },
+    `interestGroupCount`:       { `bucket`: 0n, `scale`: 1,  },
+    ‘bidCount’:                 { `bucket`: 1n, `scale`: 1,  },
+    ‘totalGenerateBidLatency’:  { `bucket`: 2n, `scale`: 1,  },
+    ‘totalSignalsFetchLatency’: { `bucket`: 3n, `scale`: .1, },
   }
 }
 
 ```
 
-The seller is able to measure the following for each buyer:
+The seller is able to measure the following for each buyer, assuming permission is granted via the indicated `sellerCapabilities` for that seller:
 * `interestGroupCount`: The number of the interest groups which could participate in the auction
-(i.e. the interest group’s owner was listed in the `interestGroupBuyers`)
-* `bidCount`: The number of valid bids generated by this buyer
-* `totalGenerateBidLatency`: The sum of execution time for all generateBids() in milliseconds
-* `totalSignalsFetchLatency`: The total time spent fetching trusted buyer signals in milliseconds
+(i.e. the number of intererest groups on the machine for this buyer -- note the count *isn't* limited by the auction config's `perBuyerGroupLimits`). This requires the `interest-group-counts` `sellerCapabilities` permission.
+* `bidCount`: The number of valid bids generated by this buyer. This requires the `interest-group-counts` `sellerCapabilities` permission.
+* `totalGenerateBidLatency`: The sum of execution time for all generateBids() in milliseconds. This requires the `latency-stats` `sellerCapabilities` permission.
+* `totalSignalsFetchLatency`: The total time spent fetching trusted buyer signals in milliseconds. If the interest group didn't fetch any trusted signals, then 0 milliseconds is reported. This requires the `latency-stats` `sellerCapabilities` permission.
 
 Given the `auctionConfig` above, if buyer1.com had two interest groups participate in the auction,
 their trusted buyer signals fetch taking 10ms, their `generateBid()` scripts running for 2ms and
@@ -291,15 +303,29 @@ their trusted buyer signals fetch taking 10ms, their `generateBid()` scripts run
 generated by the browser:
 
 ```
-{ bucket: 100,// = 100 + 0 = buyer1.com’s key + interestGroupCount’s bucket
+{ bucket: 100n,// = 100n + 0n = buyer1.com’s key + interestGroupCount’s bucket
   value: 2 }, // = 2 interest groups were given the chance to bid.
-{ bucket: 101,// = 100 + 1 = buyer1.com’s key + bidCount’s bucket
+{ bucket: 101n,// = 100n + 1n = buyer1.com’s key + bidCount’s bucket
   value: 1 }, // = 1 interest group returning a bid.
-{ bucket: 102,// = 100 + 2 = buyer1.com’s key + totalGenerateBidLatency’s bucket
+{ bucket: 102n,// = 100n + 2n = buyer1.com’s key + totalGenerateBidLatency’s bucket
   value: 5 }, // = 3ms + 2ms generateBid() runtimes.
-{ bucket: 103,// = 100 + 3 = buyer1.com’s key + totalSignalsFetchLatency’s bucket
+{ bucket: 103n,// = 100n + 3n = buyer1.com’s key + totalSignalsFetchLatency’s bucket
   value: 1 }, // = 10ms total trusted bidding signals fetch time multiplied by .1 scale.
 ```
+
+Here's an example of what the `sellerCapabilities` interest group field could look like: 
+
+```
+'sellerCapabilities': {
+  'https://seller.com': [ 'interest-group-counts', 'latency-stats' ],
+  'https://seller2.com': [ 'latency-stats' ],
+  '*': [ 'interest-group-counts' ]
+}
+```
+
+This would grant both `interest-group-counts` and `latency-stats` permission to https://seller.com, `latency-stats` to https://seller2.com, and `interest-group-counts` to all other sellers.
+
+NOTE: the permission names `interestGroupCounts` and `latencyStats` are *deprecated* and will be removed in a future Chrome release, as they do not follow the documented WebIDL [naming conventions](https://webidl.spec.whatwg.org/#idl-enums).
 
 ## Data Volume
 
