@@ -19,6 +19,11 @@ Markup Shorthands: markdown yes
 Assume Explicit For: yes
 </pre>
 
+<pre class="anchors">
+urlPrefix: https://www.ietf.org/rfc/rfc4122.txt
+  type: dfn; text: urn uuid 
+</pre>
+
 # Introduction # {#intro}
 
 <em>This section is non-normative</em>
@@ -717,6 +722,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           [=evaluate script/script=] set to |biddingScript|, [=evaluate script/functionName=] set
           to "generateBid", and [=evaluate script/arguments=] set to « |interestGroup|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|, |browserSignals| ».
         1. If |generatedBid|'s [=generated bid/bid=] is negative or 0, [=iteration/continue=].
+        1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
         1. TODO: Validate other fields of |generatedBid|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
           |desisionLogicScript| and false.
@@ -738,11 +744,12 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
 1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
-1. TODO: Set |browserSignals|'s "interestGroupOwner" to ...need to pass in IG
+1. [=map/Set=] |browserSignals|["interestGroupOwner"] to |generatedBid|'s
+  [=generated bid/interest group]'s [=interest group/owner=].
 1. [=map/Set=] |browserSignals|["renderUrl"] to |generatedBid|'s [=generated bid/ad descriptor=]'s
   [=ad descriptor/url=].
 1. TODO: Set |browserSignals|'s "adComponents" to ...need to pass in as part of |generatedBid|
-1. TODO: Set |browserSignals|'s "biddingDurationMsec" to ...need to calculate nad pass in
+1. TODO: Set |browserSignals|'s "biddingDurationMsec" to ...need to calculate and pass in
 1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted scoring
   signals server's response.
 1. TODO: Remove fields of |auctionConfig| that don't pass through.
@@ -920,12 +927,55 @@ https://html.spec.whatwg.org/multipage/document-lifecycle.html#shared-document-c
 
 To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and a [=generated bid=]
 |bid|:
-1. TODO: Fetch buyer reporting script...though first we need the IG.
-1. TODO: Calculate all params to reportWin() using |bid|.
-1. TODO: Evaluate reportWin() with params and scope that includes sendReportTo().
-1. TODO: Fetch seller reporting script from |config|'s field.
-1. TODO: Calculate all params to reportResult().
-1. TODO: Evaluate reportResult() with params and scope that includes sendReportTo().
+1. Let |sellerReportingScript| be the result of [=fetching resource=] with |config|'s
+  [=auction config/decision logic url=], and "text/javascript".
+1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
+1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
+  [=map/values=] are {{any}}.
+1. TODO: [=map/Set=] |browserSignals|["topWindowHostname"] to hostname of top window.
+1. TODO: [=map/Set=] |browserSignals|["topLevelSeller"] to the top level seller.
+1. TODO: [=map/Set=] |browserSignals|["componentSeller"] to the component seller.
+1. [=map/Set=] |browserSignals|["interestGroupOwner"] to |bid|'s [=generated bid/interest group=]'s
+  [=interest group/owner=].
+1. [=map/Set=] |browserSignals|["renderUrl"] to |bid|'s [=generated bid/ad descriptor=]'s
+  [=ad descriptor/url=].
+1. [=map/Set=] |browserSignals|["bid"] to |bid|'s [=generated bid/bid=].
+1. TODO: [=map/Set=] |browserSignals|["desirability"] to the desirability score.
+1. TODO: [=map/Set=] |browserSignals|["topLevelSellerSignals] to the top level sellers signals.
+1. TODO: [=map/Set=] |browserSignals|["dataVersion"] to the version from the key value response.
+1. TODO: [=map/Set=] |browserSignals|["modifiedBid"] to the modified bid value.
+1. TODO: [=map/Set=] |browserSignals|["highestScoringOtherBid"] to the highest scoring other bid
+  value.
+1. TODO: Let |sellerSignals| be the result of [=evaluating script=] with
+  [=evaluate script/script=] set to |sellerReportingScript|, [=evaluate script/functionName=] set
+  to "reportResult", and [=evaluate script/arguments=] set to « |auctionSignals|, |browserSignals| ».
+1. Let |buyerReportingScript| be the result of [=fetching resource=] with |bid|'s
+  [=generated bid/interest group=|'s [=interest group/bidding url=], and "text/javascript".
+1. Let |perBuyerSignals| be |auctionConfig|'s
+  [=auction config/per buyer signals=][|browserSignals|["interestGroupOwner"]] if that member
+  [=map/exists=], and null otherwise.
+1. [=map/Remove=] |browserSignals|["desirability"].
+1. TODO: [=map/Set=] |browserSignals|["interestGroupName"] to |bid|'s
+  [=generated bid/interest group=]'s [=interest group/name=] if the tuple of interest group owner,
+  name, bidding script URL and ad creative URL were jointly k-anonymous.
+1. TODO: [=map/Set=] |browserSignals|["madeHighestScoringOtherBid"] to true if the interest group
+  owner was the only bidder that made bids with the second highest score.
+1. TODO: [=map/Set=] |browserSignals|["highestScoringOtherBid"] and [=map/Set=]
+  |browserSignals|["madeHighestScoringOtherBid"] are based on the auction the interest group was
+  directly part of. If that was a component auction, they're from the component auction. If that was
+  the top-level auction, then they're from the top-level auction. Component bidders do not get these
+  signals from top-level auctions since it is the auction seller joining the top-level auction,
+  instead of winning component bidders joining the top-level auction directly.
+1. TODO: [=map/Set=] |browserSignals|["dataVersion"] to contain the Data-Version from the trusted
+  bidding signals response headers if they were provided by the trusted bidding signals server
+  response and the version was consistent for all keys requested by this interest group.
+1. [=map/Set=] |browserSignals|["seller"] to |config|["{{AuctionAdConfig/seller}}"].
+1. TODO: [=map/Set=] |browserSignals|["topLevelSeller"] if there was a top-level seller.
+1. TODO: Run [=evaluating script=] with [=evaluate script/script=] set to |buyerReportingScript|,
+  [=evaluate script/functionName=] set to "reportWin", and [=evaluate script/arguments=] set to
+  « |auctionSignals|, |perBuyerSignals|, |sellerSignals|, |browserSignals| ».
+1. TODO: Set URLs passed to sendReportTo() into the FencedFrameConfig so they can be fetched when
+  ad renders.
 
 </div>
 
@@ -989,9 +1039,11 @@ An interest group is a [=struct=] with the following items:
 : <dfn>expiry</dfn>
 :: A point in time at which the browser will forget about this interest group.
 : <dfn>owner</dfn>
-:: An [=url/origin=].
+:: An [=origin=]. Frames that join interest groups owned by `owner` must either be served from origin
+  `owner`, or another origin delegated by `owner` (TODO: update to link to delegation section when done).
+  The [=origin/scheme=] must be "<code>https</code>".
 : <dfn>name</dfn>
-:: A [=string=].
+:: A [=string=]. The ([=interest group/owner=], [=interest group/name=]) tuple is a key that uniquely defines each interest group.
 : <dfn>priority</dfn>
 :: A {{double}}. Defaulting to 0.0. Used to select which interest groups participate in an auction
   when the number of interest groups are limited by {{AuctionAdConfig/perBuyerGroupLimits}}.
@@ -1006,21 +1058,30 @@ An interest group is a [=struct=] with the following items:
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
 : <dfn>execution mode</dfn>
-:: A [=string=], defaulting to "compatibility".
+:: A [=string=], defaulting to "<code>compatibility</code>". Acceptable values are
+  "<code>compatibility</code>" and "<code>group-by-origin</code>".
 : <dfn>bidding url</dfn>
-:: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from.
+:: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from. 
+  <p class="note">The [=interest group/bidding url=] [=origin=] will always be [=same origin=] with
+  [=interest group/owner=].</p>
 : <dfn>bidding wasm helper url</dfn>
 :: Null or a [=URL=]. Lets the bidder provide computationally-expensive subroutines in WebAssembly,
-  rather than JavaScript, to be driven from the JavaScript function provided by
+  in addition to JavaScript, to be driven from the JavaScript function provided by
   [=interest group/bidding url=].
+  <p class="note">The [=interest group/bidding wasm helper url=] [=origin=] will always be [=same origin=] with
+  [=interest group/owner=].</p>
 : <dfn>daily update url</dfn>
 :: Null or a [=URL=]. Provides a mechanism for the group's owner to periodically update the
-  attributes of the interest group.
+  attributes of the interest group. See [interest group updates](#interest-group-updates).
+  <p class="note">The [=interest group/daily update url=] [=origin=] will always be [=same origin=] with
+  [=interest group/owner=].</p>
 : <dfn>trusted bidding signals url</dfn>
 :: Null or a [=URL=]. Provide a mechanism for making real-time data available for use at bidding
-  time.
+  time. See [=building trusted bidding signals url=].
+  <p class="note">Note: The [=interest group/trusted bidding signals url=] [=origin=] will always be [=same origin=] with
+  [=interest group/owner=].</p>
 : <dfn>trusted bidding signals keys</dfn>
-:: Null or a [=list=] of [=string=].
+:: Null or a [=list=] of [=string=]. See [=building trusted bidding signals url=].
 : <dfn>user bidding signals</dfn>
 :: Null or a [=string=]. Additional metadata that the owner can use during on-device bidding.
 : <dfn>ads</dfn>
@@ -1035,7 +1096,7 @@ An interest group is a [=struct=] with the following items:
 
 </dl>
 
-TODO: Update the short descriptions of some fields above, and add links when runAdAuction() section
+TODO: Specify the short descriptions of some fields above and below, and add links when runAdAuction() section
 is ready.
 
 <h3 dfn-type=dfn>Interest group ad</h3>
@@ -1044,9 +1105,10 @@ An interest group ad is a [=struct=] with the following items:
 
 <dl dfn-for="interest group ad">
 : <dfn>render url</dfn>
-:: A [=URL=].
+:: A [=URL=]. If this ad wins the auction, this URL (or a [=urn uuid=] that maps to this URL) will be
+  returned by `runAdAuction()`. This URL is intended to be loaded into an ad iframe (or a fenced frame).
 : <dfn>metadata</dfn>
-:: Null or a [=string=].
+:: Null or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
 
 </dl>
 
@@ -1056,18 +1118,23 @@ An auction config is a [=struct=] with the following items:
 
 <dl dfn-for="auction config">
 : <dfn>seller</dfn>
-:: An [=url/origin=].
-  The origin of the seller running the ad auction.
+:: An [=origin=].
+  The origin of the seller running the ad auction. The [=origin/scheme=] must be "<code>https</code>".
 : <dfn>decision logic url</dfn>
 :: A [=URL=].
   The URL to fetch the seller's JavaScript from.
+  <p class="note">The [=auction config/decision logic url=] [=origin=] will always be [=same origin=] with
+  [=auction config/seller=].</p>
 : <dfn>trusted scoring signals url</dfn>
 :: Null or a [=URL=].
   Provide a mechanism for making real-time data (information about a specific creative) available
   for use at scoring time, e.g. the results of some ad scanning system.
+  <p class="note">The [=auction config/trusted scoring signals url=] [=origin=] will always be [=same origin=] with
+  [=auction config/seller=].</p>
 : <dfn>interest group buyers</dfn>
 :: Null or a [=list=] of [=url/origin=].
-  Owners of interest groups allowed to participate in the auction.
+  Owners of interest groups allowed to participate in the auction. Each [=origin's=] [=origin/scheme=]
+  must be "<code>https</code>".
 : <dfn>auction signals</dfn>
 :: Null or a [=string=].
   Opaque JSON data passed to both sellers' and buyers' script runners.
@@ -1075,7 +1142,7 @@ An auction config is a [=struct=] with the following items:
 :: Null or a [=string=].
   Opaque JSON data passed to the seller's script runner.
 : <dfn>seller timeout</dfn>
-:: A [=duration=]. Defaulting to 50 milliseconds.
+:: A [=duration=] in milliseconds. Defaulting to 50 milliseconds.
   Restricts the runtime of the seller's `scoreAd()` script.
 : <dfn>per buyer signals</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
@@ -1084,15 +1151,15 @@ An auction config is a [=struct=] with the following items:
   passed to corresponding buyer's script runner.
 : <dfn>per buyer timeouts</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
-  durations.
+  durations in milliseconds.
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the runtime of
   corresponding buyer's `generateBid()` script.
 : <dfn>all buyers timeout</dfn>
-:: A [=duration=]. Defaulting to 50 milliseconds.
-  Restricts the `generateBid()` script's runtime for all buyers without a timeouts specified in
+:: A [=duration=] in milliseconds. Defaulting to 50 milliseconds.
+  Restricts the `generateBid()` script's runtime for all buyers without a timeout specified in
   [=auction config/per buyer timeouts=].
 : <dfn>per buyer group limits</dfn>
-:: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
+:: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   {{unsigned short}}s.
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the number of
   bidding interest groups for a particular buyer that can participate in an auction.
@@ -1101,7 +1168,7 @@ An auction config is a [=struct=] with the following items:
   Limit on the number of bidding interest groups for all buyers without a limit specified in
   [=auction config/per buyer group limits=].
 : <dfn>per buyer priority signals</dfn>
-:: Null or an [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
+:: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   [=ordered maps=], whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}}.
   Per-buyer sparse vector whose dot product with [=interest group/priority vector=] is used to
   calculate interest group priorities. No signal's key starts with "browserSignals.", which is
@@ -1122,7 +1189,7 @@ An auction config is a [=struct=] with the following items:
   Optional identifier for an experiment group to support coordinated experiments with the seller's
   trusted server.
 : <dfn>per buyer experiment group ids</dfn>
-:: An [=ordered map=] whose [=map/keys=] are [=url/origins=] and whose [=map/values=] are
+:: An [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   {{unsigned short}}s.
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are identifiers for
   experiment groups, to support coordinated experiments with buyers' trusted servers.
@@ -1160,10 +1227,12 @@ The output of running a FLEDGE generateBid() script, which needs to be scored by
 : <dfn>ad component descriptors</dfn>
 :: Null or a [=list=] of [=ad descriptors=].
 : <dfn>ad cost</dfn>
-:: Null or a {{double}}. Advertiser click or conversion cost passed from generateBid() to
+:: Null or a {{double}}. Advertiser click or conversion cost passed from `generateBid()` to
   reportWin().
 : <dfn>modeling signals</dfn>
 :: Null or a {{unsigned short}}.
+: <dfn>interest group</dfn>
+:: An [=interest group=], whose `generateBid()` invocation generated this bid.
 
 </dl>
 
