@@ -6,7 +6,7 @@
   <link href="https://www.w3.org/StyleSheets/TR/2021/cg-draft" rel="stylesheet">
   <meta content="Bikeshed version d9bd89757, updated Thu Mar 23 10:06:53 2023 -0700" name="generator">
   <link href="https://wicg.github.io/turtledove/" rel="canonical">
-  <meta content="8e18c7606e18e4d974330468d221b54e2595a0b9" name="document-revision">
+  <meta content="5aea6367a72d497b951f32a941015e91891506b7" name="document-revision">
 <style>/* style-autolinks */
 .css.css, .property.property, .descriptor.descriptor {
     color: var(--a-normal-text);
@@ -1274,7 +1274,7 @@ integrate this into generateBid().</p>
      <li data-md>
       <p>Let <var>auctionConfig</var> be the result of running <a data-link-type="dfn" href="#validate-and-convert-auction-ad-config" id="ref-for-validate-and-convert-auction-ad-config">validate and convert auction ad config</a> with <var>config</var> and <a data-link-type="dfn" href="#validate-and-convert-auction-ad-config-istoplevel" id="ref-for-validate-and-convert-auction-ad-config-istoplevel">isTopLevel</a> set to true.</p>
      <li data-md>
-      <p>If <var>auctionConfig</var> is failure, then return <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#a-promise-rejected-with" id="ref-for-a-promise-rejected-with">a promise rejected with</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror⑧">TypeError</a></code>.</p>
+      <p>If <var>auctionConfig</var> is failure, then <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①⓪">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror⑧">TypeError</a></code>.</p>
      <li data-md>
       <p>Let <var>p</var> be <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#a-new-promise" id="ref-for-a-new-promise②">a new promise</a>.</p>
      <li data-md>
@@ -1288,7 +1288,9 @@ integrate this into generateBid().</p>
         <p><a data-link-type="dfn" href="https://dom.spec.whatwg.org/#abortsignal-add" id="ref-for-abortsignal-add">Add the following abort steps</a> to <var>signal</var>:</p>
         <ol>
          <li data-md>
-          <p>TODO: Abort the auction.</p>
+          <p>TODO: Specify. Abort the auction. If the auction has already completed, this has no
+effect. Otherwise, stop running new worklet functions, and do not cause side-effects, like
+reporting and updating bid statistics.</p>
          <li data-md>
           <p><a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#reject" id="ref-for-reject①">Reject</a> <var>p</var> with <var>signal</var>’s <a data-link-type="dfn" href="https://dom.spec.whatwg.org/#abortsignal-abort-reason" id="ref-for-abortsignal-abort-reason①">abort reason</a>.</p>
         </ol>
@@ -1311,7 +1313,9 @@ URL.</p>
        <li data-md>
         <p>Run <a data-link-type="dfn" href="#generate-reporting-urls" id="ref-for-generate-reporting-urls">generate reporting URLs</a> with <var>auctionConfig</var> and <var>winner</var>.</p>
        <li data-md>
-        <p>TODO: UpdateInterestGroupsPostAuction.</p>
+        <p>Update interest groups post-auction. Execute the algorithm <a data-link-type="dfn" href="#interest-group-update" id="ref-for-interest-group-update">interest group update</a> using <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-interestgroupbuyers" id="ref-for-dom-auctionadconfig-interestgroupbuyers">interestGroupBuyers</a></code>"] as <code>owners</code>.</p>
+       <li data-md>
+        <p>TODO: Update bidCount and prevWins for interest groups that participated in the auction.</p>
       </ol>
      <li data-md>
       <p>Return <var>p</var>.</p>
@@ -1326,7 +1330,7 @@ URL.</p>
       <p>Let <var>seller</var> be the result of running the <a data-link-type="dfn" href="https://url.spec.whatwg.org/#concept-url-parser" id="ref-for-concept-url-parser⑥">URL parser</a> on <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-seller" id="ref-for-dom-auctionadconfig-seller">seller</a></code>"].</p>
       <ol>
        <li data-md>
-        <p><a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①⓪">Throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror⑨">TypeError</a></code> if <var>seller</var> is an error, or its <a data-link-type="dfn" href="https://url.spec.whatwg.org/#concept-url-scheme" id="ref-for-concept-url-scheme④">scheme</a> is not
+        <p><a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①①">Throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror⑨">TypeError</a></code> if <var>seller</var> is an error, or its <a data-link-type="dfn" href="https://url.spec.whatwg.org/#concept-url-scheme" id="ref-for-concept-url-scheme④">scheme</a> is not
 "<code>https</code>".</p>
        <li data-md>
         <p>Set <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-seller" id="ref-for-auction-config-seller">seller</a> to <var>seller</var>.</p>
@@ -1335,7 +1339,7 @@ URL.</p>
       <p>Let <var>decisionLogicUrl</var> be the result of running the <a data-link-type="dfn" href="https://url.spec.whatwg.org/#concept-url-parser" id="ref-for-concept-url-parser⑦">URL parser</a> on <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-decisionlogicurl" id="ref-for-dom-auctionadconfig-decisionlogicurl">decisionLogicUrl</a></code>"].</p>
       <ol>
        <li data-md>
-        <p><a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①①">Throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①⓪">TypeError</a></code> if <var>decisionLogicUrl</var> is an error, or it is not <a data-link-type="dfn" href="https://html.spec.whatwg.org/multipage/browsers.html#same-origin" id="ref-for-same-origin①">same origin</a> with <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-seller" id="ref-for-auction-config-seller①">seller</a>.</p>
+        <p><a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①②">Throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①⓪">TypeError</a></code> if <var>decisionLogicUrl</var> is an error, or it is not <a data-link-type="dfn" href="https://html.spec.whatwg.org/multipage/browsers.html#same-origin" id="ref-for-same-origin①">same origin</a> with <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-seller" id="ref-for-auction-config-seller①">seller</a>.</p>
        <li data-md>
         <p><a data-link-type="dfn" href="https://infra.spec.whatwg.org/#assert" id="ref-for-assert">Assert</a>: <var>decisionLogicUrl</var>’s <a data-link-type="dfn" href="https://url.spec.whatwg.org/#concept-url-scheme" id="ref-for-concept-url-scheme⑤">scheme</a> is "<code>https</code>".</p>
        <li data-md>
@@ -1347,7 +1351,7 @@ URL.</p>
        <li data-md>
         <p>Let <var>trustedScoringSignalsUrl</var> be the result of running the <a data-link-type="dfn" href="https://url.spec.whatwg.org/#concept-url-parser" id="ref-for-concept-url-parser⑧">URL parser</a> on <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-trustedscoringsignalsurl" id="ref-for-dom-auctionadconfig-trustedscoringsignalsurl①">trustedScoringSignalsUrl</a></code>"].</p>
        <li data-md>
-        <p><a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①②">Throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①①">TypeError</a></code> if <var>trustedScoringSignalsUrl</var> is an error,
+        <p><a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①③">Throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①①">TypeError</a></code> if <var>trustedScoringSignalsUrl</var> is an error,
 or it is not <a data-link-type="dfn" href="https://html.spec.whatwg.org/multipage/browsers.html#same-origin" id="ref-for-same-origin②">same origin</a> with <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-seller" id="ref-for-auction-config-seller②">seller</a>.</p>
        <li data-md>
         <p><a data-link-type="dfn" href="https://infra.spec.whatwg.org/#assert" id="ref-for-assert①">Assert</a>: <var>trustedScoringSignalsUrl</var>’s <a data-link-type="dfn" href="https://url.spec.whatwg.org/#concept-url-scheme" id="ref-for-concept-url-scheme⑥">scheme</a> is "<code>https</code>".</p>
@@ -1355,14 +1359,14 @@ or it is not <a data-link-type="dfn" href="https://html.spec.whatwg.org/multipag
         <p>Set <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-trusted-scoring-signals-url" id="ref-for-auction-config-trusted-scoring-signals-url">trusted scoring signals url</a> to <var>trustedScoringSignalsUrl</var>.</p>
       </ol>
      <li data-md>
-      <p>If <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-interestgroupbuyers" id="ref-for-dom-auctionadconfig-interestgroupbuyers">interestGroupBuyers</a></code>"] <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#map-exists" id="ref-for-map-exists①⑤">exists</a>, let <var>buyers</var> be a new <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#list-is-empty" id="ref-for-list-is-empty">empty</a> <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#list" id="ref-for-list②">list</a>.</p>
+      <p>If <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-interestgroupbuyers" id="ref-for-dom-auctionadconfig-interestgroupbuyers①">interestGroupBuyers</a></code>"] <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#map-exists" id="ref-for-map-exists①⑤">exists</a>, let <var>buyers</var> be a new <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#list-is-empty" id="ref-for-list-is-empty">empty</a> <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#list" id="ref-for-list②">list</a>.</p>
       <ol>
        <li data-md>
-        <p><a data-link-type="dfn" href="https://infra.spec.whatwg.org/#list-iterate" id="ref-for-list-iterate④">For each</a> <var>buyerString</var> in <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-interestgroupbuyers" id="ref-for-dom-auctionadconfig-interestgroupbuyers①">interestGroupBuyers</a></code>"]:</p>
+        <p><a data-link-type="dfn" href="https://infra.spec.whatwg.org/#list-iterate" id="ref-for-list-iterate④">For each</a> <var>buyerString</var> in <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-interestgroupbuyers" id="ref-for-dom-auctionadconfig-interestgroupbuyers②">interestGroupBuyers</a></code>"]:</p>
         <ol>
          <li data-md>
           <p>Let <var>buyer</var> be the result of <a data-link-type="dfn" href="#parse-an-origin" id="ref-for-parse-an-origin">parsing an origin</a> with <var>buyerString</var>. If <var>buyer</var> is an
-error, or <var>buyer</var>’s <a data-link-type="dfn" href="https://url.spec.whatwg.org/#concept-url-scheme" id="ref-for-concept-url-scheme⑦">scheme</a> is not "<code>https</code>", then <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①③">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①②">TypeError</a></code>.
+error, or <var>buyer</var>’s <a data-link-type="dfn" href="https://url.spec.whatwg.org/#concept-url-scheme" id="ref-for-concept-url-scheme⑦">scheme</a> is not "<code>https</code>", then <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①④">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①②">TypeError</a></code>.
 Otherwise, <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#list-append" id="ref-for-list-append①">append</a> <var>buyer</var> to <var>buyers</var>.</p>
         </ol>
        <li data-md>
@@ -1376,7 +1380,7 @@ Otherwise, <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#list-app
       <p>If <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-directfromsellersignals" id="ref-for-dom-auctionadconfig-directfromsellersignals">directFromSellerSignals</a></code>"] <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#map-exists" id="ref-for-map-exists①⑧">exists</a>, let <var>directFromSellerSignalsPrefix</var> be the result of running the <a data-link-type="dfn" href="https://url.spec.whatwg.org/#concept-url-parser" id="ref-for-concept-url-parser⑨">URL parser</a> on <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-directfromsellersignals" id="ref-for-dom-auctionadconfig-directfromsellersignals①">directFromSellerSignals</a></code>"].</p>
       <ol>
        <li data-md>
-        <p><a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①④">Throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①③">TypeError</a></code> if any of the following conditions hold:</p>
+        <p><a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①⑤">Throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①③">TypeError</a></code> if any of the following conditions hold:</p>
         <ul>
          <li data-md>
           <p><var>directFromSellerSignalsPrefix</var> is an error;</p>
@@ -1403,7 +1407,7 @@ milliseconds.</p>
       <p>If <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-perbuyersignals" id="ref-for-dom-auctionadconfig-perbuyersignals">perBuyerSignals</a></code>"] <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#map-exists" id="ref-for-map-exists②①">exists</a>, <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#map-iterate" id="ref-for-map-iterate②">for each</a> <var>key</var> → <var>value</var> of <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-perbuyersignals" id="ref-for-dom-auctionadconfig-perbuyersignals①">perBuyerSignals</a></code>"]:</p>
       <ol>
        <li data-md>
-        <p>Let <var>buyer</var> be the result of <a data-link-type="dfn" href="#parse-an-origin" id="ref-for-parse-an-origin①">parsing an origin</a> with <var>key</var>. If <var>buyer</var> is an error, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①⑤">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①④">TypeError</a></code>.</p>
+        <p>Let <var>buyer</var> be the result of <a data-link-type="dfn" href="#parse-an-origin" id="ref-for-parse-an-origin①">parsing an origin</a> with <var>key</var>. If <var>buyer</var> is an error, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①⑥">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①④">TypeError</a></code>.</p>
        <li data-md>
         <p>Let <var>signalsString</var> be the result of <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#serialize-a-javascript-value-to-a-json-string" id="ref-for-serialize-a-javascript-value-to-a-json-string⑤">serializing a JavaScript value to a JSON string</a>, given <var>value</var>.</p>
        <li data-md>
@@ -1415,7 +1419,7 @@ milliseconds.</p>
        <li data-md>
         <p>If <var>key</var> equals to "*", then set <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-all-buyers-timeout" id="ref-for-auction-config-all-buyers-timeout">all buyers timeout</a> to min(<var>value</var>, 500) milliseconds, and <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#iteration-continue" id="ref-for-iteration-continue">continue</a>.</p>
        <li data-md>
-        <p>Let <var>buyer</var> the result of <a data-link-type="dfn" href="#parse-an-origin" id="ref-for-parse-an-origin②">parsing an origin</a> with <var>key</var>. If <var>buyer</var> is an error, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①⑥">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①⑤">TypeError</a></code>.</p>
+        <p>Let <var>buyer</var> the result of <a data-link-type="dfn" href="#parse-an-origin" id="ref-for-parse-an-origin②">parsing an origin</a> with <var>key</var>. If <var>buyer</var> is an error, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①⑦">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①⑤">TypeError</a></code>.</p>
        <li data-md>
         <p><a data-link-type="dfn" href="https://infra.spec.whatwg.org/#map-set" id="ref-for-map-set①">Set</a> <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-per-buyer-timeouts" id="ref-for-auction-config-per-buyer-timeouts">per buyer timeouts</a>[<var>buyer</var>] to
 min(<var>value</var>, 500) milliseconds.</p>
@@ -1424,11 +1428,11 @@ min(<var>value</var>, 500) milliseconds.</p>
       <p>If <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-perbuyergrouplimits" id="ref-for-dom-auctionadconfig-perbuyergrouplimits">perBuyerGroupLimits</a></code>"] <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#map-exists" id="ref-for-map-exists②③">exists</a>, <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#map-iterate" id="ref-for-map-iterate④">for each</a> <var>key</var> → <var>value</var> of <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-perbuyergrouplimits" id="ref-for-dom-auctionadconfig-perbuyergrouplimits①">perBuyerGroupLimits</a></code>"]:</p>
       <ol>
        <li data-md>
-        <p>If <var>value</var> is 0, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①⑦">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①⑥">TypeError</a></code>.</p>
+        <p>If <var>value</var> is 0, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①⑧">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①⑥">TypeError</a></code>.</p>
        <li data-md>
         <p>If <var>key</var> equals to "*", then set <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-all-buyers-group-limit" id="ref-for-auction-config-all-buyers-group-limit">all buyers group limit</a> to <var>value</var>, and <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#iteration-continue" id="ref-for-iteration-continue①">continue</a>.</p>
        <li data-md>
-        <p>Let <var>buyer</var> be the result of <a data-link-type="dfn" href="#parse-an-origin" id="ref-for-parse-an-origin③">parsing an origin</a> with <var>key</var>. If <var>buyer</var> is an error, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①⑧">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①⑦">TypeError</a></code>.</p>
+        <p>Let <var>buyer</var> be the result of <a data-link-type="dfn" href="#parse-an-origin" id="ref-for-parse-an-origin③">parsing an origin</a> with <var>key</var>. If <var>buyer</var> is an error, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①⑨">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①⑦">TypeError</a></code>.</p>
        <li data-md>
         <p><a data-link-type="dfn" href="https://infra.spec.whatwg.org/#map-set" id="ref-for-map-set②">Set</a> <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-per-buyer-group-limits" id="ref-for-auction-config-per-buyer-group-limits">per buyer group limits</a>[<var>buyer</var>] to <var>value</var>.</p>
       </ol>
@@ -1438,7 +1442,7 @@ min(<var>value</var>, 500) milliseconds.</p>
        <li data-md>
         <p>If <var>key</var> equals to "*", then set <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-all-buyer-experiment-group-id" id="ref-for-auction-config-all-buyer-experiment-group-id">all buyer experiment group id</a> to <var>value</var>, and <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#iteration-continue" id="ref-for-iteration-continue②">continue</a>.</p>
        <li data-md>
-        <p>Let <var>buyer</var> the result of <a data-link-type="dfn" href="#parse-an-origin" id="ref-for-parse-an-origin④">parsing an origin</a> with <var>key</var>. If <var>buyer</var> is an error, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw①⑨">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①⑧">TypeError</a></code>.</p>
+        <p>Let <var>buyer</var> the result of <a data-link-type="dfn" href="#parse-an-origin" id="ref-for-parse-an-origin④">parsing an origin</a> with <var>key</var>. If <var>buyer</var> is an error, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw②⓪">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①⑧">TypeError</a></code>.</p>
        <li data-md>
         <p><a data-link-type="dfn" href="https://infra.spec.whatwg.org/#map-set" id="ref-for-map-set③">Set</a> <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-per-buyer-experiment-group-ids" id="ref-for-auction-config-per-buyer-experiment-group-ids">per buyer experiment group ids</a>[<var>buyer</var>] to <var>value</var>.</p>
       </ol>
@@ -1451,14 +1455,14 @@ min(<var>value</var>, 500) milliseconds.</p>
         <p><a data-link-type="dfn" href="https://infra.spec.whatwg.org/#map-iterate" id="ref-for-map-iterate⑦">for each</a> <var>k</var> → <var>v</var> of <var>value</var>:</p>
         <ol>
          <li data-md>
-          <p>If <var>k</var> <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#string-starts-with" id="ref-for-string-starts-with">starts with</a> "browserSignals.", <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw②⓪">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①⑨">TypeError</a></code>.</p>
+          <p>If <var>k</var> <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#string-starts-with" id="ref-for-string-starts-with">starts with</a> "browserSignals.", <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw②①">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror①⑨">TypeError</a></code>.</p>
          <li data-md>
           <p>Set <var>signals</var>[<var>k</var>] to <var>v</var>.</p>
         </ol>
        <li data-md>
         <p>If <var>key</var> equals to "*", then set <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-all-buyers-priority-signals" id="ref-for-auction-config-all-buyers-priority-signals">all buyers priority signals</a> to <var>value</var>, and <a data-link-type="dfn" href="https://infra.spec.whatwg.org/#iteration-continue" id="ref-for-iteration-continue③">continue</a>.</p>
        <li data-md>
-        <p>Let <var>buyer</var> be the result of <a data-link-type="dfn" href="#parse-an-origin" id="ref-for-parse-an-origin⑤">parsing an origin</a> with <var>key</var>. If it fails, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw②①">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror②⓪">TypeError</a></code>.</p>
+        <p>Let <var>buyer</var> be the result of <a data-link-type="dfn" href="#parse-an-origin" id="ref-for-parse-an-origin⑤">parsing an origin</a> with <var>key</var>. If it fails, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw②②">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror②⓪">TypeError</a></code>.</p>
        <li data-md>
         <p><a data-link-type="dfn" href="https://infra.spec.whatwg.org/#map-set" id="ref-for-map-set④">Set</a> <var>auctionConfig</var>’s <a data-link-type="dfn" href="#auction-config-per-buyer-priority-signals" id="ref-for-auction-config-per-buyer-priority-signals">per buyer priority signals</a>[<var>buyer</var>] to <var>signals</var>.</p>
       </ol>
@@ -1466,7 +1470,7 @@ min(<var>value</var>, 500) milliseconds.</p>
       <p><a data-link-type="dfn" href="https://infra.spec.whatwg.org/#list-iterate" id="ref-for-list-iterate⑤">For each</a> <var>component</var> in <var>config</var>["<code class="idl"><a data-link-type="idl" href="#dom-auctionadconfig-componentauctions" id="ref-for-dom-auctionadconfig-componentauctions">componentAuctions</a></code>"]:</p>
       <ol>
        <li data-md>
-        <p>If <var>isTopLevel</var> is false, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw②②">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror②①">TypeError</a></code>.</p>
+        <p>If <var>isTopLevel</var> is false, <a data-link-type="dfn" href="https://webidl.spec.whatwg.org/#dfn-throw" id="ref-for-dfn-throw②③">throw</a> a <code class="idl"><a data-link-type="idl" href="https://webidl.spec.whatwg.org/#exceptiondef-typeerror" id="ref-for-exceptiondef-typeerror②①">TypeError</a></code>.</p>
        <li data-md>
         <p>Let <var>componentAuction</var> be the result of running <a data-link-type="dfn" href="#validate-and-convert-auction-ad-config" id="ref-for-validate-and-convert-auction-ad-config①">validate and convert auction ad config</a> with <var>component</var> and <a data-link-type="dfn" href="#validate-and-convert-auction-ad-config-istoplevel" id="ref-for-validate-and-convert-auction-ad-config-istoplevel①">isTopLevel</a> set to false.</p>
        <li data-md>
@@ -2052,63 +2056,65 @@ ad renders.</p>
     </ol>
    </div>
    <h2 class="heading settled" data-level="5" id="interest-group-updates"><span class="secno">5. </span><span class="content">Interest Group Updates</span><a class="self-link" href="#interest-group-updates"></a></h2>
-   <p>TODO: specify, including move 2 trigger sections out and add updateAdInterestGroup WebIDL.</p>
+   <p>TODO: specify, including remove 2 trigger section and add updateAdInterestGroup WebIDL.</p>
    <p>Interest groups define a field, dailyUpdateUrl, that allows updating the interest group definition
 stored on disk with information periodically retrieved from the dailyUpdateUrl.</p>
    <p>These updates have 2 triggers; the navigator.updateAdInterestGroups() API, which updates all interest
 groups owned by the origin of the current frame, and post-auction updates, which, at the conclusion
 of navigator.runAdAuction(), updates the interest groups of all bidder origins that participated in the
 auction.</p>
-   <p>Both update methods trigger the same algorithm, which is described below, and takes a list of owners to
+   <div class="algorithm" data-algorithm="interest group update">
+    <p>Both update methods trigger the same algorithm, <dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="interest-group-update">interest group update</dfn> which is described below, and takes a list of owners to
 update called "owners":</p>
-   <ol>
-    <li data-md>
-     <p>For each interest group "owner" in "owners":</p>
-     <ol>
-      <li data-md>
-       <p>Load the interest groups of "owner" where the interest group’s "next update after" is before now.
+    <ol>
+     <li data-md>
+      <p>For each interest group "owner" in "owners":</p>
+      <ol>
+       <li data-md>
+        <p>Load the interest groups of "owner" where the interest group’s "next update after" is before now.
 Implementations may consider loading only a portion of these interest groups at a time to avoid
 issuing too many requests at once. While the loaded set isn’t empty:</p>
-       <ol>
-        <li data-md>
-         <p>For each loaded interest group:</p>
-         <ol>
-          <li data-md>
-           <p>Fetch the dailyUpdateUrl of the interest group from the network.</p>
-          <li data-md>
-           <p>If the network fetch failed, continue to the next interest group.</p>
-          <li data-md>
-           <p>Parse the response body as JSON. If parsing fails, continue to the next interest group.</p>
-          <li data-md>
-           <p>If the response JSON object is not a JSON dict, continue to the next interest group.</p>
-          <li data-md>
-           <p>If "name" and or "owner" keys are present in the response dict, they must match the "name" and "owner" of
+        <ol>
+         <li data-md>
+          <p>For each loaded interest group:</p>
+          <ol>
+           <li data-md>
+            <p>Fetch the dailyUpdateUrl of the interest group from the network.</p>
+           <li data-md>
+            <p>If the network fetch failed, continue to the next interest group.</p>
+           <li data-md>
+            <p>Parse the response body as JSON. If parsing fails, continue to the next interest group.</p>
+           <li data-md>
+            <p>If the response JSON object is not a JSON dict, continue to the next interest group.</p>
+           <li data-md>
+            <p>If "name" and or "owner" keys are present in the response dict, they must match the "name" and "owner" of
 the original interest group, respectively. If they don’t, continue to the next interest group.</p>
-          <li data-md>
-           <p>For each remaining field, if the field is one of {priority, enableBiddingSignalsPrioritization,
+           <li data-md>
+            <p>For each remaining field, if the field is one of {priority, enableBiddingSignalsPrioritization,
 priorityVector, prioritySignalsOverrides, sellerCapabilities, executionMode, biddingLogicUrl,
 biddingWasmHelperUrl, trustedBiddingSignalsUrl, trustedBiddingSignalsKeys, ads,
 adComponents, adSizes, sizeGroups}:</p>
-           <ol>
-            <li data-md>
-             <p>If the field is prioritySignalsOverrides, merge with the stored value: for each key, value pair in the JSON prioritySignalsOverrides:</p>
-             <ol>
-              <li data-md>
-               <p>If the value is null, delete the stored prioritySignalsOverrides key, value pair.</p>
-              <li data-md>
-               <p>Otherise, update the stored value for key to be the new value.</p>
-             </ol>
-            <li data-md>
-             <p>Otherwise, replace the current value of the field in the interest group with that field from the received
+            <ol>
+             <li data-md>
+              <p>If the field is prioritySignalsOverrides, merge with the stored value: for each key, value pair in the JSON prioritySignalsOverrides:</p>
+              <ol>
+               <li data-md>
+                <p>If the value is null, delete the stored prioritySignalsOverrides key, value pair.</p>
+               <li data-md>
+                <p>Otherise, update the stored value for key to be the new value.</p>
+              </ol>
+             <li data-md>
+              <p>Otherwise, replace the current value of the field in the interest group with that field from the received
 interest group update JSON. (Fields that are not specified in the update JSON will remain unmodified).</p>
-            <li data-md>
-             <p>Set the "last updated" of the interest group to the current time, and set the "next update after" to
+             <li data-md>
+              <p>Set the "last updated" of the interest group to the current time, and set the "next update after" to
 the update rate limit period + the current time.</p>
-           </ol>
-         </ol>
-       </ol>
-     </ol>
-   </ol>
+            </ol>
+          </ol>
+        </ol>
+      </ol>
+    </ol>
+   </div>
    <h2 class="heading settled" data-level="6" id="permissions-policy-integration"><span class="secno">6. </span><span class="content">Permissions Policy integration</span><a class="self-link" href="#permissions-policy-integration"></a></h2>
    <p>This specification defines two <a data-link-type="dfn" href="https://w3c.github.io/webappsec-permissions-policy/#policy-controlled-feature" id="ref-for-policy-controlled-feature②">policy-controlled features</a> identified by the string
 "<code><dfn class="dfn-paneled" data-dfn-type="dfn" data-noexport id="join-ad-interest-group">join-ad-interest-group</dfn></code>", and
@@ -2477,6 +2483,7 @@ wins the component auction and top-level auction, respectively.</p>
    <li><a href="#interestgroupreportingscriptrunnerglobalscope">InterestGroupReportingScriptRunnerGlobalScope</a><span>, in § 4.1</span>
    <li><a href="#interestgroupscoringscriptrunnerglobalscope">InterestGroupScoringScriptRunnerGlobalScope</a><span>, in § 4.1</span>
    <li><a href="#interest-group-set">interest group set</a><span>, in § 2</span>
+   <li><a href="#interest-group-update">interest group update</a><span>, in § 5</span>
    <li><a href="#validate-and-convert-auction-ad-config-istoplevel">isTopLevel</a><span>, in § 4.2</span>
    <li><a href="#join-ad-interest-group">join-ad-interest-group</a><span>, in § 6</span>
    <li><a href="#dom-navigator-joinadinterestgroup">joinAdInterestGroup(group, durationSeconds)</a><span>, in § 2</span>
@@ -3242,12 +3249,6 @@ wins the component auction and top-level auction, respectively.</p>
     <li><a href="#ref-for-a-new-promise②">4.2. runAdAuction()</a>
    </ul>
   </aside>
-  <aside aria-labelledby="infopaneltitle-for-cf8339c4a39778ea039900ab8a77d2fe" class="dfn-panel" data-for="cf8339c4a39778ea039900ab8a77d2fe" id="infopanel-for-cf8339c4a39778ea039900ab8a77d2fe">
-   <span id="infopaneltitle-for-cf8339c4a39778ea039900ab8a77d2fe" style="display:none">Info about the 'a promise rejected with' external reference.</span><a href="https://webidl.spec.whatwg.org/#a-promise-rejected-with">https://webidl.spec.whatwg.org/#a-promise-rejected-with</a><b>Referenced in:</b>
-   <ul>
-    <li><a href="#ref-for-a-promise-rejected-with">4.2. runAdAuction()</a>
-   </ul>
-  </aside>
   <aside aria-labelledby="infopaneltitle-for-8eec6bb7878bb17dddbbb727b8d77c28" class="dfn-panel" data-for="8eec6bb7878bb17dddbbb727b8d77c28" id="infopanel-for-8eec6bb7878bb17dddbbb727b8d77c28">
    <span id="infopaneltitle-for-8eec6bb7878bb17dddbbb727b8d77c28" style="display:none">Info about the 'any' external reference.</span><a href="https://webidl.spec.whatwg.org/#idl-any">https://webidl.spec.whatwg.org/#idl-any</a><b>Referenced in:</b>
    <ul>
@@ -3315,7 +3316,7 @@ wins the component auction and top-level auction, respectively.</p>
    <ul>
     <li><a href="#ref-for-dfn-throw">2. Joining Interest Groups</a> <a href="#ref-for-dfn-throw①">(2)</a> <a href="#ref-for-dfn-throw②">(3)</a> <a href="#ref-for-dfn-throw③">(4)</a> <a href="#ref-for-dfn-throw④">(5)</a> <a href="#ref-for-dfn-throw⑤">(6)</a> <a href="#ref-for-dfn-throw⑥">(7)</a> <a href="#ref-for-dfn-throw⑦">(8)</a>
     <li><a href="#ref-for-dfn-throw⑧">4.1. Script Runners</a>
-    <li><a href="#ref-for-dfn-throw⑨">4.2. runAdAuction()</a> <a href="#ref-for-dfn-throw①⓪">(2)</a> <a href="#ref-for-dfn-throw①①">(3)</a> <a href="#ref-for-dfn-throw①②">(4)</a> <a href="#ref-for-dfn-throw①③">(5)</a> <a href="#ref-for-dfn-throw①④">(6)</a> <a href="#ref-for-dfn-throw①⑤">(7)</a> <a href="#ref-for-dfn-throw①⑥">(8)</a> <a href="#ref-for-dfn-throw①⑦">(9)</a> <a href="#ref-for-dfn-throw①⑧">(10)</a> <a href="#ref-for-dfn-throw①⑨">(11)</a> <a href="#ref-for-dfn-throw②⓪">(12)</a> <a href="#ref-for-dfn-throw②①">(13)</a> <a href="#ref-for-dfn-throw②②">(14)</a>
+    <li><a href="#ref-for-dfn-throw⑨">4.2. runAdAuction()</a> <a href="#ref-for-dfn-throw①⓪">(2)</a> <a href="#ref-for-dfn-throw①①">(3)</a> <a href="#ref-for-dfn-throw①②">(4)</a> <a href="#ref-for-dfn-throw①③">(5)</a> <a href="#ref-for-dfn-throw①④">(6)</a> <a href="#ref-for-dfn-throw①⑤">(7)</a> <a href="#ref-for-dfn-throw①⑥">(8)</a> <a href="#ref-for-dfn-throw①⑦">(9)</a> <a href="#ref-for-dfn-throw①⑧">(10)</a> <a href="#ref-for-dfn-throw①⑨">(11)</a> <a href="#ref-for-dfn-throw②⓪">(12)</a> <a href="#ref-for-dfn-throw②①">(13)</a> <a href="#ref-for-dfn-throw②②">(14)</a> <a href="#ref-for-dfn-throw②③">(15)</a>
    </ul>
   </aside>
   <aside aria-labelledby="infopaneltitle-for-cee863f1f2ec91066cfb7f5d309d59dc" class="dfn-panel" data-for="cee863f1f2ec91066cfb7f5d309d59dc" id="infopanel-for-cee863f1f2ec91066cfb7f5d309d59dc">
@@ -3481,7 +3482,6 @@ wins the component auction and top-level auction, respectively.</p>
      <li><span class="dfn-paneled" id="3f9c3eac015894a734faa8068fd8c2a1">TypeError</span>
      <li><span class="dfn-paneled" id="e270bcd7cdb4abe27bc3bb16a1975937">USVString</span>
      <li><span class="dfn-paneled" id="bbe33fc7ac016834e4aaddbfd1b084a1">a new promise</span>
-     <li><span class="dfn-paneled" id="cf8339c4a39778ea039900ab8a77d2fe">a promise rejected with</span>
      <li><span class="dfn-paneled" id="8eec6bb7878bb17dddbbb727b8d77c28">any</span>
      <li><span class="dfn-paneled" id="f8062b07e25ed0281f5cbfb9a54070b4">boolean</span>
      <li><span class="dfn-paneled" id="d3fd0dc5b12c87e613395fec1824ac77">double</span>
@@ -3933,7 +3933,7 @@ wins the component auction and top-level auction, respectively.</p>
   <aside aria-labelledby="infopaneltitle-for-dom-auctionadconfig-interestgroupbuyers" class="dfn-panel" data-for="dom-auctionadconfig-interestgroupbuyers" id="infopanel-for-dom-auctionadconfig-interestgroupbuyers">
    <span id="infopaneltitle-for-dom-auctionadconfig-interestgroupbuyers" style="display:none">Info about the 'interestGroupBuyers' definition.</span><b><a href="#dom-auctionadconfig-interestgroupbuyers">#dom-auctionadconfig-interestgroupbuyers</a></b><b>Referenced in:</b>
    <ul>
-    <li><a href="#ref-for-dom-auctionadconfig-interestgroupbuyers">4.2. runAdAuction()</a> <a href="#ref-for-dom-auctionadconfig-interestgroupbuyers①">(2)</a>
+    <li><a href="#ref-for-dom-auctionadconfig-interestgroupbuyers">4.2. runAdAuction()</a> <a href="#ref-for-dom-auctionadconfig-interestgroupbuyers①">(2)</a> <a href="#ref-for-dom-auctionadconfig-interestgroupbuyers②">(3)</a>
    </ul>
   </aside>
   <aside aria-labelledby="infopaneltitle-for-dom-auctionadconfig-auctionsignals" class="dfn-panel" data-for="dom-auctionadconfig-auctionsignals" id="infopanel-for-dom-auctionadconfig-auctionsignals">
@@ -4120,6 +4120,12 @@ accept' definition.</span><b><a href="#create-a-request-accept">#create-a-reques
    <span id="infopaneltitle-for-generate-reporting-urls" style="display:none">Info about the 'generate reporting URLs' definition.</span><b><a href="#generate-reporting-urls">#generate-reporting-urls</a></b><b>Referenced in:</b>
    <ul>
     <li><a href="#ref-for-generate-reporting-urls">4.2. runAdAuction()</a>
+   </ul>
+  </aside>
+  <aside aria-labelledby="infopaneltitle-for-interest-group-update" class="dfn-panel" data-for="interest-group-update" id="infopanel-for-interest-group-update">
+   <span id="infopaneltitle-for-interest-group-update" style="display:none">Info about the 'interest group update' definition.</span><b><a href="#interest-group-update">#interest-group-update</a></b><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-interest-group-update">4.2. runAdAuction()</a>
    </ul>
   </aside>
   <aside aria-labelledby="infopaneltitle-for-join-ad-interest-group" class="dfn-panel" data-for="join-ad-interest-group" id="infopanel-for-join-ad-interest-group">
