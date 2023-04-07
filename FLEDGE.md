@@ -590,9 +590,9 @@ For example, with the following interest groups and auction config:
 ```
 auctionConfig = {
   ...,
-  'interestGroupBuyers': {'https://buyer1.com/'},
+  'interestGroupBuyers': ['https://buyer1.com/'],
   'perBuyerPrioritySignals': {
-    '\*': {'politics': 1},
+    '*': {'politics': 1},
   }
 }
 
