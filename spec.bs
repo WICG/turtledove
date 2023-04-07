@@ -182,9 +182,16 @@ are:
   1. TODO: document .well-known fetches for cross-origin joins.
   1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
   1. If the browser is currently storing an interest group with `owner` and `name` that matches
-    |interestGroup|, then remove the currently stored one.
+    |interestGroup|, then set the [=interest group/bid counts=],
+    [=interest group/join counts=], and [=interest group/previous wins=] of
+    |interestGroup| to the values of the currently stored one and remove
+
+    the currently stored one from the browser.
   1. Set |interestGroup|'s [=interest group/joining origin=] to [=this=]'s
-    [=relevant settings object=]'s [=environment/top-level origin=]
+    [=relevant settings object=]'s [=environment/top-level origin=].
+  1. If the most recent entry in [=interest group/join counts=] corresponds to
+    the current local day, increment its count. If not, insert a new entry with
+    the time set to the current local day and a count of 1.
   1. Store |interestGroup| in the browser’s [=interest group set=].
 1. Return |p|.
 
@@ -715,9 +722,15 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       1. [=list/For each=] |ig| of |groups|:
         1. TODO: create bidder script runner. If failed, [=iteration/continue=].
         1. TODO: Let |interestGroup| be ... from |ig| ... minus priority and prioritySignalsOverrides and any browser-defined pieces
-        1. TODO: Set |browserSignals|'s "joinCount" to |ig|'s ...need to add and maintain joinCount in interest groups
-        1. TODO: Set |browserSignals|'s "bidCount" to |ig|'s ...need to add and maintain bidCount in interest groups
-        1. TODO: Set |browserSignals|'s "prevWins" to |ig|'s ...need to add and maintain prevWins in interest groups
+        1. Set |browserSignals|'s "joinCount" to the sum of |ig|'s
+           [=interest group/join counts=] for all days within the last 30 days.
+        1. Set |browserSignals|'s "bidCount" to the sum of |ig|'s
+           [=interest group/bid counts=] for all days within the last 30 days.
+        1. Set |browserSignals|'s "prevWins" to a [=list=] containing
+           [=tuple=]s of the time and the corresponding winning
+           [=interest group ad=] from |ig|'s [=interest group/previous wins=]
+           field with a data within the last 30 days. The time field is
+           specified in seconds relative to the start of the auction.
         1. TODO: Set |browserSignals|'s "wasmHelper" ...need to fetch and prepare WebAssembly.Module object based on |ig|'s [=interest group/bidding wasm helper url=]
         1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted bidding signals server's response(s)
         1. Let |biddingScript| be the result of [=fetching resource=] with |ig|'s
@@ -1102,6 +1115,19 @@ An interest group is a [=struct=] with the following items:
   which includes some slots that can be filled in with specific "products".
 : <dfn>joining origin</dfn>
 :: An [=url/origin=].The top level page origin from where the interest group was joined.
+: <dfn>join counts</dfn>
+:: A [=list=] containing [=tuple=]s of the day and per day join count. The day
+  is calculated based on local time. The join count is a count of the number of
+  times {{Navigator/joinAdInterestGroup()}} was called for this interest group on the
+  corresponding day.
+: <dfn>bid counts</dfn>
+:: A [=list=] containing [=tuple=]s of the day and per day bid count. The day
+  is calculated based on local time. The bid count is a count of the number of
+  times the bid calculated during {{Navigator/runAdAuction()}} was greater than 0.
+: <dfn>previous wins</dfn>
+:: A [=list=] containing [=tuple=]s of the time and the corresponding
+  [=interest group ad=] for each instance that this interest group won an
+  auction.
 
 </dl>
 
