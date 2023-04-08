@@ -28,8 +28,13 @@ spec: html; urlPrefix: https://html.spec.whatwg.org/multipage/
       text: obtain a worker/worklet agent; url: obtaining-a-worker/worklet-agent
 spec: ECMASCRIPT; urlPrefix: https://tc39.es/ecma262/
   type: dfn
-    for: ECMAScript
-      text: ParseScript; url: sec-parse-script
+    text: ParseScript; url: sec-parse-script
+    text: JavaScript execution context stack; url: execution-context-stack
+    text: running JavaScript execution context; url: running-execution-context
+    text: abrupt completion; url: sec-completion-record-specification-type
+    text: throw completion; url: sec-completion-record-specification-type
+    text: Completion Record; url: sec-completion-record-specification-type
+    text: ScriptEvaluation; url: sec-runtime-semantics-scriptevaluation
 </pre>
 
 # Introduction # {#intro}
@@ -767,10 +772,10 @@ in that they too are used for running scripts independent of the *main* executio
 flexible implementation model.
 
 However, some key differences from traditional Worklets motivate us to create a new kind of script
-execution environment. In particular, they are:
+execution environment. In particular, they:
 
- * Not scoped to a particular {{Document}}, but are rather scoped to a user agent, as they are spun
-   up by [=interest groups=] in the user agent's [=interest group set=].
+ * Are not scoped to a particular {{Document}}, but are rather scoped to a user agent, as they are
+   spun up by [=interest groups=] in the user agent's [=interest group set=].
  * Consequently have a different, more flexible [=ECMAScript/agent cluster=] allocation model —
    specifically, they need not execute in the same [=ECMAScript/agent cluster=] as any {{Document}},
    and for security reasons implementations may be motivated to enjoy this flexibility.
@@ -778,7 +783,11 @@ execution environment. In particular, they are:
    specification, unlike other Worklet types.
  * Have a restricted set of ECMAScript APIs exposed to them; for example {{Date}} is not exposed in
    these environments.
- * Are [=classic scripts=] instead of [=module scripts=].
+ * Are not [=module scripts=], and are instead evaluated as if they were [=classic scripts=].
+ * Are not [=scripts=] in the [[HTML]] sense, and as such:
+   * Their [=ECMAScript/realm=] does not have a [=realm/settings object=], and therefore functions
+     inside them are not run with the familiar [[WebIDL]] [=invoke|invocation=] mechanism.
+   * They do not [=perform a microtask checkpoints=].
 
 ## Script evaluation ## {#script-evaluation}
 
@@ -806,7 +815,10 @@ and a [=list=] of arguments |arguments|, [=evaluate a script=] with
 <br>
 
 To <dfn>evaluate a script</dfn> with a global type |globalType|, [=string=] |script|, [=string=]
-|functionName|, and a [=list=] |arguments|:
+|functionName|, and a [=list=] |arguments|, run these steps. They return a [=Completion Record=],
+which is either an [=abrupt completion=] (in the case of a parse failure or execution error), or a
+normal completion populated with the [=ECMAScript/ECMAScript language value=] result of invoking
+|functionName|.
 
   1. Let |agent| be the result of <a dfn>obtaining a worker/worklet agent</a> given null, true, and
      false. Run the rest of these steps in |agent|.
@@ -819,65 +831,51 @@ To <dfn>evaluate a script</dfn> with a global type |globalType|, [=string=] |scr
 
       * For the global object, create a new object of type |globalType|.
 
-     Issue: This is wrong, create the correct object depending on the type!
-
   1. Let |realm| be |realmExecutionContext|'s Realm component.
 
-  1. Let |global| |realm|'s [=realm/global object=], and run these steps:
+  1. Let |global| be |realm|'s [=realm/global object=], and run these steps:
 
     1. Perform !|global|.\[[Delete]]("`Date`").
 
-    1. Perform !|global|.\[[Delete]]("`Temporal`").
+    1. If !|global|.\[[HasProperty]]("`Temporal`") is true, then perform
+       !|global|.\[[Delete]]("`Temporal`").
 
-    Issue: This is not the best way to perform such API neutering (see <a
+    Advisement: This is not the best way to perform such API neutering (see <a
     href=https://github.com/tc39/ecma262/issues/1357#issuecomment-817560121>tc39/ecma262#1357</a>),
     but at the moment it's the way that host environments do this.
 
     Note: Removing time-referencing APIs from the |global| object is imperative for privacy, as
     |script| would otherwise be able to accurately exfiltrate data gleaned from time measurements.
 
-  1. Let |result| be [=ECMAScript/ParseScript=](|script|, |realm|, "`empty`").
+  1. Let |result| be [=ParseScript=](|script|, |realm|, `empty`).
 
-     Note: The resulting [=ECMAScript/Script Record=] will have no \[[HostDefined]] component, unlike
-     traditional [=scripts=] on the web platform.
+     Note: The resulting [=ECMAScript/Script Record=] will have no \[[HostDefined]] component,
+     unlike traditional [=scripts=] on the web platform.
 
-  1. If |result| is a list of errors:
+  1. If |result| is a list of errors, return
+     Completion { \[[Type]]: `throw`, \[[Value]]: |result|, \[[Target]]: `empty` }.
 
-     Issue: Handle errors appropriately.
+  1. [=Assert=]: |result| is a [=ECMAScript/Script Record=].
 
-  1. Setup the environment or environment settings object. So in HTML an "environment settings
-     object" is-a "environment". It is used to set a special internal slot on the ES "realm" so that ES
-     can call back up into the HTML Standard when it needs things that aren't defined in HTML. May not
-     need this at all — assuming script doesn't resolve URLs, fetch things from within the worklet, or
-     access anything time-related. A realm's default "\[\[HostDefined\]\]" slot is undefined
-     (https://tc39.es/ecma262/#table-realm-record-fields) which is likely valid for this use-case.
+  1. *Prepare to run script*: Push |realmExecutionContext| onto the [=JavaScript execution context
+     stack=]; it is now the [=running JavaScript execution context=].
 
-  1. Create the "script" with |script|. This basically
-     means parsing the source text inside the ES realm that was created earlier. See this step for more
-     information, though it won't need much of the rest of that algorithm:
-     https://html.spec.whatwg.org/multipage/webappapis.html#creating-a-classic-script:~:text=Let%20result%20be%20ParseScript(source%2C%20settings%27s%20realm%2C%20script),
-     since this spec wants to create "a classic script" as defined by HTML.
+  1. Let |evaluationStatus| be the result of [=ScriptEvaluation=](result).
 
-  1. Run the script: basically call ES's ScriptEvaluation(), like
-     https://html.spec.whatwg.org/multipage/webappapis.html#run-a-classic-script does), although it'll
-     probably need to do some of what that algorithm's step 3 ("Prepare to run a script") does (pushing
-     the current realm's execution context on the stack). This will produce something called a
-     CompletionRecord which will contain any value that the script contained
-     (https://tc39.es/ecma262/#sec-completion-record-specification-type).
+  1. If |evaluationStatus| is an [=abrupt completion=], FOO.
 
-  1. Run user-provided |functionName| with |arguments|.
-     I think just "running the script" isn't probably appropriate here though. This step will want to
-     actually run a specific function inside the script. In that case, an example of doing this is the
-     last 3 steps of:
-     https://html.spec.whatwg.org/multipage/worklets.html#fakeworkletglobalscope-process. Not clear how
-     to pluck the generateBid() function off the global though. Maybe something like "Let function be
-     Get(realm.\[\[Global\]\], "generateBid"). Rethrow any exceptions." and then either invoke it
-     directly or covert it to a WebIDL function and use WebIDL to "invoke" that.
+  1. Let |F| be [$Get$](|global|, |functionName|). If that returns a [=throw completion=], set
+     |finalCompletion| to |F| and jump to the step labeled <a
+     href=#evaluate-script-return>return</a>.
 
-[1]: https://html.spec.whatwg.org/multipage/workers.html#run-a-worker
-[2]:
-https://html.spec.whatwg.org/multipage/document-lifecycle.html#shared-document-creation-infrastructure
+  1. Set |finalCompletion| be [=Completion Record|Completion=]([$Call$](F, `undefined`, |arguments|)).
 
+  1. <i id=evaluate-script-return>Return</i>: at this point |finalCompletion| will be set to a
+     [=Completion Record=].
+
+    1. *Clean up after script*: [=Assert=] |realmExecutionContext| is the [=running JavaScript execution context=], and remove it from the [=JavaScript execution context stack=].
+
+    1. Return |finalCompletion|.
 </div>
 
 ## Global scopes ## {#global-scopes}
