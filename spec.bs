@@ -25,7 +25,7 @@ urlPrefix: https://www.ietf.org/rfc/rfc4122.txt
 spec: html; urlPrefix: https://html.spec.whatwg.org/multipage/
   type: dfn
     urlPrefix: webappapis.html
-      text: obtain a worker/worklet agent; url: obtaining-a-worker/worklet-agent
+      text: create an agent; url: create-an-agent
 spec: ECMASCRIPT; urlPrefix: https://tc39.es/ecma262/
   type: dfn
     text: ParseScript; url: sec-parse-script
@@ -948,8 +948,6 @@ execution environment. In particular, they:
 
 ## Script evaluation ## {#script-evaluation}
 
-<div algorithm=evaluate-script>
-
 Concretely, a <dfn>script runner</dfn> is a JavaScript execution environment instantiated with one
 of the following global objects:
 
@@ -957,86 +955,129 @@ of the following global objects:
  * {{InterestGroupScoringScriptRunnerGlobalScope}}
  * {{InterestGroupReportingScriptRunnerGlobalScope}}
 
-To <dfn>evaluate a bidding script</dfn> given a [=string=] |script| and a [=list=] of arguments
-|arguments|, [=evaluate a script=] with {{InterestGroupBiddingScriptRunnerGlobalScope}}, |script|,
-"`generateBid`", and |arguments|.
+<div algorithm>
+  To <dfn>evaluate a bidding script</dfn> given a [=string=] |script| and a [=list=] of arguments
+  |arguments|:
 
-To <dfn>evaluate a scoring script</dfn> given a [=string=] |script| and a [=list=] of arguments
-|arguments|, [=evaluate a script=] with {{InterestGroupScoringScriptRunnerGlobalScope}}, |script|,
-"`scoreAd`", and |arguments|.
+    1. Return the result of [=evaluating a script=] with
+       {{InterestGroupBiddingScriptRunnerGlobalScope}}, |script|, "`generateBid`", and |arguments|.
+</div>
 
-To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=] |functionName|,
-and a [=list=] of arguments |arguments|, [=evaluate a script=] with
-{{InterestGroupReportingScriptRunnerGlobalScope}}, |script|, |functionName|, and |arguments|.
+<div algorithm>
+  To <dfn>evaluate a scoring script</dfn> given a [=string=] |script| and a [=list=] of arguments
+  |arguments|:
+
+    1. Return the result of [=evaluating a script=] with
+       {{InterestGroupScoringScriptRunnerGlobalScope}}, |script|, "`scoreAd`", and |arguments|.
+</div>
+
+<div algorithm>
+  To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=]
+  |functionName|, and a [=list=] of arguments |arguments|:
+
+    1. Return the result of [=evaluating a script=] with
+       {{InterestGroupReportingScriptRunnerGlobalScope}}, |script|, |functionName|, and |arguments|.
+</div>
 
 <br>
 
-To <dfn>evaluate a script</dfn> with a global type |globalType|, [=string=] |script|, [=string=]
-|functionName|, and a [=list=] |arguments|, run these steps. They return a [=ECMAScript/Completion
-Record=], which is either an [=abrupt completion=] (in the case of a parse failure or execution
-error), or a normal completion populated with the [=ECMAScript/ECMAScript language value=] result of
-invoking |functionName|.
+<div algorithm>
+  To <dfn>create a new script runner agent</dfn>, run these steps:
 
-  1. Let |agent| be the result of <a dfn>obtaining a worker/worklet agent</a> given null, true, and
-     false. Run the rest of these steps in |agent|.
+    1. Let |signifier| be a new unique internal value.
 
-     Issue: This exclusively creates a new [=ECMAScript/agent cluster=] for the given |script| to
-     run in, but we should make this work with [=interest group/execution mode=] somehow.
+    1. Let |candidateExecution| be a new [=ECMAScript/candidate execution=].
 
-  1. Let |realmExecutionContext| be the result of [=creating a new realm=] given |agent| and the
-     following customizations:
+    1. Return a new [=ECMAScript/agent=] whose \[[CanBlock]] is false, \[[Signifier]] is
+       |signifier|, \[[CandidateExecution]] is |candidateExecution|, and \[[IsLockFree1]],
+       \[[IsLockFree2]], and \[[LittleEndian]] are set at the implementation's discretion.
 
-      * For the global object, create a new object of type |globalType|.
+  Note: This algorithm is almost identical to [[HTML]]'s [=create an agent=] algorithm, with the
+  exception that we do not give the returned agent a new [=event loop=], since it does not process
+  [=tasks=] within [=task sources=] in the usual way.
+</div>
 
-  1. Let |realm| be |realmExecutionContext|'s Realm component.
+<div algorithm>
+  To <dfn>obtain a script runner agent</dfn>, run these steps:
 
-  1. Let |global| be |realm|'s [=realm/global object=], and run these steps:
+    1. Let |agentCluster| be a  new [=ECMAScript/agent cluster=].
 
-    1. Perform !|global|.\[[Delete]]("`Date`").
+    1. Let |agent| be the result of [=creating a new script runner agent=].
 
-    1. If !|global|.\[[HasProperty]]("`Temporal`") is true, then perform
-       !|global|.\[[Delete]]("`Temporal`").
+    1. Add |agent| to |agentCluster|.
 
-    Advisement: This is not the best way to perform such API neutering (see <a
-    href=https://github.com/tc39/ecma262/issues/1357#issuecomment-817560121>tc39/ecma262#1357</a>),
-    but at the moment it's the way that host environments do this.
+    1. Return |agent|.
+</div>
 
-    Note: Removing time-referencing APIs from the |global| object is imperative for privacy, as
-    |script| would otherwise be able to accurately exfiltrate data gleaned from time measurements.
+<div algorithm>
+  To <dfn>evaluate a script</dfn> with a global type |globalType|, [=string=] |script|, [=string=]
+  |functionName|, and a [=list=] |arguments|, run these steps. They return a [=ECMAScript/Completion
+  Record=], which is either an [=abrupt completion=] (in the case of a parse failure or execution
+  error), or a normal completion populated with the [=ECMAScript/ECMAScript language value=] result
+  of invoking |functionName|.
 
-  1. Let |result| be [=ParseScript=](|script|, |realm|, `empty`).
+    1. [=Assert=] that these steps are running [=in parallel=].
 
-     Note: The resulting [=ECMAScript/Script Record=] will have no \[[HostDefined]] component,
-     unlike traditional [=scripts=] on the web platform.
+    1. Let |agent| be the result of [=obtaining a script runner agent=] given null, true, and
+       false. Run the rest of these steps in |agent|.
 
-  1. If |result| is a list of errors, return
-     Completion { \[[Type]]: `throw`, \[[Value]]: |result|, \[[Target]]: `empty` }.
+       Issue: This exclusively creates a new [=ECMAScript/agent cluster=] for the given |script| to
+       run in, but we should make this work with [=interest group/execution mode=] somehow.
 
-  1. [=Assert=]: |result| is a [=ECMAScript/Script Record=].
+    1. Let |realmExecutionContext| be the result of [=creating a new realm=] given |agent| and the
+       following customizations:
 
-  1. *Prepare to run script*: Push |realmExecutionContext| onto the [=ECMAScript/execution context
-     stack|JavaScript execution context stack=]; it is now the [=ECMAScript/running execution
-     context|running JavaScript execution context=].
+        * For the global object, create a new object of type |globalType|.
 
-  1. Let |evaluationStatus| be the result of [=ScriptEvaluation=](result).
+    1. Let |realm| be |realmExecutionContext|'s Realm component.
 
-  1. If |evaluationStatus| is an [=abrupt completion=], FOO.
+    1. Let |global| be |realm|'s [=realm/global object=], and run these steps:
 
-  1. Let |F| be [$Get$](|global|, |functionName|). If that returns a [=throw completion=], set
-     |finalCompletion| to |F| and jump to the step labeled <a
-     href=#evaluate-script-return>return</a>.
+      1. Perform !|global|.\[[Delete]]("`Date`").
 
-  1. Set |finalCompletion| be [=ECMAScript/Completion Record|Completion=]([$Call$](F, `undefined`,
-     |arguments|)).
+      1. If !|global|.\[[HasProperty]]("`Temporal`") is true, then perform
+         !|global|.\[[Delete]]("`Temporal`").
 
-  1. <i id=evaluate-script-return>Return</i>: at this point |finalCompletion| will be set to a
-     [=ECMAScript/Completion Record=].
+      Advisement: This is not the best way to perform such API neutering (see <a
+      href=https://github.com/tc39/ecma262/issues/1357#issuecomment-817560121>tc39/ecma262#1357</a>),
+      but at the moment it's the way that host environments do this.
 
-    1. *Clean up after script*: [=Assert=] |realmExecutionContext| is the [=ECMAScript/running
-       execution context|running JavaScript execution context=], and remove it from the
-       [=ECMAScript/execution context stack|JavaScript execution context stack=].
+      Note: Removing time-referencing APIs from the |global| object is imperative for privacy, as
+      |script| would otherwise be able to accurately exfiltrate data gleaned from time measurements.
 
-    1. Return |finalCompletion|.
+    1. Let |result| be [=ParseScript=](|script|, |realm|, `empty`).
+
+       Note: The resulting [=ECMAScript/Script Record=] will have no \[[HostDefined]] component,
+       unlike traditional [=scripts=] on the web platform.
+
+    1. If |result| is a list of errors, return
+       Completion { \[[Type]]: `throw`, \[[Value]]: |result|, \[[Target]]: `empty` }.
+
+    1. [=Assert=]: |result| is a [=ECMAScript/Script Record=].
+
+    1. *Prepare to run script*: Push |realmExecutionContext| onto the [=ECMAScript/execution context
+       stack|JavaScript execution context stack=]; it is now the [=ECMAScript/running execution
+       context|running JavaScript execution context=].
+
+    1. Let |evaluationStatus| be the result of [=ScriptEvaluation=](result).
+
+    1. If |evaluationStatus| is an [=abrupt completion=], FOO.
+
+    1. Let |F| be [$Get$](|global|, |functionName|). If that returns a [=throw completion=], set
+       |finalCompletion| to |F| and jump to the step labeled <a
+       href=#evaluate-script-return>return</a>.
+
+    1. Set |finalCompletion| be [=ECMAScript/Completion Record|Completion=]([$Call$](F, `undefined`,
+       |arguments|)).
+
+    1. <i id=evaluate-script-return>Return</i>: at this point |finalCompletion| will be set to a
+       [=ECMAScript/Completion Record=].
+
+      1. *Clean up after script*: [=Assert=] |realmExecutionContext| is the [=ECMAScript/running
+         execution context|running JavaScript execution context=], and remove it from the
+         [=ECMAScript/execution context stack|JavaScript execution context stack=].
+
+      1. Return |finalCompletion|.
 </div>
 
 ## Global scopes ## {#global-scopes}
