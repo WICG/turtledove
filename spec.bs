@@ -553,9 +553,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. Let |biddingScript| be the result of [=fetching resource=] with |ig|'s
           [=interest group/bidding url=], and "text/javascript". If |biddingScript| is an error,
           [=iteration/continue=].
-        1. TODO: Let |generatedBid| be the result of [=evaluating script=] with
-          [=evaluate script/script=] set to |biddingScript|, [=evaluate script/functionName=] set
-          to "generateBid", and [=evaluate script/arguments=] set to « |interestGroup|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|, |browserSignals| ».
+        1. TODO: Let |generatedBid| be the result of [=evaluating a bidding script=] with
+           |biddingScript| and « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
+           |trustedBiddingSignals|, |browserSignals| ».
         1. If |generatedBid|'s [=generated bid/bid=] is negative or 0, [=iteration/continue=].
         1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
         1. TODO: Validate other fields of |generatedBid|.
@@ -588,10 +588,9 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted scoring
   signals server's response.
 1. TODO: Remove fields of |auctionConfig| that don't pass through.
-1. TODO: Let |scoreAdOutput| be the result of [=evaluating script=] with
-  [=evaluate script/script=] set to |decisionLogicScript|,
-  [=evaluate script/functionName=] set to "scoreAd", and [=evaluate script/arguments=] set to
-  « |adMetadata|, |bid|, |auctionConfig|, |trustedScoringSignals|, |browserSignals| ».
+1. TODO: Let |scoreAdOutput| be the result of [=evaluating a scoring script=] with
+   |decisionLogicScript| and « |adMetadata|, |bid|, |auctionConfig|, |trustedScoringSignals|,
+   |browserSignals| ».
 1. If |hasComponentAuction| is true, and |scoreAdOutput|'s
   [=score ad output/allow component auction=] is false, return.
 1. Let |score| be |scoreAdOutput|'s [=score ad output/desirability=].
@@ -727,9 +726,8 @@ To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and 
 1. TODO: [=map/Set=] |browserSignals|["modifiedBid"] to the modified bid value.
 1. TODO: [=map/Set=] |browserSignals|["highestScoringOtherBid"] to the highest scoring other bid
   value.
-1. TODO: Let |sellerSignals| be the result of [=evaluating script=] with
-  [=evaluate script/script=] set to |sellerReportingScript|, [=evaluate script/functionName=] set
-  to "reportResult", and [=evaluate script/arguments=] set to « |auctionSignals|, |browserSignals| ».
+1. TODO: Let |sellerSignals| be the result of [=evaluating a reporting script=] with
+   |sellerReportingScript|, "reportResult", and « |auctionSignals|, |browserSignals| ».
 1. Let |buyerReportingScript| be the result of [=fetching resource=] with |bid|'s
   [=generated bid/interest group=|'s [=interest group/bidding url=], and "text/javascript".
 1. Let |perBuyerSignals| be |auctionConfig|'s
@@ -752,9 +750,8 @@ To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and 
   response and the version was consistent for all keys requested by this interest group.
 1. [=map/Set=] |browserSignals|["seller"] to |config|["{{AuctionAdConfig/seller}}"].
 1. TODO: [=map/Set=] |browserSignals|["topLevelSeller"] if there was a top-level seller.
-1. TODO: Run [=evaluating script=] with [=evaluate script/script=] set to |buyerReportingScript|,
-  [=evaluate script/functionName=] set to "reportWin", and [=evaluate script/arguments=] set to
-  « |auctionSignals|, |perBuyerSignals|, |sellerSignals|, |browserSignals| ».
+1. TODO: Run [=evaluating a reporting script=] with |buyerReportingScript| "reportWin", and «
+   |auctionSignals|, |perBuyerSignals|, |sellerSignals|, |browserSignals| ».
 1. TODO: Set URLs passed to sendReportTo() into the FencedFrameConfig so they can be fetched when
   ad renders.
 
@@ -787,9 +784,29 @@ execution environment. In particular, they are:
 
 <div algorithm=evaluate-script>
 
-To <dfn>evaluate script</dfn> with given [=string=] <dfn for="evaluate script">|script|</dfn>,
-[=string=] <dfn for="evaluate script">|functionName|</dfn>, and a [=list=]
-<dfn for="evaluate script">|arguments|</dfn>:
+Concretely, a <dfn>script runner</dfn> is a JavaScript execution environment instantiated with one
+of the following global objects:
+
+ * {{InterestGroupBiddingScriptRunnerGlobalScope}}
+ * {{InterestGroupScoringScriptRunnerGlobalScope}}
+ * {{InterestGroupReportingScriptRunnerGlobalScope}}
+
+To <dfn>evaluate a bidding script</dfn> given a [=string=] |script| and a [=list=] of arguments
+|arguments|, [=evaluate a script=] with {{InterestGroupBiddingScriptRunnerGlobalScope}}, |script|,
+"`generateBid`", and |arguments|.
+
+To <dfn>evaluate a scoring script</dfn> given a [=string=] |script| and a [=list=] of arguments
+|arguments|, [=evaluate a script=] with {{InterestGroupScoringScriptRunnerGlobalScope}}, |script|,
+"`scoreAd`", and |arguments|.
+
+To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=] |functionName|,
+and a [=list=] of arguments |arguments|, [=evaluate a script=] with
+{{InterestGroupReportingScriptRunnerGlobalScope}}, |script|, |functionName|, and |arguments|.
+
+<br>
+
+To <dfn>evaluate a script</dfn> with a global type |globalType|, [=string=] |script|, [=string=]
+|functionName|, and a [=list=] |arguments|:
 
   1. Let |agent| be the result of <a dfn>obtaining a worker/worklet agent</a> given null, true, and
      false. Run the rest of these steps in |agent|.
@@ -800,7 +817,7 @@ To <dfn>evaluate script</dfn> with given [=string=] <dfn for="evaluate script">|
   1. Let |realmExecutionContext| be the result of [=creating a new realm=] given |agent| and the
      following customizations:
 
-      * For the global object, create a new {{InterestGroupBiddingScriptRunnerGlobalScope}} object.
+      * For the global object, create a new object of type |globalType|.
 
      Issue: This is wrong, create the correct object depending on the type!
 
@@ -811,6 +828,10 @@ To <dfn>evaluate script</dfn> with given [=string=] <dfn for="evaluate script">|
     1. Perform !|global|.\[[Delete]]("`Date`").
 
     1. Perform !|global|.\[[Delete]]("`Temporal`").
+
+    Issue: This is not the best way to perform such API neutering (see <a
+    href=https://github.com/tc39/ecma262/issues/1357#issuecomment-817560121>tc39/ecma262#1357</a>),
+    but at the moment it's the way that host environments do this.
 
     Note: Removing time-referencing APIs from the |global| object is imperative for privacy, as
     |script| would otherwise be able to accurately exfiltrate data gleaned from time measurements.
