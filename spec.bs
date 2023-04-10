@@ -94,6 +94,7 @@ are:
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
   1. Set |interestGroup|'s [=interest group/expiry=] to now plus |durationSeconds|.
+  1. Set |interestGroup|'s [=interest group/next update after=] to now plus 24 hours.
   1. Let |ownerUrl| be the result of running the [=URL parser=] on
     |group|["{{AuctionAdInterestGroup/owner}}"].
     1. If |ownerUrl| is an error, or its [=url/scheme=] is not "`https`", [=exception/throw=] a
@@ -1012,10 +1013,10 @@ To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and 
 
 # Interest Group Updates # {#interest-group-updates}
 
-TODO: specify, including move 2 trigger sections out.
-
-Interest groups define a field, dailyUpdateUrl, that allows updating the interest group definition
-stored on disk with information periodically retrieved from the dailyUpdateUrl.
+[=interest groups=] have a [=interest group/daily update url=] field that allows updating the
+interest group definition stored on disk with information periodically retrieved from the
+[=interest group/daily update url=].  The [=interest group update=] steps are triggered during
+{{Navigator/runAdAuction()}} and by calls to {{Navigator/updateAdInterestGroups()}} API:
 
 <xmp class="idl">
 [SecureContext]
@@ -1024,41 +1025,101 @@ partial interface Navigator {
 };
 </xmp>
 
-These updates have 2 triggers: the {{Navigator/updateAdInterestGroups()}} API, which updates all interest
+The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
 
-groups owned by the origin of the current frame, and post-auction updates, which, at the conclusion
-of {{Window/navigator}}.{{Navigator/runAdAuction()}}, updates the interest groups of all bidder origins that participated in the
+1. [=in parallel=] execute the algorithm [=interest group update=] using « [=this=]'s
+  [=relevant settings object=]'s [=environment/top-level origin=] » as `owners`.
+  
+<div algorithm>
+  To <dfn>interest group update</dfn> a given [=list=] of [=url/origins=] |owners|:
 
-
-auction.
-
-<div algorithm="interest group update">
-
-Both update methods trigger the same algorithm, <dfn>interest group update</dfn> which is described below, and takes a list of owners to
-update called "owners":
-
-1. For each interest group "owner" in "owners":
-  1. Load the interest groups of "owner" where the interest group's "next update after" is before now.
+1. [=list/For each=] |owner| in |owners|:
+  1. [=list/For each=] |ig| of the user agent's [=interest group set=] whose
+    [=interest group/owner=] is |owner| and [=interest group/next update after=] is before now:
     Implementations may consider loading only a portion of these interest groups at a time to avoid
-    issuing too many requests at once. While the loaded set isn't empty:
-    1. For each loaded interest group:
-      1. Fetch the dailyUpdateUrl of the interest group from the network.
-      1. If the network fetch failed, continue to the next interest group.
-      1. Parse the response body as JSON. If parsing fails, continue to the next interest group.
-      1. If the response JSON object is not a JSON dict, continue to the next interest group.
-      1. If "name" and or "owner" keys are present in the response dict, they must match the "name" and "owner" of
-        the original interest group, respectively. If they don't, continue to the next interest group.
-      1. For each remaining field, if the field is one of {priority, enableBiddingSignalsPrioritization,
-        priorityVector, prioritySignalsOverrides, sellerCapabilities, executionMode, biddingLogicUrl,
-        biddingWasmHelperUrl, trustedBiddingSignalsUrl, trustedBiddingSignalsKeys, ads,
-        adComponents, adSizes, sizeGroups}:
-        1. If the field is prioritySignalsOverrides, merge with the stored value: for each key, value pair in the JSON prioritySignalsOverrides:
-          1. If the value is null, delete the stored prioritySignalsOverrides key, value pair.
-          2. Otherise, update the stored value for key to be the new value.
-        1. Otherwise, replace the current value of the field in the interest group with that field from the received
-          interest group update JSON. (Fields that are not specified in the update JSON will remain unmodified).
-        1. Set the "last updated" of the interest group to the current time, and set the "next update after" to
-          the update rate limit period + the current time.
+    issuing too many requests at once.
+    1. Let |update| be the result of [=fetching resource=] with |ig|'s [=interest group/daily update url=]
+      and "application/json".
+    1. If |update| is failure, [=iteration/continue=].
+    1. Let |parsedUpdate| be the result of [=parsing JSON bytes to a JavaScript value=], given
+      |update|.
+    1. If |parsedUpdate| is failure, [=iteration/continue=].
+    1. If |parsedUpdate| is not an [=ordered map=], [=iteration/continue=].
+    1. If |parsedUpdate["name"] exists and doesn't match |ig|'s [=interest group/name=], 
+      [=iteration/continue=].
+    1. If |parsedUpdate["owner"] exists and doesn't match |ig|'s [=interest group/owner=],
+      [=iteration/continue=].
+    1. [=map/For each=] |key| → |value| of |parsedUpdate|:
+      1. If |key| is "priority" and |value| is a {{double}}, set |ig|'s [=interest group/priority=]
+        to |value|.
+      1. If |key| is "enableBiddingSignalsPrioritization" and |value| is a {{boolean}}, set |ig|'s
+        [=interest group/enable bidding signals prioritization=] to |value|.
+      1. If |key| is "priorityVector" and |value| is null or an [=ordered map=] whose [=map/keys=] are
+        [=strings=] and whose [=map/values=] are {{double}}, set |ig|'s
+        [=interest group/priority vector=] to |value|.
+      1. If |key| is "prioritySignalsOverrides" and |value| is an [=ordered map=] whose [=map/keys=] are
+        [=strings=] and whose [=map/values=] are {{double}} or null:
+        1. [=map/For each=] |pvKey| → |pvValue| of |value|:
+          1. If |pvValue| is null, [=map/remove=] |ig|'s [=interest group/priority signals overrides=][|pvKey|].
+          1. Otherwise, [=map/set=] |ig|'s [=interest group/priority signals overrides=][|pvKey|] to |pvValue|.
+      1. If |key| is "executionMode" and |value| is "<code>compatibility</code>" or "<code>group-by-origin</code>",
+        set |ig|'s [=interest group/execution mode=] to |value|.
+      1. For each |groupMember| and |interestGroupField| in the following table <table class="data">
+          <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
+          <tr>
+            <td>"biddingLogicUrl"</td>
+            <td>[=interest group/bidding url=]</td>
+          </tr>
+          <tr>
+            <td>"biddingWasmHelperUrl"</td>
+            <td>[=interest group/bidding wasm helper url=]</td>
+          </tr>
+          <tr>
+            <td>"dailyUpdateUrl"</td>
+            <td>[=interest group/daily update url=]</td>
+          </tr>
+          <tr>
+            <td>"trustedBiddingSignalsUrl"</td>
+            <td>[=interest group/trusted bidding signals url=]</td>
+          </tr>
+        </table>
+        1. If |key| is |groupMember|:
+          1. Let |parsedUrl| be the result of running the [=URL parser=] on |value|.
+          1. [=iteration/continue=] if any of the following conditions hold:
+            * |parsedUrl| is an error;
+            * |parsedUrl| is not [=same origin=] with |ig|'s [=interest group/owner=];
+            * |parsedUrl| [=includes credentials=];
+            * |parsedUrl| [=url/fragment=] is not null.
+          1. Set |ig|'s |interestGroupField| to |parsedUrl|.
+      1. If |key| is "trustedBiddingSignalsKeys" and |value| is a [=list=] of [=strings=],
+        set |ig|'s [=interest group/trusted bidding signals keys=] to |value|.
+      1. For each |groupMember| and |interestGroupField| in the following table <table class="data">
+          <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
+          <tr>
+            <td>"ads"</td>
+            <td>[=interest group/ads=]</td>
+          </tr>
+          <tr>
+            <td>"adComponents"</td>
+            <td>[=interest group/ad components=]</td>
+          </tr>
+        </table>
+        1. If |key| is |groupMember| and |value| is a [=list=] of {{AuctionAd}},
+          [=list/for each=] |ad| of |value|:
+          1. Let |igAd| be a new [=interest group ad=].
+          1. Let |renderUrl| be the result of running the [=URL parser=] on
+            |ad|["{{AuctionAd/renderUrl}}"].
+          1. [=iteration/continue=] if any of the following conditions hold:
+            * |renderUrl| is an error;
+            * |renderUrl| [=url/scheme=] is not "`https`";
+            * |renderUrl| [=includes credentials=].
+          1. Set |igAd|'s [=interest group ad/render url=] to |renderUrl|.
+          1. If |ad|["{{AuctionAd/metadata}}"] [=map/exists=], then let
+            |igAd|'s [=interest group ad/metadata=] be the result of
+            [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
+            This can [=exception/throw=] a {{TypeError}}.
+          1. [=list/Append=] |igAd| to |ig|'s |interestGroupField|.
+    1. Set |ig|'s [=interest group/next update after=] to the current time plus 24 hours.
 
 </div>
 
@@ -1150,6 +1211,8 @@ An interest group is a [=struct=] with the following items:
 :: A [=list=] containing [=tuple=]s of the time and the corresponding
   [=interest group ad=] for each instance that this interest group won an
   auction.
+: <dfn>next update after</dfn>
+:: A point in time at which the browser will permit updating this interest group.
 
 </dl>
 
