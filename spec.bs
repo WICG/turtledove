@@ -87,7 +87,7 @@ are:
   "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
   "{{NotAllowedError}}" {{DOMException}}.
 1. Let |frameOrigin| be the [=relevant settings object=]'s [=environment settings object/origin=].
-1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and that the [=origin/scheme=] of |frameOrigin| is "https".
+1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "https".
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
   1. Set |interestGroup|'s [=interest group/expiry=] to now plus |durationSeconds|.
@@ -255,10 +255,9 @@ To <dfn>check interest group permissions</dfn> given an [=origin=]
 1. Wait for |resource| to be set.
 1. If |resource| is failure, then return false.
 1. Let |permissions| be the result of [=parsing a JSON string to an Infra value=], returning false on failure.
-1. If |isJoin| is true and |permissions| is a JSON object containing key
-  "`joinAdInterestGroup`" with value `true`, return true.
-1. If |isJoin| is false and |permissions| is a JSON object containing key
-  "`leaveAdInterestGroup`" with value `true`, return true.
+1. If |permissions| is not an [=ordered map=], then return false.
+1. If |isJoin| is true and |permissions|["joinAdInterestGroup"] [=map/exists=], then return |permissions|["joinAdInterestGroup"].
+1. If |isJoin| is false and |permissions|["leaveAdInterestGroup"] [=map/exists=], then return |permissions|["leaveAdInterestGroup"].
 1. Return false.
 
 The browser may cache requests for |permissionsUrl| within a network partition.
@@ -272,7 +271,7 @@ prevents a leak of the user's ad interest group membership to the server.
 <div algorithm>
 
 To <dfn>build an interest group permissions url</dfn> given a [=origin=] |ownerOrigin| and a [=origin=] |frameOrigin|:
-1. Let |serializedFrameOrigin| be the result of [ =serialization of an origin|serializing=] |frameOrigin|.
+1. Let |serializedFrameOrigin| be the result of [=serialization of an origin|serializing=] |frameOrigin|.
 1. Return the string formed by [=string/concatenating=]
   * The [=serialization of an origin|serialization=] of |ownerOrigin|,
   * The string "`/.well-known/interest-group/permissions/?origin=`", and
