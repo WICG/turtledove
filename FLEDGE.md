@@ -165,7 +165,7 @@ The `executionMode` attribute is optional, and may contain one of the following 
    mode does not have the same limitations on what top-level sites can join or leave
    the interest group.
 
-The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes a rendering URL, a named size group (see below), and arbitrary metadata that can be used at bidding time. These render URLs may contain macros `{%AD_WIDTH%}` and `{%AD_HEIGHT%}`, which will be automatically replaced with the appropriate width and height after an auction, so that the initial resource request can fetch appropriately sized assets.
+The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes a rendering URL, a named size group (see `sizeGroups` below), and arbitrary metadata that can be used at bidding time. These render URLs may contain macros `{%AD_WIDTH%}` and `{%AD_HEIGHT%}`, which will be automatically replaced with the appropriate width and height after an auction, so that the initial resource request can fetch appropriately sized assets.
 
 The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similarly to the `ads` field, each entry is an object that includes a rendering URL, a named size group (see `sizeGroups` below), and arbitrary metadata that can be used at bidding time. Thanks to `ads` and `adsComponents` being separate fields, the buyer is able to update the `ads` field via daily update without losing `adComponents` stored in the interest group.
 
