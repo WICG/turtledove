@@ -396,12 +396,30 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|,
     null, and |global|.
+  1. Let |reportResultBrowserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and
+    whose [=map/values=] are {{any}}.
+  1. [=map/Set=] |reportResultBrowserSignals|["`topWindowHostname`"] to [=this=]'s
+    [=relevant settings object=]'s [=environment/top-level origin=]'s [=origin/host=].
+  1. Let |winner|, be the result of running [=generate and score bids=] with |auctionConfig|, null,
+    and |global|.
   1. TODO: If |winner| is failure, fail the auction with manually_aborted set to true.
   1. TODO: If |winner| is null, fail the auction with manually_aborted set to false.
   1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
     with |winner|'s [=generated bid/ad descriptor=]. TODO: resolve |p| with urn-uuid, instead of a
     URL.
-  1. Run [=generate reporting URLs=] with |auctionConfig| and |winner|.
+  1. [=map/Set=] |reportResultBrowserSignals|["`interestGroupOwner`"] to |winner|'s
+    [=generated bid/interest group=]'s [=interest group/owner=].
+  1. [=map/Set=] |reportResultBrowserSignals|["`renderUrl`"] to |winner|'s
+    [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+  1. Set |reportResultBrowserSignals|["`bid`"] to [=leading bid info/leading bid=]'s
+    [=generated bid/bid=].
+  1. Set |reportResultBrowserSignals|["`desirability`"] to [=leading bid info/top score=].
+  1. Set |reportResultBrowserSignals|["`highestScoringOtherBid`"] to
+    [=leading bid info/highest scoring other bid=].
+  1. TODO: set missing fields of |reportResultBrowserSignals| based on whether it's top level or
+    component auction.
+  1. Run [=generate reporting URLs=] with |auctionConfig|, |winner|, and
+    |reportResultBrowserSignals|.
   1. Update interest groups post-auction. Execute the algorithm [=interest group update=] using
     |config|["{{AuctionAdConfig/interestGroupBuyers}}"] as `owners`.
   1. TODO: Update bidCount and prevWins for interest groups that participated in the auction.
@@ -572,14 +590,27 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=Assert=] |topLevelAuctionConfig| is null.
   1. Let |pendingComponentAuctions| be the [=list/size=] of |auctionConfig|'s
     [=auction config/component auctions=].
+  1. Let |compIndex| be 0.
+  1. Let |leadingCompIndex| be null.
+  1. Let |componentReportResultParams| be an [=ordered map=] whose [=map/keys=] are integers and
+    whose [=map/values=] are {{any}}.
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinner| be the result of [=generate and score bids=] with |component|,
       |auctionConfig|, and |global|.
-    1. If |compWinner| is not failure or null, [=score and rank a bid=] with |auctionConfig|,
-      |compWinner|, |leadingBidInfo|, |desisionLogicScript|, and true.
+    1. If |compWinner| is not failure or null:
+      1. Let |isLeadingComp| be the result of running [=score and rank a bid=] with |auctionConfig|,
+        |compWinner|, |leadingBidInfo|, |desisionLogicScript|, and true.
+      1. If |isLeadingComp| is true, set |leadingCompIndex| to |compIndex|.
+      1. [=map/Set=] |componentReportResultParams|[|compIndex|] to « |auctionConfig|, modified bid ... ».
     1. Decrement |pendingComponentAuctions| by 1.
+    1. Increment |compIndex| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
+  1. If |leadingCompIndex| is null, return null.
+  1. TODO: construct |compReportResultBrowserSignals| for the component auction's `reportResult()`.
+  1. Run [=generate reporting URLs=] with |componentReportResultParams|[|leadingCompIndex|]'s
+    |auctionConfig|, |leadingBidInfo|'s
+    [=leading bid info/leading bid=], and |compReportResultBrowserSignals|.
   1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
@@ -598,8 +629,10 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     [=auction config/per buyer experiment group ids=].
   1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|] exists:
     1. Set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
-  1. Let |perBuyerSignals| be |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] if that
-    member [=map/exists=], and null otherwise.
+  1. Let |perBuyerSignals| be null.
+  1. If |auctionConfig|'s [=auction config/per buyer signals=] is not null and
+    [=auction config/per buyer signals=][|buyer|] [=map/exists=]:
+    1. Set |perBuyerSignals| to |auctionConfig|'s [=auction config/per buyer signals=][|buyer|].
   1. If |auctionConfig|'s [=auction config/per buyer signals=] is not null and [=auction config/per buyer signals=][|buyer|] [=map/exists=]:
     1. Let |perBuyerSignals| be |auctionConfig|'s [=auction config/per buyer signals=][|buyer|].
   1. Otherwise:
@@ -613,8 +646,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
     1. Let |fullSignalsUrl| be the result of [=building trusted bidding signals url=] with
       |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|.
-    1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl|
-      and "application/json".
+    1. Let |trustedBiddingSignals| be the result of [=fetching trusted bidding signals=] with |fullSignalsUrl|.
     1. TODO: If |trustedBiddingSignals| is failure, fail the auction with manually_aborted set to
       true.
     1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
@@ -631,10 +663,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
            field with a data within the last 30 days. The time field is
            specified in seconds relative to the start of the auction.
         1. TODO: Set |browserSignals|'s "wasmHelper" ...need to fetch and prepare WebAssembly.Module object based on |ig|'s [=interest group/bidding wasm helper url=]
-        1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted bidding signals server's response(s)
-        1. Let |biddingScript| be the result of [=fetching resource=] with |ig|'s
-          [=interest group/bidding url=], and "text/javascript". If |biddingScript| is an error,
-          [=iteration/continue=].
+        1. TODO: Set |browserSignals|'s "dataVersion" to |trustedBiddingSignals|["`dataVersion`"].
+        1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
+          [=interest group/bidding url=]. If |biddingScript| is an error, [=iteration/continue=].
         1. TODO: Let |generatedBid| be the result of [=evaluating a bidding script=] with
            |biddingScript| and « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
            |trustedBiddingSignals|, |browserSignals| ».
@@ -660,7 +691,8 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. TODO: Let |trustedScoringSignals| ... need to assemble and fetch these
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
-1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
+1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=this=]'s [=relevant settings object=]'s
+  [=environment/top-level origin=]'s [=origin/host=].
 1. [=map/Set=] |browserSignals|["interestGroupOwner"] to |generatedBid|'s
   [=generated bid/interest group=]'s [=interest group/owner=].
 1. [=map/Set=] |browserSignals|["renderURL"] to |generatedBid|'s [=generated bid/ad descriptor=]'s
@@ -674,27 +706,55 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
    |decisionLogicScript| and « |adMetadata|, |bid|, |auctionConfig|, |trustedScoringSignals|,
    |browserSignals| ».
 1. If |hasComponentAuction| is true, and |scoreAdOutput|'s
-  [=score ad output/allow component auction=] is false, return.
+  [=score ad output/allow component auction=] is false, return false.
 1. Let |score| be |scoreAdOutput|'s [=score ad output/desirability=].
-1. If |score| is negative or 0, return.
+1. If |score| is negative or 0, return false.
 1. Let |maybeModifiedBid| be |generatedBid|.
 1. If |hasComponentAuction| is true and |scoreAdOutput|'s [=score ad output/bid=] is not null:
   1. Set |maybeModifiedBid|'s [=generated bid/bid=] to |scoreAdOutput|'s [=score ad output/bid=].
-1. If |score| is greater than |leadingBidInfo|'s [=leading bid info/top score=]:
-  1. Set |leadingBidInfo|'s [=leading bid info/top score=] to |score|.
-  1. Set |leadingBidInfo|'s [=leading bid info/leading bid=] to |maybeModifiedBid|.
+1. Let |updateLeadingBid| to false.
+1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null:
+  1. Set |updateLeadingBid| to true.
+1. Otherwise if |score| is greater than |leadingBidInfo|'s [=leading bid info/top score=]:
+  1. [=Update highest scoring other bid=] with |score|, |maybeModifiedBid|, and |leadingBidInfo|.
   1. Set |leadingBidInfo|'s [=leading bid info/top bids count=] to 1.
 1. Otherwise if |score| equals to |leadingBidInfo|'s [=leading bid info/top score=]:
   1. Increment |leadingBidInfo|'s [=leading bid info/top bids count=] by 1.
-  1. Set |leadingBidInfo|'s [=leading bid info/leading bid=] to |maybeModifiedBid| with 1 in
-    |leadingBidInfo|'s [=leading bid info/top bids count=] chance.
+  1. Set |updateLeadingBid| to true with 1 in |leadingBidInfo|'s [=leading bid info/top bids count=]
+    chance.
+  1. If |updateLeadingBid| is true:
+    1. [=Update highest scoring other bid=] with |score|, |leadingBidInfo|'s
+      [=leading bid info/leading bid=]'s [=generated bid/bid=], and |leadingBidInfo|.
+  1. Otherwise:
+    1. [=Update highest scoring other bid=] with |score|, |maybeModifiedBid|, and |leadingBidInfo|.
+1. Otherwise if |score| is greater than or equal to |leadingBidInfo|'s
+  [=leading bid info/second highest score=]:
+  1. [=Update highest scoring other bid=] with |score|, |maybeModifiedBid|, and |leadingBidInfo|.
+1. If |updateLeadingBid| is true:
+  1. Set |leadingBidInfo|'s [=leading bid info/top score=] to |score|.
+  1. Set |leadingBidInfo|'s [=leading bid info/leading bid=] to |maybeModifiedBid|.
+1. Return |updateLeadingBid|.
 
 </div>
 
-To <dfn>create a seller script runner</dfn> given a [=URL=] |decisionLogicURL|:
+<div algorithm>
+To <dfn>update highest scoring other bid</dfn> given a {{double}} |score|, a {{double}} |bidValue|,
+and a [=leading bid info=] |leadingBidInfo|:
+
+  1. If |score| is greater than |leadingBidInfo|'s [=leading bid info/second highest score=]:
+    1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] to |bidValue|.
+    1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bids count=] to 1.
+    1. Set |leadingBidInfo|'s [=leading bid info/second highest score=] to score.
+  1. Otherwise if |score| is equal to |leadingBidInfo|'s [=leading bid info/second highest score=]:
+    1. Increment |leadingBidInfo|'s [=leading bid info/highest scoring other bids count=] by 1.
+    1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] to |bidValue| with 1 in
+      |leadingBidInfo|'s [=leading bid info/highest scoring other bids count=] chance.
+  1. TODO: Set |leadingBidInfo|'s [=leading bid info/made highest scoring other bid=].
+</div>
+
+To <dfn>create a seller script runner</dfn> given a [=URL=] |decisionLogicUrl|:
 1. TODO: create the script runner and set up environment.
-1. Let |decisionLogicScript| be the result of [=fetching resource=] with |decisionLogicURL|, and
-  "text/javascript".
+1. Let |decisionLogicScript| be the result of [=fetching script=] with |decisionLogicUrl|.
 1. Return |decisionLogicScript|.
 
 To <dfn>create a request</dfn> given a [=URL=] |url| and a [=string=] <dfn for="create a request">
@@ -724,30 +784,66 @@ To <dfn>create a request</dfn> given a [=URL=] |url| and a [=string=] <dfn for="
 
 <div algorithm>
 
-To <dfn>fetch resource</dfn> given a [=URL=] |url|, and a [=string=] |mimeType|:
-1. Let |request| be the result of [=creating a request=] with |url|, [=create a request/accept=]
-  set to |mimeType|.
-1. Let |resource| be null.
-1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
-  [=response=] |response| and |responseBody|:
-  1. If |responseBody| is null or failure, set |resource| to failure and return.
+To <dfn>validate fetching response</dfn> given a [=response=] |response| and |responseBody|, and a
+a [=string=] |mimeType|:
+  1. If |responseBody| is null or failure, return false.
   1. Let |headers| be |response|'s [=response/header list=].
   1. If [=header list/getting a structured field value=] "X-Allow-FLEDGE" from |headers| does not
-    return true, set |resource| to failure and return.
+    return true, return false.
   1. Let |headerMimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
-  1. Set |resource| to failure and return, if any of the following conditions hold:
+  1. Return false if any of the following conditions hold:
     * |headerMimeType| is failure;
     * |mimeType| is "`text/javascript`" and |headerMimeType| is not a [=JavaScript MIME type=];
     * |mimeType| is "`application/json`" and |headerMimeType| is not a [=JSON MIME type=].
   1. Let |mimeTypeCharset| be |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
-  1. Set |resource| to failure and return if any of the following conditions hold:
+  1. Return false if any of the following conditions hold:
     * If |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and
       |responseBody| is not [=UTF-8=] encoded;
     * If |mimeTypeCharset| is "us-ascii", and |responseBody| is not [=ascii string=].
-  1. Set |resource| to |responseBody|.
-1. Wait for |resource| to be set.
-1. Return |resource|.
+  1. If |mimeType| is "`application/json`":
+    1. Let |dataVersionString| be the result of [=header list/getting a structured field value=]
+      "Data-Version" from |headers|.
+    1. If |dataVersionString| is null, or [=string/starts with=] "`0`" but [=string/is=] not "`0`",
+      return false.
+    1. Let |dataVersion| be the result of parsing |dataVersionString| to a {{unsigned long}}. If
+      |dataVersion| is a parsing exception, return false.
+    1. Let |json| be the result of [=parsing JSON bytes to an Infra value=] with |responseBody|.
+    1. If |json| is a parsing exception, or if |json| is not an [=ordered map=], return false.
+  1. Return true.    
+</div>
 
+<div algorithm>
+To <dfn>fetch script</dfn> given a [=URL=] |url|:
+
+  1. Let |request| be the result of [=creating a request=] with |url|, and
+    [=create a request/accept=] set to "`text/javascript`".
+  1. Let |script| be null.
+  1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
+    a [=response=] |response| and |responseBody|:
+    1. If [=validate fetching response=] with |response|, |responseBody| and "`text/javascript`"
+      returns false, set |script| to failure and return.
+    1. Set |script| to |responseBody|.
+  1. Wait for |script| to be set.
+  1. Return |script|.
+</div>
+
+<div algorithm>
+To <dfn>fetch trusted bidding signals</dfn> given a [=URL=] |url|:
+
+  1. Let |request| be the result of [=creating a request=] with |url|, and
+    [=create a request/accept=] set to "`application/json`".
+  1. Let |signals| be null.
+  1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
+    a [=response=] |response| and |responseBody|:
+    1. If [=validate fetching response=] with |response|, |responseBody| and "`application/json`"
+      returns false, set |signals| to failure and return.
+    1. Let |headers| be |response|'s [=response/header list=].
+    1. Let |formatVersionString| be the result of [=header list/getting a structured field value=]
+      "X-fledge-bidding-signals-format-version" from |headers|.
+    1. Set |signals| to the result of parsing (TODO) trusted bidding signals from |responseBody|
+      based on |formatVersionString|.
+  1. Wait for |signals| to be set.
+  1. Return |signals|.
 </div>
 
 <div algorithm>
@@ -788,31 +884,16 @@ Issue: This would ideally be replaced by a more descriptive algorithm in Infra. 
 <div algorithm>
 
 To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and a [=generated bid=]
-|bid|:
-1. Let |sellerReportingScript| be the result of [=fetching resource=] with |config|'s
-  [=auction config/decision logic url=], and "text/javascript".
-1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
-1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
-  [=map/values=] are {{any}}.
-1. TODO: [=map/Set=] |browserSignals|["topWindowHostname"] to hostname of top window.
-1. TODO: [=map/Set=] |browserSignals|["topLevelSeller"] to the top level seller.
-1. TODO: [=map/Set=] |browserSignals|["componentSeller"] to the component seller.
-1. [=map/Set=] |browserSignals|["interestGroupOwner"] to |bid|'s [=generated bid/interest group=]'s
-  [=interest group/owner=].
-1. [=map/Set=] |browserSignals|["renderURL"] to |bid|'s [=generated bid/ad descriptor=]'s
-  [=ad descriptor/url=].
-1. [=map/Set=] |browserSignals|["bid"] to |bid|'s [=generated bid/bid=].
-1. TODO: [=map/Set=] |browserSignals|["desirability"] to the desirability score.
-1. TODO: [=map/Set=] |browserSignals|["topLevelSellerSignals] to the top level sellers signals.
-1. TODO: [=map/Set=] |browserSignals|["dataVersion"] to the version from the key value response.
-1. TODO: [=map/Set=] |browserSignals|["modifiedBid"] to the modified bid value.
-1. TODO: [=map/Set=] |browserSignals|["highestScoringOtherBid"] to the highest scoring other bid
-  value.
+|bid|, and an [=ordered map=] |browserSignals| whose [=map/keys=] are [=strings=] and whose
+[=map/values=] are {{any}}:
+1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
+  [=auction config/decision logic url=].
+1. Let |auctionSignals| be |config|'s [=auction config/auction signals=].
 1. TODO: Let |sellerSignals| be the result of [=evaluating a reporting script=] with
    |sellerReportingScript|, "reportResult", and « |auctionSignals|, |browserSignals| ».
-1. Let |buyerReportingScript| be the result of [=fetching resource=] with |bid|'s
-  [=generated bid/interest group=]'s [=interest group/bidding url=], and "text/javascript".
-1. Let |perBuyerSignals| be |auctionConfig|'s
+1. Let |buyerReportingScript| be the result of [=fetching script=] with |bid|'s
+  [=generated bid/interest group=]'s [=interest group/bidding url=].
+1. Let |perBuyerSignals| be |config|'s
   [=auction config/per buyer signals=][|browserSignals|["interestGroupOwner"]] if that member
   [=map/exists=], and null otherwise.
 1. [=map/Remove=] |browserSignals|["desirability"].
@@ -1523,5 +1604,14 @@ Information of the auction's leading bid so far when ranking scored bids.
 :: An integer. Defaulting to 0. The number of bids with the same `top score`.
 : <dfn>leading bid</dfn>
 :: Null or a [=generated bid=]. The leading bid of the auction so far.
+: <dfn>highest scoring other bid</dfn>
+:: A {{double}}. Defaulting to 0.0. The numeric value of the bid that got the second highest score.
+: <dfn>second highest score</dfn>
+:: A {{double}}. Defaulting to 0.0. The second highest score so far.
+: <dfn>highest scoring other bids count</dfn>
+:: An integer. Defaulting to 0. The number of bids with the same `second highest score`.
+: <dfn>made highest scoring other bid</dfn>
+:: A [=boolean=]. Defaulting to false. Being true if the interest group owner was the only bidder
+  that made bids with the second highest score.
 
 </dl>
