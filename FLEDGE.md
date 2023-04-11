@@ -171,7 +171,7 @@ The `adComponents` field contains the various ad components (or "products") that
 
 The `adSizes` field contains a dictionary of named ad sizes. Each size has the format `{width: widthVal, height: heightVal}`, where the values can have either pixel units (e.g. `100` or `'100px'`) or screen dimension coordinates (e.g. `100sw` or `100sh`). For example, the size `{width: '100sw', height: 50}` describes an ad that is the width of the screen and 50 pixels tall. The size `{width: '100sw', height: '200sw'}` describes an ad that is the width of the screen and has a 1:2 aspect ratio. Sizes with screen dimension coordinates are primarily intended for screen-width ads on mobile devices, and may be restricted in certain contexts (to be determined) for privacy reasons.
 
-The `sizeGroups` field contains a dictionary of named lists of ad sizes. Each ad declared above must specify a size group, saying which sizes it might be loaded at. Each named ad size is also considered a size group, so you don't need to manually define singleton size groups.
+The `sizeGroups` field contains a dictionary of named lists of ad sizes. Each ad declared above must specify a size group, saying which sizes it might be loaded at. Each named ad size is also considered a size group, so you don't need to manually define singleton size groups; for example see the `sizeGroup: 'size3'` code above.
 
 These declared ad-size pairings will be used to prefetch k-anonymity checks, which limit the configurations that can win an auction. Then once an ad with a particular size wins the auction, the size will be substituted into any macros in the URL (see above), and once loaded into a fenced frame, the size will be used by the browser to freeze the fenced frame's inner dimensions.
 
