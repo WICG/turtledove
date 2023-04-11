@@ -173,7 +173,7 @@ The `adSizes` field contains a dictionary of named ad sizes. Each size has the f
 
 The `sizeGroups` field contains a dictionary of named lists of ad sizes. Each ad declared above must specify a size group, saying which sizes it might be loaded at. Each named ad size is also considered a size group, so you don't need to manually define singleton size groups; for example see the `sizeGroup: 'size3'` code above.
 
-These declared ad-size pairings will be used to prefetch k-anonymity checks, which limit the configurations that can win an auction. Then once an ad with a particular size wins the auction, the size will be substituted into any macros in the URL (see above), and once loaded into a fenced frame, the size will be used by the browser to freeze the fenced frame's inner dimensions.
+These declared ad-size pairings will be used to prefetch k-anonymity checks, which limit the configurations that can win an auction. Then once an ad with a particular size wins the auction, the size will be substituted into any macros in the URL (see note on `{%AD_WIDTH%}` and `{%AD_HEIGHT%}` above), and once loaded into a fenced frame, the size will be used by the browser to freeze the fenced frame's inner dimensions.
 
 All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`biddingLogicUrl`, `biddingWasmHelperUrl`, and `trustedBiddingSignalsUrl`) must point to URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for loading FLEDGE resources.
