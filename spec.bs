@@ -573,18 +573,27 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=Assert=] |topLevelAuctionConfig| is null.
   1. Let |pendingComponentAuctions| be the [=list/size=] of |auctionConfig|'s
     [=auction config/component auctions=].
+  1. Let |compIndex| be 0.
+  1. Let |leadingCompIndex| be null.
+  1. Let |componentReportResultParams| be an [=ordered map=] whose [=map/keys=] are integers and
+    whose [=map/values=] are {{any}}.
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinner| be the result of [=generate and score bids=] with |component|,
-      |auctionConfig|, true, and |global|.
+      |auctionConfig|, and |global|.
     1. If |compWinner| is not failure or null:
-      1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
-        |desisionLogicScript|, and true.
+      1. Let |isLeadingComp| be the result of running [=score and rank a bid=] with |auctionConfig|,
+        |compWinner|, |leadingBidInfo|, |desisionLogicScript|, and true.
+      1. If |isLeadingComp| is true, set |leadingCompIndex| to |compIndex|.
+      1. [=map/Set=] |componentReportResultParams|[|compIndex|] to « |auctionConfig|, modified bid ... ».
     1. Decrement |pendingComponentAuctions| by 1.
+    1. Increment |compIndex| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
-  1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
-    [=report result=] with |leadingBidInfo|.
-  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, and |reportResultBrowserSignals|.
+  1. If |leadingCompIndex| is null, return null.
+  1. TODO: construct |compReportResultBrowserSignals| for the component auction's `reportResult()`.
+  1. Run [=generate reporting URLs=] with |componentReportResultParams|[|leadingCompIndex|]'s
+    |auctionConfig|, |leadingBidInfo|'s
+    [=leading bid info/leading bid=], and |compReportResultBrowserSignals|.
   1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
@@ -686,9 +695,9 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
    |decisionLogicScript| and « |adMetadata|, |bid|, |auctionConfig|, |trustedScoringSignals|,
    |browserSignals| ».
 1. If |hasComponentAuction| is true, and |scoreAdOutput|'s
-  [=score ad output/allow component auction=] is false, return.
+  [=score ad output/allow component auction=] is false, return false.
 1. Let |score| be |scoreAdOutput|'s [=score ad output/desirability=].
-1. If |score| is negative or 0, return.
+1. If |score| is negative or 0, return false.
 1. Let |maybeModifiedBid| be |generatedBid|.
 1. If |hasComponentAuction| is true and |scoreAdOutput|'s [=score ad output/bid=] is not null:
   1. Set |maybeModifiedBid|'s [=generated bid/bid=] to |scoreAdOutput|'s [=score ad output/bid=].
