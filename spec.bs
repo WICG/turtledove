@@ -573,29 +573,20 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=Assert=] |topLevelAuctionConfig| is null.
   1. Let |pendingComponentAuctions| be the [=list/size=] of |auctionConfig|'s
     [=auction config/component auctions=].
-  1. Let |compIndex| be 0.
-  1. Let |leadingCompIndex| be null.
-  1. Let |componentReportResultParams| be an [=ordered map=] whose [=map/keys=] are integers and
-    whose [=map/values=] are {{any}}.
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinner| be the result of [=generate and score bids=] with |component|,
-      |auctionConfig|, and |global|.
+      |auctionConfig|, true, and |global|.
     1. If |compWinner| is not failure or null:
-      1. Let |isLeadingComp| be the result of running [=score and rank a bid=] with |auctionConfig|,
-        |compWinner|, |leadingBidInfo|, |desisionLogicScript|, and true.
-      1. If |isLeadingComp| is true, set |leadingCompIndex| to |compIndex|.
-      1. [=map/Set=] |componentReportResultParams|[|compIndex|] to « |auctionConfig|, modified bid ... ».
+      1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
+        |desisionLogicScript|, and true.
     1. Decrement |pendingComponentAuctions| by 1.
-    1. Increment |compIndex| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
-  1. If |leadingCompIndex| is null, return null.
-  1. TODO: construct |compReportResultBrowserSignals| for the component auction's `reportResult()`.
-  1. Run [=generate reporting URLs=] with |componentReportResultParams|[|leadingCompIndex|]'s
-    |auctionConfig|, |leadingBidInfo|'s
-    [=leading bid info/leading bid=], and |compReportResultBrowserSignals|.
+  1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
+    [=report result=] with |leadingBidInfo|.
+  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, and |reportResultBrowserSignals|.
   1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
-1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
+1. Let |buyerExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
@@ -608,7 +599,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
-  1. Let |buyerExperimentGroupId| be |allBuyersExperimentGroupId|.
   1. Let |perBuyerExperimentGroupIds| be |auctionConfig|'s
     [=auction config/per buyer experiment group ids=].
   1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|] exists:
