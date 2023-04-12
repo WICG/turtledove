@@ -363,7 +363,7 @@ Seller scripts in component auctions behave a little differently.  They still ex
 
 Once all of a component auction's bids have been scored by the component auction's seller script, the bid with the highest score is passed to the top-level seller to score. For that bid, the top-level seller's `scoreAd()` method is passed the `ad` value from the component auction seller's `scoreAd()` method, and there is an additional `componentSeller` field in the `browserSignals`, which is the seller for the component auction. All other values are the same as if the bid had come from an interest group participating directly in the top-level auction. In the case of a tie, one of the highest scoring bids will be chosen randomly and only that bid will be passed to the top-level seller to score. The seller of a component auction may reject all bids by giving them scores <= 0. In that case, no bid from that component auction will be passed to the top-level auction.
 
-The ultimate winner of the top-level auction is the single bid the top-level seller script gives the highest score, of the wining bids of the component auctions.
+The ultimate winner of the top-level auction is the single bid the top-level seller script gives the highest score, of the winning bids of the component auctions.
 
 
 #### 2.5 Additional Trusted Signals (directFromSellerSignals)

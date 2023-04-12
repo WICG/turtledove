@@ -22,6 +22,15 @@ Assume Explicit For: yes
 <pre class="anchors">
 urlPrefix: https://www.ietf.org/rfc/rfc4122.txt
   type: dfn; text: urn uuid
+spec: html; urlPrefix: https://html.spec.whatwg.org/C
+  type: dfn
+    text: create an agent; url: create-an-agent
+spec: ECMASCRIPT; urlPrefix: https://tc39.es/ecma262/
+  type: dfn
+    text: ParseScript; url: sec-parse-script
+    text: abrupt completion; url: sec-completion-record-specification-type
+    text: throw completion; url: sec-completion-record-specification-type
+    text: ScriptEvaluation; url: sec-runtime-semantics-scriptevaluation
 </pre>
 
 # Introduction # {#intro}
@@ -91,6 +100,8 @@ are:
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
   "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
   "{{NotAllowedError}}" {{DOMException}}.
+1. Let |frameOrigin| be the [=relevant settings object=]'s [=environment settings object/origin=].
+1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "https".
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
   1. Set |interestGroup|'s [=interest group/expiry=] to now plus |durationSeconds|.
@@ -98,7 +109,7 @@ are:
     |group|["{{AuctionAdInterestGroup/owner}}"].
     1. If |ownerUrl| is an error, or its [=url/scheme=] is not "`https`", [=exception/throw=] a
       {{TypeError}}.
-    1. Set |interestGroup|'s [=interest group/owner=] to |ownerUrl|'s [=url/origin=].
+    1. Set |interestGroup|'s [=interest group/owner=] to |ownerUrl|'s [=origin=].
   1. Set |interestGroup|'s [=interest group/name=] to |group|["{{AuctionAdInterestGroup/name}}"].
   1. Set |interestGroup|'s [=interest group/priority=] to
     |group|["{{AuctionAdInterestGroup/priority}}"].
@@ -179,7 +190,10 @@ are:
 1. Let |p| be [=a new promise=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. TODO: document .well-known fetches for cross-origin joins.
+  1. Let |permission| be the result of [=checking interest group permissions=] with 
+    |ownerUrl|'s [=url/origin=], |frameOrigin|, and true.
+  1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
+     "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
   1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
   1. If the browser is currently storing an interest group with `owner` and `name` that matches
     |interestGroup|, then set the [=interest group/bid counts=],
@@ -233,6 +247,52 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
     [=interest group ad/render url=].
   1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
 
+<div algorithm>
+
+To <dfn>check interest group permissions</dfn> given an [=origin=]
+|ownerOrigin|, an [=origin=] |frameOrigin|, and a [=boolean=] |isJoin|:
+1. If |ownerOrigin| is [=same origin=] to |frameOrigin|, then return true.
+1. Let |permissionsUrl| be the result of [=building an interest group permissions url=]
+  with |ownerOrigin| and |frameOrigin|.
+1. Let |request| be the result of [=creating a request=] with |permissionsUrl|, [=create a request/accept=]
+  set to "`application/json`"|. TODO: [maybe](https://source.chromium.org/chromium/chromium/src/+/main:content/browser/interest_group/interest_group_permissions_checker.cc;drc=adac219925ef5d9c9a954d189c2e4b8852a4bbed;l=123) require cors mode here?
+1. Let |resource| be null.
+1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
+  [=response=] |response| and |responseBody|:
+  1. If |responseBody| is null or failure, set |resource| to failure and return.
+  1. Let |headers| be |response|'s [=response/header list=].
+  1. If [=header list/getting a structured field value=] "X-Allow-FLEDGE" from |headers| does not
+    return true, set |resource| to failure and return.
+  1. Let |mimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
+  1. If |mimeType| is failure or is not a [=JSON MIME Type=], throw, set |resource| to failure and return.
+  1. Set |resource| to |responseBody|.
+1. Wait for |resource| to be set.
+1. If |resource| is failure, then return false.
+1. Let |permissions| be the result of [=parsing a JSON string to an Infra value=], returning false on failure.
+1. If |permissions| is not an [=ordered map=], then return false.
+1. If |isJoin| is true and |permissions|["`joinAdInterestGroup`"] [=map/exists=], then return |permissions|["`joinAdInterestGroup`"].
+1. If |isJoin| is false and |permissions|["`leaveAdInterestGroup`"] [=map/exists=], then return |permissions|["`leaveAdInterestGroup`"].
+1. Return false.
+
+The browser may cache requests for |permissionsUrl| within a network partition.
+
+In order to prevent leaking data, the browser must request |permissionsUrl|
+regardless of whether the user is a member of the ad interest group. This
+prevents a leak of the user's ad interest group membership to the server.
+
+</div>
+
+<div algorithm>
+
+To <dfn>build an interest group permissions url</dfn> given a [=origin=] |ownerOrigin| and a [=origin=] |frameOrigin|:
+1. Let |serializedFrameOrigin| be the result of [=serialization of an origin|serializing=] |frameOrigin|.
+1. Return the string formed by [=string/concatenating=]
+  * The [=serialization of an origin|serialization=] of |ownerOrigin|,
+  * The string "`/.well-known/interest-group/permissions/?origin=`", and
+  * The result of [=string/UTF-8 percent-encoding=] |serializedFrameOrigin| using [=component percent-encode set=].
+
+</div>
+
 <h2 id="leaving-interest-groups">Leaving Interest Groups</h2>
 
 In order to remove a user from a particular interest group,
@@ -283,180 +343,6 @@ to conduct an auction to select an advertisement to display to the user, they ca
 {{Window/navigator}}.{{Navigator/runAdAuction()}} function, providing an auction configuration that
 tells the browser how to conduct the auction and which on-device recorded interests are allowed to
 bid in the auction for the chance to display their advertisement.
-
-<h3 id="script-runners">Script Runners</h3>
-
-An additional requirement to the interest group script runner globals defined in this specification
-is that they must not expose any interfaces from other specifications whose own exposure set is the
-special value "*". The only interfaces that can be exposed inside of the globals defined in this
-specification are those that explicitly list the global names provided here.
-
-<pre class="idl">
-[Exposed=InterestGroupBiddingScriptRunnerGlobalScope,
-Global=InterestGroupBiddingScriptRunnerGlobalScope]
-interface InterestGroupBiddingScriptRunnerGlobalScope {
-  boolean setBid();
-  boolean setBid(GenerateBidOutput generateBidOutput);
-  undefined setPriority(double priority);
-  undefined setPrioritySignalsOverride(DOMString key, double priority);
-};
-
-[Exposed=InterestGroupScoringScriptRunnerGlobalScope,
-Global=InterestGroupScoringScriptRunnerGlobalScope]
-interface InterestGroupScoringScriptRunnerGlobalScope {
-};
-
-[Exposed=InterestGroupReportingScriptRunnerGlobalScope,
-Global=InterestGroupReportingScriptRunnerGlobalScope]
-interface InterestGroupReportingScriptRunnerGlobalScope {
-  undefined sendReportTo(DOMString url);
-};
-
-dictionary AdRender {
-  required DOMString url;
-  required DOMString width;
-  required DOMString height;
-};
-
-dictionary GenerateBidOutput {
-  required double bid;
-  required (DOMString or AdRender) adRender;
-  DOMString ad;
-  sequence<(DOMString or AdRender)> adComponents;
-  double adCost;
-  double modelingSignals;
-  boolean allowComponentAuction = false;
-};
-</pre>
-
-Issue: Finish specifying the following algorithms.
-
-<div algorithm>
-  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid()</dfn> method steps are:
-
-  1. Clear the bid. TODO: figure out how to integrate this with runAdAuction.
-  1. Return true.
-</div>
-
-<div algorithm>
-  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid(|generateBidOutput|)</dfn>
-  method steps are:
-
-  1. Clear the bid. TODO: expand.
-  1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] is less than or equal to 0, return true.
-  1. If it's a component auction (TODO: how to integrate with runAdAuction), but
-    |generateBidOutput|["{{GenerateBidOutput/allowComponentAuction}}"] is false, return false.
-  1. Let |bidToSet| be a new [=generated bid=].
-  1. Set |bidToSet|'s [=generated bid/bid=] to |generateBidOutput|["{{GenerateBidOutput/bid}}"].
-  1. If |generateBidOutput|["{{GenerateBidOutput/ad}}"] [=map/exists=]:
-    1. Let |adJson| be the result of [=serializing a JavaScript value to a JSON string=], given
-      |generateBidOutput|["{{GenerateBidOutput/ad}}"].
-    1. If |adJson| is failure, return failure.
-    1. Set |bidToSet|'s [=generated bid/ad=] to |adJson|.
-  1. Let |adDescriptor| be a new [=ad descriptor=].
-  1. If |generateBidOutput|["{{GenerateBidOutput/adRender}}"] is a {{DOMString}}:
-    1. Let |adUrl| be the result of running the [=URL parser=] on
-      |generateBidOutput|["{{GenerateBidOutput/adRender}}"].
-    1. If |adUrl| is an error, return false.
-    1. If [=validating an ad url=] given |adUrl| returns false, return false.
-    1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
-  1. Otherwise:
-    1. Set |adDescriptor| to the result of [=converting an ad render=] given
-      |generateBidOutput|["{{GenerateBidOutput/adRender}}"].
-    1. If |adDescriptor| is failure, return false.
-  1. Set |bidToSet|'s [=generated bid/ad descriptor=] to |adDescriptor|.
-  1. If |generateBidOutput|["{{GenerateBidOutput/adComponents}}"] [=map/exists=]:
-    1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponents}}"].
-    1. Return false if any of the following conditions hold:
-      * biddingScriptRunner's adComponents parameter does not exist; TODO: rewrite.
-      * |adComponents| is not an array;
-      * |adComponents|'s size is greater than 20 (MaxAdAuctionAdComponents, TODO: define this as a
-        vendor specific value?).
-    1. Let |adComponentDescriptors| be a new [=list=] of [=ad descriptors=].
-    1. For |component| in |adComponents|:
-      1. Let |componentDescriptor| be a new [=ad descriptor=].
-      1. If |component| is {{DOMString}}:
-        1. Let |componentUrl| be the result of running the [=URL parser=] on |component|.
-        1. If |componentUrl| is an error, return false.
-        1. If [=validating an ad url=] given |componentUrl| returns false, return false.
-        1. Set |componentDescriptor|'s [=ad descriptor/url=] to |componentUrl|.
-      1. Otherwise:
-        1. Set |componentDescriptor| to the result of [=converting an ad render=] given |component|.
-        1. If |componentDescriptor| is failure, return false.
-      1. [=list/Append] |componentDescriptor| to |adComponentDescriptors|.
-    1. Set |bidToSet|'s [=generated bid/ad component descriptors=] to |adComponentDescriptors|.
-  1. If |generateBidOutput|["{{GenerateBidOutput/adCost}}"] [=map/exists=]:
-    1. Set |bidToSet|'s [=generated bid/ad cost=] to
-      |generateBidOutput|["{{GenerateBidOutput/adCost}}"].
-  1. If |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"] [=map/exists=]:
-    1. Let |modelingSignals| be |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"].
-    1. If |modelingSignals| is greater than or equal to 0 and less than 4096:
-      1. Set |bidToSet|'s [=generated bid/modeling signals=] to |modelingSignals|
-  1. Set bid to |bidToSet|.
-  1. Return true.
-</div>
-
-<div algorithm>
-  To <dfn>convert an ad render</dfn> given an {{AdRender}} |adRender|:
-
-  1. If |adRender|["{{AdRender/url}}"] does not [=map/exist=], return false.
-  1. Let |adUrl| be the result of running the [=URL parser=] on |adRender|["{{AdRender/url}}"].
-  1. If |adUrl| is an error, return failure.
-  1. If [=validating an ad url=] given |adUrl| returns false, return failure.
-  1. Let |adDescriptor| be a new [=ad descriptor=].
-  1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
-  1. If |adRender|["{{AdRender/width}}"] [=map/exists=]:
-    1. If |adRender|["{{AdRender/height}}"] does not [=map/exist=], return failure.
-    1. Let |width| and |widthUnit| be the result of parsing (TODO) |adRender|["{{AdRender/width}}"].
-    1. Let |height| and |heightUnit| be the result of parsing (TODO)
-      |adRender|["{{AdRender/height}}"].
-    1. Return failure if any of the following conditions hold:
-      * |width| is non-positive, or non-finite;
-      * |height| is non-positive, or non-finite;
-      * |widthUnit| is not "px" or "sw";
-      * |heightUnit| is not "px" or "sw".
-    1. Let |adSize| be a new [=ad size=].
-    1. Set |adSize|'s [=ad size/width=] to |width|, [=ad size/width units=] to |widthUnit|,
-      [=ad size/height=] to |height|, [=ad size/height units=] to |heightUnit|.
-    1. Set |adDescriptor|'s [=ad descriptor/size=] to |adSize|.
-  1. Return |adDescriptor|.
-</div>
-
-<div algorithm>
-  To <dfn>validate an ad url</dfn> given a [=URL=] |adUrl|:
-
-  1. If |adUrl|'s [=url/scheme=] is not "`https`", return false.
-  1. TODO: If it's not in the related interest group's ads, or is excluded, return false.
-  1. Return true.
-</div>
-
-<div algorithm>
-  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setPriority(|priority|)</dfn>
-  method steps are:
-
-  1. If not first time calling this method:
-    1. Reset priority and return.
-  1. Set priority to |priority|. TODO: figure out how to integrate this into generateBid().
-</div>
-
-<div algorithm>
-  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setPrioritySignalsOverride(|key|, |priority|)</dfn>
-  method steps are:
-
-  1. Update (insert or assign) prioritySignals[|key|] to |priority|. TODO: figure out how to
-    integrate this into generateBid().
-</div>
-
-<div algorithm>
-  The <dfn method for="InterestGroupReportingScriptRunnerGlobalScope">sendReportTo(|url|)</dfn>
-  method steps are:
-
-  1. [=exception/Throw=] a {{TypeError}} and clears report url if any of the following conditions hold:
-    * The API is called more than once;
-    * |url|'s [=url/scheme=] is not "`https`".
-  1. If called in reportWin(), set reportWinURL to url.
-  1. If called in reportResult(), set reportResultURL to url.
-</div>
 
 <h3 id="runadauction">runAdAuction()</h3>
 
@@ -749,9 +635,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. Let |biddingScript| be the result of [=fetching resource=] with |ig|'s
           [=interest group/bidding url=], and "text/javascript". If |biddingScript| is an error,
           [=iteration/continue=].
-        1. TODO: Let |generatedBid| be the result of [=evaluating script=] with
-          [=evaluate script/script=] set to |biddingScript|, [=evaluate script/functionName=] set
-          to "generateBid", and [=evaluate script/arguments=] set to « |interestGroup|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|, |browserSignals| ».
+        1. TODO: Let |generatedBid| be the result of [=evaluating a bidding script=] with
+           |biddingScript| and « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
+           |trustedBiddingSignals|, |browserSignals| ».
         1. If |generatedBid|'s [=generated bid/bid=] is negative or 0, [=iteration/continue=].
         1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
         1. TODO: Validate other fields of |generatedBid|.
@@ -776,7 +662,7 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
   [=map/values=] are {{any}}.
 1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
 1. [=map/Set=] |browserSignals|["interestGroupOwner"] to |generatedBid|'s
-  [=generated bid/interest group]'s [=interest group/owner=].
+  [=generated bid/interest group=]'s [=interest group/owner=].
 1. [=map/Set=] |browserSignals|["renderURL"] to |generatedBid|'s [=generated bid/ad descriptor=]'s
   [=ad descriptor/url=].
 1. TODO: Set |browserSignals|'s "adComponents" to ...need to pass in as part of |generatedBid|
@@ -784,10 +670,9 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted scoring
   signals server's response.
 1. TODO: Remove fields of |auctionConfig| that don't pass through.
-1. TODO: Let |scoreAdOutput| be the result of [=evaluating script=] with
-  [=evaluate script/script=] set to |decisionLogicScript|,
-  [=evaluate script/functionName=] set to "scoreAd", and [=evaluate script/arguments=] set to
-  « |adMetadata|, |bid|, |auctionConfig|, |trustedScoringSignals|, |browserSignals| ».
+1. TODO: Let |scoreAdOutput| be the result of [=evaluating a scoring script=] with
+   |decisionLogicScript| and « |adMetadata|, |bid|, |auctionConfig|, |trustedScoringSignals|,
+   |browserSignals| ».
 1. If |hasComponentAuction| is true, and |scoreAdOutput|'s
   [=score ad output/allow component auction=] is false, return.
 1. Let |score| be |scoreAdOutput|'s [=score ad output/desirability=].
@@ -812,7 +697,7 @@ To <dfn>create a seller script runner</dfn> given a [=URL=] |decisionLogicURL|:
   "text/javascript".
 1. Return |decisionLogicScript|.
 
-To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for="create a request">
+To <dfn>create a request</dfn> given a [=URL=] |url| and a [=string=] <dfn for="create a request">
 |accept|</dfn>:
 1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
@@ -840,7 +725,7 @@ To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for=
 <div algorithm>
 
 To <dfn>fetch resource</dfn> given a [=URL=] |url|, and a [=string=] |mimeType|:
-1. Let |request| be the result of [=creating a request=] with |url|, and [=create a request/accept=]
+1. Let |request| be the result of [=creating a request=] with |url|, [=create a request/accept=]
   set to |mimeType|.
 1. Let |resource| be null.
 1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
@@ -900,60 +785,6 @@ number.
 Issue: This would ideally be replaced by a more descriptive algorithm in Infra. See
 <a href="https://github.com/whatwg/infra/issues/201">infra/201</a>
 
-To <dfn>evaluate script</dfn> with given [=string=] <dfn for="evaluate script">|script|</dfn>,
-[=string=] <dfn for="evaluate script">|functionName|</dfn>, and a [=list=]
-<dfn for="evaluate script">|arguments|</dfn>:
-1. TODO: Return an object or null, which is the result of evaluating |script|'s |functionName| with
-  |arguments|.
-
-TODO: something like the steps below that need spec-ifying, though some pieces like fetching the
-script should likely be pulled out:
-
-1. Allocate the right process/thread (these are called agent clusters/agents respectively, in ES
-  land) that's going to host the script. That's basically one of the algorithms in:
-  https://html.spec.whatwg.org/multipage/webappapis.html#integration-with-the-javascript-agent-cluster-formalism.
-  Might actually literally be able to re-use
-  https://html.spec.whatwg.org/multipage/webappapis.html#obtaining-a-worker/worklet-agent, but not
-  sure; otherwise make a new one. This is done in step 6 of [1]
-1. Create a new realm and execution
-  context. Realms are basically ES environments that run script. This is where the global object in
-  the environment is defined, so something like FledgeScriptRunner IDL interface that has to create
-  and define (non-user-supplied) methods on. See step 7 of [1], but step 8 substep 5 of [2] is maybe
-  better:
-  https://html.spec.whatwg.org/multipage/document-lifecycle.html#shared-document-creation-infrastructure:creating-a-new-javascript-realm.
-1. Setup the environment or environment settings object. So in HTML an "environment settings
-  object" is-a "environment". It is used to set a special internal slot on the ES "realm" so that ES
-  can call back up into the HTML Standard when it needs things that aren't defined in HTML. May not
-  need this at all — assuming script doesn't resolve URLs, fetch things from within the worklet, or
-  access anything time-related. A realm's default "\[\[HostDefined\]\]" slot is undefined
-  (https://tc39.es/ecma262/#table-realm-record-fields) which is likely valid for this use-case.
-1. Fetch the script resource. Everything under step 5 of
-  https://html.spec.whatwg.org/multipage/webappapis.html#fetch-a-classic-script can give some idea of
-  how to do this and extract the string body appropriately etc
-1. Create the "script". This basically
-  means parsing the source text inside the ES realm that was created earlier. See this step for more
-  information, though it won't need much of the rest of that algorithm:
-  https://html.spec.whatwg.org/multipage/webappapis.html#creating-a-classic-script:~:text=Let%20result%20be%20ParseScript(source%2C%20settings%27s%20realm%2C%20script),
-  since this spec wants to create "a classic script" as defined by HTML.
-1. Run the script: basically call ES's ScriptEvaluation(), like
-  https://html.spec.whatwg.org/multipage/webappapis.html#run-a-classic-script does), although it'll
-  probably need to do some of what that algorithm's step 3 ("Prepare to run a script") does (pushing
-  the current realm's execution context on the stack). This will produce something called a
-  CompletionRecord which will contain any value that the script contained
-  (https://tc39.es/ecma262/#sec-completion-record-specification-type).
-1. Run user-provided function.
-  I think just "running the script" isn't probably appropriate here though. This step will want to
-  actually run a specific function inside the script. In that case, an example of doing this is the
-  last 3 steps of:
-  https://html.spec.whatwg.org/multipage/worklets.html#fakeworkletglobalscope-process. Not clear how
-  to pluck the generateBid() function off the global though. Maybe something like "Let function be
-  Get(realm.\[\[Global\]\], "generateBid"). Rethrow any exceptions." and then either invoke it
-  directly or covert it to a WebIDL function and use WebIDL to "invoke" that.
-
-[1]: https://html.spec.whatwg.org/multipage/workers.html#run-a-worker
-[2]:
-https://html.spec.whatwg.org/multipage/document-lifecycle.html#shared-document-creation-infrastructure
-
 <div algorithm>
 
 To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and a [=generated bid=]
@@ -977,11 +808,10 @@ To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and 
 1. TODO: [=map/Set=] |browserSignals|["modifiedBid"] to the modified bid value.
 1. TODO: [=map/Set=] |browserSignals|["highestScoringOtherBid"] to the highest scoring other bid
   value.
-1. TODO: Let |sellerSignals| be the result of [=evaluating script=] with
-  [=evaluate script/script=] set to |sellerReportingScript|, [=evaluate script/functionName=] set
-  to "reportResult", and [=evaluate script/arguments=] set to « |auctionSignals|, |browserSignals| ».
+1. TODO: Let |sellerSignals| be the result of [=evaluating a reporting script=] with
+   |sellerReportingScript|, "reportResult", and « |auctionSignals|, |browserSignals| ».
 1. Let |buyerReportingScript| be the result of [=fetching resource=] with |bid|'s
-  [=generated bid/interest group=|'s [=interest group/bidding url=], and "text/javascript".
+  [=generated bid/interest group=]'s [=interest group/bidding url=], and "text/javascript".
 1. Let |perBuyerSignals| be |auctionConfig|'s
   [=auction config/per buyer signals=][|browserSignals|["interestGroupOwner"]] if that member
   [=map/exists=], and null otherwise.
@@ -1002,13 +832,351 @@ To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and 
   response and the version was consistent for all keys requested by this interest group.
 1. [=map/Set=] |browserSignals|["seller"] to |config|["{{AuctionAdConfig/seller}}"].
 1. TODO: [=map/Set=] |browserSignals|["topLevelSeller"] if there was a top-level seller.
-1. TODO: Run [=evaluating script=] with [=evaluate script/script=] set to |buyerReportingScript|,
-  [=evaluate script/functionName=] set to "reportWin", and [=evaluate script/arguments=] set to
-  « |auctionSignals|, |perBuyerSignals|, |sellerSignals|, |browserSignals| ».
+1. TODO: Run [=evaluating a reporting script=] with |buyerReportingScript| "reportWin", and «
+   |auctionSignals|, |perBuyerSignals|, |sellerSignals|, |browserSignals| ».
 1. TODO: Set URLs passed to sendReportTo() into the FencedFrameConfig so they can be fetched when
   ad renders.
 
 </div>
+
+# Script runners # {#script-runners}
+
+*This introduction sub-section is non-normative*.
+
+This specification defines a new type of script execution environment called a [=script runner=]. On
+the surface, these are similar to <a href=https://html.spec.whatwg.org/C#worklets-intro>Worklets</a>
+in that they too are used for running scripts independent of the *main* execution environment with a
+flexible implementation model.
+
+However, some key differences from traditional Worklets motivate us to create a new kind of script
+execution environment. In particular, they:
+
+ * Are not scoped to a particular {{Document}}, but are rather scoped to a user agent, as they are
+   spun up by [=interest groups=] in the user agent's [=interest group set=].
+ * Consequently have a different, more flexible [=ECMAScript/agent cluster=] allocation model —
+   specifically, they need not execute in the same [=ECMAScript/agent cluster=] as any {{Document}},
+   and for privacy reasons implementations may be motivated to enjoy this flexibility.
+ * Do not have any other WebIDL interfaces exposed to their global besides the ones defined in this
+   specification, unlike other Worklet types.
+ * Have a restricted set of ECMAScript APIs exposed to them; for example {{Date}} is not exposed in
+   these environments.
+ * Are not [=module scripts=], and are instead evaluated as if they were [=classic scripts=].
+ * Are not [=scripts=] in the [[HTML]] sense, and as such:
+   * Their [=ECMAScript/agent=] does not have an [=event loop=]
+   * Their [=ECMAScript/realm=] does not have a [=realm/settings object=], and therefore functions
+     inside them are not run with the familiar [[WebIDL]] [=invoke|invocation=] mechanism.
+   * They do not [=perform a microtask checkpoints=].
+
+## Script evaluation ## {#script-evaluation}
+
+Concretely, a <dfn>script runner</dfn> is a JavaScript execution environment instantiated with one
+of the following global objects:
+
+ * {{InterestGroupBiddingScriptRunnerGlobalScope}}
+ * {{InterestGroupScoringScriptRunnerGlobalScope}}
+ * {{InterestGroupReportingScriptRunnerGlobalScope}}
+
+<div algorithm>
+  To <dfn>evaluate a bidding script</dfn> given a [=string=] |script| and a [=list=] of arguments
+  |arguments|:
+
+    1. Return the result of [=evaluating a script=] with
+       {{InterestGroupBiddingScriptRunnerGlobalScope}}, |script|, "`generateBid`", and |arguments|.
+</div>
+
+<div algorithm>
+  To <dfn>evaluate a scoring script</dfn> given a [=string=] |script| and a [=list=] of arguments
+  |arguments|:
+
+    1. Return the result of [=evaluating a script=] with
+       {{InterestGroupScoringScriptRunnerGlobalScope}}, |script|, "`scoreAd`", and |arguments|.
+</div>
+
+<div algorithm>
+  To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=]
+  |functionName|, and a [=list=] of arguments |arguments|:
+
+    1. Return the result of [=evaluating a script=] with
+       {{InterestGroupReportingScriptRunnerGlobalScope}}, |script|, |functionName|, and |arguments|.
+</div>
+
+<br>
+
+<div algorithm>
+  To <dfn>create a new script runner agent</dfn>, run these steps:
+
+    1. Let |signifier| be a new unique internal value.
+
+    1. Let |candidateExecution| be a new [=ECMAScript/candidate execution=].
+
+    1. Return a new [=ECMAScript/agent=] whose \[[CanBlock]] is false, \[[Signifier]] is
+       |signifier|, \[[CandidateExecution]] is |candidateExecution|, and \[[IsLockFree1]],
+       \[[IsLockFree2]], and \[[LittleEndian]] are set at the implementation's discretion.
+
+  Note: This algorithm is almost identical to [[HTML]]'s [=create an agent=] algorithm, with the
+  exception that we do not give the returned agent a new [=event loop=], since it does not process
+  [=tasks=] within [=task sources=] in the usual way.
+</div>
+
+<div algorithm>
+  To <dfn>obtain a script runner agent</dfn>, run these steps:
+
+    1. Let |agentCluster| be a  new [=ECMAScript/agent cluster=].
+
+    1. Let |agent| be the result of [=creating a new script runner agent=].
+
+    1. Add |agent| to |agentCluster|.
+
+    1. Return |agent|.
+</div>
+
+<div algorithm>
+  To <dfn>evaluate a script</dfn> with a global type |globalType|, [=string=] |script|, [=string=]
+  |functionName|, and a [=list=] |arguments|, run these steps. They return a [=ECMAScript/Completion
+  Record=], which is either an [=abrupt completion=] (in the case of a parse failure or execution
+  error), or a normal completion populated with the [=ECMAScript/ECMAScript language value=] result
+  of invoking |functionName|.
+
+    1. [=Assert=] that these steps are running [=in parallel=].
+
+    1. Let |agent| be the result of [=obtaining a script runner agent=] given null, true, and
+       false. Run the rest of these steps in |agent|.
+
+       Issue: This exclusively creates a new [=ECMAScript/agent cluster=] for the given |script| to
+       run in, but we should make this work with [=interest group/execution mode=] somehow.
+
+    1. Let |realmExecutionContext| be the result of [=creating a new realm=] given |agent| and the
+       following customizations:
+
+        * For the global object, create a new object of type |globalType|.
+
+    1. Let |realm| be |realmExecutionContext|'s Realm component.
+
+    1. Let |global| be |realm|'s [=realm/global object=], and run these steps:
+
+      1. Perform !|global|.\[[Delete]]("`Date`").
+
+      1. If !|global|.\[[HasProperty]]("`Temporal`") is true, then perform
+         !|global|.\[[Delete]]("`Temporal`").
+
+      Advisement: This is not the best way to perform such API neutering (see <a
+      href=https://github.com/tc39/ecma262/issues/1357#issuecomment-817560121>tc39/ecma262#1357</a>),
+      but at the moment it's the way that host environments do this.
+
+      Note: Removing time-referencing APIs from the |global| object is imperative for privacy, as
+      |script| might otherwise be able to more easily exfiltrate data by using more accurate time
+      measurements.
+
+    1. Let |result| be [=ParseScript=](|script|, |realm|, `empty`).
+
+       Note: The resulting [=ECMAScript/Script Record=] will have no \[[HostDefined]] component,
+       unlike traditional [=scripts=] on the web platform.
+
+    1. If |result| is a list of errors, return
+       Completion { \[[Type]]: `throw`, \[[Value]]: |result|, \[[Target]]: `empty` }.
+
+    1. [=Assert=]: |result| is a [=ECMAScript/Script Record=].
+
+    1. *Prepare to run script*: Push |realmExecutionContext| onto the [=ECMAScript/execution context
+       stack|JavaScript execution context stack=]; it is now the [=ECMAScript/running execution
+       context|running JavaScript execution context=].
+
+    1. Let |evaluationStatus| be the result of [=ScriptEvaluation=](result).
+
+    1. If |evaluationStatus| is an [=abrupt completion=], jump to the step labeled <i><a
+       href=#evaluate-script-return>return</a></i>.
+
+    1. Let |F| be [$Get$](|global|, |functionName|). If that returns a [=throw completion=], set
+       |finalCompletion| to |F| and jump to the step labeled <i><a
+       href=#evaluate-script-return>return</a></i>.
+
+    1. Set |finalCompletion| be [=ECMAScript/Completion Record|Completion=]([$Call$](F, `undefined`,
+       |arguments|)).
+
+    1. <i id=evaluate-script-return>Return</i>: at this point |finalCompletion| will be set to a
+       [=ECMAScript/Completion Record=].
+
+      1. *Clean up after script*: [=Assert=] |realmExecutionContext| is the [=ECMAScript/running
+         execution context|running JavaScript execution context=], and remove it from the
+         [=ECMAScript/execution context stack|JavaScript execution context stack=].
+
+      1. Return |finalCompletion|.
+</div>
+
+## Global scopes ## {#global-scopes}
+
+An additional requirement to the interest group script runner globals defined in this specification
+is that they must not expose any interfaces from other specifications whose own exposure set is the
+special value "*". The only interfaces that can be exposed inside of the globals defined in this
+specification are those that explicitly list the global names provided here.
+
+<pre class="idl">
+[Exposed=InterestGroupBiddingScriptRunnerGlobalScope,
+Global=InterestGroupBiddingScriptRunnerGlobalScope]
+interface InterestGroupBiddingScriptRunnerGlobalScope {
+  boolean setBid();
+  boolean setBid(GenerateBidOutput generateBidOutput);
+  undefined setPriority(double priority);
+  undefined setPrioritySignalsOverride(DOMString key, double priority);
+};
+
+[Exposed=InterestGroupScoringScriptRunnerGlobalScope,
+Global=InterestGroupScoringScriptRunnerGlobalScope]
+interface InterestGroupScoringScriptRunnerGlobalScope {
+};
+
+[Exposed=InterestGroupReportingScriptRunnerGlobalScope,
+Global=InterestGroupReportingScriptRunnerGlobalScope]
+interface InterestGroupReportingScriptRunnerGlobalScope {
+  undefined sendReportTo(DOMString url);
+};
+
+dictionary AdRender {
+  required DOMString url;
+  required DOMString width;
+  required DOMString height;
+};
+
+dictionary GenerateBidOutput {
+  required double bid;
+  required (DOMString or AdRender) adRender;
+  DOMString ad;
+  sequence<(DOMString or AdRender)> adComponents;
+  double adCost;
+  double modelingSignals;
+  boolean allowComponentAuction = false;
+};
+</pre>
+
+Issue: Finish specifying the following algorithms.
+
+<div algorithm>
+  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid()</dfn> method steps are:
+
+  1. Clear the bid. TODO: figure out how to integrate this with runAdAuction.
+  1. Return true.
+</div>
+
+<div algorithm>
+  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid(|generateBidOutput|)</dfn>
+  method steps are:
+
+  1. Clear the bid. TODO: expand.
+  1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] is less than or equal to 0, return true.
+  1. If it's a component auction (TODO: how to integrate with runAdAuction), but
+    |generateBidOutput|["{{GenerateBidOutput/allowComponentAuction}}"] is false, return false.
+  1. Let |bidToSet| be a new [=generated bid=].
+  1. Set |bidToSet|'s [=generated bid/bid=] to |generateBidOutput|["{{GenerateBidOutput/bid}}"].
+  1. If |generateBidOutput|["{{GenerateBidOutput/ad}}"] [=map/exists=]:
+    1. Let |adJson| be the result of [=serializing a JavaScript value to a JSON string=], given
+      |generateBidOutput|["{{GenerateBidOutput/ad}}"].
+    1. If |adJson| is failure, return failure.
+    1. Set |bidToSet|'s [=generated bid/ad=] to |adJson|.
+  1. Let |adDescriptor| be a new [=ad descriptor=].
+  1. If |generateBidOutput|["{{GenerateBidOutput/adRender}}"] is a {{DOMString}}:
+    1. Let |adUrl| be the result of running the [=URL parser=] on
+      |generateBidOutput|["{{GenerateBidOutput/adRender}}"].
+    1. If |adUrl| is an error, return false.
+    1. If [=validating an ad url=] given |adUrl| returns false, return false.
+    1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
+  1. Otherwise:
+    1. Set |adDescriptor| to the result of [=converting an ad render=] given
+      |generateBidOutput|["{{GenerateBidOutput/adRender}}"].
+    1. If |adDescriptor| is failure, return false.
+  1. Set |bidToSet|'s [=generated bid/ad descriptor=] to |adDescriptor|.
+  1. If |generateBidOutput|["{{GenerateBidOutput/adComponents}}"] [=map/exists=]:
+    1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponents}}"].
+    1. Return false if any of the following conditions hold:
+      * biddingScriptRunner's adComponents parameter does not exist; TODO: rewrite.
+      * |adComponents| is not an array;
+      * |adComponents|'s size is greater than 20 (MaxAdAuctionAdComponents, TODO: define this as a
+        vendor specific value?).
+    1. Let |adComponentDescriptors| be a new [=list=] of [=ad descriptors=].
+    1. For |component| in |adComponents|:
+      1. Let |componentDescriptor| be a new [=ad descriptor=].
+      1. If |component| is {{DOMString}}:
+        1. Let |componentUrl| be the result of running the [=URL parser=] on |component|.
+        1. If |componentUrl| is an error, return false.
+        1. If [=validating an ad url=] given |componentUrl| returns false, return false.
+        1. Set |componentDescriptor|'s [=ad descriptor/url=] to |componentUrl|.
+      1. Otherwise:
+        1. Set |componentDescriptor| to the result of [=converting an ad render=] given |component|.
+        1. If |componentDescriptor| is failure, return false.
+      1. [=list/Append=] |componentDescriptor| to |adComponentDescriptors|.
+    1. Set |bidToSet|'s [=generated bid/ad component descriptors=] to |adComponentDescriptors|.
+  1. If |generateBidOutput|["{{GenerateBidOutput/adCost}}"] [=map/exists=]:
+    1. Set |bidToSet|'s [=generated bid/ad cost=] to
+      |generateBidOutput|["{{GenerateBidOutput/adCost}}"].
+  1. If |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"] [=map/exists=]:
+    1. Let |modelingSignals| be |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"].
+    1. If |modelingSignals| is greater than or equal to 0 and less than 4096:
+      1. Set |bidToSet|'s [=generated bid/modeling signals=] to |modelingSignals|
+  1. Set bid to |bidToSet|.
+  1. Return true.
+</div>
+
+<div algorithm>
+  To <dfn>convert an ad render</dfn> given an {{AdRender}} |adRender|:
+
+  1. If |adRender|["{{AdRender/url}}"] does not [=map/exist=], return false.
+  1. Let |adUrl| be the result of running the [=URL parser=] on |adRender|["{{AdRender/url}}"].
+  1. If |adUrl| is an error, return failure.
+  1. If [=validating an ad url=] given |adUrl| returns false, return failure.
+  1. Let |adDescriptor| be a new [=ad descriptor=].
+  1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
+  1. If |adRender|["{{AdRender/width}}"] [=map/exists=]:
+    1. If |adRender|["{{AdRender/height}}"] does not [=map/exist=], return failure.
+    1. Let |width| and |widthUnit| be the result of parsing (TODO) |adRender|["{{AdRender/width}}"].
+    1. Let |height| and |heightUnit| be the result of parsing (TODO)
+      |adRender|["{{AdRender/height}}"].
+    1. Return failure if any of the following conditions hold:
+      * |width| is non-positive, or non-finite;
+      * |height| is non-positive, or non-finite;
+      * |widthUnit| is not "px" or "sw";
+      * |heightUnit| is not "px" or "sw".
+    1. Let |adSize| be a new [=ad size=].
+    1. Set |adSize|'s [=ad size/width=] to |width|, [=ad size/width units=] to |widthUnit|,
+      [=ad size/height=] to |height|, [=ad size/height units=] to |heightUnit|.
+    1. Set |adDescriptor|'s [=ad descriptor/size=] to |adSize|.
+  1. Return |adDescriptor|.
+</div>
+
+<div algorithm>
+  To <dfn>validate an ad url</dfn> given a [=URL=] |adUrl|:
+
+  1. If |adUrl|'s [=url/scheme=] is not "`https`", return false.
+  1. TODO: If it's not in the related interest group's ads, or is excluded, return false.
+  1. Return true.
+</div>
+
+<div algorithm>
+  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setPriority(|priority|)</dfn>
+  method steps are:
+
+  1. If not first time calling this method:
+    1. Reset priority and return.
+  1. Set priority to |priority|. TODO: figure out how to integrate this into generateBid().
+</div>
+
+<div algorithm>
+  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setPrioritySignalsOverride(|key|, |priority|)</dfn>
+  method steps are:
+
+  1. Update (insert or assign) prioritySignals[|key|] to |priority|. TODO: figure out how to
+    integrate this into generateBid().
+</div>
+
+<div algorithm>
+  The <dfn method for="InterestGroupReportingScriptRunnerGlobalScope">sendReportTo(|url|)</dfn>
+  method steps are:
+
+  1. [=exception/Throw=] a {{TypeError}} and clears report url if any of the following conditions hold:
+    * The API is called more than once;
+    * |url|'s [=url/scheme=] is not "`https`".
+  1. If called in reportWin(), set reportWinURL to url.
+  1. If called in reportResult(), set reportResultURL to url.
+</div>
+
 
 # Interest Group Updates # {#interest-group-updates}
 
