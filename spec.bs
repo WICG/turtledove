@@ -728,8 +728,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
     1. Let |fullSignalsUrl| be the result of [=building trusted bidding signals url=] with
       |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|.
-    1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl|
-      and "application/json".
+    1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl|,
+      "application/json", and null.
     1. TODO: If |trustedBiddingSignals| is failure, fail the auction with manually_aborted set to
       true.
     1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
@@ -748,7 +748,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. TODO: Set |browserSignals|'s "wasmHelper" ...need to fetch and prepare WebAssembly.Module object based on |ig|'s [=interest group/bidding wasm helper url=]
         1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted bidding signals server's response(s)
         1. Let |biddingScript| be the result of [=fetching resource=] with |ig|'s
-          [=interest group/bidding url=], and "text/javascript". If |biddingScript| is an error,
+          [=interest group/bidding url=], "text/javascript", and null. If |biddingScript| is an error,
           [=iteration/continue=].
         1. TODO: Let |generatedBid| be the result of [=evaluating script=] with
           [=evaluate script/script=] set to |biddingScript|, [=evaluate script/functionName=] set
@@ -809,12 +809,12 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 
 To <dfn>create a seller script runner</dfn> given a [=URL=] |decisionLogicUrl|:
 1. TODO: create the script runner and set up environment.
-1. Let |decisionLogicScript| be the result of [=fetching resource=] with |decisionLogicUrl|, and
-  "text/javascript".
+1. Let |decisionLogicScript| be the result of [=fetching resource=] with |decisionLogicUrl|,
+  "text/javascript", and null.
 1. Return |decisionLogicScript|.
 
-To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for="create a request">
-|accept|</dfn>:
+To <dfn>create a request</dfn> given a [=URL=] |url|, a [=string=] <dfn for="create a request">
+|accept|</dfn>, and a [=origin=] <dfn for="create a request">|origin|</dfn>:
 1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
     ::  |url|
@@ -827,7 +827,7 @@ To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for=
     :   [=request/service-workers mode=]
     ::  "`none`"
     :   [=request/origin=]
-    ::  [=opaque origin=]
+    ::  If |origin| is null, then [=opaque origin=], otherwise |origin|.
     :   [=request/referrer=]
     :: "`no-referrer`"
     :   [=request/credentials mode=]
@@ -840,9 +840,10 @@ To <dfn>create a request</dfn> given a [=URL=] |url|, and a [=string=] <dfn for=
 
 <div algorithm>
 
-To <dfn>fetch resource</dfn> given a [=URL=] |url|, and a [=string=] |mimeType|:
-1. Let |request| be the result of [=creating a request=] with |url|, and [=create a request/accept=]
-  set to |mimeType|.
+To <dfn>fetch resource</dfn> given a [=URL=] |url|, a [=string=] |mimeType|, and a [=origin=]
+|origin| or null:
+1. Let |request| be the result of [=creating a request=] with |url|, [=create a request/accept=]
+  set to |mimeType|, and [=create a request/origin=] set to |origin|.
 1. Let |resource| be null.
 1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
   [=response=] |response| and |responseBody|:
@@ -960,7 +961,7 @@ https://html.spec.whatwg.org/multipage/document-lifecycle.html#shared-document-c
 To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and a [=generated bid=]
 |bid|:
 1. Let |sellerReportingScript| be the result of [=fetching resource=] with |config|'s
-  [=auction config/decision logic url=], and "text/javascript".
+  [=auction config/decision logic url=], "text/javascript", and null.
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
@@ -982,7 +983,7 @@ To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and 
   [=evaluate script/script=] set to |sellerReportingScript|, [=evaluate script/functionName=] set
   to "reportResult", and [=evaluate script/arguments=] set to « |auctionSignals|, |browserSignals| ».
 1. Let |buyerReportingScript| be the result of [=fetching resource=] with |bid|'s
-  [=generated bid/interest group=|'s [=interest group/bidding url=], and "text/javascript".
+  [=generated bid/interest group=|'s [=interest group/bidding url=], "text/javascript", and null.
 1. Let |perBuyerSignals| be |auctionConfig|'s
   [=auction config/per buyer signals=][|browserSignals|["interestGroupOwner"]] if that member
   [=map/exists=], and null otherwise.
@@ -1042,8 +1043,8 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
     [=interest group/owner=] is |owner| and [=interest group/next update after=] is before now:
     Implementations may consider loading only a portion of these interest groups at a time to avoid
     issuing too many requests at once.
-    1. Let |update| be the result of [=fetching resource=] with |ig|'s [=interest group/daily update url=]
-      and "application/json".
+    1. Let |update| be the result of [=fetching resource=] with |ig|'s [=interest group/daily update url=],
+      "application/json", and |owner|.
     1. If |update| is failure, [=iteration/continue=].
     1. Let |parsedUpdate| be the result of [=parsing JSON bytes to a JavaScript value=], given
       |update|.
