@@ -91,6 +91,13 @@ window.fence.reportEvent({
 });
 ```
 
+```
+window.fence.reportEvent({
+  'eventType': 'click',
+  'destination':['buyer']
+});
+```
+
 Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. In the interim period when FLEDGE supports rendering the winning ad in an iframe, `window.fence` will also be available in such an iframe.
 
 ## registerAdBeacon
@@ -159,7 +166,7 @@ Currently, the only `eventType` that `setReportEventDataForAutomaticBeacons` all
 
 If invoked multiple times, the latest invocation before the top-level navigation would be the one that’s honored.
 
-`eventData` can be empty, in which case the automatic beacon will still be sent but without an event data body in the HTTP request.
+`eventData` is optional, in which case the automatic beacon will still be sent but without an event data body in the HTTP request.
 
 If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon because the `destination` is unknown.
 
@@ -169,10 +176,17 @@ When rendered ad is composed of [multiple pieces](https://github.com/WICG/turtle
 
 ## Design
 ### Event Type and Reporting Destination
-For fenced frames rendering the ad components under the top-level ad fenced frame, the event types and reporting destinations registered for the top-level fenced frame are reused when beacons are sent from the ad component fenced frames.
+For fenced frames rendering the ad components under the top-level ad fenced frame, the `reserved.top_navigation` event type and corresponding reporting destinations registered for the top-level fenced frame are reused when beacons are sent from the ad component fenced frames.
 
 ### Restricted to send `reserved.top_navigation` beacons only
 * Invocation of `reportEvent` API from an ad component fenced frame is disallowed.
 * The only supported reportEvent beacon to be sent from an ad component fenced frame is the `reserved.top_navigation` automatic beacon. Note this beacon is gated on a transient user activation. 
 * To ensure that there is no arbitrary data that can be received at the server from the component ad, the `eventData` field will be ignored.
+* To send the beacon from an component fenced frame, `setReportEventDataForAutomaticBeacons` must be invoked within the ad component fenced frame with `eventType` set to `'reserved.top_navigation'`. The beacon will be sent when there is an user click on the ad component fenced frame, which results in a top-level navigation.
 
+```
+window.fence.setReportEventDataForAutomaticBeacons({
+  'eventType': 'reserved.top_navigation',
+  'destination':['seller', 'buyer']
+});
+```
