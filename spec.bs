@@ -1662,3 +1662,50 @@ Information of the auction's leading bid so far when ranking scored bids.
 </dl>
 
 Note: All nullable fields of [=leading bid info=] default to null, unless specified otherwise.
+
+# Privacy Considerations # {#privacy-considerations}
+
+FLEDGE aims to advance the privacy of remarketing and custom audience advertising on the web, so
+naturally privacy considerations are paramount to FLEDGE’s design.  Partitioning data by site is
+the central mechanism to prevent joining a user’s identity across sites:
+- Interest group definitions come from just one site, the site that called
+{{Navigator/joinAdInterestGroup()}}.
+- Bidding (`generateBid()`) and scoring (`scoreAd()`) scripts are exposed to interest group data
+from the joining site, and data from the site that will display the ad, but these scripts are run
+in strict isolation to prevent leaking this cross-site information.
+- The browser can enforce that trusted bidding and scoring signals are fetched from servers
+complying with certain privacy requirements, e.g. not performing event-level logging.
+- Ads are rendered in [Fenced Frames](https://wicg.github.io/fenced-frame/) that isolate them from
+the surrounding page to prevent cross-site leakage.
+- Reporting is strictly controlled by the browser to prevent cross-site leaks:  Inputs to
+event-level reporting functions, `reportWin()` and `reportResult()`, only contain limited
+cross-site information, e.g. the k-anonymous ad URL.  Event-level reporting is meant to be a
+temporary stepping stone to more private mechanisms like [Private Aggregation
+API](https://github.com/patcg-individual-drafts/private-aggregation-api).
+
+
+# Security Considerations # {#security-considerations}
+
+FLEDGE involves the browser running untrusted JavaScript downloaded from multiple parties, so
+security concerns are top of mind. Fortunately FLEDGE is a highly constrained API not attempting to
+be a general purpose execution environment. Execution of this JavaScript is controlled and limited
+as follows:
+- FLEDGE requires the origin of the scripts’ URLs to match that of the origin of the
+interest group owner, which is in turn required to match the origin of the context calling the
+{{Navigator/joinAdInterestGroup()}}.
+- URL schemes are required to be HTTPS.
+- Redirects are disallowed.
+- Responses are required to contain the `X-Allow-FLEDGE: true` header.
+- Fetches are uncredentialed.
+
+FLEDGE has the browser pass in several “browserSignals” to the bidding script that give the script
+unforgeable information about the context that the script is being executed in. This way bidders
+and sellers have the choice to only participate in auctions where they are comfortable working with
+the involved parties.
+
+The execution environment available to these scripts is the absolute minimum necessary to calculate
+a bid. It supports only ECMAScript. It does not support network, storage, timer, date, DOM,
+Workers, postMessage, Navigator or Window APIs.
+
+FLEDGE adds Permission-Policies to control access to the FLEDGE APIs to give sites and embedders
+the ability to clamp down on use of the APIs as they see fit.
