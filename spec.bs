@@ -699,7 +699,7 @@ To <dfn>create a seller script runner</dfn> given a [=URL=] |decisionLogicUrl|:
 1. Return |decisionLogicScript|.
 
 To <dfn>create a request</dfn> given a [=URL=] |url|, a [=string=] <dfn for="create a request">
-|accept|</dfn>, and an [=origin=] <dfn for="create a request">|origin|</dfn>:
+|accept|</dfn>, and an [=origin=] or null <dfn for="create a request">|origin|</dfn>:
 1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
     ::  |url|
@@ -916,7 +916,8 @@ of the following global objects:
        \[[IsLockFree2]], and \[[LittleEndian]] are set at the implementation's discretion.
 
   Note: This algorithm is almost identical to [[HTML]]'s [=create an agent=] algorithm, with the
-  exception that we do not give the returned agent a new [=event loop=], since it does not process
+  exception that we do not give 
+  the returned agent a new [=event loop=], since it does not process
   [=tasks=] within [=task sources=] in the usual way.
 </div>
 
@@ -1225,23 +1226,23 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
     1. [=map/For each=] |key| → |value| of |parsedUpdate|:
       1. Switch on |key|:
         <dl class=switch>
-        <dt>"<code>priority</code>"
+        <dt>"`priority`"
         <dd>
         1. If |value| is a {{double}}, set |ig|'s [=interest group/priority=]
           to |value|.
 
-        <dt>"<code>enableBiddingSignalsPrioritization</code>"
+        <dt>"`enableBiddingSignalsPrioritization`"
         <dd>
         1. If |value| is a {{boolean}}, set |ig|'s
           [=interest group/enable bidding signals prioritization=] to |value|.
 
-        <dt>"<code>priorityVector</code>"
+        <dt>"`priorityVector`"
         <dd>
         1. If |value| is null or an [=ordered map=] whose [=map/keys=] are
           [=strings=] and whose [=map/values=] are {{double}}, set |ig|'s
           [=interest group/priority vector=] to |value|.
 
-        <dt>"<code>prioritySignalsOverrides</code>"
+        <dt>"`prioritySignalsOverrides`"
         <dd>
         1. If |value| is an [=ordered map=] whose [=map/keys=] are
           [=strings=] and whose [=map/values=] are {{double}} or null:
@@ -1249,60 +1250,62 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
             1. If |pvValue| is null, [=map/remove=] |ig|'s [=interest group/priority signals overrides=][|pvKey|].
             1. Otherwise, [=map/set=] |ig|'s [=interest group/priority signals overrides=][|pvKey|] to |pvValue|.
 
-        <dt>"<code>executionMode</code>"
+        <dt>"`executionMode`"
         <dd>
         1. If |value| is "<code>compatibility</code>" or "<code>group-by-origin</code>",
           set |ig|'s [=interest group/execution mode=] to |value|.
 
-        <dt>"<code>biddingLogicUrl</code>"
-        <dt>"<code>biddingWasmHelperUrl</code>"
-        <dt>"<code>dailyUpdateUrl</code>"
-        <dt>"<code>trustedBiddingSignalsUrl</code>"
+        <dt>"`biddingLogicUrl`"
+        <dt>"`biddingWasmHelperUrl`"
+        <dt>"`dailyUpdateUrl`"
+        <dt>"`trustedBiddingSignalsUrl`"
         <dd>
-        1. For each |groupMember| and |interestGroupField| in the following table <table class="data">
+        1. For each |groupMember| and |interestGroupField| in the following table
+          <table class="data">
             <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
             <tr>
-              <td>"biddingLogicUrl"</td>
+              <td>"`biddingLogicUrl`"</td>
               <td>[=interest group/bidding url=]</td>
             </tr>
             <tr>
-              <td>"biddingWasmHelperUrl"</td>
+              <td>"`biddingWasmHelperUrl`"</td>
               <td>[=interest group/bidding wasm helper url=]</td>
             </tr>
             <tr>
-              <td>"dailyUpdateUrl"</td>
+              <td>"`dailyUpdateUrl`"</td>
               <td>[=interest group/daily update url=]</td>
             </tr>
             <tr>
-              <td>"trustedBiddingSignalsUrl"</td>
+              <td>"`trustedBiddingSignalsUrl`"</td>
               <td>[=interest group/trusted bidding signals url=]</td>
             </tr>
           </table>
           1. Let |parsedUrl| be the result of running the [=URL parser=] on |value|.
           1. [=iteration/continue=] if any of the following conditions hold:
             * |key| is not |groupMember|;
-            * |parsedUrl| is an error;
+            * |parsedUrl| is failure;
             * |parsedUrl| is not [=same origin=] with |ig|'s [=interest group/owner=];
             * |parsedUrl| [=includes credentials=];
             * |parsedUrl| [=url/fragment=] is not null.
           1. Set |ig|'s |interestGroupField| to |parsedUrl|.
           
-        <dt>"<code>trustedBiddingSignalsKeys</code>"
+        <dt>"`trustedBiddingSignalsKeys`"
         <dd>
         1. If |value| is a [=list=] of [=strings=],
           set |ig|'s [=interest group/trusted bidding signals keys=] to |value|.
 
-        <dt>"<code>ads</code>"
-        <dt>"<code>adComponents</code>"
+        <dt>"`ads`"
+        <dt>"`adComponents`"
         <dd>
-        1. For each |groupMember| and |interestGroupField| in the following table <table class="data">
+        1. For each |groupMember| and |interestGroupField| in the following table
+          <table class="data">
             <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
             <tr>
-              <td>"ads"</td>
+              <td>"`ads`"</td>
               <td>[=interest group/ads=]</td>
             </tr>
             <tr>
-              <td>"adComponents"</td>
+              <td>"`adComponents`"</td>
               <td>[=interest group/ad components=]</td>
             </tr>
           </table>
@@ -1312,7 +1315,7 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
             1. Let |renderUrl| be the result of running the [=URL parser=] on
               |ad|["{{AuctionAd/renderUrl}}"].
             1. [=iteration/continue=] if any of the following conditions hold:
-              * |renderUrl| is an error;
+              * |renderUrl| is failure;
               * |renderUrl| [=url/scheme=] is not "`https`";
               * |renderUrl| [=includes credentials=].
             1. Set |igAd|'s [=interest group ad/render url=] to |renderUrl|.
