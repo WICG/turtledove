@@ -1309,10 +1309,11 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
   |owners|:
 
 1. [=list/For each=] |owner| of |owners|:
-  1. [=list/For each=] |ig| of the user agent's [=interest group set=] whose
+  1. [=list/For each=] |originalInterestGroup| of the user agent's [=interest group set=] whose
     [=interest group/owner=] is |owner| and [=interest group/next update after=] is before now:
     Implementations may consider loading only a portion of these interest groups at a time to avoid
     issuing too many requests at once.
+    1. Let |ig| be a deep copy of |originalInterestGroup|.
     1. Let |update| be the result of [=fetching resource=] with |ig|'s [=interest group/daily update url=],
       "application/json", and |owner|.
     1. If |update| is failure, [=iteration/continue=].
@@ -1331,17 +1332,20 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
         <dd>
         1. If |value| is a {{double}}, set |ig|'s [=interest group/priority=]
           to |value|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
         <dt>"`enableBiddingSignalsPrioritization`"
         <dd>
         1. If |value| is a {{boolean}}, set |ig|'s
           [=interest group/enable bidding signals prioritization=] to |value|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
         <dt>"`priorityVector`"
         <dd>
         1. If |value| is null or an [=ordered map=] whose [=map/keys=] are
           [=strings=] and whose [=map/values=] are {{double}}, set |ig|'s
           [=interest group/priority vector=] to |value|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
         <dt>"`prioritySignalsOverrides`"
         <dd>
@@ -1350,11 +1354,13 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
           1. [=map/For each=] |pvKey| → |pvValue| of |value|:
             1. If |pvValue| is null, [=map/remove=] |ig|'s [=interest group/priority signals overrides=][|pvKey|].
             1. Otherwise, [=map/set=] |ig|'s [=interest group/priority signals overrides=][|pvKey|] to |pvValue|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
         <dt>"`executionMode`"
         <dd>
         1. If |value| is "<code>compatibility</code>" or "<code>group-by-origin</code>",
           set |ig|'s [=interest group/execution mode=] to |value|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
         <dt>"`biddingLogicUrl`"
         <dt>"`biddingWasmHelperUrl`"
@@ -1382,8 +1388,9 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
             </tr>
           </table>
           1. Let |parsedUrl| be the result of running the [=URL parser=] on |value|.
-          1. [=iteration/continue=] if any of the following conditions hold:
-            * |key| is not |groupMember|;
+          1. If |key| is not |groupMember|, [=iteration/continue=].
+          1. Jump to the step labeled <i><a href=#abort-update>Abort update</a></i>
+            if any of the following conditions hold:
             * |parsedUrl| is failure;
             * |parsedUrl| is not [=same origin=] with |ig|'s [=interest group/owner=];
             * |parsedUrl| [=includes credentials=];
@@ -1394,6 +1401,7 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
         <dd>
         1. If |value| is a [=list=] of [=strings=],
           set |ig|'s [=interest group/trusted bidding signals keys=] to |value|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
         <dt>"`ads`"
         <dt>"`adComponents`"
@@ -1410,12 +1418,15 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
               <td>[=interest group/ad components=]</td>
             </tr>
           </table>
-          1. If |key| is |groupMember| and |value| is a [=list=] of {{AuctionAd}},
-            [=list/for each=] |ad| of |value|:
+          1. If |key| is not |groupMember|, [=iteration/continue=].
+          1. If |value| is not a [=list=] of {{AuctionAd}}, jump to the step
+            labeled <i><a href=#abort-update>Abort update</a></i>.
+          1. [=list/For each=] |ad| of |value|:
             1. Let |igAd| be a new [=interest group ad=].
             1. Let |renderUrl| be the result of running the [=URL parser=] on
               |ad|["{{AuctionAd/renderUrl}}"].
-            1. [=iteration/continue=] if any of the following conditions hold:
+            1. Jump to the step labeled <i><a href=#abort-update>Abort update</a></i>
+              if any of the following conditions hold:
               * |renderUrl| is failure;
               * |renderUrl| [=url/scheme=] is not "`https`";
               * |renderUrl| [=includes credentials=].
@@ -1423,12 +1434,17 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
             1. If |ad|["{{AuctionAd/metadata}}"] [=map/exists=], then let
               |igAd|'s [=interest group ad/metadata=] be the result of
               [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
-              This can [=exception/throw=] a {{TypeError}}.
+              If this can [=exception/throws=],  jump to the step
+              labeled <i><a href=#abort-update>Abort update</a></i>.
             1. [=list/Append=] |igAd| to |ig|'s |interestGroupField|.
               
         </dl>
               
     1. Set |ig|'s [=interest group/next update after=] to the current time plus 24 hours.
+    1. [=list/Replace=] |originalInterestGroup| with |ig| in the browser's
+      [=interest group set=].
+    1. <i id=abort-update>Abort update</i>: We jump here if some part of the
+      [=interest group=] update failed.  Continue to the next [=interest group=] update.
 
 </div>
 
