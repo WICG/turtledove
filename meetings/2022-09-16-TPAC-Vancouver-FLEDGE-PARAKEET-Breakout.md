@@ -1,3 +1,5 @@
+> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+
 **Notes from the FLEDGE + PARAKEET breakout session at TPAC 2022**
 
 **kleber:** [slide deck] : https://docs.google.com/presentation/d/1QQgrm4oaRRRBr1gfvKj7D8rS2EW8kRgRUHPscvR8BNo/edit#slide=id.g15545e7b627\_0\_127
