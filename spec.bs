@@ -106,11 +106,10 @@ are:
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
   1. Set |interestGroup|'s [=interest group/expiry=] to now plus |durationSeconds|.
   1. Set |interestGroup|'s [=interest group/next update after=] to now plus 24 hours.
-  1. Let |ownerUrl| be the result of running the [=URL parser=] on
+  1. Set |interestGroup|'s [=interest group/owner=] to the result of [=parsing an origin=] on
     |group|["{{AuctionAdInterestGroup/owner}}"].
-    1. If |ownerUrl| is an error, or its [=url/scheme=] is not "`https`", [=exception/throw=] a
-      {{TypeError}}.
-    1. Set |interestGroup|'s [=interest group/owner=] to |ownerUrl|'s [=origin=].
+  1. If |interestGroup|'s [=interest group/owner=] is an error, or its [=url/scheme=] is not
+    "`https`", [=exception/throw=] a {{TypeError}}.
   1. Set |interestGroup|'s [=interest group/name=] to |group|["{{AuctionAdInterestGroup/name}}"].
   1. Set |interestGroup|'s [=interest group/priority=] to
     |group|["{{AuctionAdInterestGroup/priority}}"].
@@ -192,7 +191,7 @@ are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |permission| be the result of [=checking interest group permissions=] with 
-    |ownerUrl|'s [=url/origin=], |frameOrigin|, and true.
+    |interestGroup|'s [=interest group/owner=], |frameOrigin|, and true.
   1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
      "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
   1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
@@ -323,10 +322,9 @@ are:
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
   "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
   "{{NotAllowedError}}" {{DOMException}}.
-1. Let |ownerUrl| be the result of running the [=URL parser=] on
-    |group|["{{AuctionAdInterestGroupKey/owner}}"].
-1. If |ownerUrl| is failure, [=exception/throw=] a {{TypeError}}.
-1. Let |owner| be |ownerUrl|'s [=url/origin=].
+1. Let |owner| be the result of [=parsing an origin=] with
+  |group|["{{AuctionAdInterestGroupKey/owner}}"].
+1. If |owner| is failure, [=exception/throw=] a {{TypeError}}.
 1. Let |name| be |group|["{{AuctionAdInterestGroupKey/name}}"].
 1. Let |p| be [=a new promise=].
 1. Run these steps [=in parallel=]:
@@ -414,11 +412,10 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}} |config| and a
 [=boolean=] <dfn for="validate and convert auction ad config">|isTopLevel|</dfn>:
 1. Let |auctionConfig| be a new [=auction config=].
-1. Let |seller| be the result of running the [=URL parser=] on
+1. Let |auctionConfig|'s [=auction config/seller=] be the result of [=parsing an origin=] with
   |config|["{{AuctionAdConfig/seller}}"].
-  1. [=exception/Throw=] a {{TypeError}} if |seller| is an error, or its [=url/scheme=] is not
-    "`https`".
-  1. Set |auctionConfig|'s [=auction config/seller=] to |seller|.
+1. [=exception/Throw=] a {{TypeError}} if |auctionConfig|'s [=auction config/seller=] is an error,
+  or its [=url/scheme=] is not "`https`".
 1. Let |decisionLogicURL| be the result of running the [=URL parser=] on
   |config|["{{AuctionAdConfig/decisionLogicURL}}"].
   1. [=exception/Throw=] a {{TypeError}} if |decisionLogicURL| is an error, or it is not
