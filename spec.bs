@@ -105,6 +105,7 @@ are:
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
   1. Set |interestGroup|'s [=interest group/expiry=] to now plus |durationSeconds|.
+  1. Set |interestGroup|'s [=interest group/next update after=] to now plus 24 hours.
   1. Let |ownerUrl| be the result of running the [=URL parser=] on
     |group|["{{AuctionAdInterestGroup/owner}}"].
     1. If |ownerUrl| is an error, or its [=url/scheme=] is not "`https`", [=exception/throw=] a
@@ -401,7 +402,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     with |winner|'s [=generated bid/ad descriptor=]. TODO: resolve |p| with urn-uuid, instead of a
     URL.
   1. Run [=generate reporting URLs=] with |auctionConfig| and |winner|.
-  1. Update interest groups post-auction. Execute the algorithm [=interest group update=] using
+  1. Execute the algorithm [=interest group update=] using
     |config|["{{AuctionAdConfig/interestGroupBuyers}}"] as `owners`.
   1. TODO: Update bidCount and prevWins for interest groups that participated in the auction.
 1. Return |p|.
@@ -611,8 +612,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
     1. Let |fullSignalsUrl| be the result of [=building trusted bidding signals url=] with
       |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|.
-    1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl|
-      and "application/json".
+    1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl|,
+      "application/json", and null.
     1. TODO: If |trustedBiddingSignals| is failure, fail the auction with manually_aborted set to
       true.
     1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
@@ -631,7 +632,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. TODO: Set |browserSignals|'s "wasmHelper" ...need to fetch and prepare WebAssembly.Module object based on |ig|'s [=interest group/bidding wasm helper url=]
         1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted bidding signals server's response(s)
         1. Let |biddingScript| be the result of [=fetching resource=] with |ig|'s
-          [=interest group/bidding url=], and "text/javascript". If |biddingScript| is an error,
+          [=interest group/bidding url=], "text/javascript", and null. If |biddingScript| is an error,
           [=iteration/continue=].
         1. TODO: Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
            |biddingScript| and « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
@@ -694,12 +695,12 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 
 To <dfn>create a seller script runner</dfn> given a [=URL=] |decisionLogicURL|:
 1. TODO: create the script runner and set up environment.
-1. Let |decisionLogicScript| be the result of [=fetching resource=] with |decisionLogicURL|, and
-  "text/javascript".
+1. Let |decisionLogicScript| be the result of [=fetching resource=] with |decisionLogicURL|,
+  "text/javascript", and null.
 1. Return |decisionLogicScript|.
 
-To <dfn>create a request</dfn> given a [=URL=] |url| and a [=string=] <dfn for="create a request">
-|accept|</dfn>:
+To <dfn>create a request</dfn> given a [=URL=] |url|, a [=string=] <dfn for="create a request">
+|accept|</dfn>, and an [=origin=] or null <dfn for="create a request">|origin|</dfn>:
 1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
     ::  |url|
@@ -712,7 +713,7 @@ To <dfn>create a request</dfn> given a [=URL=] |url| and a [=string=] <dfn for="
     :   [=request/service-workers mode=]
     ::  "`none`"
     :   [=request/origin=]
-    ::  [=opaque origin=]
+    ::  If |origin| is null, then [=opaque origin=], otherwise |origin|.
     :   [=request/referrer=]
     :: "`no-referrer`"
     :   [=request/credentials mode=]
@@ -725,9 +726,10 @@ To <dfn>create a request</dfn> given a [=URL=] |url| and a [=string=] <dfn for="
 
 <div algorithm>
 
-To <dfn>fetch resource</dfn> given a [=URL=] |url|, and a [=string=] |mimeType|:
+To <dfn>fetch resource</dfn> given a [=URL=] |url|, a [=string=] |mimeType|, and an [=origin=]
+|origin| or null:
 1. Let |request| be the result of [=creating a request=] with |url|, [=create a request/accept=]
-  set to |mimeType|.
+  set to |mimeType|, and [=create a request/origin=] set to |origin|.
 1. Let |resource| be null.
 1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
   [=response=] |response| and |responseBody|:
@@ -791,7 +793,7 @@ Issue: This would ideally be replaced by a more descriptive algorithm in Infra. 
 To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and a [=generated bid=]
 |bid|:
 1. Let |sellerReportingScript| be the result of [=fetching resource=] with |config|'s
-  [=auction config/decision logic url=], and "text/javascript".
+  [=auction config/decision logic url=], "text/javascript", and null.
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
@@ -812,7 +814,7 @@ To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and 
 1. TODO: Let |sellerSignals| be the result of [=evaluating a reporting script=] with
    |sellerReportingScript|, "reportResult", and « |auctionSignals|, |browserSignals| ».
 1. Let |buyerReportingScript| be the result of [=fetching resource=] with |bid|'s
-  [=generated bid/interest group=]'s [=interest group/bidding url=], and "text/javascript".
+  [=generated bid/interest group=|'s [=interest group/bidding url=], "text/javascript", and null.
 1. Let |perBuyerSignals| be |auctionConfig|'s
   [=auction config/per buyer signals=][|browserSignals|["interestGroupOwner"]] if that member
   [=map/exists=], and null otherwise.
@@ -915,7 +917,8 @@ of the following global objects:
        \[[IsLockFree2]], and \[[LittleEndian]] are set at the implementation's discretion.
 
   Note: This algorithm is almost identical to [[HTML]]'s [=create an agent=] algorithm, with the
-  exception that we do not give the returned agent a new [=event loop=], since it does not process
+  exception that we do not give 
+  the returned agent a new [=event loop=], since it does not process
   [=tasks=] within [=task sources=] in the usual way.
 </div>
 
@@ -1189,10 +1192,10 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 
 # Interest Group Updates # {#interest-group-updates}
 
-TODO: specify, including move 2 trigger sections out.
-
-Interest groups define a field, dailyUpdateURL, that allows updating the interest group definition
-stored on disk with information periodically retrieved from the dailyUpdateURL.
+[=Interest groups=] have a [=interest group/daily update url=] field that allows updating the
+interest group definition stored on disk with information periodically retrieved from the
+[=interest group/daily update url=].  The [=interest group update=] steps are triggered during
+{{Navigator/runAdAuction()}} and by calls to {{Navigator/updateAdInterestGroups()}} API:
 
 <xmp class="idl">
 [SecureContext]
@@ -1201,41 +1204,155 @@ partial interface Navigator {
 };
 </xmp>
 
-These updates have 2 triggers: the {{Navigator/updateAdInterestGroups()}} API, which updates all interest
+<div algorithm>
 
-groups owned by the origin of the current frame, and post-auction updates, which, at the conclusion
-of {{Window/navigator}}.{{Navigator/runAdAuction()}}, updates the interest groups of all bidder origins that participated in the
+The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
 
+1. [=In parallel=], run [=interest group update=] with 
+  « [=relevant settings object=]'s [=environment/top-level origin=] »
 
-auction.
+</div>
+<div algorithm>
+  To <dfn lt="interest group update">update interest groups</dfn> given a [=list=] of [=origins=]
+  |owners|:
 
-<div algorithm="interest group update">
-
-Both update methods trigger the same algorithm, <dfn>interest group update</dfn> which is described below, and takes a list of owners to
-update called "owners":
-
-1. For each interest group "owner" in "owners":
-  1. Load the interest groups of "owner" where the interest group's "next update after" is before now.
+1. [=list/For each=] |owner| of |owners|:
+  1. [=list/For each=] |originalInterestGroup| of the user agent's [=interest group set=] whose
+    [=interest group/owner=] is |owner| and [=interest group/next update after=] is before now:
     Implementations may consider loading only a portion of these interest groups at a time to avoid
-    issuing too many requests at once. While the loaded set isn't empty:
-    1. For each loaded interest group:
-      1. Fetch the dailyUpdateURL of the interest group from the network.
-      1. If the network fetch failed, continue to the next interest group.
-      1. Parse the response body as JSON. If parsing fails, continue to the next interest group.
-      1. If the response JSON object is not a JSON dict, continue to the next interest group.
-      1. If "name" and or "owner" keys are present in the response dict, they must match the "name" and "owner" of
-        the original interest group, respectively. If they don't, continue to the next interest group.
-      1. For each remaining field, if the field is one of {priority, enableBiddingSignalsPrioritization,
-        priorityVector, prioritySignalsOverrides, sellerCapabilities, executionMode, biddingLogicURL,
-        biddingWasmHelperURL, trustedBiddingSignalsURL, trustedBiddingSignalsKeys, ads,
-        adComponents, adSizes, sizeGroups}:
-        1. If the field is prioritySignalsOverrides, merge with the stored value: for each key, value pair in the JSON prioritySignalsOverrides:
-          1. If the value is null, delete the stored prioritySignalsOverrides key, value pair.
-          2. Otherise, update the stored value for key to be the new value.
-        1. Otherwise, replace the current value of the field in the interest group with that field from the received
-          interest group update JSON. (Fields that are not specified in the update JSON will remain unmodified).
-        1. Set the "last updated" of the interest group to the current time, and set the "next update after" to
-          the update rate limit period + the current time.
+    issuing too many requests at once.
+    1. Let |ig| be a deep copy of |originalInterestGroup|.
+    1. Let |update| be the result of [=fetching resource=] with |ig|'s [=interest group/daily update url=],
+      "application/json", and |owner|.
+    1. If |update| is failure, [=iteration/continue=].
+    1. Let |parsedUpdate| be the result of [=parsing JSON bytes to a JavaScript value=], given
+      |update|.
+    1. If |parsedUpdate| is failure, [=iteration/continue=].
+    1. If |parsedUpdate| is not an [=ordered map=], [=iteration/continue=].
+    1. If |parsedUpdate["name"] exists and doesn't match |ig|'s [=interest group/name=], 
+      [=iteration/continue=].
+    1. If |parsedUpdate["owner"] exists and doesn't match |ig|'s [=interest group/owner=],
+      [=iteration/continue=].
+    1. [=map/For each=] |key| → |value| of |parsedUpdate|:
+      1. Switch on |key|:
+        <dl class=switch>
+        <dt>"`priority`"
+        <dd>
+        1. If |value| is a {{double}}, set |ig|'s [=interest group/priority=]
+          to |value|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+
+        <dt>"`enableBiddingSignalsPrioritization`"
+        <dd>
+        1. If |value| is a {{boolean}}, set |ig|'s
+          [=interest group/enable bidding signals prioritization=] to |value|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+
+        <dt>"`priorityVector`"
+        <dd>
+        1. If |value| is null or an [=ordered map=] whose [=map/keys=] are
+          [=strings=] and whose [=map/values=] are {{double}}, set |ig|'s
+          [=interest group/priority vector=] to |value|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+
+        <dt>"`prioritySignalsOverrides`"
+        <dd>
+        1. If |value| is an [=ordered map=] whose [=map/keys=] are
+          [=strings=] and whose [=map/values=] are {{double}} or null:
+          1. [=map/For each=] |pvKey| → |pvValue| of |value|:
+            1. If |pvValue| is null, [=map/remove=] |ig|'s [=interest group/priority signals overrides=][|pvKey|].
+            1. Otherwise, [=map/set=] |ig|'s [=interest group/priority signals overrides=][|pvKey|] to |pvValue|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+
+        <dt>"`executionMode`"
+        <dd>
+        1. If |value| is "`compatibility`" or "`group-by-origin`",
+          set |ig|'s [=interest group/execution mode=] to |value|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+
+        <dt>"`biddingLogicURL`"
+        <dt>"`biddingWasmHelperURL`"
+        <dt>"`dailyUpdateURL`"
+        <dt>"`trustedBiddingSignalsURL`"
+        <dd>
+        1. For each |groupMember| and |interestGroupField| in the following table
+          <table class="data">
+            <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
+            <tr>
+              <td>"`biddingLogicURL`"</td>
+              <td>[=interest group/bidding url=]</td>
+            </tr>
+            <tr>
+              <td>"`biddingWasmHelperURL`"</td>
+              <td>[=interest group/bidding wasm helper url=]</td>
+            </tr>
+            <tr>
+              <td>"`dailyUpdateURL`"</td>
+              <td>[=interest group/daily update url=]</td>
+            </tr>
+            <tr>
+              <td>"`trustedBiddingSignalsURL`"</td>
+              <td>[=interest group/trusted bidding signals url=]</td>
+            </tr>
+          </table>
+          1. Let |parsedURL| be the result of running the [=URL parser=] on |value|.
+          1. If |key| is not |groupMember|, [=iteration/continue=].
+          1. Jump to the step labeled <i><a href=#abort-update>Abort update</a></i>
+            if any of the following conditions hold:
+            * |parsedURL| is failure;
+            * |parsedURL| is not [=same origin=] with |ig|'s [=interest group/owner=];
+            * |parsedURL| [=includes credentials=];
+            * |parsedURL| [=url/fragment=] is not null.
+          1. Set |ig|'s |interestGroupField| to |parsedURL|.
+          
+        <dt>"`trustedBiddingSignalsKeys`"
+        <dd>
+        1. If |value| is a [=list=] of [=strings=],
+          set |ig|'s [=interest group/trusted bidding signals keys=] to |value|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+
+        <dt>"`ads`"
+        <dt>"`adComponents`"
+        <dd>
+        1. For each |groupMember| and |interestGroupField| in the following table
+          <table class="data">
+            <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
+            <tr>
+              <td>"`ads`"</td>
+              <td>[=interest group/ads=]</td>
+            </tr>
+            <tr>
+              <td>"`adComponents`"</td>
+              <td>[=interest group/ad components=]</td>
+            </tr>
+          </table>
+          1. If |key| is not |groupMember|, [=iteration/continue=].
+          1. If |value| is not a [=list=] of {{AuctionAd}}, jump to the step
+            labeled <i><a href=#abort-update>Abort update</a></i>.
+          1. [=list/For each=] |ad| of |value|:
+            1. Let |igAd| be a new [=interest group ad=].
+            1. Let |renderURL| be the result of running the [=URL parser=] on
+              |ad|["{{AuctionAd/renderURL}}"].
+            1. Jump to the step labeled <i><a href=#abort-update>Abort update</a></i>
+              if any of the following conditions hold:
+              * |renderURL| is failure;
+              * |renderURL| [=url/scheme=] is not "`https`";
+              * |renderURL| [=includes credentials=].
+            1. Set |igAd|'s [=interest group ad/render url=] to |renderURL|.
+            1. If |ad|["{{AuctionAd/metadata}}"] [=map/exists=], then let
+              |igAd|'s [=interest group ad/metadata=] be the result of
+              [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
+              If this can [=exception/throws=], jump to the step
+              labeled <i><a href=#abort-update>Abort update</a></i>.
+            1. [=list/Append=] |igAd| to |ig|'s |interestGroupField|.
+              
+        </dl>
+              
+    1. Set |ig|'s [=interest group/next update after=] to the current time plus 24 hours.
+    1. [=list/Replace=] |originalInterestGroup| with |ig| in the browser's
+      [=interest group set=].
+    1. <i id=abort-update>Abort update</i>: We jump here if some part of the
+      [=interest group=] update failed.  [=iteration/Continue=] to the next [=interest group=] update.
 
 </div>
 
@@ -1328,6 +1445,8 @@ An interest group is a [=struct=] with the following items:
 :: A [=list=] containing [=tuple=]s of the time and the corresponding
   [=interest group ad=] for each instance that this interest group won an
   auction.
+: <dfn>next update after</dfn>
+:: A point in time at which the browser will permit updating this interest group.
 
 </dl>
 
@@ -1535,3 +1654,51 @@ Information of the auction's leading bid so far when ranking scored bids.
 :: Null or a [=generated bid=]. The leading bid of the auction so far.
 
 </dl>
+
+# Privacy Considerations # {#privacy-considerations}
+
+FLEDGE aims to advance the privacy of remarketing and custom audience advertising on the web, so
+naturally privacy considerations are paramount to FLEDGE’s design.  Partitioning data by site is
+the central mechanism to prevent joining a user’s identity across sites:
+- Interest group definitions come from just one site, the site that called
+  {{Navigator/joinAdInterestGroup()}}.
+- Bidding (`generateBid()`) and scoring (`scoreAd()`) scripts are exposed to interest group data
+  from the joining site, and data from the site that will display the ad, but these scripts are run
+  in strict isolation to prevent leaking this cross-site information.
+- The browser can enforce that trusted bidding and scoring signals are fetched from servers
+  complying with certain privacy requirements, e.g. not performing event-level logging.
+- Ads are rendered in <{fencedframe}>s that isolate them from the surrounding page to prevent
+  cross-site leakage.
+- Reporting is strictly controlled by the browser to prevent cross-site leaks:  Inputs to
+  event-level reporting functions, `reportWin()` and `reportResult()`, only contain limited
+  cross-site information, e.g. the k-anonymous ad URL.  Event-level reporting is meant to be a
+  temporary stepping stone to more private mechanisms like [Private Aggregation
+  API](https://github.com/patcg-individual-drafts/private-aggregation-api).
+
+
+# Security Considerations # {#security-considerations}
+
+FLEDGE involves the browser running untrusted JavaScript downloaded from multiple parties, so
+security concerns are top of mind. Fortunately FLEDGE is a highly constrained API not attempting to
+be a general purpose execution environment. Execution of this JavaScript is controlled and limited
+as follows:
+- FLEDGE requires the origin of the scripts’ URLs to match that of the origin of the
+  interest group owner, which is in turn required to match the origin of the context calling the
+  {{Navigator/joinAdInterestGroup()}}.
+- URL schemes are required to be HTTPS.
+- Redirects are disallowed.
+- Responses are required to contain the `X-Allow-FLEDGE: true` header.
+- Fetches are uncredentialed.
+
+FLEDGE has the browser pass in several “browserSignals” to the bidding script that give the script
+unforgeable information about the context that the script is being executed in. This way bidders
+and sellers have the choice to only participate in auctions where they are comfortable working with
+the involved parties.
+
+The [execution environment](#script-runners) available to these scripts is the absolute minimum necessary to calculate
+
+a bid. It supports only ECMAScript. It does not support network, storage, timer, date, DOM,
+Workers, postMessage, Navigator or Window APIs.
+
+FLEDGE adds Permission-Policies to control access to the FLEDGE APIs to give sites and embedders
+the ability to clamp down on use of the APIs as they see fit.
