@@ -6,7 +6,7 @@
   <link href="https://www.w3.org/StyleSheets/TR/2021/cg-draft" rel="stylesheet">
   <meta content="Bikeshed version d9bd89757, updated Thu Mar 23 10:06:53 2023 -0700" name="generator">
   <link href="https://wicg.github.io/turtledove/" rel="canonical">
-  <meta content="f2d903c0d6db30464a154bc4ed29cffa888e8c72" name="document-revision">
+  <meta content="587f91aa549d3eac43947c6df65484866cf88eb2" name="document-revision">
 <style>/* style-autolinks */
 .css.css, .property.property, .descriptor.descriptor {
     color: var(--a-normal-text);
@@ -598,7 +598,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"><a class="logo" href="https://www.w3.org/"> <img alt="W3C" height="48" src="https://www.w3.org/StyleSheets/TR/2021/logos/W3C" width="72"> </a> </p>
    <h1 class="p-name no-ref allcaps" id="title">FLEDGE</h1>
-   <p id="w3c-state"><a href="https://www.w3.org/standards/types#CG-DRAFT">Draft Community Group Report</a>, <time class="dt-updated" datetime="2023-04-12">12 April 2023</time></p>
+   <p id="w3c-state"><a href="https://www.w3.org/standards/types#CG-DRAFT">Draft Community Group Report</a>, <time class="dt-updated" datetime="2023-04-14">14 April 2023</time></p>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt>This version:
@@ -665,6 +665,8 @@ A human-readable <a href="http://www.w3.org/community/about/agreements/cla-deed/
       <li><a href="#score-ad-output"><span class="secno">8.9</span> <span class="content">Score ad output</span></a>
       <li><a href="#leading-bid-info"><span class="secno">8.10</span> <span class="content">Leading bid info</span></a>
      </ol>
+    <li><a href="#privacy-considerations"><span class="secno">9</span> <span class="content">Privacy Considerations</span></a>
+    <li><a href="#security-considerations"><span class="secno">10</span> <span class="content">Security Considerations</span></a>
     <li>
      <a href="#index"><span class="secno"></span> <span class="content">Index</span></a>
      <ol class="toc">
@@ -2599,6 +2601,57 @@ wins the component auction and top-level auction, respectively.</p>
     <dd data-md>
      <p>Null or a <a data-link-type="dfn" href="#generated-bid" id="ref-for-generated-bid④">generated bid</a>. The leading bid of the auction so far.</p>
    </dl>
+   <h2 class="heading settled" data-level="9" id="privacy-considerations"><span class="secno">9. </span><span class="content">Privacy Considerations</span><a class="self-link" href="#privacy-considerations"></a></h2>
+   <p>FLEDGE aims to advance the privacy of remarketing and custom audience advertising on the web, so
+naturally privacy considerations are paramount to FLEDGE’s design.  Partitioning data by site is
+the central mechanism to prevent joining a user’s identity across sites:</p>
+   <ul>
+    <li data-md>
+     <p>Interest group definitions come from just one site, the site that called <code class="idl"><a data-link-type="idl" href="#dom-navigator-joinadinterestgroup" id="ref-for-dom-navigator-joinadinterestgroup④">joinAdInterestGroup()</a></code>.</p>
+    <li data-md>
+     <p>Bidding (<code>generateBid()</code>) and scoring (<code>scoreAd()</code>) scripts are exposed to interest group data
+from the joining site, and data from the site that will display the ad, but these scripts are run
+in strict isolation to prevent leaking this cross-site information.</p>
+    <li data-md>
+     <p>The browser can enforce that trusted bidding and scoring signals are fetched from servers
+complying with certain privacy requirements, e.g. not performing event-level logging.</p>
+    <li data-md>
+     <p>Ads are rendered in <code><a data-link-type="element" href="https://wicg.github.io/fenced-frame/#elementdef-fencedframe" id="ref-for-elementdef-fencedframe">fencedframe</a></code>s that isolate them from the surrounding page to prevent
+cross-site leakage.</p>
+    <li data-md>
+     <p>Reporting is strictly controlled by the browser to prevent cross-site leaks:  Inputs to
+event-level reporting functions, <code>reportWin()</code> and <code>reportResult()</code>, only contain limited
+cross-site information, e.g. the k-anonymous ad URL.  Event-level reporting is meant to be a
+temporary stepping stone to more private mechanisms like <a href="https://github.com/patcg-individual-drafts/private-aggregation-api">Private Aggregation
+API</a>.</p>
+   </ul>
+   <h2 class="heading settled" data-level="10" id="security-considerations"><span class="secno">10. </span><span class="content">Security Considerations</span><a class="self-link" href="#security-considerations"></a></h2>
+   <p>FLEDGE involves the browser running untrusted JavaScript downloaded from multiple parties, so
+security concerns are top of mind. Fortunately FLEDGE is a highly constrained API not attempting to
+be a general purpose execution environment. Execution of this JavaScript is controlled and limited
+as follows:</p>
+   <ul>
+    <li data-md>
+     <p>FLEDGE requires the origin of the scripts’ URLs to match that of the origin of the
+interest group owner, which is in turn required to match the origin of the context calling the <code class="idl"><a data-link-type="idl" href="#dom-navigator-joinadinterestgroup" id="ref-for-dom-navigator-joinadinterestgroup⑤">joinAdInterestGroup()</a></code>.</p>
+    <li data-md>
+     <p>URL schemes are required to be HTTPS.</p>
+    <li data-md>
+     <p>Redirects are disallowed.</p>
+    <li data-md>
+     <p>Responses are required to contain the <code>X-Allow-FLEDGE: true</code> header.</p>
+    <li data-md>
+     <p>Fetches are uncredentialed.</p>
+   </ul>
+   <p>FLEDGE has the browser pass in several “browserSignals” to the bidding script that give the script
+unforgeable information about the context that the script is being executed in. This way bidders
+and sellers have the choice to only participate in auctions where they are comfortable working with
+the involved parties.</p>
+   <p>The <a href="#script-runners">execution environment</a> available to these scripts is the absolute minimum necessary to calculate</p>
+   <p>a bid. It supports only ECMAScript. It does not support network, storage, timer, date, DOM,
+Workers, postMessage, Navigator or Window APIs.</p>
+   <p>FLEDGE adds Permission-Policies to control access to the FLEDGE APIs to give sites and embedders
+the ability to clamp down on use of the APIs as they see fit.</p>
   </main>
 <script src="https://www.w3.org/scripts/TR/2021/fixup.js"></script>
   <h2 class="no-num no-ref heading settled" id="index"><span class="content">Index</span><a class="self-link" href="#index"></a></h2>
@@ -2952,6 +3005,12 @@ wins the component auction and top-level auction, respectively.</p>
    <span id="infopaneltitle-for-8297ed8dbe5ddc8d52a433d25b082796" style="display:none">Info about the 'utf-8' external reference.</span><a href="https://encoding.spec.whatwg.org/#utf-8">https://encoding.spec.whatwg.org/#utf-8</a><b>Referenced in:</b>
    <ul>
     <li><a href="#ref-for-utf-8">4.1. runAdAuction()</a>
+   </ul>
+  </aside>
+  <aside aria-labelledby="infopaneltitle-for-87005aefb42ddde344e9b7db3359627c" class="dfn-panel" data-for="87005aefb42ddde344e9b7db3359627c" id="infopanel-for-87005aefb42ddde344e9b7db3359627c">
+   <span id="infopaneltitle-for-87005aefb42ddde344e9b7db3359627c" style="display:none">Info about the 'fencedframe' external reference.</span><a href="https://wicg.github.io/fenced-frame/#elementdef-fencedframe">https://wicg.github.io/fenced-frame/#elementdef-fencedframe</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-elementdef-fencedframe">9. Privacy Considerations</a>
    </ul>
   </aside>
   <aside aria-labelledby="infopaneltitle-for-b0566d6d660c85a1c0a11fe593f9993d" class="dfn-panel" data-for="b0566d6d660c85a1c0a11fe593f9993d" id="infopanel-for-b0566d6d660c85a1c0a11fe593f9993d">
@@ -3850,6 +3909,11 @@ wins the component auction and top-level auction, respectively.</p>
      <li><span class="dfn-paneled" id="8297ed8dbe5ddc8d52a433d25b082796">utf-8</span>
     </ul>
    <li>
+    <a data-link-type="biblio">[FENCED-FRAME]</a> defines the following terms:
+    <ul>
+     <li><span class="dfn-paneled" id="87005aefb42ddde344e9b7db3359627c">fencedframe</span>
+    </ul>
+   <li>
     <a data-link-type="biblio">[FETCH]</a> defines the following terms:
     <ul>
      <li><span class="dfn-paneled" id="b0566d6d660c85a1c0a11fe593f9993d">cache mode</span>
@@ -4009,6 +4073,8 @@ wins the component auction and top-level auction, respectively.</p>
    <dd><a href="https://tc39.es/ecma262/multipage/"><cite>ECMAScript Language Specification</cite></a>. URL: <a href="https://tc39.es/ecma262/multipage/">https://tc39.es/ecma262/multipage/</a>
    <dt id="biblio-encoding">[ENCODING]
    <dd>Anne van Kesteren. <a href="https://encoding.spec.whatwg.org/"><cite>Encoding Standard</cite></a>. Living Standard. URL: <a href="https://encoding.spec.whatwg.org/">https://encoding.spec.whatwg.org/</a>
+   <dt id="biblio-fenced-frame">[FENCED-FRAME]
+   <dd>Fenced frame URL: <a href="https://wicg.github.io/fenced-frame/">https://wicg.github.io/fenced-frame/</a>
    <dt id="biblio-fetch">[FETCH]
    <dd>Anne van Kesteren. <a href="https://fetch.spec.whatwg.org/"><cite>Fetch Standard</cite></a>. Living Standard. URL: <a href="https://fetch.spec.whatwg.org/">https://fetch.spec.whatwg.org/</a>
    <dt id="biblio-hr-time-3">[HR-TIME-3]
@@ -4274,6 +4340,8 @@ wins the component auction and top-level auction, respectively.</p>
     <li><a href="#ref-for-dom-navigator-joinadinterestgroup">1. Introduction</a>
     <li><a href="#ref-for-dom-navigator-joinadinterestgroup①">2. Joining Interest Groups</a> <a href="#ref-for-dom-navigator-joinadinterestgroup②">(2)</a>
     <li><a href="#ref-for-dom-navigator-joinadinterestgroup③">8.1. Interest group</a>
+    <li><a href="#ref-for-dom-navigator-joinadinterestgroup④">9. Privacy Considerations</a>
+    <li><a href="#ref-for-dom-navigator-joinadinterestgroup⑤">10. Security Considerations</a>
    </ul>
   </aside>
   <aside aria-labelledby="infopaneltitle-for-interest-group-estimated-size" class="dfn-panel" data-for="interest-group-estimated-size" id="infopanel-for-interest-group-estimated-size">
