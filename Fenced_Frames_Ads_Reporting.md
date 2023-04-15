@@ -172,7 +172,7 @@ If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not 
 
 # Support for Ad Components
 ## Goal
-When rendered ad is composed of [multiple pieces](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces), it is useful to detect user clicks that happened on ad components.
+When a rendered ad is composed of [multiple pieces](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces), it is useful to detect user clicks that happened on ad components.
 
 ## Design
 ### Event Type and Reporting Destination
