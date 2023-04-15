@@ -179,7 +179,7 @@ When rendered ad is composed of [multiple pieces](https://github.com/WICG/turtle
 For fenced frames rendering the ad components under the top-level ad fenced frame, the `reserved.top_navigation` event type and corresponding reporting destination registered for the top-level fenced frame are reused when beacons are sent from the ad component fenced frames.
 
 ### Restricted to send `reserved.top_navigation` beacons only
-* Invocation of `reportEvent` API from an ad component fenced frame is disallowed.
+* Invocation of the `reportEvent` API from an ad component fenced frame is disallowed.
 * The only supported reportEvent beacon to be sent from an ad component fenced frame is the `reserved.top_navigation` automatic beacon. Note this beacon is gated on a user activation. 
 * To ensure that there is no arbitrary data that can be received at the server from the component ad, the `eventData` field, if specified, will be ignored.
 * To send the beacon from an component fenced frame, `setReportEventDataForAutomaticBeacons` must be invoked within the ad component fenced frame with `eventType` set to `'reserved.top_navigation'`. The beacon will be sent when there is an user click on the ad component fenced frame, which results in a top-level navigation.
