@@ -11,7 +11,6 @@ This document seeks to propose an API for web pages to perform FLEDGE auctions u
 #### Step 1: Get auction blob from browser
 
 To execute an on-server FLEDGE auction, sellers begin by calling `navigator.startServerAdAuction()`:
-
 ```  
 const auctionBlob = navigator.startServerAdAuction({
   // ‘seller’ works the same as for runAdAuction.
@@ -25,23 +24,22 @@ The returned `auctionBlob` is HPKE encrypted with an encryption header like that
 
 A seller’s JavaScript then sends auctionBlob to their server, perhaps by initiating a [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) using a PUT or POST method with auctionBlob attached as the request body:
 
- ``` 
+<pre>
 fetch('https://www.example-ssp.com/auction', {
   method: "PUT",
-  body: auctionBlob,
+  <b>body: auctionBlob</b>,
   …
 })
-```
-  
+</pre>
 
 Their server then passes the blob off to B&A servers which conduct on-server auctions. Several on-server auctions may take place, e.g. one for each ad slot on the page. Each on-server auction returns an encrypted response blob.
 
 #### Step 3: Get response blobs to browser
 
 These response blobs are sent back to the browser. A seller’s JavaScript can [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) them back to the browser, perhaps as the response body to the Fetch initiated in Step 2. This Fetch is initiated with a flag to prepare the browser to look for `X-fledge-auction-results` HTTP response headers:
-```
-fetch('https://www.example-ssp.com/auction', { adAuctionHeaders: true, … })
-```
+<pre>
+fetch('https://www.example-ssp.com/auction', { <b>adAuctionHeaders: true</b>, … })
+</pre>
 Note that `adAuctionHeaders` only works with HTTPS requests.
 For each response blob sent back to the browser, the seller’s server attaches a response header containing the SHA-256 hash of the response blob:
   
@@ -52,8 +50,6 @@ X-fledge-auction-result: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff6
 It should be noted that the `fetch()` request using `adAuctionHeaders` can also be used to send `auctionBlob` (e.g. in the request body) and receive the response blob (e.g. in the response body).
 
 #### Step 4: Complete auction in browser
-
-  
 
 Now the auction can be completed by passing the response blob to runAdAuction() as part of a specially configured auction configuration:
 
@@ -79,13 +75,9 @@ Another way to prevent the encrypted blob’s size from being a leak is to have 
 1.  This would hugely complicate the B&A server’s interactions and API, making adoption likely infeasible. The B&A API would no longer be a RESTful API as it would have to coordinate communication from both the browser and other servers (e.g. contextual auction server).
     
 1.  This would also require the on-device JavaScript to determine whether to send the FLEDGE request to the B&A server, perhaps at a time before it has the results of the contextual auction which might influence the decision. Without this information the device would have to send the encrypted blob for every ad request, even in cases where the contextual call indicated it was wasteful to do so.
-    
-
-  
 
 Exposing size of the blob is a temporary leak that we hope to mitigate in the future:
 
 1.  As TEEs become more prevalent and adtechs gain experience operating and deploying them, we can reconsider whether the server that the browser sends the blob to could in fact be a trusted one operating in a TEE.
-    
 
 1.  size of the encrypted blob may shrink considerably, where padding may become a more effective privacy prevention (e.g. imagine fixed size blobs) and may introduce little overhead. [We recently announced](https://github.com/WICG/turtledove/issues/361#issuecomment-1430069343) changes to the interest group update requirements that should facilitate significantly fewer interest groups. Having many fewer interest groups can greatly reduce the size of the encrypted blob. These same changes allow for more information to be stored in the real-time trusted bidding signals server and simply indexed with a small identifier kept in the interest group, again shrinking the interest groups.
