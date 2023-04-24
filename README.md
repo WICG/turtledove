@@ -1,3 +1,5 @@
+> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+
 # TURTLEDOVE
 
 Some online advertising has been based on showing an ad to a potentially-interested person who has previously interacted with the advertiser or ad network.
