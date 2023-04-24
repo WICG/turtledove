@@ -1,9 +1,15 @@
 # FLEDGE Release Notes
 
 
+## Chrome M114
+
+* Support the ability to specify `requestedSize` in the auction config, which is eventually stored in the winning fenced frame config's container size. The `requestedSize` may not be accessible through browser signals in the auction until M115.
+
+
 ## Chrome M113
 
-* Some of the size-related API changes (the ability to declare ad sizes in joinAdInterestGroup, include sizes with bids in generateBid, and have those sizes macro'd into the url with AD_WIDTH and AD_HEIGHT macros) will be added in M113 (and will be backwards compatible + opt-in). The ability to specify a requestedSize in the auction config (and downstream effects in browser signals and fenced frame configs) is targeting M114, because it is only a convenience feature.
+* Support some of the size-related API changes (the ability to declare ad sizes in `joinAdInterestGroup`, include sizes with bids in `generateBid`, and have those sizes macro'd into the url with `AD_WIDTH` and `AD_HEIGHT` macros), in a backwards compatible and opt-in way. 
+
 
 ## Chrome M109
 
