@@ -560,8 +560,9 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, and a [=global object=] |global|:
 1. [=Assert=] that these steps are running [=in parallel=].
-1. Let |decisionLogicScript| be the result of [=creating a seller script runner=] with
-  |auctionConfig|'s [=auction config/decision logic url=].
+1. Let |decisionLogicScript| be the result of [=fetching resource=] with
+
+  |auctionConfig|'s [=auction config/decision logic url=], "text/javascript", and null.
 1. If |decisionLogicScript| is failure, return null.
 1. Let |bidGenerators| be the result of running [=build bid generators map=] with |auctionConfig|.
 1. Let |leadingBidInfo| be a new [=leading bid info=].
@@ -615,7 +616,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       and "application/json", and null.
     1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
-        1. TODO: create bidder script runner. If failed, [=iteration/continue=].
         1. TODO: Let |interestGroup| be ... from |ig| ... minus priority and prioritySignalsOverrides and any browser-defined pieces
         1. Set |browserSignals|'s "joinCount" to the sum of |ig|'s
            [=interest group/join counts=] for all days within the last 30 days.
@@ -631,7 +631,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. Let |biddingScript| be the result of [=fetching resource=] with |ig|'s
           [=interest group/bidding url=], "text/javascript", and null. If |biddingScript| is an error,
           [=iteration/continue=].
-        1. TODO: Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
+        1. Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
            |biddingScript| and « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
            |trustedBiddingSignals|, |browserSignals| ».
         1. If |generatedBidResult| is an [=abrupt completion=], [=iteration/continue=].
@@ -661,17 +661,20 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. TODO: Let |trustedScoringSignals| ... need to assemble and fetch these
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
-1. TODO: Set |browserSignals|'s "topWindowHostname" to hostname of top window
+1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=this=]'s [=relevant settings object=]'s
+  [=environment/top-level origin=]'s [=origin/host=].
 1. [=map/Set=] |browserSignals|["interestGroupOwner"] to |generatedBid|'s
   [=generated bid/interest group=]'s [=interest group/owner=].
 1. [=map/Set=] |browserSignals|["renderURL"] to |generatedBid|'s [=generated bid/ad descriptor=]'s
   [=ad descriptor/url=].
-1. TODO: Set |browserSignals|'s "adComponents" to ...need to pass in as part of |generatedBid|
-1. TODO: Set |browserSignals|'s "biddingDurationMsec" to ...need to calculate and pass in
+1. [=map/Set=] |browserSignals|["adComponents"] to |generatedBid|'s
+  [=generated bid/ad component descriptors=].
+1. [=map/Set=] |browserSignals|["biddingDurationMsec"] to |generatedBid|'s
+  [=generated bid/bid duration=].
 1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted scoring
   signals server's response.
 1. TODO: Remove fields of |auctionConfig| that don't pass through.
-1. TODO: Let |scoreAdOutput| be the result of [=evaluating a scoring script=] with
+1. Let |scoreAdOutput| be the result of [=evaluating a scoring script=] with
    |decisionLogicScript| and « |adMetadata|, |bid|, |auctionConfig|, |trustedScoringSignals|,
    |browserSignals| ».
 1. If |hasComponentAuction| is true, and |scoreAdOutput|'s
@@ -691,12 +694,6 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
     |leadingBidInfo|'s [=leading bid info/top bids count=] chance.
 
 </div>
-
-To <dfn>create a seller script runner</dfn> given a [=URL=] |decisionLogicURL|:
-1. TODO: create the script runner and set up environment.
-1. Let |decisionLogicScript| be the result of [=fetching resource=] with |decisionLogicURL|,
-  "text/javascript", and null.
-1. Return |decisionLogicScript|.
 
 To <dfn>create a request</dfn> given a [=URL=] |url|, a [=string=] <dfn for="create a request">
 |accept|</dfn>, and an [=origin=] or null <dfn for="create a request">|origin|</dfn>:
@@ -810,7 +807,7 @@ To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and 
 1. TODO: [=map/Set=] |browserSignals|["modifiedBid"] to the modified bid value.
 1. TODO: [=map/Set=] |browserSignals|["highestScoringOtherBid"] to the highest scoring other bid
   value.
-1. TODO: Let |sellerSignals| be the result of [=evaluating a reporting script=] with
+1. Let |sellerSignals| be the result of [=evaluating a reporting script=] with
    |sellerReportingScript|, "reportResult", and « |auctionSignals|, |browserSignals| ».
 1. Let |buyerReportingScript| be the result of [=fetching resource=] with |bid|'s
   [=generated bid/interest group=|'s [=interest group/bidding url=], "text/javascript", and null.
@@ -834,7 +831,7 @@ To <dfn>generate reporting URLs</dfn> given an {{AuctionAdConfig}} |config| and 
   response and the version was consistent for all keys requested by this interest group.
 1. [=map/Set=] |browserSignals|["seller"] to |config|["{{AuctionAdConfig/seller}}"].
 1. TODO: [=map/Set=] |browserSignals|["topLevelSeller"] if there was a top-level seller.
-1. TODO: Run [=evaluating a reporting script=] with |buyerReportingScript| "reportWin", and «
+1. Run [=evaluating a reporting script=] with |buyerReportingScript| "reportWin", and «
    |auctionSignals|, |perBuyerSignals|, |sellerSignals|, |browserSignals| ».
 1. TODO: Set URLs passed to sendReportTo() into the FencedFrameConfig so they can be fetched when
   ad renders.
@@ -1110,7 +1107,8 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   1. If |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"] [=map/exists=]:
     1. Let |modelingSignals| be |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"].
     1. If |modelingSignals| is greater than or equal to 0 and less than 4096:
-      1. Set |bid|'s [=generated bid/modeling signals=] to |modelingSignals|
+      1. Set |bid|'s [=generated bid/modeling signals=] to |modelingSignals|.
+  1. TODO: calculate bid duration and set |bid|'s [=generated bid/bid duration=].
   1. Return |bid|.
 
 </div>
@@ -1503,7 +1501,7 @@ An auction config is a [=struct=] with the following items:
   passed to corresponding buyer's script runner.
 : <dfn>per buyer timeouts</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
-  durations in milliseconds.
+  [=durations=] in milliseconds.
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the runtime of
   corresponding buyer's `generateBid()` script.
 : <dfn>all buyers timeout</dfn>
@@ -1575,16 +1573,21 @@ The output of running a FLEDGE generateBid() script, which needs to be scored by
 : <dfn>ad</dfn>
 :: A [=string=]. JSON string to be passed to the scoring function.
 : <dfn>ad descriptor</dfn>
-:: An [=ad descriptor=].
+:: An [=ad descriptor=]. Render URL and size of the bid's ad.
 : <dfn>ad component descriptors</dfn>
-:: Null or a [=list=] of [=ad descriptors=].
+:: Null or a [=list=] of [=ad descriptors=]. Ad components associated with bid, if any. May have at
+  most 20 URLs. Must be null if the interest group making this bid has a null
+  [=interest group/ad components=] field.
 : <dfn>ad cost</dfn>
 :: Null or a {{double}}. Advertiser click or conversion cost passed from `generateBid()` to
-  reportWin().
+  reportWin(). Invalid values, such as negative, infinite, and NaN values, will be ignored and not
+  passed. Only the lowest 12 bits will be passed.
 : <dfn>modeling signals</dfn>
-:: Null or a {{unsigned short}}.
+:: Null or a {{unsigned short}}. A 0-4095 integer (12-bits) passed to `reportWin()`, with noising.
 : <dfn>interest group</dfn>
 :: An [=interest group=], whose `generateBid()` invocation generated this bid.
+: <dfn>bid duration</dfn>
+:: A [=duration=] in milliseconds. How long it took to run the generateBid() script.
 
 </dl>
 
