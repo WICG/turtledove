@@ -612,8 +612,20 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
     1. Let |fullSignalsUrl| be the result of [=building trusted bidding signals url=] with
       |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|.
-    1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl|,
+    1. Let |trustedBiddingSignals| be null.
+    1. TODO: Also handle prioritization.
+    1. Let |trustedBiddingSignalsBytes| be the result of [=fetching resource=] with |fullSignalsUrl|,
       "application/json", and null.
+    1. If |trustedBiddingSignalsBytes| is not failure:
+      1. Let |trustedBiddingSignalsParsed| be the result of [=parsing JSON bytes to an Infra value=] with
+        |trustedBiddingSignalsBytes|.
+      1. If |trustedBiddingSignalsParsed| is not failure, and if |trustedBiddingSignalsParsed| is
+          an [=ordered map=]:
+        1. Let |trustedBiddingSignals| be a new [=map=].
+        1. [=set/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=] :
+          1. If |trustedBiddingSignalsParsed|["keys"] [=map/exists=], and
+            |trustedBiddingSignalsParsed|["keys"][|key|] exists:
+            1. [=map/Set=] |trustedBiddingSignals|[|key|] to |trustedBiddingSignalsParsed|["keys"][|key|].
     1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. TODO: Let |interestGroup| be ... from |ig| ... minus priority and prioritySignalsOverrides and any browser-defined pieces
@@ -631,7 +643,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. Let |biddingScript| be the result of [=fetching resource=] with |ig|'s
           [=interest group/bidding url=], "text/javascript", and null. If |biddingScript| is an error,
           [=iteration/continue=].
-        1. TODO: Split off just the |trustedBiddingSignals| needed for each generateBid() invocation. 
         1. Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
            |biddingScript| and « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
            |trustedBiddingSignals|, |browserSignals| ».
@@ -673,32 +684,30 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
   from multiple invocations of [=score and rank a bid=] and passing them all to a single invocation
   of [=building trusted scoring signals url=] -- the network response has to be parsed to pull out the pieces
   relevant to each scoreAd() call.
+1. Let |trustedScoringSignals| be null.
 1. Let |trustedScoringSignalsBytes| be the result of [=fetching resource=] with |fullSignalsUrl|
   and "application/json". TODO: share some logic here with trustedBiddingSignals.
-1. TODO: If |trustedScoringSignalsBytes| is failure, fail the auction with manually_aborted set to
-  true.
-1. Let |trustedScoringSignalsParsed| be the result of [=parsing JSON bytes to an Infra value=] with
-  |trustedScoringSignalsBytes|.
-1. TODO: If |trustedScoringSignalsParsed| is failure, or if or if |trustedScoringSignalsParsed| is not an
-  [=ordered map=], fail the auction with manually_aborted set to true.
-1. Let |trustedScoringSignals| be a new [=map=].
-1. [=Assert=]: |renderUrls|'s [=list/size=] is at most 1.
-1. [=list/For each=] |renderUrl| in |renderUrls|:
-  1. If |trustedScoringSignalsParsed|["renderUrls"] [=map/exists=] and
-    |trustedScoringSignalsParsed|["renderUrls"][|renderUrl|] [=map/exists=]:
-    1. Let |renderUrlValue| be a new [=map=].
-    1. [=map/Set=] |renderUrlValue|[|renderUrl|] to |trustedScoringSignalsParsed|["renderUrls"][|renderUrl|].
-    1. [=map/Set=] |trustedScoringSignals|["renderUrl"] to |renderUrlValue|.
-1. Let |adComponentRenderUrlsValue| be a new [=map=].
-1. [=list/For each=] |adComponentRenderUrl| in |adComponentRenderUrls|:
-  1. If |trustedScoringSignalsParsed|["adComponentRenderUrls"] [=map/exists=] and
-    |trustedScoringSignalsParsed|["adComponentRenderUrls"][|adComponentRenderUrl|] [=map/exists=]:
-    1. [=map/Set=] |adComponentRenderUrlsValue|[|adComponentRenderUrl|] to
-        |trustedScoringSignalsParsed|["adComponentRenderUrls"][|adComponentRenderUrl|].
-1. If |adComponentRenderUrlsValue| is not [=map/is empty|empty=]:
-  1. [=map/Set=] |trustedScoringSignals|["adComponentRenderUrls"] to |adComponentRenderUrlsValue|.
-
-
+1. If |trustedScoringSignalsBytes| is not failure:
+  1. Let |trustedScoringSignalsParsed| be the result of [=parsing JSON bytes to an Infra value=] with
+    |trustedScoringSignalsBytes|.
+  1. If |trustedScoringSignalsParsed| is not failure, and if |trustedScoringSignalsParsed| is
+      an [=ordered map=]:
+    1. Let |trustedScoringSignals| be a new [=map=].
+    1. [=Assert=]: |renderUrls|'s [=list/size=] is at most 1.
+    1. [=list/For each=] |renderUrl| in |renderUrls|:
+      1. If |trustedScoringSignalsParsed|["renderUrls"] [=map/exists=] and
+        |trustedScoringSignalsParsed|["renderUrls"][|renderUrl|] [=map/exists=]:
+        1. Let |renderUrlValue| be a new [=map=].
+        1. [=map/Set=] |renderUrlValue|[|renderUrl|] to |trustedScoringSignalsParsed|["renderUrls"][|renderUrl|].
+        1. [=map/Set=] |trustedScoringSignals|["renderUrl"] to |renderUrlValue|.
+    1. Let |adComponentRenderUrlsValue| be a new [=map=].
+    1. [=list/For each=] |adComponentRenderUrl| in |adComponentRenderUrls|:
+      1. If |trustedScoringSignalsParsed|["adComponentRenderUrls"] [=map/exists=] and
+        |trustedScoringSignalsParsed|["adComponentRenderUrls"][|adComponentRenderUrl|] [=map/exists=]:
+        1. [=map/Set=] |adComponentRenderUrlsValue|[|adComponentRenderUrl|] to
+            |trustedScoringSignalsParsed|["adComponentRenderUrls"][|adComponentRenderUrl|].
+    1. If |adComponentRenderUrlsValue| is not [=map/is empty|empty=]:
+      1. [=map/Set=] |trustedScoringSignals|["adComponentRenderUrls"] to |adComponentRenderUrlsValue|.
 1. Let |adMetadata| be |generatedBid|'s [=generated bid/ad=].
 1. Let |bid| be |generatedBid|'s [=generated bid/bid=].
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
