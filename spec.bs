@@ -1,6 +1,6 @@
 <pre class="metadata">
-Title: FLEDGE
-Shortname: fledge
+Title: Protected Audience (formerly FLEDGE)
+Shortname: protected-audience
 Repository: WICG/turtledove
 Inline Github Issues: true
 Group: WICG
@@ -37,8 +37,8 @@ spec: ECMASCRIPT; urlPrefix: https://tc39.es/ecma262/
 
 <em>This section is non-normative</em>
 
-The FLEDGE API facilitates selecting an advertisement to display to a user based on a previous
-interaction with the advertiser or advertising network.
+The Protected Audience API facilitates selecting an advertisement to display to a user based on a
+previous interaction with the advertiser or advertising network.
 
 When a user's interactions with an advertiser indicate an interest in something, the advertiser can
 ask the browser to record this interest on-device by calling
@@ -386,22 +386,24 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   1. If |signal| is [=AbortSignal/aborted=], then [=reject=] |p| with |signal|'s
     [=AbortSignal/abort reason=] and return |p|.
   1. [=AbortSignal/Add|Add the following abort steps=] to |signal|:
-    1. TODO: Specify. Abort the auction. If the auction has already completed, this has no
-      effect. Otherwise, stop running new worklet functions, and do not cause side-effects, like
-      reporting and updating bid statistics.
     1. [=Reject=] |p| with |signal|’s [=AbortSignal/abort reason=].
+    1. TODO: Update bidCount for interest groups that participated in the auction.
+    1. Run [=interest group update=] with |auctionConfig|'s
+      [=auction config/interest group buyers=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|,
-    null, and |global|.
-  1. TODO: If |winner| is failure, fail the auction with manually_aborted set to true.
-  1. TODO: If |winner| is null, fail the auction with manually_aborted set to false.
-  1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
-    with |winner|'s [=generated bid/ad descriptor=]. TODO: resolve |p| with urn-uuid, instead of a
-    URL.
-  1. Run [=generate reporting URLs=] with |auctionConfig| and |winner|.
-  1. Execute the algorithm [=interest group update=] using
-    |config|["{{AuctionAdConfig/interestGroupBuyers}}"] as `owners`.
+  1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|, null
+    and |global|.
+  1. If |winner| is null:
+    1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
+      with null.
+  1. Otherwise:
+    1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to resolve |p|
+
+      with |winner|'s [=generated bid/ad descriptor=]. TODO: resolve |p| with urn-uuid, instead of a
+      URL.
+    1. Run [=generate reporting URLs=] with |auctionConfig| and |winner|.
+  1. Run [=interest group update=] with |auctionConfig|'s [=auction config/interest group buyers=].
   1. TODO: Update bidCount and prevWins for interest groups that participated in the auction.
 1. Return |p|.
 
@@ -612,8 +614,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|.
     1. Let |trustedBiddingSignals| be the result of [=fetching resource=] with |fullSignalsUrl|,
       "application/json", and null.
-    1. TODO: If |trustedBiddingSignals| is failure, fail the auction with manually_aborted set to
-      true.
     1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. TODO: Let |interestGroup| be ... from |ig| ... minus priority and prioritySignalsOverrides and any browser-defined pieces
@@ -1650,7 +1650,8 @@ representing [=interest group/joining origins=], and whose [=map/values=] are [=
 
 <h3 dfn-type=dfn>Generated bid</h3>
 
-The output of running a FLEDGE generateBid() script, which needs to be scored by the seller.
+The output of running a Protected Audience generateBid() script, which needs to be scored by
+the seller.
 
 <dl dfn-for="generated bid">
 : <dfn>bid</dfn>
@@ -1707,7 +1708,7 @@ Width and height of an ad.
 
 <h3 dfn-type=dfn>Score ad output</h3>
 
-The output of running a FLEDGE scoreAd() script.
+The output of running a Protected Audience scoreAd() script.
 
 <dl dfn-for="score ad output">
 : <dfn>desirability</dfn>
@@ -1744,9 +1745,10 @@ Information of the auction's leading bid so far when ranking scored bids.
 
 # Privacy Considerations # {#privacy-considerations}
 
-FLEDGE aims to advance the privacy of remarketing and custom audience advertising on the web, so
-naturally privacy considerations are paramount to FLEDGE’s design.  Partitioning data by site is
-the central mechanism to prevent joining a user’s identity across sites:
+Protected Audience aims to advance the privacy of remarketing and custom audience
+advertising on the web, so naturally privacy considerations are paramount to Protected Audience’s
+design.  Partitioning data by site is the central mechanism to prevent joining a user’s identity
+across sites:
 - Interest group definitions come from just one site, the site that called
   {{Navigator/joinAdInterestGroup()}}.
 - Bidding (`generateBid()`) and scoring (`scoreAd()`) scripts are exposed to interest group data
@@ -1765,11 +1767,11 @@ the central mechanism to prevent joining a user’s identity across sites:
 
 # Security Considerations # {#security-considerations}
 
-FLEDGE involves the browser running untrusted JavaScript downloaded from multiple parties, so
-security concerns are top of mind. Fortunately FLEDGE is a highly constrained API not attempting to
-be a general purpose execution environment. Execution of this JavaScript is controlled and limited
-as follows:
-- FLEDGE requires the origin of the scripts’ URLs to match that of the origin of the
+Protected Audience involves the browser running untrusted JavaScript downloaded from multiple
+parties, so security concerns are top of mind. Fortunately Protected Audience is a highly
+constrained API not attempting to be a general purpose execution environment. Execution of this
+JavaScript is controlled and limited as follows:
+- Protected Audience requires the origin of the scripts’ URLs to match that of the origin of the
   interest group owner, which is in turn required to match the origin of the context calling the
   {{Navigator/joinAdInterestGroup()}}.
 - URL schemes are required to be HTTPS.
@@ -1777,7 +1779,7 @@ as follows:
 - Responses are required to contain the `X-Allow-FLEDGE: true` header.
 - Fetches are uncredentialed.
 
-FLEDGE has the browser pass in several “browserSignals” to the bidding script that give the script
+Protected Audience has the browser pass in several “browserSignals” to the bidding script that give the script
 unforgeable information about the context that the script is being executed in. This way bidders
 and sellers have the choice to only participate in auctions where they are comfortable working with
 the involved parties.
@@ -1787,5 +1789,5 @@ The [execution environment](#script-runners) available to these scripts is the a
 a bid. It supports only ECMAScript. It does not support network, storage, timer, date, DOM,
 Workers, postMessage, Navigator or Window APIs.
 
-FLEDGE adds Permission-Policies to control access to the FLEDGE APIs to give sites and embedders
-the ability to clamp down on use of the APIs as they see fit.
+Protected Audience adds Permission-Policies to control access to the Protected Audience APIs to
+give sites and embedders the ability to clamp down on use of the APIs as they see fit.
