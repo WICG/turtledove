@@ -707,28 +707,21 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null:
   1. Set |updateLeadingBid| to true.
 1. Otherwise if |score| is greater than |leadingBidInfo|'s [=leading bid info/top score=]:
-  1. [=Update highest scoring other bid=] with |leadingBidInfo|'s [=leading bid info/top score=],
-    |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/bid=], and |leadingBidInfo|.
   1. Set |leadingBidInfo|'s [=leading bid info/top bids count=] to 1.
   1. Set |updateLeadingBid| to true.
 1. Otherwise if |score| equals |leadingBidInfo|'s [=leading bid info/top score=]:
   1. Increment |leadingBidInfo|'s [=leading bid info/top bids count=] by 1.
   1. Set |updateLeadingBid| to true with 1 in |leadingBidInfo|'s [=leading bid info/top bids count=]
     chance.
-  1. If |updateLeadingBid| is true:
-    1. Let |leadingBidValue| be |leadingBidInfo|'s [=leading bid info/leading bid=]'s
-      [=generated bid/bid=].
-    1. If |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/modified bid=] is
-      not null:
-      1. Set |leadingBidValue| to |leadingBidInfo|'s [=leading bid info/leading bid=]'s
-        [=generated bid/modified bid=].
-    1. [=Update highest scoring other bid=] with |score|, |leadingBidValue|, and |leadingBidInfo|.
-  1. Otherwise:
-    1. [=Update highest scoring other bid=] with |score|, |bidValue|, and |leadingBidInfo|.
+  1. If |updateLeadingBid| is false:
+    1. [=Update highest scoring other bid=] with |score|, |leadingBidInfo|'s
+      [=leading bid info/leading bid=], and |leadingBidInfo|.
 1. Otherwise if |score| is greater than or equal to |leadingBidInfo|'s
   [=leading bid info/second highest score=]:
   1. [=Update highest scoring other bid=] with |score|, |bidValue|, and |leadingBidInfo|.
 1. If |updateLeadingBid| is true:
+  1. [=Update highest scoring other bid=] with |leadingBidInfo|'s [=leading bid info/top score=],
+    |leadingBidInfo|'s [=leading bid info/leading bid=], and |leadingBidInfo|.
   1. Set |leadingBidInfo|'s [=leading bid info/top score=] to |score|.
   1. Set |leadingBidInfo|'s [=leading bid info/leading bid=] to |generatedBid|.
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |auctionConfig|.
@@ -738,18 +731,17 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 </div>
 
 <div algorithm>
-To <dfn>update highest scoring other bid</dfn> given a {{double}} |score|, a {{double}} |bidValue|,
+To <dfn>update highest scoring other bid</dfn> given a {{double}} |score|, a [=generated bid=] |bid|,
 and a [=leading bid info=] |leadingBidInfo|:
 
   1. If |score| is greater than |leadingBidInfo|'s [=leading bid info/second highest score=]:
-    1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] to |bidValue|.
+    1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] to |bid|.
     1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bids count=] to 1.
     1. Set |leadingBidInfo|'s [=leading bid info/second highest score=] to score.
   1. Otherwise if |score| is equal to |leadingBidInfo|'s [=leading bid info/second highest score=]:
     1. Increment |leadingBidInfo|'s [=leading bid info/highest scoring other bids count=] by 1.
-    1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] to |bidValue| with 1 in
+    1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] to |bid| with 1 in
       |leadingBidInfo|'s [=leading bid info/highest scoring other bids count=] chance.
-  1. TODO: Set |leadingBidInfo|'s [=leading bid info/made highest scoring other bid=].
 </div>
 
 To <dfn>create a request</dfn> given a [=URL=] |url|, a [=string=] |accept|, and an [=origin=] or
@@ -896,7 +888,7 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
   1. [=map/Set=] |browserSignals|["`desirability`"] to |leadingBidInfo|'s
     [=leading bid info/top score=].
   1. [=map/Set=] |browserSignals|["`highestScoringOtherBid`"] to |leadingBidInfo|'s
-    [=leading bid info/highest scoring other bid=].
+    [=leading bid info/highest scoring other bid=]'s [=generated bid/bid=].
   1. TODO: if trusted scoring signals response data version is null, set
     |browserSignals|["`dataVersion`"].
   1. If |leadingBidInfo|'s [=leading bid info/top level seller=] is not null, [=map/Set=]
@@ -1792,15 +1784,12 @@ Information of the auction's leading bid so far when ranking scored bids.
 :: Null or a [=generated bid=]. The leading bid of the auction so far.
 : <dfn>auction config</dfn>
 :: An [=auction config=]. The auction config of the auction which generated [=leading bid info/leading bid=].
-: <dfn>highest scoring other bid</dfn>
-:: A {{double}}. Defaulting to 0.0. The numeric value of the bid that got the second highest score.
 : <dfn>second highest score</dfn>
 :: A {{double}}. Defaulting to 0.0. The second highest score so far.
 : <dfn>highest scoring other bids count</dfn>
 :: An integer. Defaulting to 0. The number of bids with the same `second highest score`.
-: <dfn>made highest scoring other bid</dfn>
-:: A [=boolean=]. Defaulting to false. Being true if the interest group owner was the only bidder
-  that made bids with the second highest score.
+: <dfn>highest scoring other bid</dfn>
+:: Null or a [=generated bid=]. The second highest scoring other bid.
 : <dfn>top level seller</dfn>
 :: Null or a [=string=]. Being null for top level auction.
 : <dfn>top level seller signals</dfn>
