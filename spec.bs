@@ -827,6 +827,7 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
     null.
   1. Let |signals| be null.
   1. Let |dataVersion| be null.
+  1. Let |formatVersionString| be null.
   1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
     a [=response=] |response| and |responseBody|:
     1. If [=validate fetching response=] with |response|, |responseBody| and "`application/json`"
@@ -841,15 +842,18 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
       1. If |dataVersion| is a parsing exception, set |signals| to failure and return.
       1. TODO: Check whether version is consistent for all keys requested by this interest group.
     1. If |isBiddingSignal| is true:
-      1. Let |formatVersionString| be the result of [=header list/getting a structured field value=]
+      1. Set |formatVersionString| to the result of [=header list/getting a structured field value=]
         "X-protected-audience-bidding-signals-format-version" from |headers|.
-      1. Set |signals| to the result of [=parsing JSON bytes to an Infra value=] |responseBody|
-        (TODO: based on |formatVersionString|).
+      1. Set |signals| to the result of [=parsing JSON bytes to an Infra value=] |responseBody|.
     1. Otherwise:
       1. Set |signals| to the result of [=parsing JSON bytes to an Infra value=] |responseBody|
   1. Wait for |signals| to be set.
   1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return « null,
     null ».
+  1. If |formatVersionString| is not null and is "`2`":
+    1. If |signals|["`keys`"] [=map/exists=], then set |signals| to |signals|["`keys`"].
+    1. Otherwise, return « null, null ».
+    1. If |signals| is not an [=ordered map=], return « null, null ».
   1. Return « |signals|, |dataVersion| ».
 </div>
 
