@@ -31,6 +31,9 @@ spec: ECMASCRIPT; urlPrefix: https://tc39.es/ecma262/
     text: abrupt completion; url: sec-completion-record-specification-type
     text: throw completion; url: sec-completion-record-specification-type
     text: ScriptEvaluation; url: sec-runtime-semantics-scriptevaluation
+    text: HostDefined; url: script-record
+    text: ScriptOrModule; url: table-state-components-for-all-execution-contexts
+    text: GetActiveScriptOrModule; url: sec-getactivescriptormodule
 </pre>
 
 # Introduction # {#intro}
@@ -971,7 +974,7 @@ of the following global objects:
 
     1. Let |result| be [=ParseScript=](|script|, |realm|, `empty`).
 
-       Note: The resulting [=ECMAScript/Script Record=] will have no \[[HostDefined]] component,
+       Note: The resulting [=ECMAScript/Script Record=] will have no [[[=HostDefined=]]] component,
        unlike traditional [=scripts=] on the web platform.
 
     1. If |result| is a list of errors, return
@@ -979,7 +982,9 @@ of the following global objects:
 
     1. [=Assert=]: |result| is a [=ECMAScript/Script Record=].
 
-    1. Set the [[HostDefined]] field in the ScriptOrModule component of |realmExecutionContext| to |exportObject|.
+    1. Set |result|'s [[[=HostDefined=]]] to |exportObject|.
+    
+    1. Set |realmExecutionContext|'s [=ScriptOrModule=] to |result|.
   
     1. *Prepare to run script*: Push |realmExecutionContext| onto the [=ECMAScript/execution context
        stack|JavaScript execution context stack=]; it is now the [=ECMAScript/running execution
@@ -1068,9 +1073,8 @@ Issue: Finish specifying the following algorithms.
 <div algorithm>
   The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid()</dfn> method steps are:
 
-  1. Let |biddingScriptExportObject| be the [=bidding script export info=] in the [[HostDefined]]
-    field in the ScriptOrModule component of the [=ECMAScript/running execution
-       context|running JavaScript execution context=].
+  1. Let |biddingScriptExportObject| be the [=bidding script export info=] in
+    [=GetActiveScriptOrModule=]().[[[=HostDefined=]]].
   1. Set |biddingScriptExportObject|'s [=bidding script export info/bid=] to null.
   1. Return true.
 </div>
@@ -1135,10 +1139,12 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid(|generateBidOutput|)</dfn>
   method steps are:
 
-  1. Clear the bid. TODO: expand.
+  1. Let |biddingScriptExportObject| be the [=bidding script export info=] in
+    [=GetActiveScriptOrModule=]().[[[=HostDefined=]]].
+  1. Set |biddingScriptExportObject|'s [=bidding script export info/bid=] to null.
   1. Let |bidToSet| be the result of [=converting GenerateBidOutput to generated bid=] with |generateBidOutput|.
   1. If |bidToSet| is failure, return false.
-  1. Set bid to |bidToSet|.
+  1. Set |biddingScriptExportObject|'s [=bidding script export info/bid=] to |bidToSet|.
   1. Return true.
 </div>
 
@@ -1180,17 +1186,19 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setPriority(|priority|)</dfn>
   method steps are:
 
-  1. If not first time calling this method:
-    1. Reset priority and return.
-  1. Set priority to |priority|. TODO: figure out how to integrate this into generateBid().
+  1. Let |biddingScriptExportObject| be the [=bidding script export info=] in
+    [=GetActiveScriptOrModule=]().[[[=HostDefined=]]].
+  1. Set |biddingScriptExportObject|'s [=bidding script export info/priority=] to |priority|.
 </div>
 
 <div algorithm>
   The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setPrioritySignalsOverride(|key|, |priority|)</dfn>
   method steps are:
 
-  1. Update (insert or assign) prioritySignals[|key|] to |priority|. TODO: figure out how to
-    integrate this into generateBid().
+  1. Let |biddingScriptExportObject| be the [=bidding script export info=] in
+    [=GetActiveScriptOrModule=]().[[[=HostDefined=]]].
+  1. [=map/Set=] |biddingScriptExportObject|'s
+    [=bidding script export info/priority signals=][|key|] to |priority|.
 </div>
 
 <div algorithm>
@@ -1680,11 +1688,14 @@ Information of the auction's leading bid so far when ranking scored bids.
 
 Information exported from a generateBid() invocation.
 
-<dl dfn-for="ad descriptor">
+<dl dfn-for="bidding script export info">
 : <dfn>bid</dfn>
 :: Null or a [=generated bid=], which will be set by setBid().
 : <dfn>priority</dfn>
 :: Null or a {{double}}, which will be set by setPriority().
+: <dfn>priority signals</dfn>
+:: An [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+  {{double}}, which will be set by setPrioritySignalsOverride().
 
 </dl>
 
