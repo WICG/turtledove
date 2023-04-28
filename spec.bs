@@ -1136,6 +1136,25 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 </div>
 
 <div algorithm>
+  To <dfn>parse an AdRender dimension value</dfn> given a [=string=] |input|:
+  
+  1. Let |position| be a [=string/position variable=], initially pointing at the start of |input|.
+  1. [=Strip leading and trailing ASCII whitespace=] from |input|.
+  1. If |input| [=string/starts with=] "`0`" but [=string/is=] not "`0`" and does not
+     [=string/start with=] "`0.`", then return null as the dimension and the empty string as the dimension unit.
+  1. [=Collect a sequence of code points=] that are [=ASCII digits=] or U+002E (.), given |position|. Let that be |dimensionString|.
+  1. If |dimensionString| is the empty string, then return null as the dimension and the empty string as the dimension unit.
+  1. Let |dimension| be the result of parsing |dimensionString| using the [=rules for parsing floating-point number values=].
+  1. If |dimension| is an error, then return null as the dimension and the empty string as the dimension unit.
+  1. [=Collect a sequence of code points=] that are [=ASCII lower alpha=], given |position|. Let that be |dimensionUnit|.
+  1. If |position| is not past the end of |input|, then return null as the dimension and the empty string as the dimension unit.
+  1. If |dimensionUnit| [=string/is=] the empty string, then set |dimensionUnit| to "px".
+  1. If |dimensionUnit| [=string/is=] not "px", "sh", or "sw", then return null as the dimension and the empty string as the
+     dimension unit.
+  1. Return |dimension| as the dimension and |dimensionUnit| as the dimension unit.
+</div>
+
+<div algorithm>
   To <dfn>convert an ad render</dfn> given an {{AdRender}} |adRender|:
 
   1. If |adRender|["{{AdRender/url}}"] does not [=map/exist=], return false.
@@ -1146,14 +1165,12 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
   1. If |adRender|["{{AdRender/width}}"] [=map/exists=]:
     1. If |adRender|["{{AdRender/height}}"] does not [=map/exist=], return failure.
-    1. Let |width| and |widthUnit| be the result of parsing (TODO) |adRender|["{{AdRender/width}}"].
-    1. Let |height| and |heightUnit| be the result of parsing (TODO)
-      |adRender|["{{AdRender/height}}"].
-    1. Return failure if any of the following conditions hold:
-      * |width| is non-positive, or non-finite;
-      * |height| is non-positive, or non-finite;
-      * |widthUnit| is not "px" or "sw";
-      * |heightUnit| is not "px" or "sw".
+    1. Let |width| and |widthUnit| be the dimension and dimension unit that results from running
+      [=parse an AdRender dimension value=] with |adRender|["{{AdRender/width}}"], respectively.
+    1. If |width| is null, return failure.
+    1. Let |height| and |heightUnit| be the dimension and dimension unit that results from running
+      [=parse an AdRender dimension value=] with |adRender|["{{AdRender/height}}"], respectively.
+    1. If |height| is null, return failure.
     1. Let |adSize| be a new [=ad size=].
     1. Set |adSize|'s [=ad size/width=] to |width|, [=ad size/width units=] to |widthUnit|,
       [=ad size/height=] to |height|, [=ad size/height units=] to |heightUnit|.
@@ -1623,11 +1640,11 @@ Width and height of an ad.
 : <dfn>width</dfn>
 :: A {{double}}.
 : <dfn>width units</dfn>
-:: A [=string=]. Can only be one of "px" (pixel) and "sw" (screen width).
+:: A [=string=]. Can only be one of "px" (pixel), "sh" (screen height), and "sw" (screen width).
 : <dfn>height</dfn>
 :: A {{double}}.
 : <dfn>height units</dfn>
-:: A [=string=]. Can only be one of "px" (pixel) and "sw" (screen width).
+:: A [=string=]. Can only be one of "px" (pixel), "sh" (screen height), and "sw" (screen width).
 
 </dl>
 
