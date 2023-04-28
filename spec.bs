@@ -879,8 +879,10 @@ of the following global objects:
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script| and a [=list=] of arguments
   |arguments|:
 
-    1. Return the result of [=evaluating a script=] with
-       {{InterestGroupBiddingScriptRunnerGlobalScope}}, |script|, "`generateBid`", and |arguments|.
+    1. Let |biddingScriptExportObject| be a new [=bidding script export info=].
+    1. Let |result| be result of [=evaluating a script=] with
+       {{InterestGroupBiddingScriptRunnerGlobalScope}}, |biddingScriptExportObject|, |script|, "`generateBid`", and |arguments|.
+    1. Return |result|, |biddingScriptExportObject|.
 </div>
 
 <div algorithm>
@@ -931,7 +933,7 @@ of the following global objects:
 </div>
 
 <div algorithm>
-  To <dfn>evaluate a script</dfn> with a global type |globalType|, [=string=] |script|, [=string=]
+  To <dfn>evaluate a script</dfn> with a global type |globalType|, an object |exportObject|, [=string=] |script|, [=string=]
   |functionName|, and a [=list=] |arguments|, run these steps. They return a [=ECMAScript/Completion
   Record=], which is either an [=abrupt completion=] (in the case of a parse failure or execution
   error), or a normal completion populated with the [=ECMAScript/ECMAScript language value=] result
@@ -977,6 +979,8 @@ of the following global objects:
 
     1. [=Assert=]: |result| is a [=ECMAScript/Script Record=].
 
+    1. Set the [[HostDefined]] field in the ScriptOrModule component of |realmExecutionContext| to |exportObject|.
+  
     1. *Prepare to run script*: Push |realmExecutionContext| onto the [=ECMAScript/execution context
        stack|JavaScript execution context stack=]; it is now the [=ECMAScript/running execution
        context|running JavaScript execution context=].
@@ -1064,7 +1068,10 @@ Issue: Finish specifying the following algorithms.
 <div algorithm>
   The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid()</dfn> method steps are:
 
-  1. Clear the bid. TODO: figure out how to integrate this with runAdAuction.
+  1. Let |biddingScriptExportObject| be the [=bidding script export info=] in the [[HostDefined]]
+    field in the ScriptOrModule component of the [=ECMAScript/running execution
+       context|running JavaScript execution context=].
+  1. Set |biddingScriptExportObject|'s [=bidding script export info/bid=] to null.
   1. Return true.
 </div>
 
@@ -1665,6 +1672,19 @@ Information of the auction's leading bid so far when ranking scored bids.
 :: An integer. Defaulting to 0. The number of bids with the same `top score`.
 : <dfn>leading bid</dfn>
 :: Null or a [=generated bid=]. The leading bid of the auction so far.
+
+</dl>
+
+
+<h3 dfn-type=dfn>Bidding script export info</h3>
+
+Information exported from a generateBid() invocation.
+
+<dl dfn-for="ad descriptor">
+: <dfn>bid</dfn>
+:: Null or a [=generated bid=], which will be set by setBid().
+: <dfn>priority</dfn>
+:: Null or a {{double}}, which will be set by setPriority().
 
 </dl>
 
