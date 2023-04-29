@@ -819,6 +819,11 @@ To <dfn>fetch script</dfn> given a [=URL=] |url|:
   1. Return |script|.
 </div>
 
+The <dfn http-header><code>Data-Version</code></dfn> HTTP response header is a
+[=structured header=] whose value must be an [=structured header/integer=].
+The <dfn http-header><code>X-protected-audience-bidding-signals-format-version</code></dfn>
+HTTP response header is a [=structured header=] whose value must be an [=structured header/integer=].
+
 <div algorithm>
 To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |isBiddingSignal|:
 
@@ -832,22 +837,20 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
     1. If [=validate fetching response=] with |response|, |responseBody| and "`application/json`"
       returns false, set |signals| to failure and return.
     1. Let |headers| be |response|'s [=response/header list=].
-    1. Let |dataVersionString| be the result of [=header list/getting a structured field value=]
-      "Data-Version" from |headers|.
-    1. If |dataVersionString| is not null:
-      1. Let |dataVersion| be the result of parsing |dataVersionString| to an {{unsigned long}}.
-      1. If |dataVersion| is a parsing exception, set |signals| to failure and return.
+    1. Set |dataVersion| to the result of [=header list/getting a structured field value=]
+      given [:Data-Version:] and "`item`" from |headers|.
+    1. If |dataVersion| is not null:
+      1. If |dataVersion| is not an integer, or is less than 0 or more than 4294967295, set
+        |signals| to failure and return.
       1. TODO: Check whether version is consistent for all keys requested by this interest group.
     1. If |isBiddingSignal| is true:
-      1. Set |formatVersionString| to the result of [=header list/getting a structured field value=]
-        "X-protected-audience-bidding-signals-format-version" from |headers|.
-      1. Set |signals| to the result of [=parsing JSON bytes to an Infra value=] |responseBody|.
-    1. Otherwise:
-      1. Set |signals| to the result of [=parsing JSON bytes to an Infra value=] |responseBody|
+      1. Set |formatVersion| to the result of [=header list/getting a structured field value=]
+        given [:X-protected-audience-bidding-signals-format-version:] and "`item`" from |headers|.
+    1. Set |signals| to the result of [=parsing JSON bytes to an Infra value=] |responseBody|.
   1. Wait for |signals| to be set.
   1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return « null,
     null ».
-  1. If |formatVersionString| is not null and [=string/is=] "`2`":
+  1. If |formatVersion| is not null, is an integer, and is 2:
     1. If |signals|["`keys`"] [=map/exists=], then set |signals| to |signals|["`keys`"].
     1. Otherwise, return « null, null ».
     1. If |signals| is not an [=ordered map=], return « null, null ».
