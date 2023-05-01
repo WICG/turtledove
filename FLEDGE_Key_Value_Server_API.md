@@ -1,3 +1,5 @@
+> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+
 # FLEDGE Key/Value Server APIs Explainer
 
 Authors:
@@ -277,7 +279,7 @@ Requests are not compressed. Compression could save size but may add latency.  R
 
 In the request, one major difference from [V1](#query-api-version-1) is that the keys are now grouped. There is a tree-like hierarchy:
 
-*   Each request contains one or more partitions. Each partition is a collection of keys that can be processed together by the service without any potential privacy leakage (For example, if the server uses User Defined Functions to process, one UDF call can only process one partition). This is controlled by the client. For example, Chrome may put all keys from the same interest group into one partition. With certain optimizations allowed, such as with [“executionMode: groupByOrigin”](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#12-interest-group-attributes), keys from all interest groups with the same joining site may be in one partition.
+*   Each request contains one or more partitions. Each partition is a collection of keys that can be processed together by the service without any potential privacy leakage (For example, if the server uses User Defined Functions to process, one UDF call can only process one partition). This is controlled by the client. For example, Chrome may put all keys from the same interest group into one partition. With certain optimizations allowed, such as with [“executionMode: group-by-origin”](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#12-interest-group-attributes), keys from all interest groups with the same joining site may be in one partition.
 *   Each partition contains one or more key groups. Each key group has its unique attributes among all key groups in the partition. The attributes are represented by a list of “Tags”. Besides tags, the key group contains a list of keys to look up.
 *   Each partition has a unique id.
 *   Each partition has a compression group field. Results of partitions belonging to the same compression group can be compressed together in the response. Different compression groups must be compressed separately. See more details below. The expected use case by the client is that interest groups from the same joining origin and owner can be in the same compression group.
@@ -823,7 +825,7 @@ We will use [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-oh
 
 *   0x0020 DHKEM(X25519, HKDF-SHA256) for KEM (Key encapsulation mechanisms)
 *   0x0001 HKDF-SHA256 for KDF (key derivation functions)
-*   AES128GCM for AEAD scheme.
+*   AES256GCM for AEAD scheme.
 
 ## Server Internal APIs and procedures
 

@@ -1,3 +1,5 @@
+> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+
 # Extended Private Aggregation Reporting in FLEDGE
 
 ## Introduction
@@ -103,7 +105,7 @@ which do not win](#reporting-for-bids-which-do-not-win)), but also have the valu
 do this, we introduce a field to the “contributions” object called `signalValue`. This field allows
 the report to depend on post auction information. A `signalValue` object is composed of the following
 values:
-* `baseValue`: The name of the auction result value we want to report. For instance, winningBid. 
+* `baseValue`: The name of the auction result value we want to report. For instance, winning-bid. 
 * `scale`: Optional scale factor by which we want to multiply the auction result value. This is
 useful for controlling the amount of noise added by the aggregation service. Scale is applied
 before `offset` is added.
@@ -121,7 +123,7 @@ function generateBid(...) {
     {
       bucket: 1596n, // represents a bucket for interest group x winning bid price
       value: {
-        baseValue: "winningBid",
+        baseValue: "winning-bid",
         scale: 2, // Number which will be multiplied by browser value
         offset: -bid * 2 // Numbers which will be added to browser value, after scaling
        }
@@ -136,7 +138,7 @@ contribution would be generated as:
 
 ```
 bucket: 1596n
-value: 200 // = (winningBid * scale) + offset = (200 * 2) + (-100 * 2)
+value: 200 // = (winning-bid * scale) + offset = (200 * 2) + (-100 * 2)
 ```
 This would correspond to the gap by which the advertiser lost the auction, scaled by 2.
 Scaling is important as it allows bidders to better control the amount of noise which will
@@ -147,8 +149,7 @@ be added to various aggregation keys.
 Similar to the above example, sometimes, the key that we want to aggregate over may depend
 on the outcome of an auction. To solve this use case we provide an object called `signalBucket`.
 The final bucket id of the bucket will depend on the outcome of the auction. The following
-example allows the buyer to keep track of how many times an ad was not shown because it was
-throttled due to not passing a k-anonymity threshold.
+example allows the buyer to keep track of how many times their bid was rejected for particular reasons.
 
 
 ```
@@ -157,8 +158,8 @@ function generateBid(...) {
     "reserved.loss",
     {
       bucket: {
-        baseValue: "bidRejectReason",
-        offset: 255n // Offset buckets
+        baseValue: "bid-reject-reason",
+        offset: 500n // Offset buckets
        },
       value: 1
     });
@@ -166,11 +167,10 @@ function generateBid(...) {
   return bid;
 }
 ```
-If the bid is rejected for not reaching the k-anonymity threshold, this would result in a
-contribution being generated:
+If the bid is rejected for being below auction floor, this would result in a contribution being generated:
 
 ```
-bucket: 255n // 255n + 0n (0n is the value associated with not reaching the threshold, see bidRejectReason below)
+bucket: 502n // 500n + 2n (2n is the value associated with bids below auction floor, see bid-reject-reason below)
 value: 1
 ```
 
@@ -195,7 +195,7 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
   * `script-run-time`: milliseconds of CPU time that the calling function required, when called.
   * `signals-fetch-time`: milliseconds required to fetch the trusted bidding or scoring signals, when called from `generateBid()` or `scoreAd()` respectively.
   * `bid-reject-reason`: one of the following values:
-    * 0: indicates ad creative URL did not meet the k-anonymity threshold
+    * 0: indicates seller rejected bid without providing a reason, i.e., bid reject reason not available
     * 1: indicates seller rejected bid because “Invalid Bid”
     * 2: indicates seller rejected bid because “Bid was Below Auction Floor”
     * 3: indicates seller rejected bid because “Creative Filtered - Pending Approval by Exchange”
@@ -203,6 +203,7 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
     * 5: indicates seller rejected bid because “Creative Filtered - Blocked by Publisher”
     * 6: indicates seller rejected bid because “Creative Filtered - Language Exclusions”
     * 7: indicates seller rejected bid because “Creative Filtered - Category Exclusions”
+    * 8: indicates seller rejected bid because "Creative Filtered - Did Not Meet The K-anonymity Threshold"
     * Perhaps other values indicating:
       * generateBid() hitting timeout
       * The auction was aborted (i.e. calling endAdAuction())
@@ -293,10 +294,10 @@ const auctionConfig = {
 
 The seller is able to measure the following for each buyer, assuming permission is granted via the indicated `sellerCapabilities` for that seller:
 * `interestGroupCount`: The number of the interest groups which could participate in the auction
-(i.e. the number of intererest groups on the machine for this buyer -- note the count *isn't* limited by the auction config's `perBuyerGroupLimits`). This requires the `interestGroupCounts` `sellerCapabilities` permission.
-* `bidCount`: The number of valid bids generated by this buyer. This requires the `interestGroupCounts` `sellerCapabilities` permission.
-* `totalGenerateBidLatency`: The sum of execution time for all generateBids() in milliseconds. This requires the `latencyStats` `sellerCapabilities` permission.
-* `totalSignalsFetchLatency`: The total time spent fetching trusted buyer signals in milliseconds. If the interest group didn't fetch any trusted signals, then 0 milliseconds is reported. This requires the `latencyStats` `sellerCapabilities` permission.
+(i.e. the number of intererest groups on the machine for this buyer -- note the count *isn't* limited by the auction config's `perBuyerGroupLimits`). This requires the `interest-group-counts` `sellerCapabilities` permission.
+* `bidCount`: The number of valid bids generated by this buyer. This requires the `interest-group-counts` `sellerCapabilities` permission.
+* `totalGenerateBidLatency`: The sum of execution time for all generateBids() in milliseconds. This requires the `latency-stats` `sellerCapabilities` permission.
+* `totalSignalsFetchLatency`: The total time spent fetching trusted buyer signals in milliseconds. If the interest group didn't fetch any trusted signals, then 0 milliseconds is reported. This requires the `latency-stats` `sellerCapabilities` permission.
 
 Given the `auctionConfig` above, if buyer1.com had two interest groups participate in the auction,
 their trusted buyer signals fetch taking 10ms, their `generateBid()` scripts running for 2ms and
@@ -318,13 +319,15 @@ Here's an example of what the `sellerCapabilities` interest group field could lo
 
 ```
 'sellerCapabilities': {
-  'https://seller.com': [ 'interestGroupCounts', 'latencyStats' ],
-  'https://seller2.com': [ 'latencyStats' ],
-  '*': [ 'interestGroupCounts' ]
+  'https://seller.com': [ 'interest-group-counts', 'latency-stats' ],
+  'https://seller2.com': [ 'latency-stats' ],
+  '*': [ 'interest-group-counts' ]
 }
 ```
 
-This would grant both `interestGroupCounts` and `latencyStats` permission to https://seller.com, `latencyStats` to https://seller2.com, and `interestGroupCounts` to all other sellers.
+This would grant both `interest-group-counts` and `latency-stats` permission to https://seller.com, `latency-stats` to https://seller2.com, and `interest-group-counts` to all other sellers.
+
+NOTE: the permission names `interestGroupCounts` and `latencyStats` are *deprecated* and will be removed in a future Chrome release, as they do not follow the documented WebIDL [naming conventions](https://webidl.spec.whatwg.org/#idl-enums).
 
 ## Data Volume
 
