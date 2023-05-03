@@ -8,19 +8,162 @@ This document seeks to propose an API for web pages to perform FLEDGE auctions u
 
 ## Steps to perform a FLEDGE auction using B&A
 
-#### Step 1: Get auction blob from browser
+### Step 1: Get auction blob from browser
 
-To execute an on-server FLEDGE auction, sellers begin by calling `navigator.startServerAdAuction()` which returns a `Promise<Uint8Array>`:
-```  
-const auctionBlob = await navigator.startServerAdAuction({
+To execute an on-server FLEDGE auction, sellers begin by calling `navigator.getInterestGroupAdAuctionData()` with returns a `Promise<Uint8Array>`:
+
+```javascript
+const auctionBlob = navigator.getInterestGroupAdAuctionData({
   // ‘seller’ works the same as for runAdAuction.
   'seller': 'https://www.example-ssp.com',
 });
 ```
- 
-The returned `auctionBlob` is HPKE encrypted with an encryption header like that used in OHTTP. The encryption is done using public keys the browser fetches that correspond with private keys only shared with B&A servers running in TEEs. `auctionBlob` is a blob of compressed data derived from the interest groups stored in the browser and formatted like [the B&A API](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md) dictates. This derived information will include the contents of the interest groups, the k-anonymity status of the interest groups’ ads, and information like `joinCount`, `bidCount`, and `prevWins`. The blob contains padding (e.g. exponentially bucketed total sizes) to reduce the cross-site identity leaked by its size.
+The returned `auctionBlob` is a Promise that will resolve to a `Uint8Array` containing an HPKE encrypted RemarketingInput for a `SelectAd` B&A call with an encryption header like that used in [OHTTP](https://www.ietf.org/archive/id/draft-thomson-http-oblivious-01.html). The encryption is done using public keys the browser fetches that correspond with private keys only shared with B&A servers running in TEEs. `auctionBlob` is a blob of compressed data derived from the interest groups stored in the browser to be provided to [the B&A API](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md). This derived information will include the contents of the interest groups, and information that the B&A server can pass unmodified in `browserSignals` for bidding like `joinCount`, `bidCount`, and `prevWins`. The blob is padded to either one of the 7 allowed sizes to reduce the cross-site identity leaked by its size. In the event the `auctionBlob` cannot be created the resulting array will have zero length.
 
-#### Step 2: Send auction blob to servers
+Prior to encryption the `auctionBlob` is encoded as [CBOR](https://www.rfc-editor.org/rfc/rfc8949.html) with the following schema (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "version": { "type": "number" },
+    "compression": {
+      "enum": ["gzip", "brotli", "none"],
+      "default": "gzip"
+    },
+    "publisher": { "type": "string" },
+    "interestGroups": {
+      "type": "object",
+      "description": "Lists of interest group data keyed by owner origin",
+      "patternProperties": {
+        "^https://": {
+            "type": "string",
+            "description": "CBOR encoded list of interest groups compressed using the method described in `compression`."
+        }
+      }
+    }
+  },
+  "required": [
+    "version", "interestGroupData", "nonce", "publisher"
+  ]
+}
+```
+
+where each compressed interest group data `interestGroupData` is an object where the key is the owner and value is a CBOR encoded list of the interest groups for that owner, compressed with the algorithm specified in `compression`.
+
+The schema for the CBOR encoding of the interest group (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)) is:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {"type": "string"},
+    "biddingSignalsKeys": {
+      "type": "array",
+      "items": {"type": "string", "uniqueItems": true}
+    },
+    "userBiddingSignals": {"type": "string"},
+    "ads": {
+      "type": "array",
+      "items": {
+       "$ref": "#/$defs/adRenderId"
+      }
+    },
+    "adComponents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/adRenderId"
+      }
+    },
+    "browserSignals": {
+      "type": "object",
+      "properties": {
+        "joinCount": {
+          "type": "number",
+          "description": "Number of times the group was joined in the last 30 days."
+        },
+        "bidCount": {
+          "type": "number",
+          "description": "Number of times the group bid in an auction in the last 30 days."
+        },
+        "recency": {
+          "type": "number",
+          "description": "The most recent join time for this group expressed in seconds before the containing auctionBlob was requested."
+        },
+        "prevWins": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "description":
+              "Tuple of time-ad pairs for a previous win for this interest group that occurred in the last 30 days. The time is specified in seconds before the containing auctionBlob was requested.",
+            "items": false,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              { "$ref": "#/$defs/adRenderId"}
+            ]
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "$defs": {
+    "adRenderId": {
+      "type": "string",
+      "description": "Ad Render ID that can be used to reconstruct the ad object based on server-side information. Sent instead of the ad object."
+    }
+  }
+}
+```
+
+This roughly matches the specification of the interest group in the B&A explainer.
+
+#### Example
+
+The JSON equivalent of an example `auctionBlob` would look like this:
+
+```json
+{
+  "version": 0,
+  "compression": "gzip",
+  "publisher": "https://foo.com",
+  "interestGroups": {
+    "https://owner1.com": "<bytes>",
+    "https://owner2.com": "<bytes>"
+  }
+}
+```
+
+Where `<bytes>` are filled in with the appropriate binary data.
+
+The JSON equivalent of the interest group would look like the following example:
+```json
+{
+  "name": "cars",
+  "biddingSignalsKeys": ["key1", "key2"],
+  "userBiddingSignals": "signals",
+  "ads": [
+    "<adRenderId>",
+    "<adRenderId2>"
+  ],
+  "componentAds": [],
+  "browserSignals": {
+    "joinCount": 2,
+    "bidCount": 0,
+    "recency": 1684226729,
+    "prevWins": [
+        [-20, "<adRenderId>"],
+        [-100, "<adRenderId>"]
+      ]
+  }
+}
+```
+
+### Step 2: Send auction blob to servers
 
 A seller’s JavaScript then sends auctionBlob to their server, perhaps by initiating a [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) using a PUT or POST method with auctionBlob attached as the request body:
 
@@ -34,7 +177,80 @@ fetch('https://www.example-ssp.com/auction', {
 
 Their server then passes the blob off to B&A servers which conduct on-server auctions. Several on-server auctions may take place, e.g. one for each ad slot on the page. Each on-server auction returns an encrypted response blob.
 
-#### Step 3: Get response blobs to browser
+The response blob from a B&A auction contains an HPKE encrypted AuctionResult. This response has an encryption header like that used in OHTTP and serves as the response for the encryption context started by the `auctionBlob` from `navigator.getInterestGroupAdAuctionData`. The response is a blob of compressed data, using the same schema version and same compression algorithm as specified in the `auctionBlob`. The response needs to be padded to a set of sizes to limit the amount of information leaking from the auction.
+
+Prior to compression and encryption, the AuctionResult is encoded as CBOR with the following schema (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "adRenderURL": {
+      "type": "string",
+      "description": "The ad that will be rendered on the end user's device."
+    },
+    "adComponents": {
+      "type": "array",
+      "description": "List of render URLs for component ads to be displayed as part of this ad",
+      "items": {
+        "type": "string"
+      }
+    },
+    "interestGroupName": {
+      "type": "string",
+      "description": "Name of the InterestGroup (Custom Audience), the remarketing ad belongs to."
+    },
+    "interestGroupOwner": {
+      "type": "string",
+      "description": "ETLD+1 Origin of the Buyer who owns the interest group that includes the ad."
+    },
+
+    "biddingGroups": {
+      "type": "object",
+      "description": "Map from interest group owner to a list of interest groups that bid in this auction",
+      "patternProperties": {
+        "^https://": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "description": "Indices of interest groups in the original request for this owner that submitted a bid for this auction. This is used to update the bidCount for these interest groups. Note that we send the index instead of the name because that allows us to avoid compressing separately."
+          }
+        }
+      }
+    },
+
+    "score": {
+      "type": "number",
+      "description": "Score of the ad determined during the auction. Any value that is zero or negative indicates that the ad cannot win the auction. The winner of the auction would be the ad that was given the highest score. The output from ScoreAd() script is desirability that implies score for an ad."
+    },
+    "bid": {
+      "type": "number",
+      "description": "Bid price corresponding to an ad."
+    },
+
+    "isChaff": {
+      "type": "boolean",
+      "description": "Boolean to indicate that there is no remarketing winner from the auction. AuctionResult may be ignored by the client (after decryption) if this is set to true."
+    },
+
+    "sellerReportingURL": { "type": "string"},
+    "sellerFencedFrameReporting": {
+      "type": "object",
+      "description": "Map from event type to reporting URL.",
+      "additionalProperties": { "type": "string" }
+    },
+
+    "buyerReportingURL": { "type": "string"},
+    "buyerFencedFrameReporting": {
+      "type": "object",
+      "description": "Map from event type to reporting URL.",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}
+```
+
+### Step 3: Get response blobs to browser
 
 These response blobs are sent back to the browser. A seller’s JavaScript can [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) them back to the browser, perhaps as the response body to the Fetch initiated in Step 2. This Fetch is initiated with a flag to prepare the browser to look for `Ad-Auction-Result` HTTP response headers:
 <pre>
@@ -42,38 +258,39 @@ fetch('https://www.example-ssp.com/auction', { <b>adAuctionHeaders: true</b>, �
 </pre>
 Note that `adAuctionHeaders` only works with HTTPS requests.
 For each response blob sent back to the browser, the seller’s server attaches a response header containing the SHA-256 hash of the response blob:
-  
+
 ```
 Ad-Auction-Result: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 ```
 
 It should be noted that the `fetch()` request using `adAuctionHeaders` can also be used to send `auctionBlob` (e.g. in the request body) and receive the response blob (e.g. in the response body).
 
-#### Step 4: Complete auction in browser
+### Step 4: Complete auction in browser
 
 Now the auction can be completed by passing the response blob to runAdAuction() as part of a specially configured auction configuration:
 
-```
+```javascript
 const auctionResultPromise = navigator.runAdAuction({
   'seller': 'https://www.example-ssp.com',
+  'interestGroupBuyers': ['https://www.example-dsp.com'],
   'serverResponse': response_blob,
 });
 ```
 
-The browser verifies it witnessed a Fetch request to the `seller`’s origin with `“adAuctionHeaders: true”` that included a `Ad-Auction-Result` header with hash of `response_blob`. Since the Fetch request required HTTPS which authenticates the seller’s origin, this verification authenticates that the seller produced the response blob. `runAdAuction()` then proceeds as if the auction happened on device. This specially configured auction configuration can be used for single seller auctions or as a component auction configuration for multi-seller auctions (in this case the `startServerAuction()` call must include a `top_level_seller` field that must later match the top-level seller passed to `runAdAuction()`). To facilitate parallelizing on-device and on-server auctions, the `serverResponse` could be a Promise that resolves to the blob later.
+The browser verifies it witnessed a Fetch request to the `seller`’s origin with `“adAuctionHeaders: true”` that included a `Ad-Auction-Result` header with hash of `response_blob`. It also checks that the `response_blob` corresponds to a `navigator.getInterestGroupAdAuctionData()` request that was sent from the same frame. Since the Fetch request required HTTPS which authenticates the seller’s origin, this verification authenticates that the seller produced the response blob. `runAdAuction()` then proceeds as if the auction happened on device. This specially configured auction configuration can be used for single seller auctions or as a component auction configuration for multi-seller auctions (in this case the `getInterestGroupAdAuctionData()` call must include a `top_level_seller` field that must later match the top-level seller passed to `runAdAuction()`). To facilitate parallelizing on-device and on-server auctions, the `serverResponse` could be a Promise that resolves to a `Uint8Array` containing the blob later.
 
 ## Privacy Considerations
 
 The blobs sent to and received from the B&A servers can contain data that could be used to re-identify the user across different web sites. To prevent this data from being used to join the user’s cross-site identities, the data is encrypted with public keys whose corresponding private keys are only shared with B&A server instances running in TEEs and running public open-source binaries known to prevent cross-site identity joins (e.g. by preventing logging or other activities which might permit such joins).
 
-There are however side-channels that could leak a much smaller amount of cross-site identity, the first and most obvious one being the size of the encrypted blob. To minimize this leakage further we suggest above that the encrypted blob be padded. For example, we can use exponential bucketing for request blobs. Keeping the number of buckets small, for instance, 7 will lead to <3 bits of leaked entropy per call to `startServerAdAuction()`. Some [mitigation techniques for the “1-bit leak”](https://github.com/WICG/turtledove/issues/211#issuecomment-889269834) may be applicable here.  
+There are however side-channels that could leak a much smaller amount of cross-site identity, the first and most obvious one being the size of the encrypted blob. To minimize this leakage further we suggest above that the encrypted blob be padded. For example, we can use exponential bucketing for request blobs. Keeping the number of buckets small, for instance, 7 will lead to <3 bits of leaked entropy per call to `getInterestGroupAdAuctionData()`. Some [mitigation techniques for the “1-bit leak”](https://github.com/WICG/turtledove/issues/211#issuecomment-889269834) may be applicable here.
 
-To prevent repeated calls to `startServerAdAuction()` leaking additional cross-site identity, we’ve decided, at least in the near-term, to make repeated calls to `startServerAdAuction()` return a blob of the same size. The tradeoff being that the blob cannot be dependent on inputs to `startServerAdAuction()`. For example whereas `runAdAuction()` normally takes a `interestGroupBuyers` list dictating which buyers to include in the auction, `startServerAdAuction()`’s returned blob cannot depend on such a list and so must include all buyers that have stored interest groups on the device. This may cause larger blobs, and in turn slower network requests sending and receiving those blobs. This could in turn make the API more susceptible to abuse, e.g. fake calls to `joinAdInterestGroup()` bloating the blob size with spam interest groups.
+To prevent repeated calls to `getInterestGroupAdAuctionData()` leaking additional cross-site identity, we’ve decided, at least in the near-term, to make repeated calls to `getInterestGroupAdAuctionData()` return a blob of the same size. The tradeoff being that the blob cannot be dependent on inputs to `getInterestGroupAdAuctionData()`. For example whereas `runAdAuction()` normally takes a `interestGroupBuyers` list dictating which buyers to include in the auction, `getInterestGroupAdAuctionData()`’s returned blob cannot depend on such a list and so must include all buyers that have stored interest groups on the device. This may cause larger blobs, and in turn slower network requests sending and receiving those blobs. This could in turn make the API more susceptible to abuse, e.g. fake calls to `joinAdInterestGroup()` bloating the blob size with spam interest groups.
 
 Another way to prevent the encrypted blob’s size from being a leak is to have the browser send the blob directly to the B&A servers instead of exposing it to JavaScript at all. Requiring this today has significant downsides:
 
 1.  This would hugely complicate the B&A server’s interactions and API, making adoption likely infeasible. The B&A API would no longer be a RESTful API as it would have to coordinate communication from both the browser and other servers (e.g. contextual auction server).
-    
+
 1.  This would also require the on-device JavaScript to determine whether to send the FLEDGE request to the B&A server, perhaps at a time before it has the results of the contextual auction which might influence the decision. Without this information the device would have to send the encrypted blob for every ad request, even in cases where the contextual call indicated it was wasteful to do so.
 
 Exposing size of the blob is a temporary leak that we hope to mitigate in the future:
