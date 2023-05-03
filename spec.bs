@@ -690,15 +690,13 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
 |generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
 {{unsigned long}}-or-null |biddingDataVersion|, and a [=boolean=] |isComponentAuction|:
-1. Let |renderUrls| be a new [=list/is empty|empty=] [=list=].
-1. Let |adComponentRenderUrls| be a new [=list/is empty|empty=] [=list=].
-1. If |generatedBid|'s [=generated bid/ad descriptor=] is not null:
-  1. [=list/Append=] |generatedBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] to
-    |renderUrls|.
+1. Let |renderUrls| be a new [=set/is empty|empty=] [=set=].
+1. Let |adComponentRenderUrls| be a new [=set/is empty|empty=] [=set=].
+1. [=set/Append=] |generatedBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] to |renderUrls|.
 1. If |generatedBid|'s [=generated bid/ad component descriptors=] is not null:
-  1. [=list/For each=] |adComponentDescriptor| in |generatedBid|'s
+  1. [=set/For each=] |adComponentDescriptor| in |generatedBid|'s
     [=generated bid/ad component descriptors=]:
-    1. [=list/Append=] |adComponentDescriptor|'s [=ad descriptor/url=] to |adComponentRenderUrls|.
+    1. [=set/Append=] |adComponentDescriptor|'s [=ad descriptor/url=] to |adComponentRenderUrls|.
 1. Let |fullSignalsUrl| be the result of [=building trusted scoring signals url=] with |auctionConfig|'s
   [=auction config/trusted scoring signals url=], |renderUrls|, |adComponentRenderUrls|,
   |auctionConfig|'s [=auction config/seller experiment group id=].
@@ -712,15 +710,15 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
   |fullSignalsUrl| and false.
 1. If |allTrustedScoringSignals| is an [=ordered map=]:
   1. Let |trustedScoringSignals| be a new [=map=].
-  1. [=Assert=]: |renderUrls|'s [=list/size=] is at most 1.
-  1. [=list/For each=] |renderUrl| in |renderUrls|:
+  1. [=Assert=]: |renderUrls|'s [=set/size=] is 1.
+  1. [=set/For each=] |renderUrl| in |renderUrls|:
     1. If |allTrustedScoringSignals|["`renderUrls`"] [=map/exists=] and
       |allTrustedScoringSignals|["`renderUrls`"][|renderUrl|] [=map/exists=]:
       1. Let |renderUrlValue| be a new [=map=].
       1. [=map/Set=] |renderUrlValue|[|renderUrl|] to |allTrustedScoringSignals|["`renderUrls`"][|renderUrl|].
       1. [=map/Set=] |trustedScoringSignals|["`renderUrl`"] to |renderUrlValue|.
   1. Let |adComponentRenderUrlsValue| be a new [=map=].
-  1. [=list/For each=] |adComponentRenderUrl| in |adComponentRenderUrls|:
+  1. [=set/For each=] |adComponentRenderUrl| in |adComponentRenderUrls|:
     1. If |allTrustedScoringSignals|["`adComponentRenderUrls`"] [=map/exists=] and
       |allTrustedScoringSignals|["`adComponentRenderUrls`"][|adComponentRenderUrl|] [=map/exists=]:
       1. [=map/Set=] |adComponentRenderUrlsValue|[|adComponentRenderUrl|] to
@@ -894,7 +892,7 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
   1. Wait for |signals| to be set.
   1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return « null,
     null ».
-  1. If |formatVersion| is not null, is an integer, and is 2:
+  1. If |formatVersion| is 2:
     1. If |signals|["`keys`"] [=map/exists=], then set |signals| to |signals|["`keys`"].
     1. TODO: handle priority vector.
     1. Otherwise, return « null, null ».
@@ -959,7 +957,7 @@ To <dfn>build trusted scoring signals url</dfn> given a [=URL=] |signalsUrl|, an
   1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
     |renderUrlsStrings|.
 1. If |adComponentRenderUrls| is not [=set/is empty|empty=]:
-  1. [=list/Append=] "adComponentRenderUrls=" to |queryParamsList|.
+  1. [=list/Append=] "&adComponentRenderUrls=" to |queryParamsList|.
   1. Let |adComponentRenderUrlsStrings| be a new [=list/is empty|empty=] [=list=].
   1. [=list/For each=] |adComponentRenderUrl| of |adComponentRenderUrls|:
     1. [=list/Append=] the result of [=URL serializer|serialization=] of |adComponentRenderUrl| to
