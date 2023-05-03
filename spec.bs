@@ -215,6 +215,8 @@ are:
 
 </div>
 
+<div algorithm>
+
 The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig| is the sum of:
 1. The [=string/length=] of the [=serialization of an origin|serialization=] of |ig|'s
   [=interest group/owner=].
@@ -250,6 +252,8 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
     [=interest group ad/render url=].
   1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
+
+</div>
 
 <div algorithm>
 
@@ -504,7 +508,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     are {{double}}.
   1. [=map/for each=] |k| → |v| of |value|:
     1. If |k| [=string/starts with=] "browserSignals.", [=exception/throw=] a {{TypeError}}.
-    1. Set |signals|[|k|] to |v|.
+    1. [=map/Set=] |signals|[|k|] to |v|.
   1. If |key| equals to "*", then set |auctionConfig|'s
     [=auction config/all buyers priority signals=] to |value|, and [=iteration/continue=].
   1. Let |buyer| be the result of [=parsing an origin=] with |key|. If it fails, [=exception/throw=]
@@ -520,10 +524,14 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 
 </div>
 
+<div algorithm>
+
 To <dfn>parse an origin</dfn> given a [=string=] |input|:
 1. Let |url| be the result of running the [=URL parser=] on |input|.
 1. If |url| is an error, then return failure.
 1. Return |url|'s [=url/origin=].
+
+</div>
 
 <div algorithm>
 
@@ -972,11 +980,15 @@ To <dfn>build trusted scoring signals url</dfn> given a [=URL=] |signalsUrl|, an
 
 </div>
 
+<div algorithm>
+
 To <dfn>serialize an integer</dfn>, represent it as a string of the shortest possible decimal
 number.
 
 Issue: This would ideally be replaced by a more descriptive algorithm in Infra. See
 <a href="https://github.com/whatwg/infra/issues/201">infra/201</a>
+
+</div>
 
 <div algorithm>
 To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
@@ -995,7 +1007,7 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
     [=leading bid info/top score=].
   1. [=map/Set=] |browserSignals|["`highestScoringOtherBid`"] to |leadingBidInfo|'s
     [=leading bid info/highest scoring other bid=]'s [=generated bid/bid=].
-  1. TODO: if trusted scoring signals response data version is null, set
+  1. TODO: if trusted scoring signals response data version is not null, set
     |browserSignals|["`dataVersion`"].
   1. If |leadingBidInfo|'s [=leading bid info/top level seller=] is not null, [=map/set=]
     |browserSignals|["`topLevelSeller`"] to it.
@@ -1011,8 +1023,8 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
   1. Set |config| to |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
-  1. TODO: Let |sellerSignals| be the result of [=evaluating a reporting script=] with
-     |sellerReportingScript|, "reportResult", and
+  1. Let |sellerSignals| be the result of [=evaluating a reporting script=] with
+     |sellerReportingScript|, "`reportResult`", and
      « |config|'s [=auction config/auction signals=], |browserSignals| ».
   1. TODO: Set URLs passed to sendReportTo() into the FencedFrameConfig so they can be fetched when
     ad renders.
@@ -1055,7 +1067,7 @@ To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=stri
       [=generated bid/modeling signals=].
   1. Let |buyerReportingScript| be the result of [=fetching script=] with |winner|'s
     [=generated bid/interest group=]'s [=interest group/bidding url=].
-  1. Run [=evaluating a reporting script=] with |buyerReportingScript|, "reportWin", and «
+  1. Run [=evaluating a reporting script=] with |buyerReportingScript|, "`reportWin`", and «
     |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/auction signals=],
     |perBuyerSignalsForBuyer|, |sellerSignals|, |browserSignals| ».
   1. TODO: Set URLs passed to sendReportTo() into the FencedFrameConfig so they can be fetched when
@@ -1098,6 +1110,12 @@ of the following global objects:
  * {{InterestGroupBiddingScriptRunnerGlobalScope}}
  * {{InterestGroupScoringScriptRunnerGlobalScope}}
  * {{InterestGroupReportingScriptRunnerGlobalScope}}
+
+Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
+<dfn for=InterestGroupBiddingScriptRunnerGlobalScope>bid</dfn>, which is a [=generated bid=], a
+<dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority</dfn>, which is a {{double}} or null,
+and a <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority signals</dfn>, which is an
+[=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}}.
 
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script| and a [=list=] of arguments
@@ -1283,19 +1301,18 @@ dictionary GenerateBidOutput {
 };
 </pre>
 
-Issue: Finish specifying the following algorithms.
-
 <div algorithm>
   The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid()</dfn> method steps are:
 
-  1. Clear the bid. TODO: figure out how to integrate this with runAdAuction.
+  1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=]
+    to null.
   1. Return true.
 </div>
 
 <div algorithm>
 
 To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOutput}} |generateBidOutput|:
-  1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] is less than or equal to 0, return true.
+  1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] is less than or equal to 0, return failure.
   1. If it's a component auction (TODO: how to integrate with runAdAuction), but
     |generateBidOutput|["{{GenerateBidOutput/allowComponentAuction}}"] is false, return failure.
   1. Let |bid| be a new [=generated bid=].
@@ -1346,17 +1363,6 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   1. TODO: calculate bid duration and set |bid|'s [=generated bid/bid duration=].
   1. Return |bid|.
 
-</div>
-
-<div algorithm>
-  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid(|generateBidOutput|)</dfn>
-  method steps are:
-
-  1. Clear the bid. TODO: expand.
-  1. Let |bidToSet| be the result of [=converting GenerateBidOutput to generated bid=] with |generateBidOutput|.
-  1. If |bidToSet| is failure, return false.
-  1. Set bid to |bidToSet|.
-  1. Return true.
 </div>
 
 <div algorithm>
@@ -1411,20 +1417,38 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 </div>
 
 <div algorithm>
+  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid(|generateBidOutput|)</dfn>
+  method steps are:
+
+  1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=]
+    to null.
+  1. Let |bidToSet| be the result of [=converting GenerateBidOutput to generated bid=] with
+    |generateBidOutput|.
+  1. If |bidToSet| is failure, return false.
+  1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=]
+    to |bidToSet|.
+  1. Return true.
+</div>
+
+<div algorithm>
   The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setPriority(|priority|)</dfn>
   method steps are:
 
-  1. If not first time calling this method:
-    1. Reset priority and return.
-  1. Set priority to |priority|. TODO: figure out how to integrate this into generateBid().
+  1. If [=this=]'s [=relevant global object=]'s
+    [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null:
+    1. Set [=this=]'s [=relevant global object=]'s
+      [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] to null.
+    1. Return.
+  1. Set [=this=]'s [=relevant global object=]'s
+    [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] to |priority|.
 </div>
 
 <div algorithm>
   The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setPrioritySignalsOverride(|key|, |priority|)</dfn>
   method steps are:
 
-  1. Update (insert or assign) prioritySignals[|key|] to |priority|. TODO: figure out how to
-    integrate this into generateBid().
+  1. [=map/Set=] [=this=]'s [=relevant global object=]'s
+    [=InterestGroupBiddingScriptRunnerGlobalScope/priority signals=][|key|] to |priority|.
 </div>
 
 <div algorithm>
