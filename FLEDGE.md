@@ -155,9 +155,19 @@ The `executionMode` attribute is optional, and may contain one of the following 
    mode does not have the same limitations on what top-level sites can join or leave
    the interest group.
 
-The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time.
+The `ads` list contains the various ads that the interest group might show.  Each entry is an object that must contain an `renderUrl` property with the URL for the ad that would be shown. An ad may also have the following optional properties:
 
-The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similarly to the `ads` field, each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time. Thanks to `ads` and `adsComponents` being separate fields, the buyer is able to update the `ads` field via the `updateUrl` without losing `adComponents` stored in the interest group.
+ * `adRenderId`: A short identifier for this ad in this context. When this field is specified it will be sent instead of the full ad object for [B&A server auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
+
+ * `buyerAndSellerReportingId`: If set, the value is used instead of the interest group name or `buyerReportingId` for reporting in `reportWin` and `reportResult`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
+
+ * `buyerReportingId`: If set, the value is used instead of the interest group name or `buyerReportingId` for reporting in `reportWin`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
+
+ * `metadata`: Arbitrary metadata that can be used at bidding time.
+
+ * `sizeGroup`: The name of the sizeGroup that this ad is associated with. If the size group is specified, these render URLs may contain macros `{%AD_WIDTH%}` and `{%AD_HEIGHT%}`, which will be automatically replaced with the appropriate width and height after an auction, so that the initial resource request can fetch appropriately sized assets.Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
+
+The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similarly to the `ads` field, each entry is an object that includes both a rendering URL, `adRenderId`, `sizeGroup`, and `metadata`. Thanks to `ads` and `adsComponents` being separate fields, the buyer is able to update the `ads` field via the `updateUrl` without losing `adComponents` stored in the interest group.
 
 All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`, `biddingWasmHelperURL`, and `trustedBiddingSignalsURL`) must point to URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for loading FLEDGE resources.
@@ -730,7 +740,7 @@ Ads often need to report on events that happen once the ad is rendered.  One com
 
 ##### 5.2.1 Noised and Bucketed Signals
 
-Some privacy-sensitive information (browser signals `joinCount`, `recency`, and the field `modelingSignals` passed from `generateBid()` to `reportWin()`) are made available to `reportWin()` under a special noising and bucketing scheme. 
+Some privacy-sensitive information (browser signals `joinCount`, `recency`, and the field `modelingSignals` passed from `generateBid()` to `reportWin()`) are made available to `reportWin()` under a special noising and bucketing scheme.
 
 All such fields use a noising scheme where, in a randomly-selected 1% of `reportWin()` calls, a uniformly-generated random value in the range of the field's bucketing scheme is returned instead of the true value.
 
@@ -745,5 +755,3 @@ These signals were requested in [issue 435](https://github.com/WICG/turtledove/i
 We also need to provide a mechanism for the _losing_ bidders in the auction to learn aggregate outcomes.  Certainly they should be able to count the number of times they bid, and losing ads should also be able to learn (in aggregate) some seller-provided information about e.g. the auction clearing price.  Likewise, a reporting mechanism should be available to buyers who attempted to bid with a creative that had not yet reached the k-anonymity threshold.
 
 This could be handled by a `reportLoss()` function running in the worklet.  Alternatively, the model of [SPURFOWL](https://github.com/AdRoll/privacy/blob/main/SPURFOWL.md) (an append-only datastore and later aggregate log processing) could be a good fit for this use case.  The details here are yet to be determined.
-
-
