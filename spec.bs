@@ -276,7 +276,8 @@ To <dfn>check interest group permissions</dfn> given an [=origin=]
   1. Set |resource| to |responseBody|.
 1. Wait for |resource| to be set.
 1. If |resource| is failure, then return false.
-1. Let |permissions| be the result of [=parsing a JSON string to an Infra value=], returning false on failure.
+1. Let |permissions| be the result of [=parsing a JSON string to an Infra value=] with |resource|, returning false
+  on failure.
 1. If |permissions| is not an [=ordered map=], then return false.
 1. If |isJoin| is true and |permissions|["`joinAdInterestGroup`"] [=map/exists=], then return |permissions|["`joinAdInterestGroup`"].
 1. If |isJoin| is false and |permissions|["`leaveAdInterestGroup`"] [=map/exists=], then return |permissions|["`leaveAdInterestGroup`"].
@@ -325,23 +326,32 @@ dictionary AuctionAdInterestGroupKey {
 };
 </xmp>
 
+<div algorithm>
+
 The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps
 are:
 
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
   "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
   "{{NotAllowedError}}" {{DOMException}}.
+1. Let |frameOrigin| be the [=relevant settings object=]'s [=environment settings object/origin=].
+1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "https".
 1. Let |owner| be the result of [=parsing an origin=] with
   |group|["{{AuctionAdInterestGroupKey/owner}}"].
 1. If |owner| is failure, [=exception/throw=] a {{TypeError}}.
 1. Let |name| be |group|["{{AuctionAdInterestGroupKey/name}}"].
 1. Let |p| be [=a new promise=].
 1. Run these steps [=in parallel=]:
-  1. TODO: document .well-known fetches for cross-origin leaves.
+  1. Let |permission| be the result of [=checking interest group permissions=] with 
+    |owner|, |frameOrigin|, and false.
+  1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
+     "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
   1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
   1. [=list/Remove=] [=interest groups=] from the user agent's [=interest group set=] whose
     [=interest group/owner=] is |owner| and [=interest group/name=] is |name|.
 1. Return |p|.
+
+</div>
 
 <h2 id="running-ad-auctions">Running Ad Auctions</h2>
 
