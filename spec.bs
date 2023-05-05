@@ -684,7 +684,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           a {{GenerateBidOutput}}.
         1. If an exception was caught in the previous step, [=iteration/continue=].
 
-        1. Let |generatedBid| be the result of [=converting GenerateBidOutput to generated bid=] with |generatedBidIDL|.
+        1. Let |generatedBid| be the result of [=converting GenerateBidOutput to generated bid=] with
+          |generatedBidIDL| and |ig|.
         1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
         1. If |generatedBid| is failure, [=iteration/continue=].
         1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
@@ -1047,8 +1048,10 @@ of the following global objects:
 Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
 <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>bid</dfn>, which is a [=generated bid=], a
 <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority</dfn>, which is a {{double}} or null,
-and a <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority signals</dfn>, which is an
-[=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}}.
+a <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority signals</dfn>, which is an
+[=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}}, and a
+<dfn for=InterestGroupBiddingScriptRunnerGlobalScope>interest group</dfn>, which is an
+[=interest group=].
 
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script| and a [=list=] of arguments
@@ -1244,7 +1247,8 @@ dictionary GenerateBidOutput {
 
 <div algorithm>
 
-To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOutput}} |generateBidOutput|:
+To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOutput}} |generateBidOutput|
+and an [=interest group=] |ig|:
   1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] is less than or equal to 0, return failure.
   1. If it's a component auction (TODO: how to integrate with runAdAuction), but
     |generateBidOutput|["{{GenerateBidOutput/allowComponentAuction}}"] is false, return failure.
@@ -1260,11 +1264,11 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
     1. Let |adUrl| be the result of running the [=URL parser=] on
       |generateBidOutput|["{{GenerateBidOutput/adRender}}"].
     1. If |adUrl| is an error, return failure.
-    1. If [=validating an ad url=] given |adUrl| returns false, return failure.
+    1. If [=validating an ad url=] given |adUrl|, |ig|, and false returns false, return failure.
     1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
   1. Otherwise:
     1. Set |adDescriptor| to the result of [=converting an ad render=] given
-      |generateBidOutput|["{{GenerateBidOutput/adRender}}"].
+      |generateBidOutput|["{{GenerateBidOutput/adRender}}"], |ig| and false.
     1. If |adDescriptor| is failure, return failure.
   1. Set |bid|'s [=generated bid/ad descriptor=] to |adDescriptor|.
   1. If |generateBidOutput|["{{GenerateBidOutput/adComponents}}"] [=map/exists=]:
@@ -1279,10 +1283,11 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
       1. If |component| is {{DOMString}}:
         1. Let |componentUrl| be the result of running the [=URL parser=] on |component|.
         1. If |componentUrl| is an error, return failure.
-        1. If [=validating an ad url=] given |componentUrl| returns false, return failure.
+        1. If [=validating an ad url=] given |componentUrl|, |ig|, and true returns false, return failure.
         1. Set |componentDescriptor|'s [=ad descriptor/url=] to |componentUrl|.
       1. Otherwise:
-        1. Set |componentDescriptor| to the result of [=converting an ad render=] given |component|.
+        1. Set |componentDescriptor| to the result of [=converting an ad render=] given |component|, |ig|,
+          and true.
         1. If |componentDescriptor| is failure, return failure.
       1. [=list/Append=] |componentDescriptor| to |adComponentDescriptors|.
     1. Set |bid|'s [=generated bid/ad component descriptors=] to |adComponentDescriptors|.
@@ -1317,12 +1322,13 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 </div>
 
 <div algorithm>
-  To <dfn>convert an ad render</dfn> given an {{AdRender}} |adRender|:
+  To <dfn>convert an ad render</dfn> given an {{AdRender}} |adRender|, an [=interest group=] |ig|,
+  and a [=boolean=] |isComponent|:
 
   1. If |adRender|["{{AdRender/url}}"] does not [=map/exist=], return false.
   1. Let |adUrl| be the result of running the [=URL parser=] on |adRender|["{{AdRender/url}}"].
   1. If |adUrl| is an error, return failure.
-  1. If [=validating an ad url=] given |adUrl| returns false, return failure.
+  1. If [=validating an ad url=] given |adUrl|, |ig|, and |isComponent| returns false, return failure.
   1. Let |adDescriptor| be a new [=ad descriptor=].
   1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
   1. If |adRender|["{{AdRender/width}}"] [=map/exists=]:
@@ -1341,11 +1347,17 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 </div>
 
 <div algorithm>
-  To <dfn>validate an ad url</dfn> given a [=URL=] |adUrl|:
+  To <dfn>validate an ad url</dfn> given a [=URL=] |adUrl|, an [=interest group=] |ig|, and a
+  [=boolean=] |isComponent|:
 
   1. If |adUrl|'s [=url/scheme=] is not "`https`", return false.
-  1. TODO: If it's not in the related interest group's ads, or is excluded, return false.
-  1. Return true.
+  1. If |isComponent|:
+    1. [=list/For each=] |ad| in |ig|'s [=interest group/ad components=]:
+      1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return true.
+  1. Otherwise:
+    1. [=list/For each=] |ad| in |ig|'s [=interest group/ads=]:
+      1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return true.
+  1. Return false.
 </div>
 
 <div algorithm>
@@ -1354,8 +1366,10 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 
   1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=]
     to null.
+  1. Let |ig| be [=this=]'s [=relevant global object=]'s
+    [=InterestGroupBiddingScriptRunnerGlobalScope/interest group=].
   1. Let |bidToSet| be the result of [=converting GenerateBidOutput to generated bid=] with
-    |generateBidOutput|.
+    |generateBidOutput| and |ig|.
   1. If |bidToSet| is failure, return false.
   1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=]
     to |bidToSet|.
