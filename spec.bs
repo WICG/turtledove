@@ -628,12 +628,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=this=]'s [=relevant settings object=]'s
   [=environment/top-level origin=]'s [=origin/host=].
 1. [=map/Set=] |browserSignals|["seller"] to |auctionConfig|'s [=auction config/seller=].
-1. Let |isComponentAuction| be true.
+1. Let |isComponentAuction| be false.
 1. If |topLevelAuctionConfig| is not null:
   1. [=map/Set=] |browserSignals|["topLevelSeller"] to the
     [=serialization of an origin|serialization=] of |topLevelAuctionConfig|'s
     [=auction config/seller=].
-  1. Set |isComponentAuction| to false.
+  1. Set |isComponentAuction| to true.
 1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -686,8 +686,11 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
           |generatedBidResult| to a {{GenerateBidOutput}}.
         1. If an exception was caught in the previous step, [=iteration/continue=].
+        1. Let |groupHasAdComponents| be true.
+        1. If |interestGroup|'s [=interest group/ad components=] is null:
+          1. Set |groupHasAdComponents| be false.
         1. Let |generatedBid| be the result of [=converting GenerateBidOutput to generated bid=]
-          with |generatedBidIDL| and |isComponentAuction|.
+          with |generatedBidIDL|, |isComponentAuction|, and |groupHasAdComponents|.
         1. If |generatedBid| is failure, [=iteration/continue=].
         1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
@@ -1048,14 +1051,23 @@ Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
 <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>bid</dfn>, which is a [=generated bid=], a
 <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority</dfn>, which is a {{double}} or null,
 a <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority signals</dfn>, which is an
-[=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}}, and a
+[=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}}, a
 <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>is component auction</dfn>, which is a
+[=boolean=], and a
+<dfn for=InterestGroupBiddingScriptRunnerGlobalScope>group has ad components</dfn>, which is a
 [=boolean=].
 
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script| and a [=list=] of arguments
   |arguments|:
 
+    1. Let |ig| be |arguments|[0].
+    1. Let |groupHasAdComponents| be true.
+    1. If |ig|'s [=interest group/ad components=] is null:
+      1. Set |groupHasAdComponents| be false.
+    1. Set [=this=]'s [=relevant global object=]'s
+      [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=] to
+      |groupHasAdComponents|.
     1. Let |numArguments| be |arguments|'s [=list/size=].
     1. Let |browserSignals| be |arguments|[|numArguments| - 1].
     1. Let |isComponentAuction| be fasle.
@@ -1254,7 +1266,7 @@ dictionary GenerateBidOutput {
 <div algorithm>
 
 To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOutput}}
-|generateBidOutput| and a [=boolean=] |isComponentAuction|:
+|generateBidOutput|, a [=boolean=] |isComponentAuction| and a [=boolean=] |groupHasAdComponents|:
   1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] is less than or equal to 0, return failure.
   1. If |isComponentAuction| is true, and
     |generateBidOutput|["{{GenerateBidOutput/allowComponentAuction}}"] is false:
@@ -1281,7 +1293,7 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   1. If |generateBidOutput|["{{GenerateBidOutput/adComponents}}"] [=map/exists=]:
     1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponents}}"].
     1. Return failure if any of the following conditions hold:
-      * biddingScriptRunner's adComponents parameter does not exist; TODO: rewrite.
+      * |groupHasAdComponents| is false;
       * |adComponents| is not an array;
       * |adComponents|'s size is greater than 20.
     1. Let |adComponentDescriptors| be a new [=list=] of [=ad descriptors=].
@@ -1367,8 +1379,10 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=]
     to null.
   1. Let |bidToSet| be the result of [=converting GenerateBidOutput to generated bid=] with
-    |generateBidOutput| and [=this=]'s [=relevant global object=]'s
-    [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=].
+    |generateBidOutput|, [=this=]'s [=relevant global object=]'s
+    [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=], and [=this=]'s
+    [=relevant global object=]'s
+    [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=].
   1. If |bidToSet| is failure, return false.
   1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=]
     to |bidToSet|.
