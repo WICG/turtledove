@@ -676,7 +676,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             |trustedBiddingSignals|[|key|] to |allTrustedBiddingSignals|[|key|].
         1. Let |startTime| be the current time.
         1. Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
-           |biddingScript| and « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
+           |biddingScript|, |ig|, and « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
            |trustedBiddingSignals|, |browserSignals| ».
         1. Let |duration| be the current time minus |startTime| in milliseconds.
         1. If |generatedBidResult| is an [=abrupt completion=], [=iteration/continue=].
@@ -1054,27 +1054,31 @@ a <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority signals</dfn>, w
 [=interest group=].
 
 <div algorithm>
-  To <dfn>evaluate a bidding script</dfn> given a [=string=] |script| and a [=list=] of arguments
-  |arguments|:
+  To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig,
+  and a [=list=] of arguments |arguments|:
 
-    1. Return the result of [=evaluating a script=] with
-       {{InterestGroupBiddingScriptRunnerGlobalScope}}, |script|, "`generateBid`", and |arguments|.
+    1. Let |global| be a new {{InterestGroupBiddingScriptRunnerGlobalScope}}.
+    1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/interest group=] to |ig|.
+    1. Return the result of [=evaluating a script=] with |global|, |script|, "`generateBid`", and
+      |arguments|.
 </div>
 
 <div algorithm>
   To <dfn>evaluate a scoring script</dfn> given a [=string=] |script| and a [=list=] of arguments
   |arguments|:
 
-    1. Return the result of [=evaluating a script=] with
-       {{InterestGroupScoringScriptRunnerGlobalScope}}, |script|, "`scoreAd`", and |arguments|.
+    1. Let |global| be a new {{InterestGroupScoringScriptRunnerGlobalScope}}.
+    1. Return the result of [=evaluating a script=] with |global|, |script|, "`scoreAd`", and
+      |arguments|.
 </div>
 
 <div algorithm>
   To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=]
   |functionName|, and a [=list=] of arguments |arguments|:
 
-    1. Return the result of [=evaluating a script=] with
-       {{InterestGroupReportingScriptRunnerGlobalScope}}, |script|, |functionName|, and |arguments|.
+    1. Let |global| be a new {{InterestGroupReportingScriptRunnerGlobalScope}}.
+    1. Return the result of [=evaluating a script=] with |global|, |script|, |functionName|, and
+      |arguments|.
 </div>
 
 <br>
@@ -1109,7 +1113,7 @@ a <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority signals</dfn>, w
 </div>
 
 <div algorithm>
-  To <dfn>evaluate a script</dfn> with a global type |globalType|, [=string=] |script|, [=string=]
+  To <dfn>evaluate a script</dfn> with a global object |global|, [=string=] |script|, [=string=]
   |functionName|, and a [=list=] |arguments|, run these steps. They return a [=ECMAScript/Completion
   Record=], which is either an [=abrupt completion=] (in the case of a parse failure or execution
   error), or a normal completion populated with the [=ECMAScript/ECMAScript language value=] result
@@ -1126,7 +1130,7 @@ a <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority signals</dfn>, w
     1. Let |realmExecutionContext| be the result of [=creating a new realm=] given |agent| and the
        following customizations:
 
-        * For the global object, create a new object of type |globalType|.
+        * For the global object, use |global|.
 
     1. Let |realm| be |realmExecutionContext|'s Realm component.
 
