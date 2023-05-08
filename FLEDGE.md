@@ -344,9 +344,10 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   browserSignals: An object constructed by the browser, containing information that the browser knows and which the seller's auction script might want to verify:
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
+      'requestedSize': {width: 100, height: 200}, /* if specified in the bid */
       'interestGroupOwner': 'https://www.example-dsp.com',
       'renderUrl': 'https://cdn.com/render_url_of_bid',
-      'renderSize': {width: 100, height: 200} /* if specified in the bid */
+      'renderSize': {width: 100, height: 200}, /* if specified in the bid */
       'adComponents': ['https://cdn.com/ad_component_of_bid',
                        'https://cdn.com/next_ad_component_of_bid',
                        ...],
