@@ -29,13 +29,13 @@ See [the in progress FLEDGE specification](https://wicg.github.io/turtledove/).
     - [3.3 Metadata with the Ad Bid](#33-metadata-with-the-ad-bid)
     - [3.4 Ads Composed of Multiple Pieces](#34-ads-composed-of-multiple-pieces)
     - [3.5 Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups)
-    - [3.6 Currency Checking](#36-currency-checks)
+    - [3.6 Currency Checking](#36-currency-checking)
   - [4. Browsers Render the Winning Ad](#4-browsers-render-the-winning-ad)
   - [5. Event-Level Reporting (for now)](#5-event-level-reporting-for-now)
     - [5.1 Seller Reporting on Render](#51-seller-reporting-on-render)
     - [5.2 Buyer Reporting on Render and Ad Events](#52-buyer-reporting-on-render-and-ad-events)
       - [5.2.1 Noised and Bucketed Signals](#521-noised-and-bucketed-signals)
-    - [5.3 Reporting in Multi-Currency Auctions](#53-multi-currency-reporting)
+    - [5.3 Reporting in Multi-Currency Auctions](#53-reporting-in-multi-currency-auctions)
     - [5.4 Losing Bidder Reporting](#54-losing-bidder-reporting)
 
 
@@ -285,7 +285,7 @@ Optionally, `sellerExperimentGroupId` can be specified by the seller to support 
 
 Optionally, `perBuyerPrioritySignals` is an object mapping string keys to Javascript numbers that can be used to dynamically compute interest group priorities before `perBuyerGroupLimits` are applied. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
 
-Optionally, `perBuyerCurrencies` and `sellerCurrency` are used for [currency-checking](#36-currency-checks). `sellerCurrency` is also used to [homogenize reporting in multi-currency auctions](#53-multi-currency-reporting).
+Optionally, `perBuyerCurrencies` and `sellerCurrency` are used for [currency-checking](#36-currency-checking). `sellerCurrency` is also used to [homogenize reporting in multi-currency auctions](#53-reporting-in-multi-currency-auctions).
 
 Optionally, `resolveToConfig` is a boolean directing the promise returned from `runAdAuction()` to resolve to a `FencedFrameConfig` if true, for use in a `<fencedframe>`, or if false to an opaque `urn:uuid` URL, for use in an `<iframe>`.  If `resolveToConfig` is not set, it defaults to false.
 If the `window.FencedFrameConfig` interface is not exposed (because e.g., the script is running in an older version of Chrome that does not yet implement `FencedFrameConfig`, then the auction will _always_ yield a URN.
@@ -357,7 +357,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
 The output of `scoreAd()` is an object with the following fields:
 * desirability: Number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.) The winner of the auction is the ad object which was given the highest score.
 * allowComponentAuction: (optional) If the bid being scored is from a component auction and this value is not true, the bid is ignored. If not present, this value is considered false. This field must be present and true both when the component seller scores a bid, and when that bid is being scored by the top-level auction.
-* incomingBidInSellerCurrency: (optional) Provides a conversion of a bid in a multi-currency auction to seller's own currency. Please see [the section on this functionality](#53-multi-currency-reporting) for more details.
+* incomingBidInSellerCurrency: (optional) Provides a conversion of a bid in a multi-currency auction to seller's own currency. Please see [the section on this functionality](#53-reporting-in-multi-currency-auctions) for more details.
 
 If `scoreAd()` returns only a numeric value, it's equivalent to returning {'score': numericValue, `allowComponentAuction`: false}.
 
@@ -379,7 +379,7 @@ Seller scripts in component auctions behave a little differently.  They still ex
 * desirability: Numeric score of the bid. Must be positive or the ad will be rejected.
 * allowComponentAuction: If this field is not true, the bid will be rejected.
 * bid: (optional) Modified bid value to provide to the top-level seller script. If present, this will be passed to the top-level seller's `scoreAd()` and `reportResult()` methods instead of the original bid, if the ad wins the component auction and top-level auction, respectively.
-* bidCurrency: (optional) Annotates the currency of the modified bid provided by bid. Please see the [Currency Checking section](#36-currency-checks)
+* bidCurrency: (optional) Annotates the currency of the modified bid provided by bid. Please see the [Currency Checking section](#36-currency-checking)
 
 Once all of a component auction's bids have been scored by the component auction's seller script, the bid with the highest score is passed to the top-level seller to score. For that bid, the top-level seller's `scoreAd()` method is passed the `ad` value from the component auction seller's `scoreAd()` method, and there is an additional `componentSeller` field in the `browserSignals`, which is the seller for the component auction. All other values are the same as if the bid had come from an interest group participating directly in the top-level auction. In the case of a tie, one of the highest scoring bids will be chosen randomly and only that bid will be passed to the top-level seller to score. The seller of a component auction may reject all bids by giving them scores <= 0. In that case, no bid from that component auction will be passed to the top-level auction.
 
@@ -556,7 +556,7 @@ The output of `generateBid()` contains the following fields:
 *   ad: (optional) Arbitrary metadata about the ad which this interest group wants to show. The seller uses this information in its auction and decision logic. If not present, it's treated as if the value were null.
 *   adCost: (optional) A numerical value used to pass reporting advertiser click or conversion cost from generateBid to reportWin. The precision of this number is limited to an 8-bit mantissa and 8-bit exponent, with any rounding performed stochastically.
 *   bid: A numerical bid that will enter the auction.  The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand").  If the bid is zero or negative, then this interest group will not participate in the seller's auction at all.  With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear.
-*   bidCurrency: (optional) The currency for the bid, used for [currency-checking](#36-currency-checks).
+*   bidCurrency: (optional) The currency for the bid, used for [currency-checking](#36-currency-checking).
 *   render: A URL which will be rendered to display the creative if this bid wins the auction.
 *   adComponents: (optional) A list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match an adComponent renderURL exactly. This field must not be present if the InterestGroup has no adComponent field. It is valid for this field not to be present even when adComponents is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
 *   allowComponentAuction: If this buyer is taking part of a component auction, this value must be present and true, or the bid is ignored. This value is ignored (and may be absent) if the buyer is part of a top-level auction.
@@ -650,11 +650,11 @@ The `FilterOnDataFromServer` interest group will result in fetching `https://buy
 
 If participants in the auction need to deal with multiple currencies, they can optionally take advantage of automated currency checking. All of it operates on currency tags, which are required to contain 3 upper-case ASCII letters.
 
-If the `generateBid()` method returns a `bidCurrency`, and the `perBuyerCurrencies` for it is specified, their consistency will be checked, and if there is a mismatch, the bid will be dropped.  Both the configuration and the returned tag must be present for checking to take place.  The returned `bidCurrency` will be passed to `scoreAd()`'s `browserSignals.bidCurrency`, with unspecified currency rendered as '???'.
+If the `generateBid()` method returns a `bidCurrency`, and the `perBuyerCurrencies` for it is specified, their consistency will be checked, and if there is a mismatch, the bid will be dropped.  Both the configuration and the returned tag must be present for checking to take place.  The returned `bidCurrency` will be passed to `scoreAd()`'s `browserSignals.bidCurrency`, with unspecified currency rendered as `'???'`.
 
 Checking inside `scoreAd` happens only inside component auctions.  If the auction modifies the bid, the modified version will be checked; if not, the passed-through bid from the original buyer will be. In either case, the currency will be checked both against the component auction's `sellerCurrency` and top-level auction's `perBuyerCurrencies` as applied to the component auction.  As before, both the bid and the configuration in question must be specified for the checking to take place. If there is a mismatch, the bid will not take part in the component auction.
 
-`sellerCurrency` also has an extensive effect on how reporting behaves.  Please see the section on [Reporting in Multi-Currency Auctions](#53-multi-currency-reporting) for more details.
+`sellerCurrency` also has an extensive effect on how reporting behaves.  Please see the section on [Reporting in Multi-Currency Auctions](#53-reporting-in-multi-currency-auctions) for more details.
 
 ### 4. Browsers Render the Winning Ad
 
@@ -716,7 +716,7 @@ The arguments to this function are:
       'highestScoringOtherBidCurrency': ...
     }
     ```
-    * `bidCurrency` and `highestScoringOtherBidCurrency` provide (highly redacted) information on what currency the corresponding numbers are in. Please refer to the section on [Reporting in Multi-Currency Auctions](#53-multi-currency-reporting) for more details.
+    * `bidCurrency` and `highestScoringOtherBidCurrency` provide (highly redacted) information on what currency the corresponding numbers are in. Please refer to the section on [Reporting in Multi-Currency Auctions](#53-reporting-in-multi-currency-auctions) for more details.
 *   directFromSellerSignals is an object that may contain the following fields:
     *   sellerSignals: Like auctionConfig.sellerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?sellerSignals`.
     *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
@@ -779,7 +779,7 @@ In auctions that involve multiple currencies, there may be values with different
 
 To help deal with this scenario, an optional mode is available that converts all bid-related information to seller's preferred currency (in component auctions, reporting for it is for that component's seller). This is configured via the `sellerCurrency` setting in each auction configuration.
 
-If `sellerCurrency` is not set, all bids are passed as-is. Since passing currency tags around could leak an unacceptable amount of information, the corresponding currency tags (`bidCurrency`, `highestScoringOtherBidCurrency`) are also redacted to '???', with the exception of the winning bid (but not `highestScoringOtherBid`) passed to `reportWin()`.
+If `sellerCurrency` is not set, all bids are passed as-is. Since passing currency tags around could leak an unacceptable amount of information, the corresponding currency tags (`bidCurrency`, `highestScoringOtherBidCurrency`) are also redacted to `'???'`, with the exception of the winning bid (but not `highestScoringOtherBid`) passed to `reportWin()`.
 
 If `sellerCurrency` is set, `scoreAd()` for an auction is responsible for converting bids not already in that currency to `sellerCurrency`, via the `incomingBidInSellerCurrency` field of its return value. A bid already explicitly in the seller's currency can not be changed by `incomingBidInSellerCurrency`.  If neither the original bid is explicitly in proper currency nor an `incomingBidInSellerCurrency` is specified, the value used for reporting and private aggregation is zero.  In this mode, all APIs like event reporting, debug event-level loss reporting, and private aggregation will see the converted values, with the `sellerCurrency` as the appropriate currency tag, except the invocation of `reportWin()` (but not private aggregation triggered off `reportWin()` will once again see its own value and currency for `bid` and `bidCurrency` (but not `highestScoringOtherBid` and `highestScoringOtherBidCurrency`).
 
