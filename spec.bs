@@ -410,10 +410,9 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     1. Run [=interest group update=] with |auctionConfig|'s
       [=auction config/interest group buyers=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
-1. Let |reportUrls| be a new [=list/is empty|empty=] [=list=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|, null,
-    |reportUrls|, and |global|.
+    and |global|.
   1. If |winner| is null:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
       with null.
@@ -423,7 +422,6 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       of a URL.
   1. Run [=interest group update=] with |auctionConfig|'s [=auction config/interest group buyers=].
   1. TODO: Update bidCount and prevWins for interest groups that participated in the auction.
-  1. TODO: Fetch URLs of |reportUrls| when the winning ad is navigated to.
 1. Return |p|.
 
 </div>
@@ -581,8 +579,7 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 <div algorithm>
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
-[=auction config=]-or-null |topLevelAuctionConfig|, a [=list=] of [=URLs=] |reportUrls|, and a
-[=global object=] |global|:
+[=auction config=]-or-null |topLevelAuctionConfig|, and a [=global object=] |global|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
   [=auction config/decision logic url=].
@@ -597,7 +594,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinner| be the result of running [=generate and score bids=] with |component|,
-      |auctionConfig|, |reportUrls|, and |global|.
+      |auctionConfig| and |global|.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
         |decisionLogicScript|, null, and true.
@@ -610,7 +607,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Set |leadingBidInfo|'s [=leading bid info/component seller=] to |winningComponentConfig|'s
     [=auction config/seller=].
   1. Let « |topLevelSellerSignals|, unusedTopLevelReportResultBrowserSignals » be the result of
-    running [=report result=] with |leadingBidInfo| and |reportUrls|.
+    running [=report result=] with |leadingBidInfo|.
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |winningComponentConfig|.
   1. Set |leadingBidInfo|'s [=leading bid info/component seller=] to null.
   1. Set |leadingBidInfo|'s [=leading bid info/top level seller=] to |auctionConfig|'s
@@ -618,9 +615,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Set |leadingBidInfo|'s [=leading bid info/top level seller signals=] to
     |topLevelSellerSignals|.
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
-    [=report result=] with |leadingBidInfo| and |reportUrls|.
-  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|, and
-    |reportUrls|.
+    [=report result=] with |leadingBidInfo|.
+  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, and |reportResultBrowserSignals|.
   1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
@@ -709,9 +705,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
 1. If |topLevelAuctionConfig| is null:
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
-    [=report result=] with |leadingBidInfo| and |reportUrls|.
-  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|, and
-    |reportUrls|.
+    [=report result=] with |leadingBidInfo|.
+  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, and |reportResultBrowserSignals|.
 1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 
 </div>
@@ -936,8 +931,7 @@ Issue: This would ideally be replaced by a more descriptive algorithm in Infra. 
 </div>
 
 <div algorithm>
-To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, and a [=list=] of
-[=URLs=] |reportUrls|:
+To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
 
   1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
     [=map/values=] are {{any}}.
@@ -975,7 +969,7 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, and a
   1. Let |reportUrl| be [=this=]'s [=relevant global object=]'s
     [=InterestGroupReportingScriptRunnerGlobalScope/report url=].
   1. If |reportUrl| is not null:
-    1. [=list/Append=] |reportUrl| to |reportUrls|.
+    1. TODO: Set |reportUrl| into the FencedFrameConfig so they can be fetched when ad renders.
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
   1. [=map/Remove=] |browserSignals|["`modifiedBid`"].
   1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].  
@@ -984,8 +978,8 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, and a
 
 <div algorithm>
 To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=string=]
-|sellerSignals|, an [=ordered map=] |browserSignals| whose [=map/keys=] are [=strings=] and whose
-[=map/values=] are {{any}}, and a [=list=] of [=URLs=] |reportUrls|:
+|sellerSignals| and an [=ordered map=] |browserSignals| whose [=map/keys=] are [=strings=] and whose
+[=map/values=] are {{any}}:
 
   1. Let |config| be |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Let |winner| be |leadingBidInfo|'s [=leading bid info/leading bid=].
@@ -1021,7 +1015,7 @@ To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=stri
   1. Let |reportUrl| be [=this=]'s [=relevant global object=]'s
     [=InterestGroupReportingScriptRunnerGlobalScope/report url=].
   1. If |reportUrl| is not null:
-    1. [=list/Append=] |reportUrl| to |reportUrls|.
+    1. TODO: Set |reportUrl| into the FencedFrameConfig so they can be fetched when ad renders.
 </div>
 
 # Script Runners # {#script-runners}
