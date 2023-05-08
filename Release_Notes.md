@@ -8,7 +8,7 @@
 
 ## Chrome M113
 
-* Support some of the size-related API changes (the ability to declare ad sizes in `joinAdInterestGroup`, include sizes with bids in `generateBid`, and have those sizes macro'd into the url with `AD_WIDTH` and `AD_HEIGHT` macros), in a backwards compatible and opt-in way. 
+* Support some of the size-related API changes (the ability to declare ad sizes in `joinAdInterestGroup`, include sizes with bids in `generateBid`, and have those sizes macro'd into the URL with `AD_WIDTH` and `AD_HEIGHT` macros), in a backwards compatible and opt-in way. 
 
 
 ## Chrome M109
