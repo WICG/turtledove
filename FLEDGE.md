@@ -539,7 +539,7 @@ The arguments to `generateBid()` are:
     { 'topWindowHostname': 'www.example-publisher.com',
       'seller': 'https://www.example-ssp.com',
       'topLevelSeller': 'https://www.another-ssp.com',
-      'requestedSize': {width: 100, height: 200},
+      'requestedSize': {width: 100, height: 200}, /* if specified in auction config */
       'joinCount': 3,
       'bidCount': 17,
       'prevWins': [[time1,ad1],[time2,ad2],...],
