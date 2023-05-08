@@ -346,6 +346,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
     { 'topWindowHostname': 'www.example-publisher.com',
       'interestGroupOwner': 'https://www.example-dsp.com',
       'renderUrl': 'https://cdn.com/render_url_of_bid',
+      'renderSize': {width: 100, height: 200} /* if specified in the bid */
       'adComponents': ['https://cdn.com/ad_component_of_bid',
                        'https://cdn.com/next_ad_component_of_bid',
                        ...],
@@ -699,9 +700,10 @@ The arguments to this function are:
     { 'topWindowHostname': 'www.example-publisher.com',
       'topLevelSeller': 'https://www.example-ssp.com',
       'componentSeller': 'https://www.some-other-ssp.com',
+      'requestedSize': {width: 100, height: 200}, /* if specified in the auction config */
       'interestGroupOwner': 'https://www.example-dsp.com/',
       'renderUrl': 'https://cdn.com/url-of-winning-creative.wbn',
-      'renderSize': {width: 100, height: 200},
+      'renderSize': {width: 100, height: 200}, /* if specified in the bid */
       'bid:' bidValue,
       'desirability': desirabilityScoreForWinningAd,
       'topLevelSellerSignals': outputOfTopLevelSellersReportResult,
