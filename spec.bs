@@ -392,6 +392,7 @@ dictionary AuctionAdConfig {
 The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 
 1. Let |global| be [=this=]'s [=relevant global object=].
+1. Let |settings| be [=this=]'s [=relevant settings object=].
 1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=run-ad-auction=]"
   [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
 1. Let |auctionConfig| be the result of running [=validate and convert auction ad config=] with
@@ -410,7 +411,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|, null,
-    and |global|.
+    |global|, and |settings|.
   1. If |winner| is null:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
       with null.
@@ -578,7 +579,8 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 <div algorithm>
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
-[=auction config=]-or-null |topLevelAuctionConfig|, and a [=global object=] |global|:
+[=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, and a
+[=environment settings object=] |settings|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
   [=auction config/decision logic url=].
@@ -596,7 +598,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       |auctionConfig|, and |global|.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
-        |decisionLogicScript|, null, and true.
+        |decisionLogicScript|, null, true and |settings|'s [=environment/top-level origin's=] [=origin/host=].
 
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
@@ -699,7 +701,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. If |generatedBid| is failure, [=iteration/continue=].
         1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
-          |decisionLogicScript|, |dataVersion| and |isComponentAuction|.
+          |decisionLogicScript|, |dataVersion|, |isComponentAuction|, and |settings|'s
+          [=environment/top-level origin's=] [=origin/host=].
 
   1. Decrement |pendingBuyers| by 1.
 1. Wait until |pendingBuyers| is 0.
@@ -716,7 +719,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
 |generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
-{{unsigned long}}-or-null |biddingDataVersion|, and a [=boolean=] |isComponentAuction|:
+{{unsigned long}}-or-null |biddingDataVersion|, a [=boolean=] |isComponentAuction|, and a [=origin/host=]
+|topWindowHostname|:
 1. Let |renderUrls| be a new [=set/is empty|empty=] [=set=].
 1. Let |adComponentRenderUrls| be a new [=set/is empty|empty=] [=set=].
 1. [=set/Append=] |generatedBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] to |renderUrls|.
@@ -758,8 +762,7 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
   1. Set |bidValue| to |generatedBid|'s [=generated bid/modified bid=].
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
-1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=this=]'s [=relevant settings object=]'s
-  [=environment/top-level origin=]'s [=origin/host=].
+1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to |topWindowHostname|.
 1. [=map/Set=] |browserSignals|["`interestGroupOwner`"] to |generatedBid|'s
   [=generated bid/interest group=]'s [=interest group/owner=].
 1. [=map/Set=] |browserSignals|["`renderURL`"] to |generatedBid|'s [=generated bid/ad descriptor=]'s
