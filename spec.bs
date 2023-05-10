@@ -678,7 +678,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           [=interest group/bidding url=].
         1. If |biddingScript| is failure, [=iteration/continue=].
         1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
-          1. Let |wasmModuleObject| be the result of [=fetching wasm=] with |ig|'s
+          1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
             [=interest group/bidding wasm helper url=].
           1. If |wasmModuleObject| is not failure:
             1. [=map/Set=] |browserSignals|["`wasmHelper`"] to |wasmModuleObject|.
@@ -839,9 +839,9 @@ To <dfn>validate fetching response</dfn> given a [=response=] |response| and |re
     * |mimeType| is "`application/json`" and |headerMimeType| is not a [=JSON MIME type=].
   1. Let |mimeTypeCharset| be |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
   1. Return false if any of the following conditions hold:
-    * If |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and
-      |responseBody| is not [=UTF-8=] encoded;
-    * If |mimeTypeCharset| is "us-ascii", and |responseBody| is not [=ascii string=].
+    * |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and |responseBody|
+      is not [=UTF-8=] encoded;
+    * |mimeTypeCharset| is "us-ascii", and |responseBody| is not [=ascii string=].
   1. Return true.
 </div>
 
@@ -861,13 +861,17 @@ To <dfn>fetch script</dfn> given a [=URL=] |url|:
 </div>
 
 <div algorithm>
-To <dfn>fetch wasm</dfn> given a [=URL=] |url|:
+To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
 
   1. Let |request| be the result of [=creating a request=] with |url|, "`application/wasm`", and
     null.
   1. Let |moduleObject| be null.
-  1. [=Fetch=] |request| with [=fetch/processResponse=] set to the following steps given a
-    [=response=] |response|:
+  1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
+    a [=response=] |response| and |responseBody|:
+    1. Set |moduleObject| to failure and return, if any of the following conditions hold:
+      * |responseBody| is null or failure;
+      * [=header list/getting a structured field value|Getting=] "X-Allow-Protected-Audience" from
+        |response|'s [=response/header list=] does not return true.
     1. Let |moduleObjectPromise| be the result of [=WebAssembly compileStreaming=] |response|.
     1. [=Upon fulfillment=] of |moduleObjectPromise| with value |module|:
       1. Set |moduleObject| to |module|.
