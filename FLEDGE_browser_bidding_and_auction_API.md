@@ -10,7 +10,7 @@ This document seeks to propose an API for web pages to perform FLEDGE auctions u
 
 #### Step 1: Get auction blob from browser
 
-To execute an on-server FLEDGE auction, sellers begin by calling `navigator.startServerAdAuction(): Promise<Uint8Array>`:
+To execute an on-server FLEDGE auction, sellers begin by calling `navigator.startServerAdAuction()` which returns a `Promise<Uint8Array>`:
 ```  
 const auctionBlob = await navigator.startServerAdAuction({
   // ‘seller’ works the same as for runAdAuction.
