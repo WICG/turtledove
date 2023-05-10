@@ -36,6 +36,9 @@ spec: RFC8941; urlPrefix: https://httpwg.org/specs/rfc8941.html
     text: structured header; url: top
     for: structured header
       text: integer; url: integer
+spec: WebAssembly-web-api; urlPrefix: https://webassembly.github.io/spec/web-api/
+  type: dfn
+    text: WebAssembly compileStreaming; url: #dom-webassembly-compilestreaming
 </pre>
 
 # Introduction # {#intro}
@@ -671,11 +674,16 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
            [=interest group ad=] from |ig|'s [=interest group/previous wins=]
            field with a data within the last 30 days. The time field is
            specified in seconds relative to the start of the auction.
-        1. TODO: Set |browserSignals|'s "wasmHelper" ...need to fetch and prepare WebAssembly.Module object based on |ig|'s [=interest group/bidding wasm helper url=]
         1. If |dataVersion| is not null:
           1. [=map/Set=] |browserSignals|["`dataVersion`"] to |dataVersion|.
         1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
-          [=interest group/bidding url=]. If |biddingScript| is failure, [=iteration/continue=].
+          [=interest group/bidding url=].
+        1. If |biddingScript| is failure, [=iteration/continue=].
+        1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
+          1. Let |wasmModuleObject| be the result of [=fetching wasm=] with |ig|'s
+            [=interest group/bidding wasm helper url=].
+          1. If |wasmModuleObject| is not failure:
+            1. [=map/Set=] |browserSignals|["`wasmHelper`"] to |wasmModuleObject|.
         1. Let |trustedBiddingSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and
           whose [=map/values=] are {{any}}.
         1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
@@ -822,12 +830,11 @@ null |origin|:
 To <dfn>validate fetching response</dfn> given a [=response=] |response| and |responseBody|, and a
 [=string=] |mimeType|:
 
-
   1. If |responseBody| is null or failure, return false.
-  1. Let |headers| be |response|'s [=response/header list=].
-  1. If [=header list/getting a structured field value=] "X-Allow-Protected-Audience" from |headers| does not
-    return true, return false.
-  1. Let |headerMimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
+  1. If [=header list/getting a structured field value|getting=] "X-Allow-Protected-Audience" from
+    |response|'s [=response/header list=] does not return true, return false.
+  1. Let |headerMimeType| be the result of [=header list/extracting a MIME type=] from |response|'s
+    [=response/header list=].
   1. Return false if any of the following conditions hold:
     * |headerMimeType| is failure;
     * |mimeType| is "`text/javascript`" and |headerMimeType| is not a [=JavaScript MIME type=];
@@ -853,6 +860,23 @@ To <dfn>fetch script</dfn> given a [=URL=] |url|:
     1. Set |script| to |responseBody|.
   1. Wait for |script| to be set.
   1. Return |script|.
+</div>
+
+<div algorithm>
+To <dfn>fetch wasm</dfn> given a [=URL=] |url|:
+
+  1. Let |request| be the result of [=creating a request=] with |url|, "`application/wasm`", and
+    null.
+  1. Let |moduleObject| be null.
+  1. [=Fetch=] |request| with [=fetch/processResponse=] set to the following steps given a
+    [=response=] |response|:
+    1. Let |moduleObjectPromise| be the result of [=WebAssembly compileStreaming=] |response|.
+    1. [=Upon fulfillment=] of |moduleObjectPromise| with value |module|:
+      1. Set |moduleObject| to |module|.
+    1. [=Upon rejection=] of |moduleObjectPromise|:
+      1. Set |moduleObject| to failure.
+  1. Wait for |moduleObject| to be set.
+  1. Return |moduleObject|.
 </div>
 
 The <dfn http-header><code>Data-Version</code></dfn> HTTP response header is a
