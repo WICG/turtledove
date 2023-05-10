@@ -579,7 +579,7 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 <div algorithm>
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
-[=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, and a
+[=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, and an
 [=environment settings object=] |settings|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
@@ -598,7 +598,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       |auctionConfig|, and |global|.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
-        |decisionLogicScript|, null, true and |settings|'s [=environment/top-level origin's=] [=origin/host=].
+        |decisionLogicScript|, null, true and |settings|'s [=environment/top-level origin=].
 
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
@@ -702,7 +702,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
           |decisionLogicScript|, |dataVersion|, |isComponentAuction|, and |settings|'s
-          [=environment/top-level origin's=] [=origin/host=].
+          [=environment/top-level origin=].
 
   1. Decrement |pendingBuyers| by 1.
 1. Wait until |pendingBuyers| is 0.
@@ -719,8 +719,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
 |generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
-{{unsigned long}}-or-null |biddingDataVersion|, a [=boolean=] |isComponentAuction|, and a [=origin/host=]
-|topWindowHostname|:
+{{unsigned long}}-or-null |biddingDataVersion|, a [=boolean=] |isComponentAuction|, and an [=origin=]
+|topWindowOrigin|:
 1. Let |renderUrls| be a new [=set/is empty|empty=] [=set=].
 1. Let |adComponentRenderUrls| be a new [=set/is empty|empty=] [=set=].
 1. [=set/Append=] |generatedBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] to |renderUrls|.
@@ -730,7 +730,7 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
     1. [=set/Append=] |adComponentDescriptor|'s [=ad descriptor/url=] to |adComponentRenderUrls|.
 1. Let |fullSignalsUrl| be the result of [=building trusted scoring signals url=] with |auctionConfig|'s
   [=auction config/trusted scoring signals url=], |renderUrls|, |adComponentRenderUrls|,
-  |auctionConfig|'s [=auction config/seller experiment group id=].
+  |auctionConfig|'s [=auction config/seller experiment group id=], and |topWindowOrigin|.
 
   Note: Implementations can batch requests by collecting render URLs and ad component render URLs
   from multiple invocations of [=score and rank a bid=] and passing them all to a single invocation
@@ -762,7 +762,7 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
   1. Set |bidValue| to |generatedBid|'s [=generated bid/modified bid=].
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
-1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to |topWindowHostname|.
+1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to |topWindowOrigin|'s [=origin/host=].
 1. [=map/Set=] |browserSignals|["`interestGroupOwner`"] to |generatedBid|'s
   [=generated bid/interest group=]'s [=interest group/owner=].
 1. [=map/Set=] |browserSignals|["`renderURL`"] to |generatedBid|'s [=generated bid/ad descriptor=]'s
@@ -971,12 +971,11 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
 <div algorithm>
 
 To <dfn>build trusted scoring signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
-[=URLs=] |renderUrls|, an [=ordered set=] of [=URLs=] |adComponentRenderUrls|, and an
-{{unsigned short}} |experimentGroupId|:
+[=URLs=] |renderUrls|, an [=ordered set=] of [=URLs=] |adComponentRenderUrls|, an {{unsigned short}}
+|experimentGroupId|, and an [=origin=] |topWindowOrigin|:
 1. Let |queryParamsList| be a new [=list/is empty|empty=] [=list=].
 1. [=list/Append=] "hostname=" to |queryParamsList|.
-1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] [=this=]'s
-  [=relevant settings object=]'s [=environment/top-level origin=] using
+1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topWindowOrigin| using
   [=component percent-encode set=] to |queryParamsList|.
 1. If |renderUrls| is not [=set/is empty|empty=]:
   1. [=list/Append=] "&renderUrls=" to |queryParamsList|.
