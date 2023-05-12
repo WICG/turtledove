@@ -643,7 +643,8 @@ Reports are only sent and most interest group state changes (e.g. updating `prev
 
 Once the winning ad has rendered in its Fenced Frame, the seller and the winning buyer each have an opportunity to perform logging and reporting on the auction outcome.  The browser will call one reporting function in the seller's auction worklet and one in the winning buyer's bidding worklet.
 
-_As a temporary mechanism,_ these reporting functions will be able to send event-level reports to their servers.  These reports can include contextual information, and can include information about the winning interest group if it is over an anonymity threshold.  This reporting will happen synchronously, while the page with the ad is still open in the browser.
+_As a temporary mechanism,_ these reporting functions will be able to send event-level reports to their servers.  These reports can include contextual information, and can include information about the winning interest group if it is over an anonymity threshold.
+The worklet functions `reportWin()` and `reportResult()` may call a `sendReportTo()` API which takes a single string argument representing a URL. The URL will is fetched after the reporting worklet completes.  This fetch will happen synchronously, while the page with the ad is still open in the browser.
 
 In the long term, we need a mechanism to ensure that the after-the-fact reporting cannot be used to learn the advertising interest group of individual visitors to the publisher's site — the same privacy goal that led to Fenced Frame rendering. The [Private Aggregation API](https://github.com/alexmturner/private-aggregation-api) proposal aims to satisfy this use case. Therefore event-level reporting is just a temporary model until an adequate reporting framework is settled and in place.
 
@@ -730,7 +731,7 @@ Ads often need to report on events that happen once the ad is rendered.  One com
 
 ##### 5.2.1 Noised and Bucketed Signals
 
-Some privacy-sensitive information (browser signals `joinCount`, `recency`, and the field `modelingSignals` passed from `generateBid()` to `reportWin()`) are made available to `reportWin()` under a special noising and bucketing scheme. 
+Some privacy-sensitive information (browser signals `joinCount`, `recency`, and the field `modelingSignals` passed from `generateBid()` to `reportWin()`) are made available to `reportWin()` under a special noising and bucketing scheme.
 
 All such fields use a noising scheme where, in a randomly-selected 1% of `reportWin()` calls, a uniformly-generated random value in the range of the field's bucketing scheme is returned instead of the true value.
 
@@ -745,5 +746,3 @@ These signals were requested in [issue 435](https://github.com/WICG/turtledove/i
 We also need to provide a mechanism for the _losing_ bidders in the auction to learn aggregate outcomes.  Certainly they should be able to count the number of times they bid, and losing ads should also be able to learn (in aggregate) some seller-provided information about e.g. the auction clearing price.  Likewise, a reporting mechanism should be available to buyers who attempted to bid with a creative that had not yet reached the k-anonymity threshold.
 
 This could be handled by a `reportLoss()` function running in the worklet.  Alternatively, the model of [SPURFOWL](https://github.com/AdRoll/privacy/blob/main/SPURFOWL.md) (an append-only datastore and later aggregate log processing) could be a good fit for this use case.  The details here are yet to be determined.
-
-
