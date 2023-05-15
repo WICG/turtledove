@@ -161,11 +161,11 @@ The `ads` list contains the various ads that the interest group might show.  Eac
 
  * `buyerAndSellerReportingId`: If set, the value is used instead of the interest group name or `buyerReportingId` for reporting in `reportWin` and `reportResult`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
 
- * `buyerReportingId`: If set, the value is used instead of the interest group name or `buyerReportingId` for reporting in `reportWin`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
+ * `buyerReportingId`: If set, the value is used instead of the interest group name for reporting in `reportWin`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
 
  * `metadata`: Arbitrary metadata that can be used at bidding time.
 
- * `sizeGroup`: The name of the sizeGroup that this ad is associated with. If the size group is specified, these render URLs may contain macros `{%AD_WIDTH%}` and `{%AD_HEIGHT%}`, which will be automatically replaced with the appropriate width and height after an auction, so that the initial resource request can fetch appropriately sized assets.Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
+ * `sizeGroup`: The name of the sizeGroup that this ad is associated with.
 
 The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similarly to the `ads` field, each entry is an object that includes both a rendering URL, `adRenderId`, `sizeGroup`, and `metadata`. Thanks to `ads` and `adsComponents` being separate fields, the buyer is able to update the `ads` field via the `updateUrl` without losing `adComponents` stored in the interest group.
 
