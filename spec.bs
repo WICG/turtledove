@@ -619,6 +619,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
+1. Let |allBuyersGroupLimit| be |auctionConfig|'s
+  [=auction config/all buyers group limit=].  
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
@@ -639,6 +641,21 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     [=auction config/per buyer experiment group ids=].
   1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|] exists:
     1. Set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
+  1. Let |buyerGroupLimit| be |allBuyersGroupLimit|.
+  1. Let |perBuyerGroupLimits| be |auctionConfig|'s
+    [=auction config/per buyer group limits=].
+  1. If |perBuyerGroupLimits| is not null and |perBuyerGroupLimits|[|buyer|] exists:
+    1. Set |buyerGroupLimit| to |perBuyerGroupLimits|[|buyer|].
+  1. Let |igs| be a new [=list=] of [=interest groups=].
+  1. [=map/For each=] signalsUrl -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
+    1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
+      1. [=list/Extend=] |igs| with |groups|.
+  1. [=list/Sort=] |igs| in descending order, with |a| being less than |b| if |a|'s
+    [=interest group/priority=] is less than |b|'s [=interest group/priority=].
+  1. [=list/Remove=] the first |buyerGroupLimit| items from |igs|.
+  1. [=map/For each=] signalsUrl -> |perSignalsUrlGenerator| of |perBuyerGenerator|:
+    1. [=map/For each=] joiningOrigin -> |groups| of |perSignalsUrlGenerator|:
+      1. [=list/Remove=] from |groups| and [=interest group=] [=list/contained=] in |igs|.
   1. Let |perBuyerSignals| be null.
   1. If |auctionConfig|'s [=auction config/per buyer signals=] is not null and
     [=auction config/per buyer signals=][|buyer|] [=map/exists=]:
