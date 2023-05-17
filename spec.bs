@@ -1656,18 +1656,18 @@ An interest group is a [=struct=] with the following items:
 : <dfn>expiry</dfn>
 :: A point in time at which the browser will forget about this interest group.
 : <dfn>owner</dfn>
-:: An [=origin=]. Frames that join interest groups owned by `owner` must either be served from
-  origin `owner`, or another origin delegated by `owner` (See [=checking interest group permissions=]
-  for details). The [=origin/scheme=] must be "`https`".
+:: An [=origin=]. Frames that join interest groups owned by [=interest group/owner=] must either be
+  served from [=interest group/owner=], or another origin delegated by [=interest group/owner=] (See
+  [=checking interest group permissions=] for details). The [=origin/scheme=] must be "`https`".
 : <dfn>name</dfn>
 :: A [=string=]. The ([=interest group/owner=], [=interest group/name=]) tuple is a key that
   uniquely defines each interest group.
 : <dfn>priority</dfn>
-:: A {{double}}. Defaulting to 0.0. Used to select which interest groups participate in an auction
+:: A {{double}}, initially 0.0. Used to select which interest groups participate in an auction
   when the number of interest groups are limited by {{AuctionAdConfig/perBuyerGroupLimits}}.
   TODO: Define spec for prioritizing interest groups, and link to it from here.
 : <dfn>enable bidding signals prioritization</dfn>
-:: A [=boolean=]. Defaulting to false. Being true if the interest group's priority should be
+:: A [=boolean=], initially false. Being true if the interest group's priority should be
   calculated using vectors from bidding signals fetch.
 : <dfn>priority vector</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
@@ -1677,36 +1677,36 @@ An interest group is a [=struct=] with the following items:
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
 : <dfn>execution mode</dfn>
-:: A [=string=], defaulting to "<code>compatibility</code>". Acceptable values are
+:: A [=string=], initially "<code>compatibility</code>". Acceptable values are
   "<code>compatibility</code>" and "<code>group-by-origin</code>".
   TODO: Define spec for these execution modes, link to it from here and explain these modes.
 : <dfn>bidding url</dfn>
 :: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from.
   <p class="note">
-    The [=interest group/bidding url=] [=origin=] will always be [=same origin=] with
-    [=interest group/owner=].
+    When non-null, the [=interest group/bidding url=]'s [=origin=] will always be [=same origin=]
+    with [=interest group/owner=].
   </p>
 : <dfn>bidding wasm helper url</dfn>
 :: Null or a [=URL=]. Lets the bidder provide computationally-expensive subroutines in WebAssembly,
   in addition to JavaScript, to be driven from the JavaScript function provided by
   [=interest group/bidding url=].
   <p class="note">
-    The [=interest group/bidding wasm helper url=] [=origin=] will always be [=same origin=] with
-    [=interest group/owner=].
+    When non-null, the [=interest group/bidding wasm helper url=]'s [=origin=] will always be
+    [=same origin=] with [=interest group/owner=].
   </p>
 : <dfn>update url</dfn>
 :: Null or a [=URL=]. Provides a mechanism for the group's owner to periodically update the
   attributes of the interest group. See [interest group updates](#interest-group-updates).
   <p class="note">
-    The [=interest group/update url=] [=origin=] will always be [=same origin=] with
-    [=interest group/owner=].
+    When non-null, the [=interest group/update url=]'s [=origin=] will always be [=same origin=]
+    with [=interest group/owner=].
   </p>
 : <dfn>trusted bidding signals url</dfn>
 :: Null or a [=URL=]. Provide a mechanism for making real-time data available for use at bidding
   time. See [=building trusted bidding signals url=].
   <p class="note">
-    The [=interest group/trusted bidding signals url=] [=origin=] will always be [=same origin=]
-    with [=interest group/owner=].
+    When non-null, the [=interest group/trusted bidding signals url=]'s [=origin=] will always be
+    [=same origin=] with [=interest group/owner=].
   </p>
 : <dfn>trusted bidding signals keys</dfn>
 :: Null or a [=list=] of [=string=]. See [=building trusted bidding signals url=].
@@ -1747,8 +1747,8 @@ An interest group ad is a [=struct=] with the following items:
 <dl dfn-for="interest group ad">
 : <dfn>render url</dfn>
 :: A [=URL=]. If this ad wins the auction, this URL (or a [=urn uuid=] that maps to this URL) will
-  be returned by {{Navigator/runAdAuction()}}. This URL is intended to be loaded into an ad iframe
-  (or a fenced frame).
+  be returned by {{Navigator/runAdAuction()}}. This URL is intended to be loaded into an ad
+  <{iframe}> (or a <{fencedframe}>).
 : <dfn>metadata</dfn>
 :: Null or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
 
@@ -1766,7 +1766,7 @@ An auction config is a [=struct=] with the following items:
 :: A [=URL=].
   The URL to fetch the seller's JavaScript from.
   <p class="note">
-    The [=auction config/decision logic url=] [=origin=] will always be [=same origin=] with
+    The [=auction config/decision logic url=]'s [=origin=] will always be [=same origin=] with
     [=auction config/seller=].
   </p>
 : <dfn>trusted scoring signals url</dfn>
@@ -1774,8 +1774,8 @@ An auction config is a [=struct=] with the following items:
   Provide a mechanism for making real-time data (information about a specific creative) available
   for use at scoring time, e.g. the results of some ad scanning system.
   <p class="note">
-    The [=auction config/trusted scoring signals url=] [=origin=] will always be [=same origin=]
-    with [=auction config/seller=].
+    When non-null, the [=auction config/trusted scoring signals url=]'s [=origin=] will always be
+    [=same origin=] with [=auction config/seller=].
   </p>
 : <dfn>interest group buyers</dfn>
 :: Null or a [=list=] of [=origin=].
@@ -1788,7 +1788,7 @@ An auction config is a [=struct=] with the following items:
 :: Null or a [=string=].
   Opaque JSON data passed to the seller's script runner.
 : <dfn>seller timeout</dfn>
-:: A [=duration=] in milliseconds. Defaulting to 50 milliseconds.
+:: A [=duration=] in milliseconds, initially 50 milliseconds.
   Restricts the runtime of the seller's `scoreAd()` script. If scoring does not complete before
   the timeout, the bid being scored is not considered further.
 : <dfn>per buyer signals</dfn>
@@ -1803,7 +1803,7 @@ An auction config is a [=struct=] with the following items:
   corresponding buyer's `generateBid()` script. If the timeout expires, only the bid submitted
   via `setBid()` is considered.
 : <dfn>all buyers timeout</dfn>
-:: A [=duration=] in milliseconds. Defaulting to 50 milliseconds.
+:: A [=duration=] in milliseconds, initially 50 milliseconds.
   Restricts the `generateBid()` script's runtime for all buyers without a timeout specified in
   [=auction config/per buyer timeouts=]. If the timeout expires, only the bid submitted via
   `setBid()` is considered.
@@ -1813,7 +1813,7 @@ An auction config is a [=struct=] with the following items:
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the number of
   bidding interest groups for a particular buyer that can participate in an auction.
 : <dfn>all buyers group limit</dfn>
-:: An {{unsigned short}}. Defaulting to 65535.
+:: An {{unsigned short}}, initially 65535.
   Limit on the number of bidding interest groups for all buyers without a limit specified in
   [=auction config/per buyer group limits=].
 : <dfn>per buyer priority signals</dfn>
@@ -1834,7 +1834,7 @@ An auction config is a [=struct=] with the following items:
   Nested auctions whose results will also participate in a top level auction. Only the top level
   [=auction config=] can have component auctions.
 : <dfn>seller experiment group id</dfn>
-:: Null or an {{unsigned short}}. Defaulting to null.
+:: Null or an {{unsigned short}}, initially null.
   Optional identifier for an experiment group to support coordinated experiments with the seller's
   trusted server.
 : <dfn>per buyer experiment group ids</dfn>
@@ -1843,7 +1843,7 @@ An auction config is a [=struct=] with the following items:
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are identifiers for
   experiment groups, to support coordinated experiments with buyers' trusted servers.
 : <dfn>all buyer experiment group id</dfn>
-:: Null or an {{unsigned short}}. Defaulting to null.
+:: Null or an {{unsigned short}}, initially null.
   Optional identifier for an experiment group to support coordinated experiments with buyers'
   trusted servers for buyers without a specified experiment group.
 
@@ -1902,7 +1902,7 @@ The render URL and size of an ad.
 : <dfn>url</dfn>
 :: A [=URL=], which will be rendered to display the creative if this bid wins the auction.
 : <dfn>size</dfn>
-:: Null or an [=ad size=]. Defaulting to null.
+:: Null or an [=ad size=], initially null.
 
 </dl>
 
@@ -1951,11 +1951,11 @@ Information of the auction's leading bid so far when ranking scored bids.
 
 <dl dfn-for="leading bid info">
 : <dfn>top score</dfn>
-:: A {{double}}. Defaulting to 0.0. The highest score so far.
+:: A {{double}}, initially 0.0. The highest score so far.
 : <dfn>top bids count</dfn>
-:: An integer. Defaulting to 0. The number of bids with the same `top score`.
+:: An integer, initially 0. The number of bids with the same `top score`.
 : <dfn>at most one top bid owner</dfn>
-:: A [=boolean=]. Defaulting to true. Whether all bids of `top score` are from the same interest
+:: A [=boolean=], initially true. Whether all bids of `top score` are from the same interest
   group owner.
 : <dfn>leading bid</dfn>
 :: Null or a [=generated bid=]. The leading bid of the auction so far.
@@ -1963,14 +1963,14 @@ Information of the auction's leading bid so far when ranking scored bids.
 :: An [=auction config=]. The auction config of the auction which generated this
   [=leading bid info/leading bid=].
 : <dfn>second highest score</dfn>
-:: A {{double}}. Defaulting to 0.0. The second highest score so far. If more than one bids tie with
+:: A {{double}}, initially 0.0. The second highest score so far. If more than one bids tie with
   `top score`, this will be set to `top score`.
 : <dfn>highest scoring other bids count</dfn>
-:: An integer. Defaulting to 0. The number of bids with the same `second highest score`.
+:: An integer, initially 0. The number of bids with the same `second highest score`.
 : <dfn>highest scoring other bid</dfn>
 :: Null or a [=generated bid=]. The second highest scoring other bid.
 : <dfn>highest scoring other bid owner</dfn>
-:: Null or an [=origin=]. Defaulting to null. The interest group owner that made bids with the
+:: Null or an [=origin=], initially null. The interest group owner that made bids with the
   `second highest score`. Set to null if there are more than one owners made bids with the
   `second highest score`. 
 : <dfn>top level seller</dfn>
