@@ -165,4 +165,20 @@ If invoked multiple times, the latest invocation before the top-level navigation
 
 If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon because the `destination` is unknown.
 
+Automatic beacons can be set in the click handler of an anchor tag, and will be sent on navigation:
 
+```
+<script>
+function addBeaconData() {
+  let beacon_event = {
+    eventType: "reserved.top_navigation",
+    eventData: "an example string",
+    destination: ["buyer"],
+  }
+  window.fence.setReportEventDataForAutomaticBeacons(beacon_event);
+}
+</script>
+<a onclick="addBeaconData()" href="somesite.com" target="_blank">Click me!</a>
+```
+
+The beacon data will be in place by the time that the navigation starts. When the navigation commits, the automatic beacon will be sent out.
