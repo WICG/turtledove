@@ -74,7 +74,7 @@ destination).`
 
 ### Example
 
-
+To send a request with the POST request body `'{"clickX":"123","clickY":"456"}'` to the url registered for `buyer` and `seller` when a user click happens:
 ```
 window.fence.reportEvent({
   'eventType': 'click',
@@ -83,6 +83,8 @@ window.fence.reportEvent({
 });
 ```
 
+
+To send a request with the POST request body `'an example string'` to the url registered for `component-seller` when a user click happens:
 ```
 window.fence.reportEvent({
   'eventType': 'click',
@@ -91,12 +93,15 @@ window.fence.reportEvent({
 });
 ```
 
+
+To send a request with the POST request body `''` to the url registered for `buyer` when a user click happens:
 ```
 window.fence.reportEvent({
   'eventType': 'click',
   'destination':['buyer']
 });
 ```
+
 
 Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. In the interim period when FLEDGE supports rendering the winning ad in an iframe, `window.fence` will also be available in such an iframe.
 
