@@ -36,6 +36,9 @@ spec: RFC8941; urlPrefix: https://httpwg.org/specs/rfc8941.html
     text: structured header; url: top
     for: structured header
       text: integer; url: integer
+spec: WebAssembly-js-api; urlPrefix: https://webassembly.github.io/spec/js-api/
+  type: dfn
+    text: compiling a WebAssembly module; url: #compile-a-webassembly-module
 </pre>
 
 # Introduction # {#intro}
@@ -392,6 +395,7 @@ dictionary AuctionAdConfig {
 The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 
 1. Let |global| be [=this=]'s [=relevant global object=].
+1. Let |settings| be [=this=]'s [=relevant settings object=].
 1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=run-ad-auction=]"
   [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
 1. Let |auctionConfig| be the result of running [=validate and convert auction ad config=] with
@@ -410,7 +414,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|, null,
-    and |global|.
+    |global|, and |settings|.
   1. If |winner| is null:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
       with null.
@@ -577,7 +581,8 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 <div algorithm>
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
-[=auction config=]-or-null |topLevelAuctionConfig|, and a [=global object=] |global|:
+[=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, and an
+[=environment settings object=] |settings|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
   [=auction config/decision logic url=].
@@ -595,7 +600,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       |auctionConfig|, and |global|.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
-        |decisionLogicScript|, null, and true.
+        |decisionLogicScript|, null, true and |settings|'s [=environment/top-level origin=].
 
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
@@ -639,7 +644,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Let |buyerExperimentGroupId| be |allBuyersExperimentGroupId|.
   1. Let |perBuyerExperimentGroupIds| be |auctionConfig|'s
     [=auction config/per buyer experiment group ids=].
-  1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|] exists:
+  1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|]
+    [=map/exists=]:
     1. Set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
   1. Let |buyerGroupLimit| be |allBuyersGroupLimit|.
   1. Let |perBuyerGroupLimits| be |auctionConfig|'s
@@ -680,21 +686,26 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
            [=interest group/join counts=] for all days within the last 30 days.
         1. [=map/Set=] |browserSignals|["`bidCount`"] to the sum of |ig|'s
            [=interest group/bid counts=] for all days within the last 30 days.
-        1. [=map/Set=] |browserSignals|["`prevWins`"] to a [=list=] containing
-           [=tuple=]s of the time and the corresponding winning
-           [=interest group ad=] from |ig|'s [=interest group/previous wins=]
-           field with a data within the last 30 days. The time field is
-           specified in seconds relative to the start of the auction.
-        1. TODO: Set |browserSignals|'s "wasmHelper" ...need to fetch and prepare WebAssembly.Module object based on |ig|'s [=interest group/bidding wasm helper url=]
+        1. [=map/Set=] |browserSignals|["`prevWins`"] to a [=list=] containing [=tuples=] of the
+           time and the corresponding winning [=interest group ad=] from |ig|'s
+           [=interest group/previous wins=] field with a data within the last 30 days. The time
+           field is specified in seconds relative to the start of the auction.
         1. If |dataVersion| is not null:
           1. [=map/Set=] |browserSignals|["`dataVersion`"] to |dataVersion|.
         1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
-          [=interest group/bidding url=]. If |biddingScript| is failure, [=iteration/continue=].
+          [=interest group/bidding url=].
+        1. If |biddingScript| is failure, [=iteration/continue=].
+        1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
+          1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
+            [=interest group/bidding wasm helper url=].
+          1. If |wasmModuleObject| is not failure:
+            1. [=map/Set=] |browserSignals|["`wasmHelper`"] to |wasmModuleObject|.
         1. Let |trustedBiddingSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and
           whose [=map/values=] are {{any}}.
         1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
-          1. If |allTrustedBiddingSignals|[|key|] [=map/exists=], then [=map/set=]
-            |trustedBiddingSignals|[|key|] to |allTrustedBiddingSignals|[|key|].
+          1. If |allTrustedBiddingSignals| is an [=ordered map=] and |allTrustedBiddingSignals|[|key|]
+            [=map/exists=], then [=map/set=] |trustedBiddingSignals|[|key|] to
+            |allTrustedBiddingSignals|[|key|].
         1. Let |startTime| be the current time.
         1. Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
            |biddingScript|, |ig|, and « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
@@ -713,7 +724,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. If |generatedBid| is failure, [=iteration/continue=].
         1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
-          |decisionLogicScript|, |dataVersion| and |isComponentAuction|.
+          |decisionLogicScript|, |dataVersion|, |isComponentAuction|, and |settings|'s
+          [=environment/top-level origin=].
 
   1. Decrement |pendingBuyers| by 1.
 1. Wait until |pendingBuyers| is 0.
@@ -730,27 +742,60 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
 |generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
-{{unsigned long}}-or-null |biddingDataVersion|, and a [=boolean=] |isComponentAuction|:
-1. TODO: Assemble and fetch trusted scoring signals
-1. TODO: Let |adMetadata| be ... maybe include in [=generated bid=]
+{{unsigned long}}-or-null |biddingDataVersion|, a [=boolean=] |isComponentAuction|, and an [=origin=]
+|topWindowOrigin|:
+1. Let |renderURLs| be a new [=set=].
+1. Let |adComponentRenderUrls| be a new [=set=].
+1. [=set/Append=] |generatedBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] to |renderURLs|.
+1. If |generatedBid|'s [=generated bid/ad component descriptors=] is not null:
+  1. [=set/For each=] |adComponentDescriptor| in |generatedBid|'s
+    [=generated bid/ad component descriptors=]:
+    1. [=set/Append=] |adComponentDescriptor|'s [=ad descriptor/url=] to |adComponentRenderUrls|.
+1. Let |fullSignalsUrl| be the result of [=building trusted scoring signals url=] with |auctionConfig|'s
+  [=auction config/trusted scoring signals url=], |renderURLs|, |adComponentRenderUrls|,
+  |auctionConfig|'s [=auction config/seller experiment group id=], and |topWindowOrigin|.
+
+  Implementations may batch requests by collecting render URLs and ad component render URLs
+  from multiple invocations of [=score and rank a bid=] and passing them all to a single invocation
+  of [=building trusted scoring signals url=] -- the network response has to be parsed to pull out the pieces
+  relevant to each [=evaluating a scoring script|evaluation of a scoring script=].
+1. Let |trustedScoringSignals| be null.
+1. Let «|allTrustedScoringSignals|, |scoringDataVersion|» be the result of [=fetching trusted signals=] with
+  |fullSignalsUrl| and false.
+1. If |allTrustedScoringSignals| is an [=ordered map=]:
+  1. Let |trustedScoringSignals| be a new [=map=].
+  1. [=Assert=]: |renderURLs|'s [=set/size=] is 1.
+  1. [=set/For each=] |renderURL| in |renderURLs|:
+    1. If |allTrustedScoringSignals|["`renderURLs`"] [=map/exists=] and
+      |allTrustedScoringSignals|["`renderURLs`"][|renderURL|] [=map/exists=]:
+      1. Let |renderURLValue| be a new [=map=].
+      1. [=map/Set=] |renderURLValue|[|renderURL|] to |allTrustedScoringSignals|["`renderURLs`"][|renderURL|].
+      1. [=map/Set=] |trustedScoringSignals|["`renderURL`"] to |renderURLValue|.
+  1. Let |adComponentRenderUrlsValue| be a new [=map=].
+  1. [=set/For each=] |adComponentRenderUrl| in |adComponentRenderUrls|:
+    1. If |allTrustedScoringSignals|["`adComponentRenderUrls`"] [=map/exists=] and
+      |allTrustedScoringSignals|["`adComponentRenderUrls`"][|adComponentRenderUrl|] [=map/exists=]:
+      1. [=map/Set=] |adComponentRenderUrlsValue|[|adComponentRenderUrl|] to
+          |allTrustedScoringSignals|["`adComponentRenderUrls`"][|adComponentRenderUrl|].
+  1. If |adComponentRenderUrlsValue| is not [=map/is empty|empty=]:
+    1. [=map/Set=] |trustedScoringSignals|["`adComponentRenderUrls`"] to |adComponentRenderUrlsValue|.
+1. Let |adMetadata| be |generatedBid|'s [=generated bid/ad=].
 1. Let |bidValue| be |generatedBid|'s [=generated bid/bid=].
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null:
   1. Set |bidValue| to |generatedBid|'s [=generated bid/modified bid=].
-1. TODO: Let |trustedScoringSignals| ... need to assemble and fetch these
 1. Let |owner| be |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=].
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
-1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=this=]'s [=relevant settings object=]'s
-  [=environment/top-level origin=]'s [=origin/host=].
+1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to |topWindowOrigin|'s [=origin/host=].
 1. [=map/Set=] |browserSignals|["interestGroupOwner"] to |owner|.
-1. [=map/Set=] |browserSignals|["renderURL"] to |generatedBid|'s [=generated bid/ad descriptor=]'s
+1. [=map/Set=] |browserSignals|["`renderURL`"] to |generatedBid|'s [=generated bid/ad descriptor=]'s
   [=ad descriptor/url=].
-1. [=map/Set=] |browserSignals|["adComponents"] to |generatedBid|'s
+1. [=map/Set=] |browserSignals|["`adComponents`"] to |generatedBid|'s
   [=generated bid/ad component descriptors=].
-1. [=map/Set=] |browserSignals|["biddingDurationMsec"] to |generatedBid|'s
+1. [=map/Set=] |browserSignals|["`biddingDurationMsec`"] to |generatedBid|'s
   [=generated bid/bid duration=].
-1. TODO: Set |browserSignals|'s "dataVersion" ...to Data-Version value from the trusted scoring
-  signals server's response.
+1. If |scoringDataVersion| is not null:
+  1. [=map/Set=] |browserSignals|["`dataVersion`"] to |scoringDataVersion|.
 1. TODO: Remove fields of |auctionConfig| that don't pass through.
 1. Let |scoreAdOutput| be the result of [=evaluating a scoring script=] with
    |decisionLogicScript| and « |adMetadata|, |bidValue|, |auctionConfig|, |trustedScoringSignals|,
@@ -789,7 +834,7 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
   1. Set |leadingBidInfo|'s [=leading bid info/leading bid=] to |generatedBid|.
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |auctionConfig|.
   1. Set |leadingBidInfo|'s [=leading bid info/bidding data version=] to |biddingDataVersion|.
-  1. TODO: Set |leadingBidInfo|'s [=leading bid info/scoring data version=].
+  1. Set |leadingBidInfo|'s [=leading bid info/scoring data version=] to |scoringDataVersion|.
 
 </div>
 
@@ -848,21 +893,20 @@ null |origin|:
 To <dfn>validate fetching response</dfn> given a [=response=] |response| and |responseBody|, and a
 [=string=] |mimeType|:
 
-
   1. If |responseBody| is null or failure, return false.
-  1. Let |headers| be |response|'s [=response/header list=].
-  1. If [=header list/getting a structured field value=] "X-Allow-Protected-Audience" from |headers| does not
-    return true, return false.
-  1. Let |headerMimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
+  1. If [=header list/getting a structured field value|getting=] "X-Allow-Protected-Audience" from
+    |response|'s [=response/header list=] does not return true, return false.
+  1. Let |headerMimeType| be the result of [=header list/extracting a MIME type=] from |response|'s
+    [=response/header list=].
   1. Return false if any of the following conditions hold:
     * |headerMimeType| is failure;
     * |mimeType| is "`text/javascript`" and |headerMimeType| is not a [=JavaScript MIME type=];
     * |mimeType| is "`application/json`" and |headerMimeType| is not a [=JSON MIME type=].
   1. Let |mimeTypeCharset| be |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
   1. Return false if any of the following conditions hold:
-    * If |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and
-      |responseBody| is not [=UTF-8=] encoded;
-    * If |mimeTypeCharset| is "us-ascii", and |responseBody| is not [=ascii string=].
+    * |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and |responseBody|
+      is not [=UTF-8=] encoded;
+    * |mimeTypeCharset| is "us-ascii", and |responseBody| is not [=ascii string=].
   1. Return true.
 </div>
 
@@ -879,6 +923,27 @@ To <dfn>fetch script</dfn> given a [=URL=] |url|:
     1. Set |script| to |responseBody|.
   1. Wait for |script| to be set.
   1. Return |script|.
+</div>
+
+<div algorithm>
+To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
+
+  1. Let |request| be the result of [=creating a request=] with |url|, "`application/wasm`", and
+    null.
+  1. Let |moduleObject| be null.
+  1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
+    a [=response=] |response| and |responseBody|:
+    1. Set |moduleObject| to failure and return, if any of the following conditions hold:
+      * |responseBody| is null or failure;
+      * [=header list/getting a structured field value|Getting=] "X-Allow-Protected-Audience" from
+        |response|'s [=response/header list=] does not return true.
+    1. Let |moduleObjectPromise| be the result of [=compiling a WebAssembly module=] |response|.
+    1. [=Upon fulfillment=] of |moduleObjectPromise| with value |module|:
+      1. Set |moduleObject| to |module|.
+    1. [=Upon rejection=] of |moduleObjectPromise|:
+      1. Set |moduleObject| to failure.
+  1. Wait for |moduleObject| to be set.
+  1. Return |moduleObject|.
 </div>
 
 The <dfn http-header><code>Data-Version</code></dfn> HTTP response header is a
@@ -912,8 +977,9 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
   1. Wait for |signals| to be set.
   1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return « null,
     null ».
-  1. If |formatVersion| is not null, is an integer, and is 2:
+  1. If |formatVersion| is 2:
     1. If |signals|["`keys`"] [=map/exists=], then set |signals| to |signals|["`keys`"].
+    1. TODO: handle priority vector.
     1. Otherwise, return « null, null ».
     1. If |signals| is not an [=ordered map=], return « null, null ».
   1. Return « |signals|, |dataVersion| ».
@@ -921,8 +987,19 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
 
 <div algorithm>
 
+To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=] |keys|:
+1. Let |list| be a new [=list/is empty|empty=] [=list=].
+1. Let |keysStr| be the result of [=string/concatenating=] |keys| with separator set to ",".
+1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keysStr| using
+  [=component percent-encode set=] to |list|.
+1. Return |list|.
+
+</div>
+
+<div algorithm>
+
 To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
-[=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, and an {{unsigned short}}
+[=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, and an {{unsigned short}}-or-null
 |experimentGroupId|:
 1. Let |queryParamsList| be a new [=list/is empty|empty=] [=list=].
 1. [=list/Append=] "hostname=" to |queryParamsList|.
@@ -931,14 +1008,46 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
   [=component percent-encode set=] to |queryParamsList|.
 1. If |keys| is not [=set/is empty|empty=]:
   1. [=list/Append=] "&keys=" to |queryParamsList|.
-  1. Let |keysStr| be the result of [=string/concatenating=] |keys| with separator set to ",".
-  1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keysStr| using
-    [=component percent-encode set=] to |queryParamsList|.
+  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
+    |keys|.
 1. If |igNames| is not [=set/is empty|empty=]:
   1. [=list/Append=] "&interestGroupNames=" to |queryParamsList|.
-  1. Let |igNamesStr| be the result of [=string/concatenating=] |igNames| with separator set to ",".
-  1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |igNamesStr| using
-    [=component percent-encode set=] to |queryParamsList|.
+  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
+    |igNames|.
+1. If |experimentGroupId| is not null:
+  1. [=list/Append=] "&experimentGroupId=" to |queryParamsList|.
+  1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
+1. Let |fullSignalsUrl| be |signalsUrl|.
+1. Set |fullSignalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
+1. return |fullSignalsUrl|.
+
+</div>
+
+<div algorithm>
+
+To <dfn>build trusted scoring signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
+[=URLs=] |renderURLs|, an [=ordered set=] of [=URLs=] |adComponentRenderUrls|, an {{unsigned short}}
+|experimentGroupId|, and an [=origin=] |topWindowOrigin|:
+1. Let |queryParamsList| be a new [=list/is empty|empty=] [=list=].
+1. [=list/Append=] "hostname=" to |queryParamsList|.
+1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topWindowOrigin| using
+  [=component percent-encode set=] to |queryParamsList|.
+1. If |renderURLs| is not [=set/is empty|empty=]:
+  1. [=list/Append=] "&renderURLs=" to |queryParamsList|.
+  1. Let |renderURLsStrings| be a new [=list/is empty|empty=] [=list=].
+  1. [=list/For each=] |renderURL| of |renderURLs|:
+    1. [=list/Append=] the result of [=URL serializer|serialization=] of |renderURL| to
+      |renderURLsStrings|.
+  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
+    |renderURLsStrings|.
+1. If |adComponentRenderUrls| is not [=set/is empty|empty=]:
+  1. [=list/Append=] "&adComponentRenderUrls=" to |queryParamsList|.
+  1. Let |adComponentRenderUrlsStrings| be a new [=list/is empty|empty=] [=list=].
+  1. [=list/For each=] |adComponentRenderUrl| of |adComponentRenderUrls|:
+    1. [=list/Append=] the result of [=URL serializer|serialization=] of |adComponentRenderUrl| to
+      |adComponentRenderUrlsStrings|.
+  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
+    |adComponentRenderUrlsStrings|.
 1. If |experimentGroupId| is not null:
   1. [=list/Append=] "&experimentGroupId=" to |queryParamsList|.
   1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
@@ -967,7 +1076,7 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
   1. Let |winner| be |leadingBidInfo|'s [=leading bid info/leading bid=].
   1. [=map/Set=] |browserSignals|["`interestGroupOwner`"] to |winner|'s
     [=generated bid/interest group=]'s [=interest group/owner=].
-  1. [=map/Set=] |browserSignals|["`renderUrl`"] to |winner|'s [=generated bid/ad descriptor=]'s
+  1. [=map/Set=] |browserSignals|["`renderURL`"] to |winner|'s [=generated bid/ad descriptor=]'s
     [=ad descriptor/url=].
   1. [=map/Set=] |browserSignals|["`bid`"] to |winner|'s [=generated bid/bid=].
   1. [=map/Set=] |browserSignals|["`desirability`"] to |leadingBidInfo|'s
@@ -1673,16 +1782,18 @@ An interest group is a [=struct=] with the following items:
 : <dfn>expiry</dfn>
 :: A point in time at which the browser will forget about this interest group.
 : <dfn>owner</dfn>
-:: An [=origin=]. Frames that join interest groups owned by `owner` must either be served from origin
-  `owner`, or another origin delegated by `owner` (See [=checking interest group permissions=] for details).
-  The [=origin/scheme=] must be "<code>https</code>".
+:: An [=origin=]. Frames that join interest groups owned by [=interest group/owner=] must either be
+  served from [=interest group/owner=], or another origin delegated by [=interest group/owner=] (See
+  [=checking interest group permissions=] for details). The [=origin/scheme=] must be "`https`".
 : <dfn>name</dfn>
-:: A [=string=]. The ([=interest group/owner=], [=interest group/name=]) tuple is a key that uniquely defines each interest group.
+:: A [=string=]. The ([=interest group/owner=], [=interest group/name=]) tuple is a key that
+  uniquely defines each interest group.
 : <dfn>priority</dfn>
-:: A {{double}}. Defaulting to 0.0. Used to select which interest groups participate in an auction
+:: A {{double}}, initially 0.0. Used to select which interest groups participate in an auction
   when the number of interest groups are limited by {{AuctionAdConfig/perBuyerGroupLimits}}.
+  TODO: Define spec for prioritizing interest groups, and link to it from here.
 : <dfn>enable bidding signals prioritization</dfn>
-:: A [=boolean=]. Defaulting to false. Being true if the interest group's priority should be
+:: A [=boolean=], initially false. Being true if the interest group's priority should be
   calculated using vectors from bidding signals fetch.
 : <dfn>priority vector</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
@@ -1692,28 +1803,37 @@ An interest group is a [=struct=] with the following items:
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
 : <dfn>execution mode</dfn>
-:: A [=string=], defaulting to "<code>compatibility</code>". Acceptable values are
+:: A [=string=], initially "<code>compatibility</code>". Acceptable values are
   "<code>compatibility</code>" and "<code>group-by-origin</code>".
+  TODO: Define spec for these execution modes, link to it from here and explain these modes.
 : <dfn>bidding url</dfn>
 :: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from.
-  <p class="note">The [=interest group/bidding url=] [=origin=] will always be [=same origin=] with
-  [=interest group/owner=].</p>
+  <p class="note">
+    When non-null, the [=interest group/bidding url=]'s [=origin=] will always be [=same origin=]
+    with [=interest group/owner=].
+  </p>
 : <dfn>bidding wasm helper url</dfn>
 :: Null or a [=URL=]. Lets the bidder provide computationally-expensive subroutines in WebAssembly,
   in addition to JavaScript, to be driven from the JavaScript function provided by
   [=interest group/bidding url=].
-  <p class="note">The [=interest group/bidding wasm helper url=] [=origin=] will always be [=same origin=] with
-  [=interest group/owner=].</p>
+  <p class="note">
+    When non-null, the [=interest group/bidding wasm helper url=]'s [=origin=] will always be
+    [=same origin=] with [=interest group/owner=].
+  </p>
 : <dfn>update url</dfn>
 :: Null or a [=URL=]. Provides a mechanism for the group's owner to periodically update the
   attributes of the interest group. See [interest group updates](#interest-group-updates).
-  <p class="note">The [=interest group/update url=] [=origin=] will always be [=same origin=] with
-  [=interest group/owner=].</p>
+  <p class="note">
+    When non-null, the [=interest group/update url=]'s [=origin=] will always be [=same origin=]
+    with [=interest group/owner=].
+  </p>
 : <dfn>trusted bidding signals url</dfn>
 :: Null or a [=URL=]. Provide a mechanism for making real-time data available for use at bidding
   time. See [=building trusted bidding signals url=].
-  <p class="note">Note: The [=interest group/trusted bidding signals url=] [=origin=] will always be [=same origin=] with
-  [=interest group/owner=].</p>
+  <p class="note">
+    When non-null, the [=interest group/trusted bidding signals url=]'s [=origin=] will always be
+    [=same origin=] with [=interest group/owner=].
+  </p>
 : <dfn>trusted bidding signals keys</dfn>
 :: Null or a [=list=] of [=string=]. See [=building trusted bidding signals url=].
 : <dfn>user bidding signals</dfn>
@@ -1728,25 +1848,23 @@ An interest group is a [=struct=] with the following items:
 : <dfn>joining origin</dfn>
 :: An [=origin=]. The top level page origin from where the interest group was joined.
 : <dfn>join counts</dfn>
-:: A [=list=] containing [=tuple=]s of the day and per day join count. The day
+:: A [=list=] containing [=tuples=] of the day and per day join count. The day
   is calculated based on local time. The join count is a count of the number of
   times {{Navigator/joinAdInterestGroup()}} was called for this interest group on the
   corresponding day.
 : <dfn>bid counts</dfn>
-:: A [=list=] containing [=tuple=]s of the day and per day bid count. The day
+:: A [=list=] containing [=tuples=] of the day and per day bid count. The day
   is calculated based on local time. The bid count is a count of the number of
   times the bid calculated during {{Navigator/runAdAuction()}} was greater than 0.
 : <dfn>previous wins</dfn>
-:: A [=list=] containing [=tuple=]s of the time and the corresponding
+:: A [=list=] containing [=tuples=] of the time and the corresponding
   [=interest group ad=] for each instance that this interest group won an
   auction.
 : <dfn>next update after</dfn>
-:: A point in time at which the browser will permit updating this interest group.
+:: A point in time at which the browser will permit updating this interest group. See
+  [interest group updates](#interest-group-updates).
 
 </dl>
-
-TODO: Specify the short descriptions of some fields above and below, and add links when runAdAuction() section
-is ready.
 
 <h3 dfn-type=dfn>Interest group ad</h3>
 
@@ -1754,8 +1872,9 @@ An interest group ad is a [=struct=] with the following items:
 
 <dl dfn-for="interest group ad">
 : <dfn>render url</dfn>
-:: A [=URL=]. If this ad wins the auction, this URL (or a [=urn uuid=] that maps to this URL) will be
-  returned by `runAdAuction()`. This URL is intended to be loaded into an ad iframe (or a fenced frame).
+:: A [=URL=]. If this ad wins the auction, this URL (or a [=urn uuid=] that maps to this URL) will
+  be returned by {{Navigator/runAdAuction()}}. This URL is intended to be loaded into an ad
+  <{iframe}> (or a <{fencedframe}>).
 : <dfn>metadata</dfn>
 :: Null or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
 
@@ -1772,14 +1891,18 @@ An auction config is a [=struct=] with the following items:
 : <dfn>decision logic url</dfn>
 :: A [=URL=].
   The URL to fetch the seller's JavaScript from.
-  <p class="note">The [=auction config/decision logic url=] [=origin=] will always be [=same origin=] with
-  [=auction config/seller=].</p>
+  <p class="note">
+    The [=auction config/decision logic url=]'s [=origin=] will always be [=same origin=] with
+    [=auction config/seller=].
+  </p>
 : <dfn>trusted scoring signals url</dfn>
 :: Null or a [=URL=].
   Provide a mechanism for making real-time data (information about a specific creative) available
   for use at scoring time, e.g. the results of some ad scanning system.
-  <p class="note">The [=auction config/trusted scoring signals url=] [=origin=] will always be [=same origin=] with
-  [=auction config/seller=].</p>
+  <p class="note">
+    When non-null, the [=auction config/trusted scoring signals url=]'s [=origin=] will always be
+    [=same origin=] with [=auction config/seller=].
+  </p>
 : <dfn>interest group buyers</dfn>
 :: Null or a [=list=] of [=origin=].
   Owners of interest groups allowed to participate in the auction. Each [=origin's=] [=origin/scheme=]
@@ -1791,8 +1914,9 @@ An auction config is a [=struct=] with the following items:
 :: Null or a [=string=].
   Opaque JSON data passed to the seller's script runner.
 : <dfn>seller timeout</dfn>
-:: A [=duration=] in milliseconds. Defaulting to 50 milliseconds.
-  Restricts the runtime of the seller's `scoreAd()` script.
+:: A [=duration=] in milliseconds, initially 50 milliseconds.
+  Restricts the runtime of the seller's `scoreAd()` script. If scoring does not complete before
+  the timeout, the bid being scored is not considered further.
 : <dfn>per buyer signals</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   [=strings=].
@@ -1802,18 +1926,20 @@ An auction config is a [=struct=] with the following items:
 :: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   [=durations=] in milliseconds.
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the runtime of
-  corresponding buyer's `generateBid()` script.
+  corresponding buyer's `generateBid()` script. If the timeout expires, only the bid submitted
+  via `setBid()` is considered.
 : <dfn>all buyers timeout</dfn>
-:: A [=duration=] in milliseconds. Defaulting to 50 milliseconds.
+:: A [=duration=] in milliseconds, initially 50 milliseconds.
   Restricts the `generateBid()` script's runtime for all buyers without a timeout specified in
-  [=auction config/per buyer timeouts=].
+  [=auction config/per buyer timeouts=]. If the timeout expires, only the bid submitted via
+  `setBid()` is considered.
 : <dfn>per buyer group limits</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   {{unsigned short}}s.
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the number of
   bidding interest groups for a particular buyer that can participate in an auction.
 : <dfn>all buyers group limit</dfn>
-:: an {{unsigned short}}.
+:: An {{unsigned short}}, initially 65535.
   Limit on the number of bidding interest groups for all buyers without a limit specified in
   [=auction config/per buyer group limits=].
 : <dfn>per buyer priority signals</dfn>
@@ -1834,7 +1960,7 @@ An auction config is a [=struct=] with the following items:
   Nested auctions whose results will also participate in a top level auction. Only the top level
   [=auction config=] can have component auctions.
 : <dfn>seller experiment group id</dfn>
-:: an {{unsigned short}}.
+:: Null or an {{unsigned short}}, initially null.
   Optional identifier for an experiment group to support coordinated experiments with the seller's
   trusted server.
 : <dfn>per buyer experiment group ids</dfn>
@@ -1843,7 +1969,7 @@ An auction config is a [=struct=] with the following items:
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are identifiers for
   experiment groups, to support coordinated experiments with buyers' trusted servers.
 : <dfn>all buyer experiment group id</dfn>
-:: an {{unsigned short}}.
+:: Null or an {{unsigned short}}, initially null.
   Optional identifier for an experiment group to support coordinated experiments with buyers'
   trusted servers for buyers without a specified experiment group.
 
@@ -1863,7 +1989,7 @@ representing [=interest group/joining origins=], and whose [=map/values=] are [=
 
 <h3 dfn-type=dfn>Generated bid</h3>
 
-The output of running a Protected Audience generateBid() script, which needs to be scored by
+The output of running a Protected Audience `generateBid()` script, which needs to be scored by
 the seller.
 
 <dl dfn-for="generated bid">
@@ -1890,7 +2016,7 @@ the seller.
 :: Null or a {{double}}. Being null for top level auction.
   The bid value a component auction's `scoreAd()` script returns.
 : <dfn>bid duration</dfn>
-:: A [=duration=] in milliseconds. How long it took to run the generateBid() script.
+:: A [=duration=] in milliseconds. How long it took to run `generateBid()`.
 
 </dl>
 
@@ -1902,7 +2028,7 @@ The render URL and size of an ad.
 : <dfn>url</dfn>
 :: A [=URL=], which will be rendered to display the creative if this bid wins the auction.
 : <dfn>size</dfn>
-:: Null or an [=ad size=]. Defaulting to null.
+:: Null or an [=ad size=], initially null.
 
 </dl>
 
@@ -1924,7 +2050,7 @@ Width and height of an ad.
 
 <h3 dfn-type=dfn>Score ad output</h3>
 
-The output of running a Protected Audience scoreAd() script.
+The output of running a Protected Audience `scoreAd()` script.
 
 <dl dfn-for="score ad output">
 : <dfn>desirability</dfn>
@@ -1940,8 +2066,8 @@ The output of running a Protected Audience scoreAd() script.
 :: Null or a {{double}}.
   Is null if the auction has no component auction, or if the auction is a top-level auction.
   Modified bid value to provide to the top-level seller script. If present, this will be passed to
-  the top-level seller's scoreAd() and reportResult() methods instead of the original bid, if the ad
-  wins the component auction and top-level auction, respectively.
+  the top-level seller's `scoreAd()` and `reportResult()` methods instead of the original bid, if
+  the ad wins the component auction and top-level auction, respectively.
 
 </dl>
 
@@ -1951,11 +2077,11 @@ Information of the auction's leading bid so far when ranking scored bids.
 
 <dl dfn-for="leading bid info">
 : <dfn>top score</dfn>
-:: A {{double}}. Defaulting to 0.0. The highest score so far.
+:: A {{double}}, initially 0.0. The highest score so far.
 : <dfn>top bids count</dfn>
-:: An integer. Defaulting to 0. The number of bids with the same `top score`.
+:: An integer, initially 0. The number of bids with the same `top score`.
 : <dfn>at most one top bid owner</dfn>
-:: A [=boolean=]. Defaulting to true. Whether all bids of `top score` are from the same interest
+:: A [=boolean=], initially true. Whether all bids of `top score` are from the same interest
   group owner.
 : <dfn>leading bid</dfn>
 :: Null or a [=generated bid=]. The leading bid of the auction so far.
@@ -1963,14 +2089,14 @@ Information of the auction's leading bid so far when ranking scored bids.
 :: An [=auction config=]. The auction config of the auction which generated this
   [=leading bid info/leading bid=].
 : <dfn>second highest score</dfn>
-:: A {{double}}. Defaulting to 0.0. The second highest score so far. If more than one bids tie with
+:: A {{double}}, initially 0.0. The second highest score so far. If more than one bids tie with
   `top score`, this will be set to `top score`.
 : <dfn>highest scoring other bids count</dfn>
-:: An integer. Defaulting to 0. The number of bids with the same `second highest score`.
+:: An integer, initially 0. The number of bids with the same `second highest score`.
 : <dfn>highest scoring other bid</dfn>
 :: Null or a [=generated bid=]. The second highest scoring other bid.
 : <dfn>highest scoring other bid owner</dfn>
-:: Null or an [=origin=]. Defaulting to null. The interest group owner that made bids with the
+:: Null or an [=origin=], initially null. The interest group owner that made bids with the
   `second highest score`. Set to null if there are more than one owners made bids with the
   `second highest score`. 
 : <dfn>top level seller</dfn>
