@@ -464,10 +464,12 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. Otherwise, let |auctionConfig|'s [=auction config/auction signals=] be the result of
     [=serializing a JavaScript value to a JSON string=], given
     |config|["{{AuctionAdConfig/auctionSignals}}"].
-1. If |config|["{{AuctionAdConfig/sellerSignals}}"] [=map/exists=], let |auctionConfig|'s
-  [=auction config/seller signals=] of be the result of
-  [=serializing a JavaScript value to a JSON string=], given
-  |config|["{{AuctionAdConfig/sellerSignals}}"].
+1. If |config|["{{AuctionAdConfig/sellerSignals}}"] [=map/exists=]:
+  1. If |config|["{{AuctionAdConfig/sellerSignals}}"] is a {{Promise}}, let |auctionConfig|'s
+    [=auction config/seller signals=] be |config|["{{AuctionAdConfig/sellerSignals}}"].
+  1. Otherwise, let |auctionConfig|'s [=auction config/seller signals=] be the result of
+    [=serializing a JavaScript value to a JSON string=], given
+    |config|["{{AuctionAdConfig/sellerSignals}}"].
 1. If |config|["{{AuctionAdConfig/directFromSellerSignals}}"] [=map/exists=], let
   |directFromSellerSignalsPrefix| be the result of running the [=URL parser=] on
   |config|["{{AuctionAdConfig/directFromSellerSignals}}"].
@@ -1103,11 +1105,15 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
   1. Otherwise, if |winner|'s [=generated bid/modified bid=] is not null, [=map/set=]
     |browserSignals|["`modifiedBid`"] to it.
   1. Set |config| to |leadingBidInfo|'s [=leading bid info/auction config=].
+  1. Set |sellerSignals| to |config|'s [=auction config/seller signals=].
+  1. If |sellerSignals| is a {{Promise}}:
+    1. [=Upon fulfillment=] of |sellerSignals| with |result| set |config|'s
+      [=auction config/seller signals=] to the result of
+      [=serializing a JavaScript value to a JSON string=], given |result|.
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
   1. Let « |sellerSignals|, |reportUrl| » be the result of [=evaluating a reporting script=] with
-    |sellerReportingScript|, "`reportResult`", and
-    « |config|'s [=auction config/auction signals=], |browserSignals| ».
+    |sellerReportingScript|, "`reportResult`", and « |config|, |browserSignals| ».
   1. If |reportUrl| is not null:
     1. TODO: Set |reportUrl| into the {{FencedFrameConfig}} so they can be fetched when ad renders.
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
@@ -1917,7 +1923,7 @@ An auction config is a [=struct=] with the following items:
 :: Null or a [=string=] or a {{Promise}}.
   Opaque JSON data passed to both sellers' and buyers' script runners.
 : <dfn>seller signals</dfn>
-:: Null or a [=string=].
+:: Null or a [=string=] or a {{Promise}}.
   Opaque JSON data passed to the seller's script runner.
 : <dfn>seller timeout</dfn>
 :: A [=duration=] in milliseconds, initially 50 milliseconds.
