@@ -287,7 +287,10 @@ Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame eleme
 1. Unconditionally pass in `resolveToConfig: true` and check whether the auction result is a config or a URN.
 
 All fields that accept arbitrary metadata objects (`auctionSignals`, `sellerSignals`, and keys of `perBuyerSignals`) must be JSON-serializable.
-All fields that specify URLs for loading scripts or JSON (`decisionLogicURL` and `trustedScoringSignalsURL`) must point to URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for loading FLEDGE resources.
+All fields that specify URLs for loading scripts or JSON (`decisionLogicURL` and
+`trustedScoringSignalsURL`) must be same-origin with `seller` and must point to
+URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to
+ensure they are allowed to be used for loading FLEDGE resources.
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
 
