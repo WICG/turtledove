@@ -38,7 +38,7 @@ reportResult()/reportWin() methods using a new API available in the worklet:
 ```
 function reportResult(auctionConfig, browserSignals) {
   …
-  privateAggregation.sendHistogramReport({
+  privateAggregation.contributeToHistogram({
       bucket: convertBuyerToBucketId(browserSignals.interestGroupOwner),
       value: convertBidToReportingValue(browserSignals.bid)
     });
