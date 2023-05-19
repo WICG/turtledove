@@ -458,10 +458,12 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       error, or |buyer|'s [=url/scheme=] is not "`https`", then [=exception/throw=] a {{TypeError}}.
       Otherwise, [=list/append=] |buyer| to |buyers|.
   1. Set |auctionConfig|'s [=auction config/interest group buyers=] to |buyers|.
-1. If |config|["{{AuctionAdConfig/auctionSignals}}"] [=map/exists=], let |auctionConfig|'s
-  [=auction config/auction signals=] be the result of
-  [=serializing a JavaScript value to a JSON string=], given
-  |config|["{{AuctionAdConfig/auctionSignals}}"].
+1. If |config|["{{AuctionAdConfig/auctionSignals}}"] [=map/exists=]:
+  1. If |config|["{{AuctionAdConfig/auctionSignals}}"] is a {{Promise}}, let |auctionConfig|'s
+    [=auction config/auction signals=] be |config|["{{AuctionAdConfig/auctionSignals}}"].
+  1. Otherwise, let |auctionConfig|'s [=auction config/auction signals=] be the result of
+    [=serializing a JavaScript value to a JSON string=], given
+    |config|["{{AuctionAdConfig/auctionSignals}}"].
 1. If |config|["{{AuctionAdConfig/sellerSignals}}"] [=map/exists=], let |auctionConfig|'s
   [=auction config/seller signals=] of be the result of
   [=serializing a JavaScript value to a JSON string=], given
@@ -627,6 +629,10 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |allBuyersGroupLimit| be |auctionConfig|'s
   [=auction config/all buyers group limit=].  
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
+1. If |auctionSignals| is a {{Promise}}:
+  1. [=Upon fulfillment=] of |auctionSignals| with |result| set |auctionSignals| to the result
+
+    of [=serializing a JavaScript value to a JSON string=], given |result|.
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
 1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=this=]'s [=relevant settings object=]'s
@@ -1908,7 +1914,7 @@ An auction config is a [=struct=] with the following items:
   Owners of interest groups allowed to participate in the auction. Each [=origin's=] [=origin/scheme=]
   must be "<code>https</code>".
 : <dfn>auction signals</dfn>
-:: Null or a [=string=].
+:: Null or a [=string=] or a {{Promise}}.
   Opaque JSON data passed to both sellers' and buyers' script runners.
 : <dfn>seller signals</dfn>
 :: Null or a [=string=].
