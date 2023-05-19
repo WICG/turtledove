@@ -165,7 +165,7 @@ The `ads` list contains the various ads that the interest group might show.  Eac
 
  * `metadata`: Arbitrary metadata that can be used at bidding time.
 
-The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similar to the `ads` field, each entry is an object that includes a `renderURL` and optional `adRenderId`, and `metadata` fields. Thanks to `ads` and `adsComponents` being separate fields, the buyer is able to update the `ads` field via the `updateUrl` without losing `adComponents` stored in the interest group.
+The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similar to the `ads` field, each entry is an object that includes a `renderURL` and optional `adRenderId`, and `metadata` fields. Thanks to `ads` and `adComponents` being separate fields, the buyer is able to update the `ads` field via the `updateUrl` without losing `adComponents` stored in the interest group.
 
 All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`, `biddingWasmHelperURL`, and `trustedBiddingSignalsURL`) must point to URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for loading FLEDGE resources.
