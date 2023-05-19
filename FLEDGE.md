@@ -157,7 +157,7 @@ The `executionMode` attribute is optional, and may contain one of the following 
 
 The `ads` list contains the various ads that the interest group might show.  Each entry is an object that must contain an `renderUrl` property with the URL for the ad that would be shown. An ad may also have the following optional properties:
 
- * `adRenderId`: A short [Bytestring](https://webidl.spec.whatwg.org/#es-ByteString) up to 8 characters long serving as an identifier for this ad in this context. When this field is specified it will be sent instead of the full ad object for [B&A server auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
+ * `adRenderId`: A short [Bytestring](https://webidl.spec.whatwg.org/#es-ByteString) up to 8 characters long serving as an identifier for this ad in this interest group. When this field is specified it will be sent instead of the full ad object for [B&A server auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
 
  * `buyerAndSellerReportingId`: If set, the value is used instead of the interest group name or `buyerReportingId` for reporting in `reportWin` and `reportResult`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
 
