@@ -415,6 +415,9 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|, null,
     |global|, and |settings|.
+  1. If |winner| is failure:
+    1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=reject=]
+      |p| with a "{{TypeError}}".
   1. If |winner| is null:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
       with null.
@@ -459,14 +462,26 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       Otherwise, [=list/append=] |buyer| to |buyers|.
   1. Set |auctionConfig|'s [=auction config/interest group buyers=] to |buyers|.
 1. If |config|["{{AuctionAdConfig/auctionSignals}}"] [=map/exists=]:
-  1. If |config|["{{AuctionAdConfig/auctionSignals}}"] is a {{Promise}}, let |auctionConfig|'s
-    [=auction config/auction signals=] be |config|["{{AuctionAdConfig/auctionSignals}}"].
+  1. If |config|["{{AuctionAdConfig/auctionSignals}}"] is a {{Promise}}:
+    1. Let |auctionConfig|'s [=auction config/auction signals=] be
+      |config|["{{AuctionAdConfig/auctionSignals}}"].
+    1. Increment |auctionConfig|'s [=auction config/pending promise count=].
+    1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/auction signals=] with |result|:
+      1. Set |auctionConfig|'s [=auction config/auction signals=] to the result of
+        [=serializing a JavaScript value to a JSON string=], given |result|.
+      1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
   1. Otherwise, let |auctionConfig|'s [=auction config/auction signals=] be the result of
     [=serializing a JavaScript value to a JSON string=], given
     |config|["{{AuctionAdConfig/auctionSignals}}"].
 1. If |config|["{{AuctionAdConfig/sellerSignals}}"] [=map/exists=]:
-  1. If |config|["{{AuctionAdConfig/sellerSignals}}"] is a {{Promise}}, let |auctionConfig|'s
-    [=auction config/seller signals=] be |config|["{{AuctionAdConfig/sellerSignals}}"].
+  1. If |config|["{{AuctionAdConfig/sellerSignals}}"] is a {{Promise}}:
+    1. Let |auctionConfig|'s [=auction config/seller signals=] be
+      |config|["{{AuctionAdConfig/sellerSignals}}"].
+    1. Increment |auctionConfig|'s [=auction config/pending promise count=].
+    1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/seller signals=] with |result|:
+      1. Set |auctionConfig|'s [=auction config/seller signals=] to the result of
+        [=serializing a JavaScript value to a JSON string=], given |result|.
+      1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
   1. Otherwise, let |auctionConfig|'s [=auction config/seller signals=] be the result of
     [=serializing a JavaScript value to a JSON string=], given
     |config|["{{AuctionAdConfig/sellerSignals}}"].
@@ -479,6 +494,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       [=auction config/seller=];
     * |directFromSellerSignalsPrefix|'s [=url/query=] is not null.
   1. [=Assert=]: |directFromSellerSignalsPrefix|'s [=url/scheme=] is "`https`".
+  1. Set |auctionConfig|'s [=auction config/direct from seller signals prefix=] to
+    |directFromSellerSignalsPrefix|.
 1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
   [=auction config/seller timeout=] to min(|config|["{{AuctionAdConfig/sellerTimeout}}"], 500)
   milliseconds.
@@ -602,6 +619,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinner| be the result of running [=generate and score bids=] with |component|,
       |auctionConfig|, and |global|.
+    1. If |compWinner| is failure, return failure.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
         |decisionLogicScript|, null, true and |settings|'s [=environment/top-level origin=].
@@ -630,11 +648,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   [=auction config/all buyer experiment group id=].
 1. Let |allBuyersGroupLimit| be |auctionConfig|'s
   [=auction config/all buyers group limit=].  
+1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
-1. If |auctionSignals| is a {{Promise}}:
-  1. [=Upon fulfillment=] of |auctionSignals| with |result| set |auctionSignals| to the result
-
-    of [=serializing a JavaScript value to a JSON string=], given |result|.
+1. [=Assert=] |auctionSignals| is not a {{Promise}}.
+1. If |auctionSignals| is failure, return failure.
+1. [=Assert=] |auctionConfig|'s [=auction config/seller signals=] is not a {{Promise}}.
+1. If |auctionConfig|'s [=auction config/seller signals=] is failure, return failure.
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
 1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=this=]'s [=relevant settings object=]'s
@@ -1105,11 +1124,6 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
   1. Otherwise, if |winner|'s [=generated bid/modified bid=] is not null, [=map/set=]
     |browserSignals|["`modifiedBid`"] to it.
   1. Set |config| to |leadingBidInfo|'s [=leading bid info/auction config=].
-  1. Let |sellerSignals| be |config|'s [=auction config/seller signals=].
-  1. If |sellerSignals| is a {{Promise}}:
-    1. [=Upon fulfillment=] of |sellerSignals| with |result| set |config|'s
-      [=auction config/seller signals=] to the result of
-      [=serializing a JavaScript value to a JSON string=], given |result|.
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
   1. Let « |sellerSignals|, |reportUrl| » be the result of [=evaluating a reporting script=] with
@@ -1920,10 +1934,10 @@ An auction config is a [=struct=] with the following items:
   Owners of interest groups allowed to participate in the auction. Each [=origin's=] [=origin/scheme=]
   must be "<code>https</code>".
 : <dfn>auction signals</dfn>
-:: Null or a [=string=] or a {{Promise}}.
+:: Null or a [=string=] or a {{Promise}} or failure.
   Opaque JSON data passed to both sellers' and buyers' script runners.
 : <dfn>seller signals</dfn>
-:: Null or a [=string=] or a {{Promise}}.
+:: Null or a [=string=] or a {{Promise}} or failure.
   Opaque JSON data passed to the seller's script runner.
 : <dfn>seller timeout</dfn>
 :: A [=duration=] in milliseconds, initially 50 milliseconds.
@@ -1934,6 +1948,17 @@ An auction config is a [=struct=] with the following items:
   [=strings=].
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
   passed to corresponding buyer's script runner.
+: <dfn>direct from seller signals prefix</dfn>
+:: Null or a [=URL=].
+  Prefix of a [=URL=] used to pass signals to the auction, similar to
+  [=auction config/seller signals=] and [=auction config/per buyer signals=]. The difference is
+  that signals derived from [=auction config/direct from seller signals prefix=] are trusted to
+  come from the [=auction config/seller=] because the content loads from a subresource bundle
+  loaded from the [=auction config/seller=]'s [=origin=].
+  <p class="note">
+    When non-null, the [=auction config/direct from seller signals prefix=]'s [=origin=] will
+    always be [=same origin=] with [=auction config/seller=].
+  </p>
 : <dfn>per buyer timeouts</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   [=durations=] in milliseconds.
@@ -1984,6 +2009,11 @@ An auction config is a [=struct=] with the following items:
 :: Null or an {{unsigned short}}, initially null.
   Optional identifier for an experiment group to support coordinated experiments with buyers'
   trusted servers for buyers without a specified experiment group.
+: <dfn>pending promise count</dfn>
+:: An integer, initially 0. The number of [=auction config/auction signals=],
+  [=auction config/seller signals=], [=auction config/per buyer signals=],
+  [=auction config/direct from seller signals prefix=], or
+  [=auction config/per buyer timeouts=] that are pending {{Promises}}.
 
 </dl>
 
