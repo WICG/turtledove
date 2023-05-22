@@ -727,6 +727,7 @@ The arguments to this function are:
     * The `joinCount` field is the number of times this device has joined this interest group in the last 30 days while the interest group has been continuously stored (that is, there are no gaps in the storage of the interest group on the device due to leaving or membership expiring), using the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
     * The `recency` field is duration of time (in minutes) from when this device joined this interest group until now, using the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
     * `modelingSignals` is the `modelingSignals` returned from `generateBid()`, using the [noising scheme](#521-noised-and-bucketed-signals). This field is only present if `modelingSignals` was returned by `generateBid()`.
+    * `enforcedKAnon` is a boolean value indicating whether or not k-anonymity enforcement is active on the client. True indicates that the client is enforcing k-anonymity and false indicates that the client is not enforcing k-anonymity.
 *   `directFromSellerSignals` is an object that may contain the following fields:
     *   `perBuyerSignals`: Like `auctionConfig.perBuyerSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
     *   `auctionSignals`: Like `auctionConfig.auctionSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
@@ -737,7 +738,7 @@ Ads often need to report on events that happen once the ad is rendered.  One com
 
 ##### 5.2.1 Noised and Bucketed Signals
 
-Some privacy-sensitive information (browser signals `joinCount`, `recency`, and the field `modelingSignals` passed from `generateBid()` to `reportWin()`) are made available to `reportWin()` under a special noising and bucketing scheme. 
+Some privacy-sensitive information (browser signals `joinCount`, `recency`, and the field `modelingSignals` passed from `generateBid()` to `reportWin()`) are made available to `reportWin()` under a special noising and bucketing scheme.
 
 All such fields use a noising scheme where, in a randomly-selected 1% of `reportWin()` calls, a uniformly-generated random value in the range of the field's bucketing scheme is returned instead of the true value.
 
@@ -752,5 +753,3 @@ These signals were requested in [issue 435](https://github.com/WICG/turtledove/i
 We also need to provide a mechanism for the _losing_ bidders in the auction to learn aggregate outcomes.  Certainly they should be able to count the number of times they bid, and losing ads should also be able to learn (in aggregate) some seller-provided information about e.g. the auction clearing price.  Likewise, a reporting mechanism should be available to buyers who attempted to bid with a creative that had not yet reached the k-anonymity threshold.
 
 This could be handled by a `reportLoss()` function running in the worklet.  Alternatively, the model of [SPURFOWL](https://github.com/AdRoll/privacy/blob/main/SPURFOWL.md) (an append-only datastore and later aggregate log processing) could be a good fit for this use case.  The details here are yet to be determined.
-
-
