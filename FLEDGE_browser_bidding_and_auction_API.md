@@ -36,7 +36,7 @@ Their server then passes the blob off to B&A servers which conduct on-server auc
 
 #### Step 3: Get response blobs to browser
 
-These response blobs are sent back to the browser. A seller’s JavaScript can [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) them back to the browser, perhaps as the response body to the Fetch initiated in Step 2. This Fetch is initiated with a flag to prepare the browser to look for `X-fledge-auction-results` HTTP response headers:
+These response blobs are sent back to the browser. A seller’s JavaScript can [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) them back to the browser, perhaps as the response body to the Fetch initiated in Step 2. This Fetch is initiated with a flag to prepare the browser to look for `Ad-Auction-Result` HTTP response headers:
 <pre>
 fetch('https://www.example-ssp.com/auction', { <b>adAuctionHeaders: true</b>, … })
 </pre>
@@ -44,7 +44,7 @@ Note that `adAuctionHeaders` only works with HTTPS requests.
 For each response blob sent back to the browser, the seller’s server attaches a response header containing the SHA-256 hash of the response blob:
   
 ```
-X-fledge-auction-result: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+Ad-Auction-Result: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 ```
 
 It should be noted that the `fetch()` request using `adAuctionHeaders` can also be used to send `auctionBlob` (e.g. in the request body) and receive the response blob (e.g. in the response body).
