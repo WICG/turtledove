@@ -169,16 +169,17 @@ Automatic beacons can be set in the click handler of an anchor tag, and will be 
 
 ```
 <script>
-function addBeaconData() {
+function addBeaconData(element) {
+  const data = element.id + " was clicked.";
   let beacon_event = {
     eventType: "reserved.top_navigation",
-    eventData: "an example string",
+    eventData: data,
     destination: ["buyer"],
   }
   window.fence.setReportEventDataForAutomaticBeacons(beacon_event);
 }
 </script>
-<a onclick="addBeaconData()" href="somesite.com" target="_blank">Click me!</a>
+<a onclick="addBeaconData(this)" id="link1" href="somesite.com" target="_blank">Click me!</a>
 ```
 
-The beacon data will be in place by the time that the navigation starts. When the navigation commits, the automatic beacon will be sent out.
+The beacon data will be in place by the time that the navigation starts. When the navigation commits, the automatic beacon will be sent out with event data set to "link1 was clicked.".
