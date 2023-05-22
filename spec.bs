@@ -25,6 +25,7 @@ urlPrefix: https://www.ietf.org/rfc/rfc4122.txt
 spec: html; urlPrefix: https://html.spec.whatwg.org/C
   type: dfn
     text: create an agent; url: create-an-agent
+    text: immediately; url: immediately
 spec: ECMASCRIPT; urlPrefix: https://tc39.es/ecma262/
   type: dfn
     text: ParseScript; url: sec-parse-script
@@ -673,6 +674,10 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. If |auctionConfig|'s [=auction config/per buyer signals=] is not null and
     [=auction config/per buyer signals=][|buyer|] [=map/exists=]:
     1. Set |perBuyerSignals| to |auctionConfig|'s [=auction config/per buyer signals=][|buyer|].
+  1. Let |perBuyerTimeout| be |auctionConfig|'s [=auction config/all buyer timeout=].
+  1. If |auctionConfig|'s [=auction config/per buyer timeouts=] is not null and
+    [=auction config/per buyer timeouts=][|buyer|] [=map/exists=]:
+    1. Set |perBuyerTimeout| to |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|].
   1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perBuyerGenerator|:
     1. Let |keys| be a new [=ordered set=].
     1. Let |igNames| be a new [=ordered set=].
@@ -715,8 +720,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             |allTrustedBiddingSignals|[|key|].
         1. Let |startTime| be the current time.
         1. Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
-           |biddingScript|, |ig|, and « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
-           |trustedBiddingSignals|, |browserSignals| ».
+           |biddingScript|, |ig|, « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
+           |trustedBiddingSignals|, |browserSignals| », and |perBuyerTimeout|.
         1. Let |duration| be the current time minus |startTime| in milliseconds.
         1. If |generatedBidResult| is an [=abrupt completion=], [=iteration/continue=].
         1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
@@ -805,8 +810,8 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
   1. [=map/Set=] |browserSignals|["`dataVersion`"] to |scoringDataVersion|.
 1. TODO: Remove fields of |auctionConfig| that don't pass through.
 1. Let |scoreAdOutput| be the result of [=evaluating a scoring script=] with
-   |decisionLogicScript| and « |adMetadata|, |bidValue|, |auctionConfig|, |trustedScoringSignals|,
-   |browserSignals| ».
+   |decisionLogicScript|, « |adMetadata|, |bidValue|, |auctionConfig|, |trustedScoringSignals|,
+   |browserSignals| », and |auctionConfig|'s [=auction config/seller timeout=].
 1. If |isComponentAuction| is true, and |scoreAdOutput|'s
   [=score ad output/allow component auction=] is false, return.
 1. Let |score| be |scoreAdOutput|'s [=score ad output/desirability=].
@@ -1213,7 +1218,7 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
 
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig|,
-  and a [=list=] of arguments |arguments|:
+  a [=list=] of arguments |arguments|, and an integer |timeout|:
 
     1. Let |groupHasAdComponents| be true.
     1. If |ig|'s [=interest group/ad components=] is null:
@@ -1230,26 +1235,26 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
     1. Set |global|'s
       [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=] to |isComponentAuction|.
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/interest group=] to |ig|.
-    1. Return the result of [=evaluating a script=] with |global|, |script|, "`generateBid`", and
-      |arguments|.
+    1. Return the result of [=evaluating a script=] with |global|, |script|, "`generateBid`",
+      |arguments|, and |timeout|.
 </div>
 
 <div algorithm>
-  To <dfn>evaluate a scoring script</dfn> given a [=string=] |script| and a [=list=] of arguments
-  |arguments|:
+  To <dfn>evaluate a scoring script</dfn> given a [=string=] |script|, a [=list=] of arguments
+  |arguments|, and an integer |timeout|:
 
     1. Let |global| be a new {{InterestGroupScoringScriptRunnerGlobalScope}}.
-    1. Return the result of [=evaluating a script=] with |global|, |script|, "`scoreAd`", and
-      |arguments|.
+    1. Return the result of [=evaluating a script=] with |global|, |script|, "`scoreAd`",
+      |arguments|, and |timeout|.
 </div>
 
 <div algorithm>
   To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=]
-  |functionName|, and a [=list=] of arguments |arguments|:
+  |functionName|, a [=list=] of arguments |arguments|, and an integer |timeout|:
 
     1. Let |global| be a new {{InterestGroupReportingScriptRunnerGlobalScope}}.
     1. Let |result| be the result of [=evaluating a script=] with |global|, |script|,
-      |functionName|, and |arguments|.
+      |functionName|, |arguments|, and |timeout|.
     1. Return « |result|, |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=] ».
 </div>
 
@@ -1286,10 +1291,10 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
 
 <div algorithm>
   To <dfn>evaluate a script</dfn> with a [=realm/global object=] |global|, [=string=] |script|, [=string=]
-  |functionName|, and a [=list=] |arguments|, run these steps. They return a [=ECMAScript/Completion
-  Record=], which is either an [=abrupt completion=] (in the case of a parse failure or execution
-  error), or a normal completion populated with the [=ECMAScript/ECMAScript language value=] result
-  of invoking |functionName|.
+  |functionName|, a [=list=] |arguments|, and an integer |timeout|, run these steps. They return a
+  [=ECMAScript/Completion Record=], which is either an [=abrupt completion=] (in the case of a parse
+  failure or execution error), or a normal completion populated with the
+  [=ECMAScript/ECMAScript language value=] result of invoking |functionName|.
 
     1. [=Assert=] that these steps are running [=in parallel=].
 
@@ -1345,7 +1350,9 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
        href=#evaluate-script-return>return</a></i>.
 
     1. Set |finalCompletion| be [=ECMAScript/Completion Record|Completion=]([$Call$](F, `undefined`,
-       |arguments|)).
+       |arguments|)). In |timeout| milliseconds, if the invocation of [$Call$] has not completed,
+       [=immediately=] interrupt the execution and set |finalCompletion| to a new
+       [=throw completion=] given null.
 
     1. <i id=evaluate-script-return>Return</i>: at this point |finalCompletion| will be set to a
        [=ECMAScript/Completion Record=].
