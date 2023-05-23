@@ -1202,7 +1202,10 @@ a <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority signals</dfn>, w
 [=boolean=].
 
 Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
-<dfn for=InterestGroupReportingScriptRunnerGlobalScope>report url</dfn>, which is a [=URL=] or null.
+<dfn for=InterestGroupReportingScriptRunnerGlobalScope>report url</dfn>, which is a [=URL=] or
+null, and a <dfn for=InterestGroupReportingScriptRunnerGlobalScope>reporting beacon map</dfn>,
+which is null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+[=URLs=].
 
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig|,
@@ -1387,6 +1390,11 @@ interface InterestGroupScoringScriptRunnerGlobalScope
 interface InterestGroupReportingScriptRunnerGlobalScope
         : InterestGroupScriptRunnerGlobalScope {
   undefined sendReportTo(DOMString url);
+};
+
+[Exposed=InterestGroupReportingScriptRunnerGlobalScope]
+partial interface Navigator {
+  undefined registerAdBeacon();
 };
 
 dictionary AdRender {
@@ -1584,6 +1592,24 @@ an [=interest group=] |ig|, a [=boolean=] |isComponentAuction| and a [=boolean=]
     [=exception/Throw=] a {{TypeError}}.
   1. Set [=this=]'s [=relevant global object=]'s
     [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to |parsedUrl|.
+</div>
+
+<div algorithm>
+  The <dfn method for=Navigator>registerAdBeacon(|map|)</dfn> method steps are:
+
+  1. If [=this=]'s [=relevant global object=]'s [=InterestGroupReportingScriptRunnerGlobalScope/
+     reporting beacon map=] is not null, then [=exception/Throw=] a {{TypeError}}.
+
+  1. [=map/For each=] |eventType| → |url| of |map|:
+
+     1. Let |parsedURL| be the result of running [=URL parser=] on |url|.
+
+     1. [=exception/Throw=] a {{TypeError}} if any of the following conditions hold:
+        * |parsedURL| is an error;
+        * |parsedURL|'s [=url/scheme=] is not "`https`".
+
+  1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupReportingScriptRunnerGlobalScope/
+     reporting beacon map=] to |map|.
 </div>
 
 
