@@ -387,6 +387,7 @@ dictionary AuctionAdConfig {
   record<USVString, record<USVString, double>> perBuyerPrioritySignals;
   sequence<AuctionAdConfig> componentAuctions = [];
   AbortSignal? signal;
+  Promise<boolean> resolveToConfig;
 };
 </xmp>
 
@@ -420,8 +421,9 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       with null.
   1. Otherwise:
     1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to resolve
-      |p| with |winner|'s [=generated bid/ad descriptor=]. TODO: resolve |p| with urn-uuid, instead
-      of a URL.
+       |p| with |winner|'s [=generated bid/ad descriptor=]. TODO: resolve |p| with a
+       {{FencedFrameConfig}} or a urn-uuid, depending on |auctionConfig|'s [=auction config/resolve
+       to config=].
   1. Run [=interest group update=] with |auctionConfig|'s [=auction config/interest group buyers=].
   1. TODO: Update bidCount and prevWins for interest groups that participated in the auction.
 1. Return |p|.
@@ -533,6 +535,9 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. Let |componentAuction| be the result of running [=validate and convert auction ad config=] with
     |component| and [=validate and convert auction ad config/isTopLevel=] set to false.
   1. [=list/Append=] |componentAuction| to |auctionConfig|'s [=auction config/component auctions=].
+1. If |config|["{{AuctionAdConfig/resolveToConfig}}"] [=map/exists=]:
+  1. Let |auctionConfig|'s [=auction config/resolve to config=] be |config|["{{AuctionAdConfig/
+     resolveToConfig}}"].
 1. Return |auctionConfig|.
 
 </div>
@@ -1979,6 +1984,9 @@ An auction config is a [=struct=] with the following items:
 :: Null or an {{unsigned short}}, initially null.
   Optional identifier for an experiment group to support coordinated experiments with buyers'
   trusted servers for buyers without a specified experiment group.
+: <dfn>resolve to config</dfn>
+  A [=boolean=] or a {{Promise}}, initially false.
+  Whether the ad should be returned as a {{FencedFrameConfig}}, or otherwise as a [=urn uuid=].
 
 </dl>
 
