@@ -165,7 +165,7 @@ If invoked multiple times, the latest invocation before the top-level navigation
 
 If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon because the `destination` is unknown.
 
-Automatic beacons can be set in the click handler of an anchor tag, and will be sent on navigation:
+`setReportEventDataForAutomaticBeacons` can also be invoked in the click handler of an anchor tag, and will be sent on navigation:
 
 ```
 <script>
