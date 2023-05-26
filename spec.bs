@@ -500,8 +500,6 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       [=auction config/seller=];
     * |directFromSellerSignalsPrefix|'s [=url/query=] is not null.
   1. [=Assert=]: |directFromSellerSignalsPrefix|'s [=url/scheme=] is "`https`".
-  1. Set |auctionConfig|'s [=auction config/direct from seller signals prefix=] to
-    |directFromSellerSignalsPrefix|.
 1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
   [=auction config/seller timeout=] to min(|config|["{{AuctionAdConfig/sellerTimeout}}"], 500)
   milliseconds.
@@ -656,10 +654,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   [=auction config/all buyers group limit=].  
 1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
-1. [=Assert=] |auctionSignals| is not a {{Promise}}.
-1. If |auctionSignals| is failure, return failure.
-1. [=Assert=] |auctionConfig|'s [=auction config/seller signals=] is not a {{Promise}}.
-1. If |auctionConfig|'s [=auction config/seller signals=] is failure, return failure.
+1. [=Assert=] |auctionSignals| and |auctionConfig|'s [=auction config/seller signals=] are not {{Promise}}s.
+1. If |auctionSignals| or |auctionConfig|'s [=auction config/seller signals=] is failure, return failure.
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
 1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=this=]'s [=relevant settings object=]'s
@@ -1954,17 +1950,6 @@ An auction config is a [=struct=] with the following items:
   [=strings=].
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
   passed to corresponding buyer's script runner.
-: <dfn>direct from seller signals prefix</dfn>
-:: Null or a [=URL=].
-  Prefix of a [=URL=] used to pass signals to the auction, similar to
-  [=auction config/seller signals=] and [=auction config/per buyer signals=]. The difference is
-  that signals derived from [=auction config/direct from seller signals prefix=] are trusted to
-  come from the [=auction config/seller=] because the content loads from a subresource bundle
-  loaded from the [=auction config/seller=]'s [=origin=].
-  <p class="note">
-    When non-null, the [=auction config/direct from seller signals prefix=]'s [=origin=] will
-    always be [=same origin=] with [=auction config/seller=].
-  </p>
 : <dfn>per buyer timeouts</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   [=durations=] in milliseconds.
