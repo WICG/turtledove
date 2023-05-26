@@ -1134,10 +1134,10 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
   1. Set |config| to |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
-  1. Let « |sellerSignals|, |reportUrl| » be the result of [=evaluating a reporting script=] with
-    |sellerReportingScript|, "`reportResult`", and « |config|, |browserSignals| ».
-  1. If |reportUrl| is not null:
-    1. TODO: Set |reportUrl| into the {{FencedFrameConfig}} so they can be fetched when ad renders.
+  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap| » be the result of [=evaluating a
+     reporting script=] with |sellerReportingScript|, "`reportResult`", and « |config|,
+     |browserSignals|».
+  1. TODO: Store |reportUrl| and |reportingBeaconMap| in the {{FencedFrameConfig}} as appropriate.
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
   1. [=map/Remove=] |browserSignals|["`modifiedBid`"].
   1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].  
@@ -1178,12 +1178,11 @@ To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=stri
       [=generated bid/modeling signals=].
   1. Let |buyerReportingScript| be the result of [=fetching script=] with |winner|'s
     [=generated bid/interest group=]'s [=interest group/bidding url=].
-  1. Let « nullReturn, |resultUrl| » be the result of [=evaluating a reporting script=] with
-    |buyerReportingScript|, "`reportWin`", and
-    « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/auction signals=],
-    |perBuyerSignalsForBuyer|, |sellerSignals|, |browserSignals| ».
-  1. If |resultUrl| is not null:
-    1. TODO: Set |resultUrl| into the {{FencedFrameConfig}} so they can be fetched when ad renders.
+  1. Let « nullReturn, |resultUrl|, |reportingBeaconMap| » be the result of [=evaluating a
+     reporting script=] with |buyerReportingScript|, "`reportWin`", and « |leadingBidInfo|'s
+     [=leading bid info/auction config=]'s [=auction config/auction signals=],
+     |perBuyerSignalsForBuyer|, |sellerSignals|, |browserSignals| ».
+  1. TODO: Store |resultUrl| and |reportingBeaconMap| in the {{FencedFrameConfig}} as appropriate.
 </div>
 
 # Script Runners # {#script-runners}
@@ -1236,7 +1235,11 @@ a <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority signals</dfn>, w
 [=boolean=].
 
 Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
-<dfn for=InterestGroupReportingScriptRunnerGlobalScope>report url</dfn>, which is a [=URL=] or null.
+<dfn for=InterestGroupReportingScriptRunnerGlobalScope>report url</dfn>, which is null or a [=URL=]
+(initially null), and a
+<dfn for=InterestGroupReportingScriptRunnerGlobalScope>reporting beacon map</dfn>, which is null or
+an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are [=URLs=]
+(initially null).
 
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig|,
@@ -1277,7 +1280,8 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
     1. Let |global| be a new {{InterestGroupReportingScriptRunnerGlobalScope}}.
     1. Let |result| be the result of [=evaluating a script=] with |global|, |script|,
       |functionName|, |arguments|, and 50.
-    1. Return « |result|, |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=] ».
+    1. Return « |result|, |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=],
+       |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=] ».
 </div>
 
 <br>
@@ -1425,6 +1429,7 @@ interface InterestGroupScoringScriptRunnerGlobalScope
 interface InterestGroupReportingScriptRunnerGlobalScope
         : InterestGroupScriptRunnerGlobalScope {
   undefined sendReportTo(DOMString url);
+  undefined registerAdBeacon(record&lt;DOMString, USVString&gt; map);
 };
 
 dictionary AdRender {
@@ -1622,6 +1627,25 @@ an [=interest group=] |ig|, a [=boolean=] |isComponentAuction| and a [=boolean=]
     [=exception/Throw=] a {{TypeError}}.
   1. Set [=this=]'s [=relevant global object=]'s
     [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to |parsedUrl|.
+</div>
+
+<div algorithm>
+  The <dfn method for="InterestGroupReportingScriptRunnerGlobalScope">registerAdBeacon(|map|)</dfn>
+  method steps are:
+
+  1. If [=this=]'s [=relevant global object=]'s [=InterestGroupReportingScriptRunnerGlobalScope/
+     reporting beacon map=] is not null, then [=exception/Throw=] a {{TypeError}}.
+
+  1. [=map/For each=] |url| of |map|'s [=map/values=]:
+
+     1. Let |parsedURL| be the result of running [=URL parser=] on |url|.
+
+     1. [=exception/Throw=] a {{TypeError}} if any of the following conditions hold:
+        * |parsedURL| is failure;
+        * |parsedURL|'s [=url/scheme=] is not "`https`".
+
+  1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupReportingScriptRunnerGlobalScope/
+     reporting beacon map=] to |map|.
 </div>
 
 
