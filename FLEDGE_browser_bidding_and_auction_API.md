@@ -10,9 +10,9 @@ This document seeks to propose an API for web pages to perform FLEDGE auctions u
 
 #### Step 1: Get auction blob from browser
 
-To execute an on-server FLEDGE auction, sellers begin by calling `navigator.startServerAdAuction()`:
+To execute an on-server FLEDGE auction, sellers begin by calling `navigator.startServerAdAuction()` which returns a `Promise<Uint8Array>`:
 ```  
-const auctionBlob = navigator.startServerAdAuction({
+const auctionBlob = await navigator.startServerAdAuction({
   // ‘seller’ works the same as for runAdAuction.
   'seller': 'https://www.example-ssp.com',
 });
@@ -36,7 +36,7 @@ Their server then passes the blob off to B&A servers which conduct on-server auc
 
 #### Step 3: Get response blobs to browser
 
-These response blobs are sent back to the browser. A seller’s JavaScript can [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) them back to the browser, perhaps as the response body to the Fetch initiated in Step 2. This Fetch is initiated with a flag to prepare the browser to look for `X-fledge-auction-results` HTTP response headers:
+These response blobs are sent back to the browser. A seller’s JavaScript can [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) them back to the browser, perhaps as the response body to the Fetch initiated in Step 2. This Fetch is initiated with a flag to prepare the browser to look for `Ad-Auction-Result` HTTP response headers:
 <pre>
 fetch('https://www.example-ssp.com/auction', { <b>adAuctionHeaders: true</b>, … })
 </pre>
@@ -44,7 +44,7 @@ Note that `adAuctionHeaders` only works with HTTPS requests.
 For each response blob sent back to the browser, the seller’s server attaches a response header containing the SHA-256 hash of the response blob:
   
 ```
-X-fledge-auction-result: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+Ad-Auction-Result: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 ```
 
 It should be noted that the `fetch()` request using `adAuctionHeaders` can also be used to send `auctionBlob` (e.g. in the request body) and receive the response blob (e.g. in the response body).
@@ -60,7 +60,7 @@ const auctionResultPromise = navigator.runAdAuction({
 });
 ```
 
-The browser verifies it witnessed a Fetch request to the `seller`’s origin with `“adAuctionHeaders: true”` that included a `X-fledge-auction-results` header with hash of `response_blob`. Since the Fetch request required HTTPS which authenticates the seller’s origin, this verification authenticates that the seller produced the response blob. `runAdAuction()` then proceeds as if the auction happened on device. This specially configured auction configuration can be used for single seller auctions or as a component auction configuration for multi-seller auctions (in this case the `startServerAuction()` call must include a `top_level_seller` field that must later match the top-level seller passed to `runAdAuction()`). To facilitate parallelizing on-device and on-server auctions, the `serverResponse` could be a Promise that resolves to the blob later.
+The browser verifies it witnessed a Fetch request to the `seller`’s origin with `“adAuctionHeaders: true”` that included a `Ad-Auction-Result` header with hash of `response_blob`. Since the Fetch request required HTTPS which authenticates the seller’s origin, this verification authenticates that the seller produced the response blob. `runAdAuction()` then proceeds as if the auction happened on device. This specially configured auction configuration can be used for single seller auctions or as a component auction configuration for multi-seller auctions (in this case the `startServerAuction()` call must include a `top_level_seller` field that must later match the top-level seller passed to `runAdAuction()`). To facilitate parallelizing on-device and on-server auctions, the `serverResponse` could be a Promise that resolves to the blob later.
 
 ## Privacy Considerations
 
