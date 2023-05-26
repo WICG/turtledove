@@ -3,7 +3,7 @@
 
 ## Chrome M114
 
-* Support the ability to specify `requestedSize` in the auction config, which is eventually stored in the winning fenced frame config's container size. The `requestedSize` may not be accessible through browser signals in the auction until M115.
+* Support the ability to specify `requestedSize` in the auction config, which is eventually stored in the winning fenced frame config's container size. The `requestedSize` may not be accessible through browser signals in the auction until M116, and is a lower priority because it is a convenience feature only (presumably the size of the ad slot is already passed in through other signals, if it is needed).
 
 
 ## Chrome M113
