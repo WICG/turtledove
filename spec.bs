@@ -507,22 +507,50 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. If |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"] [=map/exists=]:
   1. Set |auctionConfig|'s [=auction config/seller experiment group id=] to
     |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"].
-1. If |config|["{{AuctionAdConfig/perBuyerSignals}}"] [=map/exists=], [=map/for each=] |key| →
-  |value| of |config|["{{AuctionAdConfig/perBuyerSignals}}"]:
-  1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is an error,
-    [=exception/throw=] a {{TypeError}}.
-  1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=], given
-    |value|.
-  1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to
-    |signalsString|.
-1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] [=map/exists=], [=map/for each=] |key| →
-  |value| of |config|["{{AuctionAdConfig/perBuyerTimeouts}}"]:
-  1. If |key| equals to "*", then set |auctionConfig|'s [=auction config/all buyers timeout=]
-    to min(|value|, 500) milliseconds, and [=iteration/continue=].
-  1. Let |buyer| the result of [=parsing an origin=] with |key|. If |buyer| is an error,
-    [=exception/throw=] a {{TypeError}}.
-  1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|] to
-    min(|value|, 500) milliseconds.
+1. If |config|["{{AuctionAdConfig/perBuyerSignals}}"] [=map/exists=]:
+  1. If |config|["{{AuctionAdConfig/perBuyerSignals}}"] is a {{Promise}}:
+    1. Let |auctionConfig|'s [=auction config/per buyer signals=] be
+      |config|["{{AuctionAdConfig/perBuyerSignals}}"].
+    1. Increment |auctionConfig|'s [=auction config/pending promise count=].
+    1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/per buyer signals=] with |result|:
+      1. Set |auctionConfig|'s [=auction config/per buyer signals=] to a new [=ordered map=] whose
+        [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
+      1. [=map/for each=] |key| → |value| of |result|:
+        1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is an error,
+          set |auctionConfig|'s [=auction config/per buyer signals=] to failure and [=iteration/break=].
+        1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=], given
+          |value|.
+        1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to
+          |signalsString|.
+  1. [=map/for each=] |key| → |value| of |config|["{{AuctionAdConfig/perBuyerSignals}}"]:
+    1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is an error,
+      [=exception/throw=] a {{TypeError}}.
+    1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=], given
+      |value|.
+    1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to
+      |signalsString|.
+1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] [=map/exists=]:
+  1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] is a {{Promise}}:
+    1. Let |auctionConfig|'s [=auction config/per buyer timeouts=] be
+      |config|["{{AuctionAdConfig/perBuyerTimeouts}}"].
+    1. Increment |auctionConfig|'s [=auction config/pending promise count=].
+    1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/per buyer timeouts=] with |result|:
+      1. Set |auctionConfig|'s [=auction config/per buyer timeouts=] to a new [=ordered map=] whose
+        [=map/keys=] are [=origins=] and whose [=map/values=] are [=durations=] in milliseconds.
+      1. [=map/For each=] |key| → |value| of |result|:
+        1. If |key| equals to "*", then set |auctionConfig|'s [=auction config/all buyers timeout=]
+          to min(|value|, 500) milliseconds, and [=iteration/continue=].
+        1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is an error,
+          set |auctionConfig|'s [=auction config/per buyer timeouts=] to failure and [=iteration/break=].
+        1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|] to
+          min(|value|, 500) milliseconds.
+  1. [=map/for each=] |key| → |value| of |config|["{{AuctionAdConfig/perBuyerTimeouts}}"]:
+    1. If |key| equals to "*", then set |auctionConfig|'s [=auction config/all buyers timeout=]
+      to min(|value|, 500) milliseconds, and [=iteration/continue=].
+    1. Let |buyer| the result of [=parsing an origin=] with |key|. If |buyer| is an error,
+      [=exception/throw=] a {{TypeError}}.
+    1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|] to
+      min(|value|, 500) milliseconds.
 1. If |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"] [=map/exists=], [=map/for each=]
   |key| → |value| of |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"]:
   1. If |value| is 0, [=exception/throw=] a {{TypeError}}.
@@ -655,8 +683,11 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   [=auction config/all buyers group limit=].  
 1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
-1. [=Assert=] |auctionSignals| and |auctionConfig|'s [=auction config/seller signals=] are not {{Promise}}s.
-1. If |auctionSignals| or |auctionConfig|'s [=auction config/seller signals=] is failure, return failure.
+1. [=Assert=] |auctionSignals|, |auctionConfig|'s [=auction config/seller signals=],
+  [=auction config/per buyer signals=], and [=auction config/per buyer timeouts=] are not {{Promise}}s.
+1. If |auctionSignals|, |auctionConfig|'s [=auction config/seller signals=],
+  [=auction config/per buyer signals=], or [=auction config/per buyer timeouts=] is failure, return
+  failure.
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
 1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=this=]'s [=relevant settings object=]'s
@@ -1980,13 +2011,13 @@ An auction config is a [=struct=] with the following items:
   Restricts the runtime of the seller's `scoreAd()` script. If scoring does not complete before
   the timeout, the bid being scored is not considered further.
 : <dfn>per buyer signals</dfn>
-:: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
-  [=strings=].
+:: Null or a {{Promise}} or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose
+  [=map/values=] are [=strings=].
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
   passed to corresponding buyer's script runner.
 : <dfn>per buyer timeouts</dfn>
-:: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
-  [=durations=] in milliseconds.
+:: Null or a {{Promise}} or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose
+  [=map/values=] are [=durations=] in milliseconds.
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the runtime of
   corresponding buyer's `generateBid()` script. If the timeout expires, only the bid submitted
   via `setBid()` is considered.
@@ -2035,7 +2066,8 @@ An auction config is a [=struct=] with the following items:
   Optional identifier for an experiment group to support coordinated experiments with buyers'
   trusted servers for buyers without a specified experiment group.
 : <dfn>pending promise count</dfn>
-:: An integer, initially 0. The number of [=auction config/auction signals=] or
+:: An integer, initially 0. The number of [=auction config/auction signals=],
+  [=auction config/per buyer signals=], [=auction config/per buyer timeouts=], or
   [=auction config/seller signals=] whose {{Promise}}s are not yet resolved.
 
 </dl>
