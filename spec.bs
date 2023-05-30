@@ -113,11 +113,11 @@ are:
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "https".
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
-  1. Set |interestGroup|'s [=interest group/expiry=] to now plus |durationSeconds|.
-  1. Set |interestGroup|'s [=interest group/next update after=] to now plus 24 hours.
+  1. Set |interestGroup|'s [=interest group/expiry=] to [=current wall time=] plus |durationSeconds|.
+  1. Set |interestGroup|'s [=interest group/next update after=] to [=current wall time=] plus 24 hours.
   1. Set |interestGroup|'s [=interest group/owner=] to the result of [=parsing an origin=] on
     |group|["{{AuctionAdInterestGroup/owner}}"].
-  1. If |interestGroup|'s [=interest group/owner=] is an error, or its [=url/scheme=] is not
+  1. If |interestGroup|'s [=interest group/owner=] is failure, or its [=url/scheme=] is not
     "`https`", [=exception/throw=] a {{TypeError}}.
   1. Set |interestGroup|'s [=interest group/name=] to |group|["{{AuctionAdInterestGroup/name}}"].
   1. Set |interestGroup|'s [=interest group/priority=] to
@@ -154,7 +154,7 @@ are:
     1. If |group| [=map/contains=] |groupMember|:
       1. Let |parsedUrl| be the result of running the [=URL parser=] on |group|[|groupMember|].
       1. [=exception/Throw=] a {{TypeError}} if any of the following conditions hold:
-        * |parsedUrl| is an error;
+        * |parsedUrl| is failure;
         * |parsedUrl| is not [=same origin=] with |interestGroup|'s [=interest group/owner=];
         * |parsedUrl| [=includes credentials=];
         * |parsedUrl| [=url/fragment=] is not null.
@@ -185,7 +185,7 @@ are:
       1. Let |renderURL| be the result of running the [=URL parser=] on
         |ad|["{{AuctionAd/renderURL}}"].
       1. [=exception/Throw=] a {{TypeError}} if any of the following conditions hold:
-        * |renderURL| is an error;
+        * |renderURL| is failure;
         * |renderURL| [=url/scheme=] is not "`https`";
         * |renderURL| [=includes credentials=].
       1. Set |igAd|'s [=interest group ad/render url=] to |renderURL|.
@@ -439,27 +439,27 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. Let |auctionConfig| be a new [=auction config=].
 1. Let |auctionConfig|'s [=auction config/seller=] be the result of [=parsing an origin=] with
   |config|["{{AuctionAdConfig/seller}}"].
-1. [=exception/Throw=] a {{TypeError}} if |auctionConfig|'s [=auction config/seller=] is an error,
-  or its [=url/scheme=] is not "`https`".
+1. [=exception/Throw=] a {{TypeError}} if |auctionConfig|'s [=auction config/seller=] is failure, or
+  its [=url/scheme=] is not "`https`".
 1. Let |decisionLogicURL| be the result of running the [=URL parser=] on
   |config|["{{AuctionAdConfig/decisionLogicURL}}"].
-  1. [=exception/Throw=] a {{TypeError}} if |decisionLogicURL| is an error, or it is not
+  1. [=exception/Throw=] a {{TypeError}} if |decisionLogicURL| is failure, or it is not
     [=same origin=] with |auctionConfig|'s [=auction config/seller=].
   1. [=Assert=]: |decisionLogicURL|'s [=url/scheme=] is "`https`".
   1. Set |auctionConfig|'s [=auction config/decision logic url=] to |decisionLogicURL|.
 1. If |config|["{{AuctionAdConfig/trustedScoringSignalsURL}}"] [=map/exists=]:
   1. Let |trustedScoringSignalsURL| be the result of running the [=URL parser=] on
     |config|["{{AuctionAdConfig/trustedScoringSignalsURL}}"].
-  1. [=exception/Throw=] a {{TypeError}} if |trustedScoringSignalsURL| is an error,
-    or it is not [=same origin=] with |auctionConfig|'s [=auction config/seller=].
+  1. [=exception/Throw=] a {{TypeError}} if |trustedScoringSignalsURL| is failure, or it is not
+    [=same origin=] with |auctionConfig|'s [=auction config/seller=].
   1. [=Assert=]: |trustedScoringSignalsURL|'s [=url/scheme=] is "`https`".
   1. Set |auctionConfig|'s [=auction config/trusted scoring signals url=] to
     |trustedScoringSignalsURL|.
 1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=], let |buyers| be a new
   [=list/is empty|empty=] [=list=].
   1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
-    1. Let |buyer| be the result of [=parsing an origin=] with |buyerString|. If |buyer| is an
-      error, or |buyer|'s [=url/scheme=] is not "`https`", then [=exception/throw=] a {{TypeError}}.
+    1. Let |buyer| be the result of [=parsing an origin=] with |buyerString|. If |buyer| is failure,
+      or |buyer|'s [=url/scheme=] is not "`https`", then [=exception/throw=] a {{TypeError}}.
       Otherwise, [=list/append=] |buyer| to |buyers|.
   1. Set |auctionConfig|'s [=auction config/interest group buyers=] to |buyers|.
 1. If |config|["{{AuctionAdConfig/auctionSignals}}"] [=map/exists=]:
@@ -496,7 +496,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   |directFromSellerSignalsPrefix| be the result of running the [=URL parser=] on
   |config|["{{AuctionAdConfig/directFromSellerSignals}}"].
   1. [=exception/Throw=] a {{TypeError}} if any of the following conditions hold:
-    * |directFromSellerSignalsPrefix| is an error;
+    * |directFromSellerSignalsPrefix| is failure;
     * |directFromSellerSignalsPrefix| is not [=same origin=] with |auctionConfig|'s
       [=auction config/seller=];
     * |directFromSellerSignalsPrefix|'s [=url/query=] is not null.
@@ -509,7 +509,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"].
 1. If |config|["{{AuctionAdConfig/perBuyerSignals}}"] [=map/exists=], [=map/for each=] |key| →
   |value| of |config|["{{AuctionAdConfig/perBuyerSignals}}"]:
-  1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is an error,
+  1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is failure,
     [=exception/throw=] a {{TypeError}}.
   1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=], given
     |value|.
@@ -519,7 +519,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   |value| of |config|["{{AuctionAdConfig/perBuyerTimeouts}}"]:
   1. If |key| equals to "*", then set |auctionConfig|'s [=auction config/all buyers timeout=]
     to min(|value|, 500) milliseconds, and [=iteration/continue=].
-  1. Let |buyer| the result of [=parsing an origin=] with |key|. If |buyer| is an error,
+  1. Let |buyer| the result of [=parsing an origin=] with |key|. If |buyer| is failure,
     [=exception/throw=] a {{TypeError}}.
   1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|] to
     min(|value|, 500) milliseconds.
@@ -528,14 +528,14 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. If |value| is 0, [=exception/throw=] a {{TypeError}}.
   1. If |key| equals to "*", then set |auctionConfig|'s [=auction config/all buyers group limit=]
     to |value|, and [=iteration/continue=].
-  1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is an error,
+  1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is failure,
     [=exception/throw=] a {{TypeError}}.
   1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer group limits=][|buyer|] to |value|.
 1. If |config|["{{AuctionAdConfig/perBuyerExperimentGroupIds}}"] [=map/exists=], [=map/for each=]
   |key| → |value| of |config|["{{AuctionAdConfig/perBuyerExperimentGroupIds}}"]:
   1. If |key| equals to "*", then set |auctionConfig|'s
     [=auction config/all buyer experiment group id=] to |value|, and [=iteration/continue=].
-  1. Let |buyer| the result of [=parsing an origin=] with |key|. If |buyer| is an error,
+  1. Let |buyer| the result of [=parsing an origin=] with |key|. If |buyer| is failure,
     [=exception/throw=] a {{TypeError}}.
   1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer experiment group ids=][|buyer|] to
     |value|.
@@ -565,7 +565,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 
 To <dfn>parse an origin</dfn> given a [=string=] |input|:
 1. Let |url| be the result of running the [=URL parser=] on |input|.
-1. If |url| is an error, then return failure.
+1. If |url| is failure, then return failure.
 1. Return |url|'s [=url/origin=].
 
 </div>
@@ -1476,7 +1476,7 @@ an [=interest group=] |ig|, a [=boolean=] |isComponentAuction| and a [=boolean=]
   1. If |generateBidOutput|["{{GenerateBidOutput/adRender}}"] is a {{DOMString}}:
     1. Let |adUrl| be the result of running the [=URL parser=] on
       |generateBidOutput|["{{GenerateBidOutput/adRender}}"].
-    1. If |adUrl| is an error, return failure.
+    1. If |adUrl| is failure, return failure.
     1. If [=validating an ad url=] given |adUrl|, |ig|, and false returns false, return failure.
     1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
   1. Otherwise:
@@ -1495,7 +1495,7 @@ an [=interest group=] |ig|, a [=boolean=] |isComponentAuction| and a [=boolean=]
       1. Let |componentDescriptor| be a new [=ad descriptor=].
       1. If |component| is {{DOMString}}:
         1. Let |componentUrl| be the result of running the [=URL parser=] on |component|.
-        1. If |componentUrl| is an error, return failure.
+        1. If |componentUrl| is failure, return failure.
         1. If [=validating an ad url=] given |componentUrl|, |ig|, and true returns false, return failure.
         1. Set |componentDescriptor|'s [=ad descriptor/url=] to |componentUrl|.
       1. Otherwise:
@@ -1540,7 +1540,7 @@ an [=interest group=] |ig|, a [=boolean=] |isComponentAuction| and a [=boolean=]
 
   1. If |adRender|["{{AdRender/url}}"] does not [=map/exist=], return false.
   1. Let |adUrl| be the result of running the [=URL parser=] on |adRender|["{{AdRender/url}}"].
-  1. If |adUrl| is an error, return failure.
+  1. If |adUrl| is failure, return failure.
   1. If [=validating an ad url=] given |adUrl|, |ig|, and |isComponent| returns false, return failure.
   1. Let |adDescriptor| be a new [=ad descriptor=].
   1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
@@ -1677,7 +1677,8 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
 
 1. [=list/For each=] |owner| of |owners|:
   1. [=list/For each=] |originalInterestGroup| of the user agent's [=interest group set=] whose
-    [=interest group/owner=] is |owner| and [=interest group/next update after=] is before now:
+    [=interest group/owner=] is |owner| and [=interest group/next update after=] is before
+    [=current wall time=]:
 
     Note: Implementations can consider loading only a portion of these interest groups
     at a time to avoid issuing too many requests at once.
