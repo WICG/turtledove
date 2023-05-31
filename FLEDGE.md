@@ -779,7 +779,7 @@ In auctions that involve multiple currencies, there may be values with different
 
 To help deal with this scenario, an optional mode is available that converts all bid-related information to seller's preferred currency (in component auctions, reporting for it is for that component's seller). This is configured via the `sellerCurrency` setting in each auction configuration.
 
-Regardless of configuration, the bid passed to `reportWin()` and `reportResult()` is always the bid that participated in that particular level of the auction (which, for top-level auction `reportResult()`, may be the bid altered by the component auction). Since passing the returned currency tags around could leak an unacceptable amount of information, the values provided for `browserSignals.bidCurrency` to those methods are the currencies required by the auction configuration in this context, or `'???'` if there isn't one.
+Regardless of configuration, the bid passed to `reportWin()` and `reportResult()` is always the bid that participated in that particular level of the auction (which, for top-level auction `reportResult()`, may be the bid altered by the component auction), subject to the usual rounding rules. Since passing the returned currency tags around could leak an unacceptable amount of information, the values provided for `browserSignals.bidCurrency` to those methods are the currencies required by the auction configuration in this context, or `'???'` if there isn't one.
 
 (Warning: `reportResult` did not follow this rule in Chrome earlier than M116)
 
