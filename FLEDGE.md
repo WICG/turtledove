@@ -155,9 +155,17 @@ The `executionMode` attribute is optional, and may contain one of the following 
    mode does not have the same limitations on what top-level sites can join or leave
    the interest group.
 
-The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time.
+The `ads` list contains the various ads that the interest group might show.  Each entry is an object that must contain a `renderURL` property with the URL for the ad that would be shown. An ad may also have the following optional properties:
 
-The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similarly to the `ads` field, each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time. Thanks to `ads` and `adsComponents` being separate fields, the buyer is able to update the `ads` field via the `updateUrl` without losing `adComponents` stored in the interest group.
+ * `adRenderId`: A short [Bytestring](https://webidl.spec.whatwg.org/#es-ByteString) up to 8 characters long serving as an identifier for this ad in this interest group. When this field is specified it will be sent instead of the full ad object for [B&A server auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
+
+ * `buyerAndSellerReportingId`: If set, the value is used instead of the interest group name or `buyerReportingId` for reporting in `reportWin` and `reportResult`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
+
+ * `buyerReportingId`: If set, the value is used instead of the interest group name for reporting in `reportWin`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
+
+ * `metadata`: Arbitrary metadata that can be used at bidding time.
+
+The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similar to the `ads` field, each entry is an object that includes a `renderURL` and optional `adRenderId`, and `metadata` fields. Thanks to `ads` and `adComponents` being separate fields, the buyer is able to update the `ads` field via the `updateURL` without losing `adComponents` stored in the interest group.
 
 All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
