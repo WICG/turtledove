@@ -1,3 +1,5 @@
+> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+
 # First Experiment (FLEDGE)
 
 This document describes an early prototype for ads serving in the TURTLEDOVE family, appropriate for experimentation before a fully-featured system is ready.  It would be the First "Locally-Executed Decision over Groups" Experiment.
@@ -103,7 +105,7 @@ const myGroup = {
   'enableBiddingSignalsPrioritization' : true,
   'biddingLogicURL': ...,
   'biddingWasmHelperURL': ...,
-  'dailyUpdateURL': ...,
+  'updateURL': ...,
   'executionMode': ...,
   'trustedBiddingSignalsURL': ...,
   'trustedBiddingSignalsKeys': ['key1', 'key2'],
@@ -134,7 +136,7 @@ The `userBiddingSignals` is for storage of additional metadata that the owner ca
 
 The `biddingWasmHelperURL` field is optional, and lets the bidder provide computationally-expensive subroutines in WebAssembly, rather than JavaScript, to be driven from the JavaScript function provided by `biddingLogicURL`. If provided, it must point to a WebAssembly binary, delivered with an `application/wasm` mimetype. The corresponding `WebAssembly.Module` will be made available by the browser to the `generateBid` function.
 
-The `dailyUpdateURL` provides a mechanism for the group's owner to periodically update the attributes of the interest group: any new values returned in this way overwrite the values previously stored (except that the `name` and `owner` cannot be changed, and `prioritySignalsOverrides` will be merged with the previous value, with `null` meaning a value should be removed from the interest group's old dictionary).  However, the browser will only allow daily updates when a sufficiently large number of people have the same `dailyUpdateURL` , e.g. at least 100 browsers with the same update URL. This will not include any metadata, so data such as the interest group `name` should be included within the URL, so long as the URL exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
+The `updateURL` provides a mechanism for the group's owner to periodically update the attributes of the interest group: any new values returned in this way overwrite the values previously stored (except that the `name` and `owner` cannot be changed, and `prioritySignalsOverrides` will be merged with the previous value, with `null` meaning a value should be removed from the interest group's old dictionary).  However, the browser will only allow updates when a sufficiently large number of people have the same `updateURL` , e.g. at least 100 browsers with the same update URL. This will not include any metadata, so data such as the interest group `name` should be included within the URL, so long as the URL exceeds the minimum count threshold.  (Without this sort of limit, a single-person interest group could be used to observe that person's coarse-grained IP-Geo location over time.)
 
 The `executionMode` attribute is optional, and may contain one of the following supported values:
 
@@ -155,12 +157,16 @@ The `executionMode` attribute is optional, and may contain one of the following 
 
 The `ads` list contains the various ads that the interest group might show.  Each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time.
 
-The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similarly to the `ads` field, each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time. Thanks to `ads` and `adsComponents` being separate fields, the buyer is able to update the `ads` field via daily update without losing `adComponents` stored in the interest group.
+The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similarly to the `ads` field, each entry is an object that includes both a rendering URL and arbitrary metadata that can be used at bidding time. Thanks to `ads` and `adsComponents` being separate fields, the buyer is able to update the `ads` field via the `updateUrl` without losing `adComponents` stored in the interest group.
 
 All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
-All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`, `biddingWasmHelperURL`, and `trustedBiddingSignalsURL`) must point to URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for loading FLEDGE resources.
+All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
+`biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must be
+same-origin with `owner` and must point to URLs whose responses include the HTTP
+response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for
+loading FLEDGE resources.
 
-The browser will provide protection against microtargeting, by only rendering an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 100 people would have seen the ad, if it were allowed to show).  While in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal this threshold applied only to the rendered creative, FLEDGE has the additional requirement that the tuple of the interest group owner, bidding script URL, and rendered creative must be k-anonymous for an ad to be shown (this is necessary to ensure the current event-level reporting for interest group win reporting is sufficiently private). For interest groups that have component ads, all of the component ads must also separately meet this threshold for the ad to be shown. Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold.  This means that a small, specialized interest group that is still below the daily-update threshold could still choose to participate in auctions, bidding with a more-generic ad until the group becomes large enough.
+The browser will provide protection against microtargeting, by only rendering an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 100 people would have seen the ad, if it were allowed to show).  While in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal this threshold applied only to the rendered creative, FLEDGE has the additional requirement that the tuple of the interest group owner, bidding script URL, and rendered creative must be k-anonymous for an ad to be shown (this is necessary to ensure the current event-level reporting for interest group win reporting is sufficiently private). For interest groups that have component ads, all of the component ads must also separately meet this threshold for the ad to be shown. Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold.  This means that a small, specialized interest group that is still below the `updateUrl` threshold could still choose to participate in auctions, bidding with a more-generic ad until the group becomes large enough.
 
 
 #### 1.3 Permission Delegation
@@ -215,7 +221,7 @@ const myAuctionConfig = {
                        'https://www.another-buyer.com': 200,
                        '*': 150,
                        ...},
-  'perBuyerCumulativeBiddingTimeouts': {'https://www.example-dsp.com': 500,
+  'perBuyerCumulativeTimeouts': {'https://www.example-dsp.com': 500,
                                         'https://www.another-buyer.com': 600,
                                         '*': 450,
                                         ...},
@@ -246,7 +252,7 @@ const result = await navigator.runAdAuction(myAuctionConfig);
 
 // If `result` is a `FencedFrameConfig` object, it must be used with a fenced frame
 // element via its `config` attribute. Otherwise, it's a `urn:uuid` for an iframe.
-if (FencedFrameConfig && result instanceof FencedFrameConfig)
+if (window.FencedFrameConfig && result instanceof FencedFrameConfig)
   fencedFrame.config = result;
 else
   iframe.src = result;
@@ -263,7 +269,7 @@ The promise returned from `runAdAuction()` is _opaque_. Specifically, it resolve
 
 Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
 
-Optionally, `perBuyerCumulativeBiddingTimeouts` is structured like `perBuyerTimeouts`, but the values cover the entirety of the time it takes to generate bids for all interest groups for each buyer, including downloading resources, starting processes, and all generate bid calls. The single limit applies collectively across all interest groups with the same owner. It's measured as wall clock time starting when dedicated tasks needed to generate a bid for a particular buyer start. Timers may be running for multiple bidders simultaneously.  It does not include time taken by the seller to score the buyer's bids. Once the timer expires, the affected buyer's interest groups may no longer generate any bids. Scripts may be unloaded, fetches cancelled, etc. All bids generated before the timeout will continue to participate in the auction. FLEDGE implementations should attempt, on a best-effort basis, to generate bids for each buyer in priority order, so lower priority interest groups are the ones more likely to be timed out. If promises are passed in to the auction config for fields that support them, the timer for a buyer only starts once all promises blocking that buyer's bidding scripts from running have been resolved.
+Optionally, `perBuyerCumulativeTimeouts` is structured like `perBuyerTimeouts`, but the values cover the entirety of the time it takes to generate bids for all interest groups for each buyer, including downloading resources, starting processes, and all generate bid calls. The single limit applies collectively across all interest groups with the same owner. It's measured as wall clock time starting when dedicated tasks needed to generate a bid for a particular buyer start. Timers may be running for multiple bidders simultaneously.  It does not include time taken by the seller to score the buyer's bids. Once the timer expires, the affected buyer's interest groups may no longer generate any bids. Scripts may be unloaded, fetches cancelled, etc. All bids generated before the timeout will continue to participate in the auction. FLEDGE implementations should attempt, on a best-effort basis, to generate bids for each buyer in priority order, so lower priority interest groups are the ones more likely to be timed out. If promises are passed in to the auction config for fields that support them, the timer for a buyer only starts once all promises blocking that buyer's bidding scripts from running have been resolved.
 
 Optionally, the `signal` field can be set to an [`AbortSignal`](https://dom.spec.whatwg.org/#interface-AbortSignal) object (generally from an [`AbortController`](https://dom.spec.whatwg.org/#interface-abortcontroller)'s [`signal`](https://dom.spec.whatwg.org/#dom-abortcontroller-signal) field) to permit aborting the execution of the auction.  When the [`abort()`](https://dom.spec.whatwg.org/#dom-abortcontroller-abort) method on the associated [`AbortController`](https://dom.spec.whatwg.org/#interface-abortcontroller) is called, an attempt to interrupt the auction will be made. Since the auction executes in parallel to the page, it's possible for this call to happen after the auction actually completed (perhaps unsuccessfully) but before this has been noticed by the caller of `runAdAuction`. In that case, the cancellation attempt is ignored. If the cancellation is successful, the promise is rejected, and no side effects of the whole auction (like reporting and bid statistics) occur, though priority adjustments still take place. Calling `abort()` after the promise from `runAdAuction` has resolved has no effect.
 
@@ -281,7 +287,10 @@ Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame eleme
 1. Unconditionally pass in `resolveToConfig: true` and check whether the auction result is a config or a URN.
 
 All fields that accept arbitrary metadata objects (`auctionSignals`, `sellerSignals`, and keys of `perBuyerSignals`) must be JSON-serializable.
-All fields that specify URLs for loading scripts or JSON (`decisionLogicURL` and `trustedScoringSignalsURL`) must point to URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for loading FLEDGE resources.
+All fields that specify URLs for loading scripts or JSON (`decisionLogicURL` and
+`trustedScoringSignalsURL`) must be same-origin with `seller` and must point to
+URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to
+ensure they are allowed to be used for loading FLEDGE resources.
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
 
@@ -507,7 +516,7 @@ The arguments to `generateBid()` are:
 
 
 
-*   interestGroup: The interest group object, as saved during `joinAdInterestGroup()` and perhaps updated via the `dailyUpdateURL`.
+*   interestGroup: The interest group object, as saved during `joinAdInterestGroup()` and perhaps updated via the `updateURL`.
     * `priority` and `prioritySignalsOverrides` are not included. They can be modified by `generatedBid()` calls, so could theoretically be used to create a cross-site profile of a user accessible to `generateBid()` methods, otherwise.
 *   auctionSignals: As provided by the seller in the call to `runAdAuction()`.  This is the opportunity for the seller to provide information about the page context (ad size, publisher ID, etc), the type of auction (first-price vs second-price), and so on.
 *   perBuyerSignals: The value for _this specific buyer_ as taken from the auction config passed to `runAdAuction()`.  This can include contextual signals about the page that come from the buyer's server, if the seller is an SSP which performs a real-time bidding call to buyer servers and pipes the response back, or if the publisher page contacts the buyer's server directly.  If so, the buyer may wish to check a cryptographic signature of those signals inside `generateBid()` as protection against tampering.
@@ -688,8 +697,9 @@ The arguments to this function are:
 
 The `browserSignals` argument must be handled carefully to avoid tracking.  It certainly cannot include anything like the full list of interest groups, which would be too identifiable as a tracking signal.  The `renderURL` can be included since it has already passed a k-anonymity check.  The browser may limit the precision of the bid and desirability values by stochastically rounding them so that they fit into a floating point number with an 8 bit mantissa and 8 bit exponent to avoid these numbers exfiltrating information from the interest group's `userBiddingSignals`. On the upside, this set of signals can be expanded to include useful additional summary data about the wider range of bids that participated in the auction, e.g. the number of bids.  Additionally, the `dataVersion` will only be present if the `Data-Version` header was provided in the response headers from the Trusted Scoring server.
 
-The `reportResult()` function's reporting happens by directly calling network APIs in the short-term, but will eventually go through the Private Aggregation API once it has been developed. The output of this function is not used for reporting, but rather as an input to the buyer's reporting function.
+In the short-term, the `reportResult()` function's reporting happens by calling a `sendReportTo()` API which takes a single string argument representing a URL. The `sendReportTo()` function can be called at most once during a worklet function's execution. The URL is fetched when the frame displaying the ad begins navigating to the ad. Eventually reporting will go through the Private Aggregation API once it has been developed.
 
+The output of `reportResult()` is not used for reporting, but rather as an input to the buyer's reporting function.
 
 #### 5.2 Buyer Reporting on Render and Ad Events
 
@@ -722,13 +732,13 @@ The arguments to this function are:
     *   `perBuyerSignals`: Like `auctionConfig.perBuyerSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
     *   `auctionSignals`: Like `auctionConfig.auctionSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
 
-The `reportWin()` function's reporting happens by directly calling network APIs in the short-term, but will eventually go through the Private Aggregation API once it has been developed. Once the Private Aggregation API has been integrated with FLEDGE the `interestGroup` object passed to `generateBid()` will be available to `reportWin()`.
+The `reportWin()` function's reporting happens by calling `sendReportTo()`, same as for `reportResult()`, in the short-term, but will eventually go through the Private Aggregation API once it has been developed. Once the Private Aggregation API has been integrated with FLEDGE the `interestGroup` object passed to `generateBid()` will be available to `reportWin()`.
 
 Ads often need to report on events that happen once the ad is rendered.  One common example is reporting on whether an ad became viewable on-screen.  We will need a communications channel to allow the publisher page or the Fenced Frame to pass such information into the worklet responsible for reporting.  Some additional design work is needed here.
 
 ##### 5.2.1 Noised and Bucketed Signals
 
-Some privacy-sensitive information (browser signals `joinCount`, `recency`, and the field `modelingSignals` passed from `generateBid()` to `reportWin()`) are made available to `reportWin()` under a special noising and bucketing scheme. 
+Some privacy-sensitive information (browser signals `joinCount`, `recency`, and the field `modelingSignals` passed from `generateBid()` to `reportWin()`) are made available to `reportWin()` under a special noising and bucketing scheme.
 
 All such fields use a noising scheme where, in a randomly-selected 1% of `reportWin()` calls, a uniformly-generated random value in the range of the field's bucketing scheme is returned instead of the true value.
 
@@ -743,5 +753,3 @@ These signals were requested in [issue 435](https://github.com/WICG/turtledove/i
 We also need to provide a mechanism for the _losing_ bidders in the auction to learn aggregate outcomes.  Certainly they should be able to count the number of times they bid, and losing ads should also be able to learn (in aggregate) some seller-provided information about e.g. the auction clearing price.  Likewise, a reporting mechanism should be available to buyers who attempted to bid with a creative that had not yet reached the k-anonymity threshold.
 
 This could be handled by a `reportLoss()` function running in the worklet.  Alternatively, the model of [SPURFOWL](https://github.com/AdRoll/privacy/blob/main/SPURFOWL.md) (an append-only datastore and later aggregate log processing) could be a good fit for this use case.  The details here are yet to be determined.
-
-

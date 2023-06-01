@@ -1,3 +1,5 @@
+> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+
 # AboveThreshold with Periodic Restarts Algorithm
 
 At a high level, the job of the k-anonymity server is to keep track, for each
