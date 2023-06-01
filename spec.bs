@@ -716,7 +716,54 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       1. [=list/For each=] |ig| of |groups|:
         1. TODO: If rerunning `generateBid()` with only k-anonymous ads, remember to swap out |ig|'s ads
           to just k-anonymous ones so that [=validating an ad url=] excludes the non-k-anonymous ones.
-        1. TODO: Let |interestGroup| be ... from |ig| ... minus priority and prioritySignalsOverrides and any browser-defined pieces
+        1. Let |igIDL| be a new {{AuctionAdInterestGroup}}.
+        1. [=map/Set=] |igIDL|["{{AuctionAdInterestGroup/owner}}"] to |ig|'s [=interest group/owner=].
+        1. [=map/Set=] |igIDL|["{{AuctionAdInterestGroup/name}}"] to |ig|'s [=interest group/name=].
+        1. For each |interestGroupField| and |groupMember| in the following table <table class="data">
+            <thead><tr><th>Interest group field</th><th>Group member</th></tr></thead>
+            <tr>
+              <td>[=interest group/enable bidding signals prioritization=]</td>
+              <td>"{{AuctionAdInterestGroup/enableBiddingSignalsPrioritization}}"</td>
+            </tr>
+            <tr>
+              <td>[=interest group/execution mode=]</td>
+              <td>"{{AuctionAdInterestGroup/executionMode}}"</td>
+            </tr>
+            <tr>
+              <td>[=interest group/bidding url=]</td>
+              <td>"{{AuctionAdInterestGroup/biddingLogicURL}}"</td>
+            </tr>
+            <tr>
+              <td>[=interest group/bidding wasm helper url=]</td>
+              <td>"{{AuctionAdInterestGroup/biddingWasmHelperURL}}"</td>
+            </tr>
+            <tr>
+              <td>[=interest group/update url=]</td>
+              <td>"{{AuctionAdInterestGroup/updateURL}}"</td>
+            </tr>
+            <tr>
+              <td>[=interest group/trusted bidding signals url=]</td>
+              <td>"{{AuctionAdInterestGroup/trustedBiddingSignalsURL}}"</td>
+            </tr>
+            <tr>
+              <td>[=interest group/trusted bidding signals keys=]</td>
+              <td>"{{AuctionAdInterestGroup/trustedBiddingSignalsKeys}}"</td>
+            </tr>
+            <tr>
+              <td>[=interest group/trusted bidding signals url=]</td>
+              <td>"{{AuctionAdInterestGroup/trustedBiddingSignalsURL}}"</td>
+            </tr>
+            <tr>
+              <td>[=interest group/ads=]</td>
+              <td>"{{AuctionAdInterestGroup/ads}}"</td>
+            </tr>
+            <tr>
+              <td>[=interest group/ad components=]</td>
+              <td>"{{AuctionAdInterestGroup/adComponents}}"</td>
+            </tr>           
+          </table>
+          1. If |ig|'s |interestGroupField| is not null, then [=map/set=] |igIDL|[|groupMember|] to it.
+
         1. [=map/Set=] |browserSignals|["`joinCount`"] to the sum of |ig|'s
            [=interest group/join counts=] for all days within the last 30 days.
         1. [=map/Set=] |browserSignals|["`bidCount`"] to the sum of |ig|'s
@@ -741,20 +788,20 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. If |allTrustedBiddingSignals| is an [=ordered map=] and |allTrustedBiddingSignals|[|key|]
             [=map/exists=], then [=map/set=] |trustedBiddingSignals|[|key|] to
             |allTrustedBiddingSignals|[|key|].
-        1. Let |startTime| be the current time.
-        1. Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
-           |biddingScript|, |ig|, « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
+        1. Let |startTime| be the [=current wall time=].
+        1. Let |generateBidOutputJS| be the result of [=evaluating a bidding script=] with
+           |biddingScript|, |ig|, « |igIDL|, |auctionSignals|, |perBuyerSignals|,
            |trustedBiddingSignals|, |browserSignals| », and |perBuyerTimeout|.
-        1. Let |duration| be the current time minus |startTime| in milliseconds.
-        1. If |generatedBidResult| is an [=abrupt completion=], [=iteration/continue=].
-        1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
-          |generatedBidResult| to a {{GenerateBidOutput}}.
+        1. Let |duration| be the [=current wall time=] minus |startTime| in milliseconds.
+        1. If |generateBidOutputJS| is an [=abrupt completion=], [=iteration/continue=].
+        1. Let |generateBidOutputIDL| be the result of [=converted to an IDL value|converting=]
+          |generateBidOutputJS| to a {{GenerateBidOutput}}.
         1. If an exception was caught in the previous step, [=iteration/continue=].
         1. Let |groupHasAdComponents| be true.
-        1. If |interestGroup|'s [=interest group/ad components=] is null:
+        1. If |ig|'s [=interest group/ad components=] is null:
           1. Set |groupHasAdComponents| be false.
         1. Let |generatedBid| be the result of [=converting GenerateBidOutput to generated bid=]
-          with |generatedBidIDL|, |ig|, |isComponentAuction|, and |groupHasAdComponents|.
+          with |generateBidOutputIDL|, |ig|, |isComponentAuction|, and |groupHasAdComponents|.
         1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
         1. If |generatedBid| is failure, [=iteration/continue=].
         1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
@@ -835,6 +882,7 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. Let |scoreAdOutput| be the result of [=evaluating a scoring script=] with
    |decisionLogicScript|, « |adMetadata|, |bidValue|, |auctionConfig|, |trustedScoringSignals|,
    |browserSignals| », and |auctionConfig|'s [=auction config/seller timeout=].
+1. If |scoreAdOutput| is an [=abrupt completion=], [=iteration/continue=].
 1. If |isComponentAuction| is true, and |scoreAdOutput|'s
   [=score ad output/allow component auction=] is false, return.
 1. Let |score| be |scoreAdOutput|'s [=score ad output/desirability=].
@@ -1134,14 +1182,18 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
   1. Set |config| to |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
-  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap| » be the result of [=evaluating a
-     reporting script=] with |sellerReportingScript|, "`reportResult`", and « |config|,
-     |browserSignals|».
-  1. TODO: Store |reportUrl| and |reportingBeaconMap| in the {{FencedFrameConfig}} as appropriate.
+  1. Let |reportResultOutputJS| be the result of [=evaluating a reporting script=] with
+     |sellerReportingScript|, "`reportResult`", and « |config|, |browserSignals|».
+  1. If |reportResultOutputJS| is an [=abrupt completion=], [=iteration/continue=].
+  1. Let |reportResultOutputIDL| be the result of [=converted to an IDL value|converting=]
+     |reportResultOutputJS| to a {{ReportResultOutput}}.
+  1. TODO: Store |reportResultOutputIDL|["{{ReportResultOutput/reportUrl}}"] and
+     |reportResultOutputIDL|["{{ReportResultOutput/reportingBeaconMap}}"] in the
+     {{FencedFrameConfig}} as appropriate.
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
   1. [=map/Remove=] |browserSignals|["`modifiedBid`"].
-  1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].  
-  1. Return « |sellerSignals|, |browserSignals| ».
+  1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].
+  1. Return « |reportResultOutputIDL|["{{ReportResultOutput/signalsForWinner}}"], |browserSignals| ».
 </div>
 
 <div algorithm>
@@ -1375,8 +1427,11 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
        |finalCompletion| to |F| and jump to the step labeled <i><a
        href=#evaluate-script-return>return</a></i>.
 
+    1. Let |argumentsJS| be the result of
+      [=converted to ECMAScript values|converting to ECMAScript values=] given |arguments|.
+
     1. Set |finalCompletion| be [=ECMAScript/Completion Record|Completion=]([$Call$](F, `undefined`,
-       |arguments|)). 
+       |argumentsJS|)). 
        
        In |timeout| milliseconds, if the invocation of [$Call$] has not completed,
        [=immediately=] interrupt the execution and set |finalCompletion| to a new
@@ -1446,6 +1501,12 @@ dictionary GenerateBidOutput {
   double adCost;
   double modelingSignals;
   boolean allowComponentAuction = false;
+};
+
+dictionary ReportResultOutput {
+  DOMString signalsForWinner;
+  USVString reportUrl;
+  any reportingBeaconMap;
 };
 </pre>
 
@@ -1815,7 +1876,7 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
               
         </dl>
               
-    1. Set |ig|'s [=interest group/next update after=] to the current time plus 24 hours.
+    1. Set |ig|'s [=interest group/next update after=] to the [=current wall time=] plus 24 hours.
     1. [=list/Replace=] |originalInterestGroup| with |ig| in the browser's
       [=interest group set=].
     1. <i id=abort-update>Abort update</i>: We jump here if some part of the
@@ -2071,7 +2132,7 @@ the seller.
   [=interest group/ad components=] field.
 : <dfn>ad cost</dfn>
 :: Null or a {{double}}. Advertiser click or conversion cost passed from `generateBid()` to
-  reportWin(). Invalid values, such as negative, infinite, and NaN values, will be ignored and not
+  `reportWin()`. Invalid values, such as negative, infinite, and NaN values, will be ignored and not
   passed. Only the lowest 12 bits will be passed.
 : <dfn>modeling signals</dfn>
 :: Null or an {{unsigned short}}. A 0-4095 integer (12-bits) passed to `reportWin()`, with noising.
