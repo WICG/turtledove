@@ -468,6 +468,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       |config|["{{AuctionAdConfig/auctionSignals}}"].
     1. Increment |auctionConfig|'s [=auction config/pending promise count=].
     1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/auction signals=] with |result|:
+      1. If |result| is not an {{any}}, [=exception/throw=] a {{TypeError}}.
       1. Set |auctionConfig|'s [=auction config/auction signals=] to the result of
         [=serializing a JavaScript value to a JSON string=], given |result|.
       1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
@@ -483,6 +484,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       |config|["{{AuctionAdConfig/sellerSignals}}"].
     1. Increment |auctionConfig|'s [=auction config/pending promise count=].
     1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/seller signals=] with |result|:
+      1. If |result| is not an {{any}}, [=exception/throw=] a {{TypeError}}.
       1. Set |auctionConfig|'s [=auction config/seller signals=] to the result of
         [=serializing a JavaScript value to a JSON string=], given |result|.
       1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
@@ -513,6 +515,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       |config|["{{AuctionAdConfig/perBuyerSignals}}"].
     1. Increment |auctionConfig|'s [=auction config/pending promise count=].
     1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/per buyer signals=] with |result|:
+      1. If |result| is not a [=record=] mapping from {{USVString}} to {{any}}, [=exception/throw=]
+        a {{TypeError}}.
       1. Set |auctionConfig|'s [=auction config/per buyer signals=] to a new [=ordered map=] whose
         [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
       1. [=map/For each=] |key| → |value| of |result|:
@@ -536,6 +540,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       |config|["{{AuctionAdConfig/perBuyerTimeouts}}"].
     1. Increment |auctionConfig|'s [=auction config/pending promise count=].
     1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/per buyer timeouts=] with |result|:
+      1. If |result| is not a [=record=] mapping from {{USVString}} to {{unsigned long long}},
+        [=exception/throw=] a {{TypeError}}.
       1. Set |auctionConfig|'s [=auction config/per buyer timeouts=] to a new [=ordered map=] whose
         [=map/keys=] are [=origins=] and whose [=map/values=] are [=durations=] in milliseconds.
       1. [=map/For each=] |key| → |value| of |result|:
@@ -2014,13 +2020,13 @@ An auction config is a [=struct=] with the following items:
   Restricts the runtime of the seller's `scoreAd()` script. If scoring does not complete before
   the timeout, the bid being scored is not considered further.
 : <dfn>per buyer signals</dfn>
-:: Null or a {{Promise}} or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose
-  [=map/values=] are [=strings=].
+:: Null or a {{Promise}} or failure or an [=ordered map=] whose [=map/keys=] are [=origins=] and
+  whose [=map/values=] are [=strings=].
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
   passed to corresponding buyer's script runner.
 : <dfn>per buyer timeouts</dfn>
-:: Null or a {{Promise}} or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose
-  [=map/values=] are [=durations=] in milliseconds.
+:: Null or a {{Promise}} or failure or an [=ordered map=] whose [=map/keys=] are [=origins=] and
+  whose [=map/values=] are [=durations=] in milliseconds.
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the runtime of
   corresponding buyer's `generateBid()` script. If the timeout expires, only the bid submitted
   via `setBid()` is considered.
