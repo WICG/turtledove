@@ -18,12 +18,14 @@ const auctionBlob = navigator.getInterestGroupAdAuctionData({
   'seller': 'https://www.example-ssp.com',
 });
 ```
-The returned `auctionBlob` is a Promise that will resolve to a `Uint8Array` containing an HPKE encrypted RemarketingInput for a `SelectAd` B&A call with an encryption header like that used in [OHTTP](https://www.ietf.org/archive/id/draft-thomson-http-oblivious-01.html). The encryption is done using public keys the browser fetches that correspond with private keys only shared with B&A servers running in TEEs. `auctionBlob` is a blob of compressed data derived from the interest groups stored in the browser to be provided to [the B&A API](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md). This derived information will include the contents of the interest groups, and information that the B&A server can pass unmodified in `browserSignals` for bidding like `joinCount`, `bidCount`, and `prevWins`. The blob is padded to either one of the 7 allowed sizes to reduce the cross-site identity leaked by its size. In the event the `auctionBlob` cannot be created the resulting array will have zero length.
+The returned `auctionBlob` is a Promise that will resolve to an `AdAuctionData` object. This object contains `requestId` and `request` fields. The `requestId` contains a UUID that needs to be presented to `runAdAuction` along with the response. The `request` field contains a `Uint8Array` containing an HPKE encrypted RemarketingInput for a `SelectAd` B&A call with an encryption header like that used in [OHTTP](https://www.ietf.org/archive/id/draft-thomson-http-oblivious-01.html). The encryption is done using public keys the browser fetches that correspond with private keys only shared with B&A servers running in TEEs. The `request` is a blob of compressed data derived from the interest groups stored in the browser to be provided to [the B&A API](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md). This derived information will include the contents of the interest groups, and information that the B&A server can pass unmodified in `browserSignals` for bidding like `joinCount`, `bidCount`, and `prevWins`. The blob is padded to either one of the 7 allowed sizes to reduce the cross-site identity leaked by its size. In the event the `request` cannot be created the resulting array will have zero length.
 
-Prior to encryption the `auctionBlob` is encoded as [CBOR](https://www.rfc-editor.org/rfc/rfc8949.html) with the following schema (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
+Prior to encryption the `request` is encoded as [CBOR](https://www.rfc-editor.org/rfc/rfc8949.html) with the following schema (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
 
 ```json
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "/BuyerInput/AuctionBlob",
   "type": "object",
   "properties": {
     "version": { "type": "number" },
@@ -32,19 +34,26 @@ Prior to encryption the `auctionBlob` is encoded as [CBOR](https://www.rfc-edito
       "default": "gzip"
     },
     "publisher": { "type": "string" },
+    "generationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "enableDebugReporting": {
+       "type": "boolean",
+       "default": "false"
+    },
     "interestGroups": {
-      "type": "object",
-      "description": "Lists of interest group data keyed by owner origin",
       "patternProperties": {
         "^https://": {
             "type": "string",
             "description": "CBOR encoded list of interest groups compressed using the method described in `compression`."
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "required": [
-    "version", "interestGroupData", "nonce", "publisher"
+    "version", "interestGroups", "publisher", "generationId"
   ]
 }
 ```
@@ -55,7 +64,16 @@ The schema for the CBOR encoding of the interest group (specified using [JSON Sc
 
 ```json
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "/BuyerInput/AuctionBlob/InterestGroup",
+  "$defs": {
+    "adRenderId": {
+      "type": "string",
+      "description": "Ad Render ID that can be used to reconstruct the ad object based on server-side information. Sent instead of the ad object."
+    }
+  },
   "type": "object",
+  "required": [ "name" ],
   "properties": {
     "name": {"type": "string"},
     "biddingSignalsKeys": {
@@ -69,7 +87,7 @@ The schema for the CBOR encoding of the interest group (specified using [JSON Sc
        "$ref": "#/$defs/adRenderId"
       }
     },
-    "adComponents": {
+    "componentAds": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/adRenderId"
@@ -107,15 +125,6 @@ The schema for the CBOR encoding of the interest group (specified using [JSON Sc
         }
       }
     }
-  },
-  "required": [
-    "name"
-  ],
-  "$defs": {
-    "adRenderId": {
-      "type": "string",
-      "description": "Ad Render ID that can be used to reconstruct the ad object based on server-side information. Sent instead of the ad object."
-    }
   }
 }
 ```
@@ -129,8 +138,8 @@ The JSON equivalent of an example `auctionBlob` would look like this:
 ```json
 {
   "version": 0,
-  "compression": "gzip",
   "publisher": "https://foo.com",
+  "generationId": "11111111-2222-3333-4444-555555555555",
   "interestGroups": {
     "https://owner1.com": "<bytes>",
     "https://owner2.com": "<bytes>"
@@ -138,7 +147,7 @@ The JSON equivalent of an example `auctionBlob` would look like this:
 }
 ```
 
-Where `<bytes>` are filled in with the appropriate binary data.
+Where `<bytes>` are filled in with gzip compressed CBOR encoded list of interest groups for each owner.
 
 The JSON equivalent of the interest group would look like the following example:
 ```json
@@ -147,17 +156,17 @@ The JSON equivalent of the interest group would look like the following example:
   "biddingSignalsKeys": ["key1", "key2"],
   "userBiddingSignals": "signals",
   "ads": [
-    "<adRenderId>",
-    "<adRenderId2>"
+    "adRenderId",
+    "adRenderId2"
   ],
   "componentAds": [],
   "browserSignals": {
     "joinCount": 2,
     "bidCount": 0,
-    "recency": 1684226729,
+    "recency": 500,
     "prevWins": [
-        [-20, "<adRenderId>"],
-        [-100, "<adRenderId>"]
+        [20, "adRenderId"],
+        [100, "adRenderId"]
       ]
   }
 }
@@ -183,16 +192,58 @@ Prior to compression and encryption, the AuctionResult is encoded as CBOR with t
 
 ```json
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "/SellerFrontEnd/AuctionResponse",
   "type": "object",
+  "$defs": {
+    "errorDef": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "HTTP status code for the request.",
+          "type": "number"
+        },
+        "message": {
+          "description": "Human readable error message.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "reportingUrlsDef": {
+      "type": "object",
+      "properties": {
+        "reportingUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "interactionReportingUrls": {
+          "description": "Map from events to beacon URLs",
+          "additionalProperties": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      }
+    },
+    "winReportingUrlsDef": {
+      "type": "object",
+      "buyerReportingUrls": { "$ref": "#/$defs/reportingUrlsDef" },
+      "componentSellerReportingUrls": { "$ref": "#/$defs/reportingUrlsDef" },
+      "topLevelSellerReportingUrls": { "$ref": "#/$defs/reportingUrlsDef" }
+    }
+  },
   "properties": {
     "adRenderURL": {
       "type": "string",
+      "format": "uri",
       "description": "The ad that will be rendered on the end user's device."
     },
-    "adComponents": {
+    "componentAds": {
       "type": "array",
       "description": "List of render URLs for component ads to be displayed as part of this ad",
       "items": {
+        "format": "uri",
         "type": "string"
       }
     },
@@ -202,9 +253,9 @@ Prior to compression and encryption, the AuctionResult is encoded as CBOR with t
     },
     "interestGroupOwner": {
       "type": "string",
-      "description": "ETLD+1 Origin of the Buyer who owns the interest group that includes the ad."
+      "format": "uri",
+      "description": "Origin of the Buyer who owns the interest group that includes the ad."
     },
-
     "biddingGroups": {
       "type": "object",
       "description": "Map from interest group owner to a list of interest groups that bid in this auction",
@@ -216,9 +267,9 @@ Prior to compression and encryption, the AuctionResult is encoded as CBOR with t
             "description": "Indices of interest groups in the original request for this owner that submitted a bid for this auction. This is used to update the bidCount for these interest groups. Note that we send the index instead of the name because that allows us to avoid compressing separately."
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
-
     "score": {
       "type": "number",
       "description": "Score of the ad determined during the auction. Any value that is zero or negative indicates that the ad cannot win the auction. The winner of the auction would be the ad that was given the highest score. The output from ScoreAd() script is desirability that implies score for an ad."
@@ -227,25 +278,12 @@ Prior to compression and encryption, the AuctionResult is encoded as CBOR with t
       "type": "number",
       "description": "Bid price corresponding to an ad."
     },
-
     "isChaff": {
       "type": "boolean",
       "description": "Boolean to indicate that there is no remarketing winner from the auction. AuctionResult may be ignored by the client (after decryption) if this is set to true."
     },
-
-    "sellerReportingURL": { "type": "string"},
-    "sellerFencedFrameReporting": {
-      "type": "object",
-      "description": "Map from event type to reporting URL.",
-      "additionalProperties": { "type": "string" }
-    },
-
-    "buyerReportingURL": { "type": "string"},
-    "buyerFencedFrameReporting": {
-      "type": "object",
-      "description": "Map from event type to reporting URL.",
-      "additionalProperties": { "type": "string" }
-    }
+    "winReportingUrls": { "$ref": "#/$defs/winReportingUrlsDef" },
+    "error": { "$ref": "#/$defs/errorDef" }
   }
 }
 ```
@@ -267,17 +305,18 @@ It should be noted that the `fetch()` request using `adAuctionHeaders` can also 
 
 ### Step 4: Complete auction in browser
 
-Now the auction can be completed by passing the response blob to runAdAuction() as part of a specially configured auction configuration:
+Now the auction can be completed by passing the response blob to `runAdAuction()` as part of a specially configured auction configuration:
 
 ```javascript
 const auctionResultPromise = navigator.runAdAuction({
   'seller': 'https://www.example-ssp.com',
   'interestGroupBuyers': ['https://www.example-dsp.com'],
+  'requestId': requestId,
   'serverResponse': response_blob,
 });
 ```
 
-The browser verifies it witnessed a Fetch request to the `seller`’s origin with `“adAuctionHeaders: true”` that included a `Ad-Auction-Result` header with hash of `response_blob`. It also checks that the `response_blob` corresponds to a `navigator.getInterestGroupAdAuctionData()` request that was sent from the same frame. Since the Fetch request required HTTPS which authenticates the seller’s origin, this verification authenticates that the seller produced the response blob. `runAdAuction()` then proceeds as if the auction happened on device. This specially configured auction configuration can be used for single seller auctions or as a component auction configuration for multi-seller auctions (in this case the `getInterestGroupAdAuctionData()` call must include a `top_level_seller` field that must later match the top-level seller passed to `runAdAuction()`). To facilitate parallelizing on-device and on-server auctions, the `serverResponse` could be a Promise that resolves to a `Uint8Array` containing the blob later.
+The browser verifies it witnessed a Fetch request to the `seller`’s origin with `"adAuctionHeaders: true"` that included an `Ad-Auction-Result` header with hash of `response_blob`. It also checks that the `response_blob` corresponds to the `navigator.getInterestGroupAdAuctionData()` request with the provided `requestId` that was sent from the same frame. Since the Fetch request required HTTPS which authenticates the seller’s origin, this verification authenticates that the seller produced the response blob. `runAdAuction()` then proceeds as if the auction happened on device. This specially configured auction configuration can be used for single seller auctions or as a component auction configuration for multi-seller auctions (in this case the `getInterestGroupAdAuctionData()` call must include a `top_level_seller` field that must later match the top-level seller passed to `runAdAuction()`). To facilitate parallelizing on-device and on-server auctions, the `serverResponse` could be a Promise that resolves to a `Uint8Array` containing the blob later.
 
 ## Privacy Considerations
 
