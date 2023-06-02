@@ -30,6 +30,7 @@ spec: ECMASCRIPT; urlPrefix: https://tc39.es/ecma262/
   type: dfn
     text: ParseScript; url: sec-parse-script
     text: abrupt completion; url: sec-completion-record-specification-type
+    text: normal completion; url: sec-completion-record-specification-type
     text: throw completion; url: sec-completion-record-specification-type
     text: ScriptEvaluation; url: sec-runtime-semantics-scriptevaluation
 spec: RFC8941; urlPrefix: https://httpwg.org/specs/rfc8941.html
@@ -1260,8 +1261,24 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
     1. Set |global|'s
       [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=] to |isComponentAuction|.
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/interest group=] to |ig|.
-    1. Return the result of [=evaluating a script=] with |global|, |script|, "`generateBid`",
+    1. Let |result| be the result of [=evaluating a script=] with |global|, |script|, "`generateBid`",
       |arguments|, and |timeout|.
+    1. If |result| is a [=throw completion=] with \[[Value]] of null, then set |result| to a
+      [=normal completion=] given |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=].
+    1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null:
+      1. Set |interestGroup|'s [=interest group/priority=] to |global|'s
+        [=InterestGroupBiddingScriptRunnerGlobalScope/priority=].
+      1. Store |interestGroup| in the browser’s [=interest group set=].
+    1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority signals=] is not
+      [=map/is empty|empty=]:
+      1. [=map/For each=] |k| → |v| of |global|'s
+        [=InterestGroupBiddingScriptRunnerGlobalScope/priority signals=]:
+        1. If |v| is null, [=map/remove=] |interestGroup|'s
+          [=interest group/priority signals overrides=][|k|].
+        1. Otherwise, [=map/set=] |interestGroup|'s
+          [=interest group/priority signals overrides=][|k|] to |v|.
+      1. Store |interestGroup| in the browser’s [=interest group set=].
+    1. Return |result|.
 </div>
 
 <div algorithm>
@@ -1319,7 +1336,7 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
   To <dfn>evaluate a script</dfn> with a [=realm/global object=] |global|, [=string=] |script|, [=string=]
   |functionName|, a [=list=] |arguments|, and an integer millisecond duration |timeout|, run these steps.
   They return a [=ECMAScript/Completion Record=], which is either an [=abrupt completion=] (in the case of
-  a parse failure or execution error), or a normal completion populated with the
+  a parse failure or execution error), or a [=normal completion=] populated with the
   [=ECMAScript/ECMAScript language value=] result of invoking |functionName|.
 
     1. [=Assert=] that these steps are running [=in parallel=].
