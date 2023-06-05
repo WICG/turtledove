@@ -136,7 +136,8 @@ are:
     |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"].
   1. Set |interestGroup|'s [=interest group/execution mode=] to
     |group|["{{AuctionAdInterestGroup/executionMode}}"].
-  1. For each |groupMember| and |interestGroupField| in the following table <table class="data">
+  1. For each |groupMember| and |interestGroupField| in the following table
+    <table class="data">
       <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
       <tr>
         <td>"{{AuctionAdInterestGroup/biddingLogicURL}}"</td>
@@ -173,7 +174,8 @@ are:
       [=serializing a JavaScript value to a JSON string=], given
       |group|["{{AuctionAdInterestGroup/userBiddingSignals}}"]. This can [=exception/throw=] a
       {{TypeError}}.
-  1. For each |groupMember| and |interestGroupField| in the following table <table class="data">
+  1. For each |groupMember| and |interestGroupField| in the following table
+    <table class="data">
       <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
       <tr>
         <td>"{{AuctionAdInterestGroup/ads}}"</td>
@@ -720,54 +722,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       1. [=list/For each=] |ig| of |groups|:
         1. TODO: If rerunning `generateBid()` with only k-anonymous ads, remember to swap out |ig|'s ads
           to just k-anonymous ones so that [=validating an ad url=] excludes the non-k-anonymous ones.
-        1. Let |igIDL| be a new {{AuctionAdInterestGroup}}.
-        1. [=map/Set=] |igIDL|["{{AuctionAdInterestGroup/owner}}"] to |ig|'s [=interest group/owner=].
-        1. [=map/Set=] |igIDL|["{{AuctionAdInterestGroup/name}}"] to |ig|'s [=interest group/name=].
-        1. For each |interestGroupField| and |groupMember| in the following table <table class="data">
-            <thead><tr><th>Interest group field</th><th>Group member</th></tr></thead>
-            <tr>
-              <td>[=interest group/enable bidding signals prioritization=]</td>
-              <td>"{{AuctionAdInterestGroup/enableBiddingSignalsPrioritization}}"</td>
-            </tr>
-            <tr>
-              <td>[=interest group/execution mode=]</td>
-              <td>"{{AuctionAdInterestGroup/executionMode}}"</td>
-            </tr>
-            <tr>
-              <td>[=interest group/bidding url=]</td>
-              <td>"{{AuctionAdInterestGroup/biddingLogicURL}}"</td>
-            </tr>
-            <tr>
-              <td>[=interest group/bidding wasm helper url=]</td>
-              <td>"{{AuctionAdInterestGroup/biddingWasmHelperURL}}"</td>
-            </tr>
-            <tr>
-              <td>[=interest group/update url=]</td>
-              <td>"{{AuctionAdInterestGroup/updateURL}}"</td>
-            </tr>
-            <tr>
-              <td>[=interest group/trusted bidding signals url=]</td>
-              <td>"{{AuctionAdInterestGroup/trustedBiddingSignalsURL}}"</td>
-            </tr>
-            <tr>
-              <td>[=interest group/trusted bidding signals keys=]</td>
-              <td>"{{AuctionAdInterestGroup/trustedBiddingSignalsKeys}}"</td>
-            </tr>
-            <tr>
-              <td>[=interest group/trusted bidding signals url=]</td>
-              <td>"{{AuctionAdInterestGroup/trustedBiddingSignalsURL}}"</td>
-            </tr>
-            <tr>
-              <td>[=interest group/ads=]</td>
-              <td>"{{AuctionAdInterestGroup/ads}}"</td>
-            </tr>
-            <tr>
-              <td>[=interest group/ad components=]</td>
-              <td>"{{AuctionAdInterestGroup/adComponents}}"</td>
-            </tr>           
-          </table>
-          1. If |ig|'s |interestGroupField| is not null, then [=map/set=] |igIDL|[|groupMember|] to it.
-
+        1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=]
+          with |ig|.
         1. [=map/Set=] |browserSignals|["`joinCount`"] to the sum of |ig|'s
            [=interest group/join counts=] for all days within the last 30 days.
         1. [=map/Set=] |browserSignals|["`bidCount`"] to the sum of |ig|'s
@@ -794,8 +750,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             |allTrustedBiddingSignals|[|key|].
         1. Let |startTime| be the [=current wall time=].
         1. Let |generateBidOutputJS| be the result of [=evaluating a bidding script=] with
-           |biddingScript|, |ig|, « |igIDL|, |auctionSignals|, |perBuyerSignals|,
-           |trustedBiddingSignals|, |browserSignals| », and |perBuyerTimeout|.
+           |biddingScript|, |ig|, |igGenerateBid|, |auctionSignals|, |perBuyerSignals|,
+           |trustedBiddingSignals|, |browserSignals|, and |perBuyerTimeout|.
         1. Let |duration| be the [=current wall time=] minus |startTime| in milliseconds.
         1. If |generateBidOutputJS| is an [=abrupt completion=], [=iteration/continue=].
         1. Let |generateBidOutputIDL| be the result of [=converted to an IDL value|converting=]
@@ -822,6 +778,82 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, and |reportResultBrowserSignals|.
 1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 
+</div>
+
+<div algorithm>
+To <dfn>build an interest group passed to generateBid</dfn> given an [=interest group=] |ig|:
+  
+  1. Let |igGenerateBid| be a new {{GenerateBidInterestGroup}}.
+  1. For each |interestGroupField| and |groupMember| in the following table
+    <table class="data">
+      <thead><tr><th>Interest group field</th><th>Group member</th></tr></thead>
+      <tr>
+        <td>[=interest group/name=]</td>
+        <td>"{{GenerateBidInterestGroup/name}}"</td>
+      </tr>
+      <tr>
+        <td>[=interest group/owner=]</td>
+        <td>"{{GenerateBidInterestGroup/owner}}"</td>
+      </tr>
+      <tr>
+        <td>[=interest group/enable bidding signals prioritization=]</td>
+        <td>"{{GenerateBidInterestGroup/enableBiddingSignalsPrioritization}}"</td>
+      </tr>
+      <tr>
+        <td>[=interest group/execution mode=]</td>
+        <td>"{{GenerateBidInterestGroup/executionMode}}"</td>
+      </tr>
+    </table>
+    1. [=map/Set=] |igGenerateBid|[|groupMember|] to |ig|'s |interestGroupField|.
+
+  1. For each |interestGroupField| and |groupMember| in the following table
+    <table class="data">
+      <thead><tr><th>Interest group field</th><th>Group member</th></tr></thead>
+      <tr>
+        <td>[=interest group/bidding url=]</td>
+        <td>"{{GenerateBidInterestGroup/biddingLogicURL}}"</td>
+      </tr>
+      <tr>
+        <td>[=interest group/bidding wasm helper url=]</td>
+        <td>"{{GenerateBidInterestGroup/biddingWasmHelperURL}}"</td>
+      </tr>
+      <tr>
+        <td>[=interest group/update url=]</td>
+        <td>"{{GenerateBidInterestGroup/updateURL}}"</td>
+      </tr>
+      <tr>
+        <td>[=interest group/trusted bidding signals url=]</td>
+        <td>"{{GenerateBidInterestGroup/trustedBiddingSignalsURL}}"</td>
+      </tr>
+    </table>
+    1. If |ig|'s |interestGroupField| is not null, then [=map/set=] |igGenerateBid|[|groupMember|]
+      to the [=URL serializer|serialization=] of it.
+
+  1. For each |interestGroupField| and |groupMember| in the following table
+    <table class="data">
+      <thead><tr><th>Interest group field</th><th>Group member</th></tr></thead> 
+      <tr>
+        <td>[=interest group/ads=]</td>
+        <td>"{{GenerateBidInterestGroup/ads}}"</td>
+      </tr>
+      <tr>
+        <td>[=interest group/ad components=]</td>
+        <td>"{{GenerateBidInterestGroup/adComponents}}"</td>
+      </tr>
+    </table>
+    1. If |ig|'s |interestGroupField| is not null:
+      1. Let |ads| be a new [=list=].
+      1. [=list/for each] |igAd| of it:
+        1. Let |ad| be a new {{AuctionAd}}.
+        1. [=map/Set=] |ad|["{{AuctionAd/renderURL}}"] to the [=URL serializer|serialization=] of
+          |igAd|'s [=interest group ad/render url=].
+        1. If |igAd|'s [=interest group ad/metadata=] is not null, then [=map/set=]
+          |ad|["{{AuctionAd/metadata}}"] to it.
+        1. [=list/Append=] |ad| to |ads|.
+      1. [=map/Set=] |igGenerateBid|[|groupMember|] to |ads|.
+
+  1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, then [=map/set]
+    |igGenerateBid|{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}} to it.
 </div>
 
 <div algorithm>
@@ -1296,26 +1328,32 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
 (initially null).
 
 <div algorithm>
-  To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig|,
-  a [=list=] of arguments |arguments|, and an integer millisecond duration |timeout|:
+  To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig|, a
+  {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null |auctionSignals|, an
+  [=ordered map=]-or-null |perBuyerSignals|, an [=ordered map=] |trustedBiddingSignals|, an
+  [=ordered map=] |browserSignals|, and an integer millisecond [=duration=] |timeout|:
 
-    1. Let |groupHasAdComponents| be true.
-    1. If |ig|'s [=interest group/ad components=] is null:
-      1. Set |groupHasAdComponents| be false.
     1. Let |global| be a new {{InterestGroupBiddingScriptRunnerGlobalScope}}.
     1. Set |global|'s
-      [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=] to
-      |groupHasAdComponents|.
-    1. Let |numArguments| be |arguments|'s [=list/size=].
-    1. Let |browserSignals| be |arguments|[|numArguments| - 1].
-    1. Let |isComponentAuction| be false.
-    1. If |browserSignals|["`topLevelSeller`"] is not null:
-      1. Set |isComponentAuction| to true.
+      [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=] to true if |ig|'s
+      [=interest group/ad components=] is not null, or false otherwise.
     1. Set |global|'s
-      [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=] to |isComponentAuction|.
+      [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=] to true if
+      |browserSignals|["`topLevelSeller`"] is not null, or false otherwise.
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/interest group=] to |ig|.
+    1. Let |igJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
+      given |igGenerateBid|.
+    1. Let |auctionSignalsJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
+      given |auctionSignals|.
+    1. Let |perBuyerSignalsJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
+      given |perBuyerSignals|.
+    1. Let |trustedBiddingSignalsJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
+      given |trustedBiddingSignals|.
+    1. Let |browserSignalsJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
+      given |browserSignals|.      
     1. Return the result of [=evaluating a script=] with |global|, |script|, "`generateBid`",
-      |arguments|, and |timeout|.
+      [ |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignalsJS|, |browserSignalsJS| ],
+      and |timeout|.
 </div>
 
 <div algorithm>
@@ -1370,8 +1408,9 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
 </div>
 
 <div algorithm>
-  To <dfn>evaluate a script</dfn> with a [=realm/global object=] |global|, [=string=] |script|, [=string=]
-  |functionName|, a [=list=] |arguments|, and an integer millisecond duration |timeout|, run these steps.
+  To <dfn>evaluate a script</dfn> with a [=realm/global object=] |global|, [=string=] |script|,
+  [=string=] |functionName|, an ECMAScript Array object |arguments|, and an integer millisecond
+  duration |timeout|, run these steps.
   They return a [=ECMAScript/Completion Record=], which is either an [=abrupt completion=] (in the case of
   a parse failure or execution error), or a normal completion populated with the
   [=ECMAScript/ECMAScript language value=] result of invoking |functionName|.
@@ -1429,11 +1468,8 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
        |finalCompletion| to |F| and jump to the step labeled <i><a
        href=#evaluate-script-return>return</a></i>.
 
-    1. Let |argumentsJS| be the result of
-      [=converted to ECMAScript values|converting to ECMAScript values=] given |arguments|.
-
     1. Set |finalCompletion| be [=ECMAScript/Completion Record|Completion=]([$Call$](F, `undefined`,
-       |argumentsJS|)). 
+       |arguments|)).
        
        In |timeout| milliseconds, if the invocation of [$Call$] has not completed,
        [=immediately=] interrupt the execution and set |finalCompletion| to a new
@@ -1899,6 +1935,34 @@ Issue(WICG/turtledove#522): Move from "`*`" to "`self`".
 
 
 # Structures # {#structures}
+
+
+<xmp class="idl">
+
+dictionary GenerateBidInterestGroup {
+  required USVString owner;
+  required USVString name;
+
+  double priority = 0.0;
+  boolean enableBiddingSignalsPrioritization = false;
+
+  DOMString executionMode = "compatibility";
+  USVString biddingLogicURL;
+  USVString biddingWasmHelperURL;
+  USVString updateURL;
+  USVString trustedBiddingSignalsURL;
+  sequence<USVString> trustedBiddingSignalsKeys;
+  any userBiddingSignals;
+  sequence<AuctionAd> ads;
+  sequence<AuctionAd> adComponents;
+};
+</xmp>
+
+{{GenerateBidInterestGroup}} is {{AuctionAdInterestGroup}} with its `priorityVector` and
+`prioritySignalsOverrides` fields removed.
+`priority` and `prioritySignalsOverrides` are not included when interest group is passed to
+`generateBid()` because they can be modified by `generatedBid()` calls, so could theoretically be
+used to create a cross-site profile of a user accessible to `generateBid()` methods, otherwise.
 
 <h3 dfn-type=dfn>Interest group</h3>
 
