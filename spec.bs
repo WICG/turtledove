@@ -430,6 +430,13 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to resolve
       |p| with |winner|'s [=generated bid/ad descriptor=]. TODO: resolve |p| with urn-uuid, instead
       of a URL.
+    1. [=Increment ad k-anonymity count=] given |winner|'s [=generated bid/interest group=] and
+      |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+    1. If |winner|'s [=generated bid/ad component descriptors=] is not null:
+      1. [=set/For each=] |adComponentDescriptor| in |winner|'s
+        [=generated bid/ad component descriptors=]:
+        1. [=Increment component ad k-anonymity count=] given |adComponentDescriptor|'s
+          [=ad descriptor/url=].
   1. Run [=interest group update=] with |auctionConfig|'s [=auction config/interest group buyers=].
   1. TODO: Update bidCount and prevWins for interest groups that participated in the auction.
 1. Return |p|.
@@ -718,8 +725,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       with |biddingSignalsUrl| and true.
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
-        1. TODO: If rerunning `generateBid()` with only k-anonymous ads, remember to swap out |ig|'s ads
-          to just k-anonymous ones so that [=validating an ad url=] excludes the non-k-anonymous ones.
         1. TODO: Let |interestGroup| be ... from |ig| ... minus priority and prioritySignalsOverrides and any browser-defined pieces
         1. [=map/Set=] |browserSignals|["`joinCount`"] to the sum of |ig|'s
            [=interest group/join counts=] for all days within the last 30 days.
@@ -762,6 +767,26 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
         1. If |generatedBid| is failure, [=iteration/continue=].
         1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
+        1. If [=query generated bid k-anonymity count=] returns false:
+          1. TODO: swap out |ig|'s ads to just k-anonymous ones so that
+            [=validating an ad url=] excludes the non-k-anonymous ones.
+          1. Let |startTime| be the current time.
+          1. Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
+             |biddingScript|, |ig|, « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
+             |trustedBiddingSignals|, |browserSignals| », and |perBuyerTimeout|.
+          1. Let |duration| be the current time minus |startTime| in milliseconds.
+          1. If |generatedBidResult| is an [=abrupt completion=], [=iteration/continue=].
+          1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
+            |generatedBidResult| to a {{GenerateBidOutput}}.
+          1. If an exception was caught in the previous step, [=iteration/continue=].
+          1. Let |groupHasAdComponents| be true.
+          1. If |interestGroup|'s [=interest group/ad components=] is null:
+            1. Set |groupHasAdComponents| be false.
+          1. Let |generatedBid| be the result of [=converting GenerateBidOutput to generated bid=]
+            with |generatedBidIDL|, |ig|, |isComponentAuction|, and |groupHasAdComponents|.
+          1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
+          1. If |generatedBid| is failure, [=iteration/continue=].
+          1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
           |decisionLogicScript|, |dataVersion|, |isComponentAuction|, and |settings|'s
           [=environment/top-level origin=].
@@ -1185,6 +1210,78 @@ To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=stri
      [=leading bid info/auction config=]'s [=auction config/auction signals=],
      |perBuyerSignalsForBuyer|, |sellerSignals|, |browserSignals| ».
   1. TODO: Store |resultUrl| and |reportingBeaconMap| in the {{FencedFrameConfig}} as appropriate.
+</div>
+
+# K-anonymity # {#k-anonymity}
+  
+*This introduction sub-section is non-normative*.
+
+Two goals of this specification rely on applying k-anonymity thresholds:
+  
+  * To prevent cross-site leaks:  Inputs to event-level reporting functions, `reportWin()` and
+    `reportResult()`, only contain limited cross-site information. Part of this limiting is done by
+    applying k-anonymity requirements to the ad URLs.  See
+    [privacy considerations](#privacy-considerations).
+  * To prevent microtargeting:  The browser applies k-anonymity requirements on the ad URLs to
+    ensure that the same ad or ad component is being shown to at least some minimum number of
+    people.
+
+The browser enforces these k-anonymity requirements by maintaining counts of how many times certain
+ads have been shown to the user. Since these counts are maintained across users, the counting must
+be done on a browser-maintained server. This specification relies on two operations to query and
+increment the counts: [=query k-anonymity count=] and [=increment k-anonymity count=].
+  
+The details of how the browser-maintained server is operated and accessed are implementation details
+but it should be done in a way that prevents the server operator from joining the identity of two
+query or increment requests. One way to help prevent this is by making accesses to the server go
+through an HTTP proxy that prevents the server from seeing the browsers' IP addresses.
+  
+<div algorithm>
+  To <dfn>query k-anonymity count</dfn> given a |hashCode|:
+    1. Query k-anonymity server for whether |hashCode|'s count is above the k-anonymity threshold.
+    1. Return true if it is above the threshold, otherwise return false.
+</div>
+
+<div algorithm>
+  To <dfn>query ad k-anonymity count</dfn> given an [=interest group=] |ig| and a [=URL=] |ad|:
+    1. Let |keyString| be the [=string=] concatenating "AdBid\n" and |ig|'s [=interest group/owner=]
+       and "\n" and |ig|'s [=interest group/bidding url=] and "\n" and |ad|.
+    1. Let |keyHash| be the SHA256 hash of |keyString|.
+    1. Return the result of [=query k-anonymity count|querying the k-anonymity count=] given |keyHash|.
+</div>
+
+<div algorithm>
+  To <dfn>query component ad k-anonymity count</dfn> given a [=URL=] |ad|:
+    1. Let |keyString| be the [=string=] concatenating "ComponentBid\n" and |ad|.
+    1. Let |keyHash| be the SHA256 hash of |keyString|.
+    1. Return the result of [=query k-anonymity count|querying the k-anonymity count=] given |keyHash|.
+</div>
+
+<div algorithm>
+  To <dfn>query generated bid k-anonymity count</dfn> given a [=generated bid=] |bid|:
+    1. If [=query ad k-anonymity count=] given |bid|'s [=generated bid/ad descriptor=]'s
+      [=ad descriptor/url=] returns false, return false.
+    1. TODO
+</div>
+  
+<div algorithm>
+  To <dfn>increment k-anonymity count</dfn> given a |hashCode|:
+    1. Request k-anonymity server to increment count for |hashCode|.
+</div>
+
+<div algorithm>
+  To <dfn>increment ad k-anonymity count</dfn> given an [=interest group=] |ig| and a [=URL=] |ad|:
+    1. Let |keyString| be the [=string=] concatenating "AdBid\n" and |ig|'s [=interest group/owner=]
+       and "\n" and |ig|'s [=interest group/bidding url=] and "\n" and |ad|.
+    1. Let |keyHash| be the SHA256 hash of |keyString|.
+    1. [=Increment k-anonymity count=] given |keyHash|.
+</div>
+
+<div algorithm>
+  To <dfn>increment component ad k-anonymity count</dfn> given a [=URL=] |ad|:
+    1. Let |keyString| be the [=string=] concatenating "ComponentBid\n" and |ad|.
+    1. Let |keyHash| be the SHA256 hash of |keyString|.
+    1. [=Increment k-anonymity count=] given |keyHash|.
 </div>
 
 # Script Runners # {#script-runners}
