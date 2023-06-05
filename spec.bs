@@ -615,6 +615,56 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 
 </div>
 
+<div algorithm="generate a bid">
+
+To <dfn>generate a bid</dfn> given a boolean |isComponentAuction|, TODO
+|allTrustedBiddingSignals|, TODO |auctionSignals|, TODO |perBuyerSignals|,
+TODO |perBuyerTimeout|, and an [=interest group=] |ig|:
+  1. TODO: Let |interestGroup| be ... from |ig| ... minus priority and prioritySignalsOverrides and any browser-defined pieces
+  1. [=map/Set=] |browserSignals|["`joinCount`"] to the sum of |ig|'s
+     [=interest group/join counts=] for all days within the last 30 days.
+  1. [=map/Set=] |browserSignals|["`bidCount`"] to the sum of |ig|'s
+     [=interest group/bid counts=] for all days within the last 30 days.
+  1. [=map/Set=] |browserSignals|["`prevWins`"] to a [=list=] containing [=tuples=] of the
+     time and the corresponding winning [=interest group ad=] from |ig|'s
+     [=interest group/previous wins=] field with a data within the last 30 days. The time
+     field is specified in seconds relative to the start of the auction.
+  1. If |dataVersion| is not null:
+    1. [=map/Set=] |browserSignals|["`dataVersion`"] to |dataVersion|.
+  1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
+    [=interest group/bidding url=].
+  1. If |biddingScript| is failure, return failure.
+  1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
+    1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
+      [=interest group/bidding wasm helper url=].
+    1. If |wasmModuleObject| is not failure:
+      1. [=map/Set=] |browserSignals|["`wasmHelper`"] to |wasmModuleObject|.
+  1. Let |trustedBiddingSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and
+    whose [=map/values=] are {{any}}.
+  1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
+    1. If |allTrustedBiddingSignals| is an [=ordered map=] and |allTrustedBiddingSignals|[|key|]
+      [=map/exists=], then [=map/set=] |trustedBiddingSignals|[|key|] to
+      |allTrustedBiddingSignals|[|key|].
+  1. Let |startTime| be the current time.
+  1. Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
+     |biddingScript|, |ig|, « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
+     |trustedBiddingSignals|, |browserSignals| », and |perBuyerTimeout|.
+  1. Let |duration| be the current time minus |startTime| in milliseconds.
+  1. If |generatedBidResult| is an [=abrupt completion=], return failure.
+  1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
+    |generatedBidResult| to a {{GenerateBidOutput}}.
+  1. If an exception was caught in the previous step, return failure.
+  1. Let |groupHasAdComponents| be true.
+  1. If |interestGroup|'s [=interest group/ad components=] is null:
+    1. Set |groupHasAdComponents| be false.
+  1. Let |generatedBid| be the result of [=converting GenerateBidOutput to generated bid=]
+    with |generatedBidIDL|, |ig|, |isComponentAuction|, and |groupHasAdComponents|.
+  1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
+  1. If |generatedBid| is failure, return failure.
+  1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
+  1. Return |generatedBid|.
+</div>
+  
 <div algorithm="generate and score bids">
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
@@ -725,68 +775,17 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       with |biddingSignalsUrl| and true.
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
-        1. TODO: Let |interestGroup| be ... from |ig| ... minus priority and prioritySignalsOverrides and any browser-defined pieces
-        1. [=map/Set=] |browserSignals|["`joinCount`"] to the sum of |ig|'s
-           [=interest group/join counts=] for all days within the last 30 days.
-        1. [=map/Set=] |browserSignals|["`bidCount`"] to the sum of |ig|'s
-           [=interest group/bid counts=] for all days within the last 30 days.
-        1. [=map/Set=] |browserSignals|["`prevWins`"] to a [=list=] containing [=tuples=] of the
-           time and the corresponding winning [=interest group ad=] from |ig|'s
-           [=interest group/previous wins=] field with a data within the last 30 days. The time
-           field is specified in seconds relative to the start of the auction.
-        1. If |dataVersion| is not null:
-          1. [=map/Set=] |browserSignals|["`dataVersion`"] to |dataVersion|.
-        1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
-          [=interest group/bidding url=].
-        1. If |biddingScript| is failure, [=iteration/continue=].
-        1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
-          1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
-            [=interest group/bidding wasm helper url=].
-          1. If |wasmModuleObject| is not failure:
-            1. [=map/Set=] |browserSignals|["`wasmHelper`"] to |wasmModuleObject|.
-        1. Let |trustedBiddingSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and
-          whose [=map/values=] are {{any}}.
-        1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
-          1. If |allTrustedBiddingSignals| is an [=ordered map=] and |allTrustedBiddingSignals|[|key|]
-            [=map/exists=], then [=map/set=] |trustedBiddingSignals|[|key|] to
-            |allTrustedBiddingSignals|[|key|].
-        1. Let |startTime| be the current time.
-        1. Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
-           |biddingScript|, |ig|, « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
-           |trustedBiddingSignals|, |browserSignals| », and |perBuyerTimeout|.
-        1. Let |duration| be the current time minus |startTime| in milliseconds.
-        1. If |generatedBidResult| is an [=abrupt completion=], [=iteration/continue=].
-        1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
-          |generatedBidResult| to a {{GenerateBidOutput}}.
-        1. If an exception was caught in the previous step, [=iteration/continue=].
-        1. Let |groupHasAdComponents| be true.
-        1. If |interestGroup|'s [=interest group/ad components=] is null:
-          1. Set |groupHasAdComponents| be false.
-        1. Let |generatedBid| be the result of [=converting GenerateBidOutput to generated bid=]
-          with |generatedBidIDL|, |ig|, |isComponentAuction|, and |groupHasAdComponents|.
-        1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
+        1. Let |generatedBid| be the result of [=generate a bid=] given |isComponentAuction|,
+          |allTrustedBiddingSignals|, |auctionSignals|, |perBuyerSignals|, |perBuyerTimeout|,
+          and |ig|.
         1. If |generatedBid| is failure, [=iteration/continue=].
-        1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
-        1. If [=query generated bid k-anonymity count=] returns false:
+        1. If [=query generated bid k-anonymity count=] given |generatedBid| returns false:
           1. TODO: swap out |ig|'s ads to just k-anonymous ones so that
             [=validating an ad url=] excludes the non-k-anonymous ones.
-          1. Let |startTime| be the current time.
-          1. Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
-             |biddingScript|, |ig|, « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
-             |trustedBiddingSignals|, |browserSignals| », and |perBuyerTimeout|.
-          1. Let |duration| be the current time minus |startTime| in milliseconds.
-          1. If |generatedBidResult| is an [=abrupt completion=], [=iteration/continue=].
-          1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
-            |generatedBidResult| to a {{GenerateBidOutput}}.
-          1. If an exception was caught in the previous step, [=iteration/continue=].
-          1. Let |groupHasAdComponents| be true.
-          1. If |interestGroup|'s [=interest group/ad components=] is null:
-            1. Set |groupHasAdComponents| be false.
-          1. Let |generatedBid| be the result of [=converting GenerateBidOutput to generated bid=]
-            with |generatedBidIDL|, |ig|, |isComponentAuction|, and |groupHasAdComponents|.
-          1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
+          1. Let |generatedBid| be the result of [=generate a bid=] given |isComponentAuction|,
+            |allTrustedBiddingSignals|, |auctionSignals|, |perBuyerSignals|, |perBuyerTimeout|,
+            and |ig|.
           1. If |generatedBid| is failure, [=iteration/continue=].
-          1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
           |decisionLogicScript|, |dataVersion|, |isComponentAuction|, and |settings|'s
           [=environment/top-level origin=].
