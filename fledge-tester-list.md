@@ -54,3 +54,5 @@ The usefulness of this page depends on testers sharing information and updates.
 | MicroAd | SSP & DSP | | | privacysandbox@microad.co.jp |
 | Neodata Group | SSP & DSP | | | privacysandbox@neodatagroup.com |
 | Adlook (subsidiary of RTB House) | DSP | Continuous testing ongoing; long term commitment. | | privacysandbox@adlook.com |
+| Microsoft (Xandr, MSAN) | SSP + DSP(s) | Testing | | privacy_sandbox@microsoft.com |
+
