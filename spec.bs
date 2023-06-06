@@ -742,21 +742,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. If |allTrustedBiddingSignals| is an [=ordered map=] and |allTrustedBiddingSignals|[|key|]
             [=map/exists=], then [=map/set=] |trustedBiddingSignals|[|key|] to
             |allTrustedBiddingSignals|[|key|].
-        1. Let |startTime| be the current time.
-        1. Let |generatedBidResult| be the result of [=evaluating a bidding script=] with
-           |biddingScript|, |ig|, « |interestGroup|, |auctionSignals|, |perBuyerSignals|,
-           |trustedBiddingSignals|, |browserSignals| », and |perBuyerTimeout|.
-        1. Let |duration| be the current time minus |startTime| in milliseconds.
-        1. If |generatedBidResult| is an [=abrupt completion=], [=iteration/continue=].
-        1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
-          |generatedBidResult| to a {{GenerateBidOutput}}.
-        1. If an exception was caught in the previous step, [=iteration/continue=].
-        1. Let |groupHasAdComponents| be true.
-        1. If |interestGroup|'s [=interest group/ad components=] is null:
-          1. Set |groupHasAdComponents| be false.
-        1. Let |generatedBid| be the result of [=converting GenerateBidOutput to generated bid=]
-          with |generatedBidIDL|, |ig|, |isComponentAuction|, and |groupHasAdComponents|.
-        1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
+        1. Let |generatedBid| be the result of [=evaluating a bidding script=] with |biddingScript|,
+           |ig|, « |interestGroup|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|,
+           |browserSignals| », and |perBuyerTimeout|.
         1. If |generatedBid| is failure, [=iteration/continue=].
         1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
@@ -1261,24 +1249,35 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
     1. Set |global|'s
       [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=] to |isComponentAuction|.
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/interest group=] to |ig|.
+    1. Let |startTime| be the current time.
     1. Let |result| be the result of [=evaluating a script=] with |global|, |script|, "`generateBid`",
       |arguments|, and |timeout|.
-    1. If |result| is a [=throw completion=] with \[[Value]] of null, then set |result| to a
-      [=normal completion=] given |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=].
+    1. Let |duration| be the current time minus |startTime| in milliseconds.
+    1. If |result| is a [=throw completion=] with \[[Value]] of null, then return |global|'s
+      [=InterestGroupBiddingScriptRunnerGlobalScope/bid=].
+    1. If |result| is not a [=normal completion=], return failure.
+    1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
+      |result|'s \[[Value]] to a {{GenerateBidOutput}}.
+    1. If an exception was caught in the previous step, return failure.
+    1. Let |groupHasAdComponents| be true.
+    1. If |ig|'s [=interest group/ad components=] is null, set |groupHasAdComponents| be false.
+    1. Let |generatedBid| be the result of [=converting GenerateBidOutput to generated bid=]
+      with |generatedBidIDL|, |ig|, |isComponentAuction|, and |groupHasAdComponents|.
+    1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
     1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null:
-      1. Set |interestGroup|'s [=interest group/priority=] to |global|'s
+      1. Set |ig|'s [=interest group/priority=] to |global|'s
         [=InterestGroupBiddingScriptRunnerGlobalScope/priority=].
-      1. Store |interestGroup| in the browser’s [=interest group set=].
+      1. Store |ig| in the browser’s [=interest group set=].
     1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority signals=] is not
       [=map/is empty|empty=]:
       1. [=map/For each=] |k| → |v| of |global|'s
         [=InterestGroupBiddingScriptRunnerGlobalScope/priority signals=]:
-        1. If |v| is null, [=map/remove=] |interestGroup|'s
+        1. If |v| is null, [=map/remove=] |ig|'s
           [=interest group/priority signals overrides=][|k|].
-        1. Otherwise, [=map/set=] |interestGroup|'s
+        1. Otherwise, [=map/set=] |ig|'s
           [=interest group/priority signals overrides=][|k|] to |v|.
-      1. Store |interestGroup| in the browser’s [=interest group set=].
-    1. Return |result|.
+      1. Store |ig| in the browser’s [=interest group set=].
+    1. Return |generatedBid|.
 </div>
 
 <div algorithm>
