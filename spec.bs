@@ -76,7 +76,7 @@ advertisement relevant to this interest to this user in the future. The user age
 <xmp class="idl">
 [SecureContext]
 partial interface Navigator {
-  Promise<undefined> joinAdInterestGroup(AuctionAdInterestGroup group, double durationSeconds);
+  Promise<undefined> joinAdInterestGroup(AuctionAdInterestGroup group);
 };
 
 dictionary AuctionAd {
@@ -102,13 +102,13 @@ dictionary AuctionAdInterestGroup {
   any userBiddingSignals;
   sequence<AuctionAd> ads;
   sequence<AuctionAd> adComponents;
+  double lifetimeMs;
 };
 </xmp>
 
 <div algorithm="joinAdInterestGroup()">
 
-The <dfn for=Navigator method>joinAdInterestGroup(|group|, |durationSeconds|)</dfn> method steps
-are:
+The <dfn for=Navigator method>joinAdInterestGroup(|group|)</dfn> method steps are:
 
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
   "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
@@ -117,8 +117,10 @@ are:
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "https".
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
-  1. Set |interestGroup|'s [=interest group/expiry=] to the [=current wall time=] plus |durationSeconds|.
-  1. Set |interestGroup|'s [=interest group/next update after=] to the [=current wall time=] plus 24 hours.
+  1. Set |interestGroup|'s [=interest group/expiry=] to the [=current wall time=] plus
+    |group|["{{AuctionAdInterestGroup/lifetimeMs}}"] milliseconds.
+  1. Set |interestGroup|'s [=interest group/next update after=] to the [=current wall time=] plus 24
+    hours.
   1. Set |interestGroup|'s [=interest group/owner=] to the result of [=parsing an origin=] on
     |group|["{{AuctionAdInterestGroup/owner}}"].
   1. If |interestGroup|'s [=interest group/owner=] is failure, or its [=url/scheme=] is not
