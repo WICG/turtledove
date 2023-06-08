@@ -289,8 +289,6 @@ To <dfn>check interest group permissions</dfn> given an [=origin=]
   ::  "`omit`"
   :   [=request/redirect mode=]
   :: "`error`"
-1. Let |request| be the result of [=creating a request=] with |permissionsUrl|,
-  "`application/json`", |frameOrigin|, and "`cors`".
 1. Let |resource| be null.
 1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
   [=response=] |response| and |responseBody|:
@@ -633,10 +631,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, and an
 [=environment settings object=] |settings|:
 1. [=Assert=] that these steps are running [=in parallel=].
-1. Let |frameOrigin| be |settings|'s [=environment settings object/origin=].
-1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "https".
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
-  [=auction config/decision logic url=], and |frameOrigin|.
+  [=auction config/decision logic url=].
 1. If |decisionLogicScript| is failure, return null.
 1. Let |bidGenerators| be the result of running [=build bid generators map=] with |auctionConfig|.
 1. Let |leadingBidInfo| be a new [=leading bid info=].
@@ -652,8 +648,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. If |compWinner| is failure, return failure.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
-        |decisionLogicScript|, null, true, |settings|'s [=environment/top-level origin=], and
-        |frameOrigin|.
+        |decisionLogicScript|, null, true, and |settings|'s [=environment/top-level origin=].
 
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
@@ -754,7 +749,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. If |dataVersion| is not null:
           1. [=map/Set=] |browserSignals|["`dataVersion`"] to |dataVersion|.
         1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
-          [=interest group/bidding url=], and |frameOrigin|.
+          [=interest group/bidding url=].
         1. If |biddingScript| is failure, [=iteration/continue=].
         1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
           1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
@@ -786,7 +781,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
           |decisionLogicScript|, |dataVersion|, |isComponentAuction|, |settings|'s
-          [=environment/top-level origin=], and |frameOrigin|.
+          [=environment/top-level origin=].
 
   1. Decrement |pendingBuyers| by 1.
 1. Wait until |pendingBuyers| is 0.
@@ -924,31 +919,6 @@ To <dfn>update highest scoring other bid</dfn> given a {{double}} |score|, a
 </div>
 
 <div algorithm>
-To <dfn>create a request</dfn> given a [=URL=] |url|, a [=string=] |accept|, an [=origin=] |origin|,
-and a [=string=] |mode| defaulting to "`no-cors`":
-  1. Let |request| be a new [=request=] with the following properties:
-    :   [=request/URL=]
-    ::  |url|
-    :   [=request/header list=]
-    ::  A new [=header list=] containing a [=header=] named "`Accept`" whose value is |accept|
-    :   [=request/client=]
-    ::  `null`
-    :   [=request/service-workers mode=]
-    ::  "`none`"
-    :   [=request/origin=]
-    ::  |origin|
-    :   [=request/mode=]
-    ::  |mode|
-    :   [=request/referrer=]
-    :: "`no-referrer`"
-    :   [=request/credentials mode=]
-    ::  "`omit`"
-    :   [=request/redirect mode=]
-    :: "`error`"
-  1. Return |request|.
-</div>
-
-<div algorithm>
 To <dfn>validate fetching response</dfn> given a [=response=] |response| and |responseBody|, and a
 [=string=] |mimeType|:
 
@@ -970,10 +940,24 @@ To <dfn>validate fetching response</dfn> given a [=response=] |response| and |re
 </div>
 
 <div algorithm>
-To <dfn>fetch script</dfn> given a [=URL=] |url|, and an [=origin=] |frameOrigin|:
-
-  1. Let |request| be the result of [=creating a request=] with |url|, "`text/javascript`", and
-    |frameOrigin|.
+To <dfn>fetch script</dfn> given a [=URL=] |url|:
+  1. Let |request| be a new [=request=] with the following properties:
+    :   [=request/URL=]
+    ::  |url|
+    :   [=request/header list=]
+    ::  «`Accept`: `text/javascript`»
+    :   [=request/client=]
+    ::  `null`
+    :   [=request/service-workers mode=]
+    ::  "`none`"
+    :   [=request/mode=]
+    ::  "`no-cors`"
+    :   [=request/referrer=]
+    :: "`no-referrer`"
+    :   [=request/credentials mode=]
+    ::  "`omit`"
+    :   [=request/redirect mode=]
+    :: "`error`"
   1. Let |script| be null.
   1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
     a [=response=] |response| and |responseBody|:
@@ -985,10 +969,25 @@ To <dfn>fetch script</dfn> given a [=URL=] |url|, and an [=origin=] |frameOrigin
 </div>
 
 <div algorithm>
-To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|, and an [=origin=] |frameOrigin|:
+To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
 
-  1. Let |request| be the result of [=creating a request=] with |url|, "`application/wasm`", and
-    |frameOrigin|.
+  1. Let |request| be a new [=request=] with the following properties:
+    :   [=request/URL=]
+    ::  |url|
+    :   [=request/header list=]
+    ::  «`Accept`: `application/wasm`»
+    :   [=request/client=]
+    ::  `null`
+    :   [=request/service-workers mode=]
+    ::  "`none`"
+    :   [=request/mode=]
+    ::  "`no-cors`"
+    :   [=request/referrer=]
+    :: "`no-referrer`"
+    :   [=request/credentials mode=]
+    ::  "`omit`"
+    :   [=request/redirect mode=]
+    :: "`error`"
   1. Let |moduleObject| be null.
   1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
     a [=response=] |response| and |responseBody|:
@@ -1009,11 +1008,25 @@ The <dfn http-header><code>X-protected-audience-bidding-signals-format-version</
 HTTP response header is a [=structured header=] whose value must be an [=structured header/integer=].
 
 <div algorithm>
-To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |frameOrigin|, and a
-[=boolean=] |isBiddingSignal|:
+To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |isBiddingSignal|:
 
-  1. Let |request| be the result of [=creating a request=] with |url|, "`application/json`", and
-    |frameOrigin|.
+  1. Let |request| be a new [=request=] with the following properties:
+    :   [=request/URL=]
+    ::  |url|
+    :   [=request/header list=]
+    ::  «`Accept`: `application/json`»
+    :   [=request/client=]
+    ::  `null`
+    :   [=request/service-workers mode=]
+    ::  "`none`"
+    :   [=request/mode=]
+    ::  "`no-cors`"
+    :   [=request/referrer=]
+    :: "`no-referrer`"
+    :   [=request/credentials mode=]
+    ::  "`omit`"
+    :   [=request/redirect mode=]
+    :: "`error`"
   1. Let |signals| be null.
   1. Let |dataVersion| be null.
   1. Let |formatVersion| be null.
@@ -1156,8 +1169,7 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
     |browserSignals|["`modifiedBid`"] to it.
   1. Set |config| to |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
-    [=auction config/decision logic url=], and [=this=]'s [=relevant settings object=]'s
-    [=environment settings object/origin=].
+    [=auction config/decision logic url=].
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap| » be the result of [=evaluating a
      reporting script=] with |sellerReportingScript|, "`reportResult`", and « |config|,
      |browserSignals|».
@@ -1201,8 +1213,7 @@ To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=stri
     1. [=map/Set=] |browserSignals|["`modelingSignals`"] to |winner|'s
       [=generated bid/modeling signals=].
   1. Let |buyerReportingScript| be the result of [=fetching script=] with |winner|'s
-    [=generated bid/interest group=]'s [=interest group/bidding url=], and [=this=]'s [=relevant settings object=]'s
-    [=environment settings object/origin=].
+    [=generated bid/interest group=]'s [=interest group/bidding url=].
   1. Let « nullReturn, |resultUrl|, |reportingBeaconMap| » be the result of [=evaluating a
      reporting script=] with |buyerReportingScript|, "`reportWin`", and « |leadingBidInfo|'s
      [=leading bid info/auction config=]'s [=auction config/auction signals=],
@@ -1708,8 +1719,23 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
     Note: Implementations can consider loading only a portion of these interest groups
     at a time to avoid issuing too many requests at once.
     1. Let |ig| be a deep copy of |originalInterestGroup|.
-    1. Let |request| be the result of [=creating a request=] with |ig|'s
-      [=interest group/update url=], "`application/json`", and |owner|.
+    1. Let |request| be a new [=request=] with the following properties:
+      :   [=request/URL=]
+      ::  |ig|'s [=interest group/update url=]
+      :   [=request/header list=]
+      ::  «`Accept`: `application/json`»
+      :   [=request/client=]
+      ::  `null`
+      :   [=request/service-workers mode=]
+      ::  "`none`"
+      :   [=request/mode=]
+      ::  "`no-cors`"
+      :   [=request/referrer=]
+      :: "`no-referrer`"
+      :   [=request/credentials mode=]
+      ::  "`omit`"
+      :   [=request/redirect mode=]
+      :: "`error`"
     1. Let |update| be null.
     1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps
       given a [=response=] |response| and |responseBody|:
