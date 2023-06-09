@@ -620,8 +620,10 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 <div algorithm="generate a bid">
 
 To <dfn>generate a bid</dfn> given a boolean |isComponentAuction|, an [=ordered map=]
-|allTrustedBiddingSignals|, a [=string=] |auctionSignals|, a [=string=] |perBuyerSignals|,
-a [=duration=] |perBuyerTimeout| in milliseconds, and an [=interest group=] |ig|:
+|allTrustedBiddingSignals|, a [=string=] |auctionSignals|, an [=ordered map=] whose
+[=map/keys=] are [=strings=] and whose [=map/values=] are {{any}} |browserSignals|, a
+[=string=] |perBuyerSignals|, a [=duration=] |perBuyerTimeout| in milliseconds, and an
+[=interest group=] |ig|:
   1. TODO: Let |interestGroup| be ... from |ig| ... minus priority and prioritySignalsOverrides and any browser-defined pieces
   1. [=map/Set=] |browserSignals|["`joinCount`"] to the sum of |ig|'s
      [=interest group/join counts=] for all days within the last 30 days.
@@ -778,10 +780,16 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. Let |generatedBid| be the result of [=generate a bid=] given |isComponentAuction|,
-          |allTrustedBiddingSignals|, |auctionSignals|, |perBuyerSignals|, |perBuyerTimeout|,
-          and |ig|.
+          |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
+          |perBuyerSignals|, |perBuyerTimeout|, and |ig|.
         1. If |generatedBid| is failure, [=iteration/continue=].
         1. If [=query generated bid k-anonymity count=] given |generatedBid| returns false:
+          Note: [=Generate a bid=] is now rerun with only k-anonymous [=interest group/ads=] to give
+          the buyer a chance to [=generate a bid=] for k-anonymous [=interest group/ads=]. Allowing
+          the buyer to first [=generate a bid=] for non-k-anonymous [=interest group/ads=] provides a
+          mechanism to bootstrap the k-anonymity count, otherwise no [=interest group/ads=] would
+          ever trigger [=increment k-anonymity count=] and all ads would fail
+          [=query k-anonymity count=].
           1. Let |originalAds| be |ig|'s [=interest group/ads=].
           1. Let |originalAdComponents| be |ig|'s [=interest group/ad components=].
           1. Set |ig|'s [=interest group/ads=] to a new empty [=list=] of
@@ -797,8 +805,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               [=interest group ad/render url=] returns true, [=list/append=] |adComponent| to |ig|'s
               [=interest group/ad components=].
           1. Let |generatedBid| be the result of [=generate a bid=] given |isComponentAuction|,
-            |allTrustedBiddingSignals|, |auctionSignals|, |perBuyerSignals|, |perBuyerTimeout|,
-            and |ig|.
+            |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
+            |perBuyerSignals|, |perBuyerTimeout|, and |ig|.
           1. Set |ig|'s [=interest group/ads=] to |originalAds|.
           1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
           1. If |generatedBid| is failure, [=iteration/continue=].
