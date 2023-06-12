@@ -28,7 +28,7 @@ The following summarizes the sequence of events for the buyer and seller. Distin
 2. SSP will provide the sellerEventId to the auction via auctionConfig, which will be available in the reporting worklet for the SSP.
 3. In reportResult(), the sellerEventId, along with any other contextual response fields relevant for reporting, will be available so that the result can be joined to the corresponding contextual query.
 4. Once the winning ad is rendered in the fenced frame, the fenced frame can also communicate other events to the browser e.g. what user interaction happened. Since the fenced frames run the buyer’s scripts, the buyer can also decide what information to be volunteered to the seller via the reportEvent API.
-5. The solution proposed in this document allows the seller’s reporting worklet to register a url to which data should be sent for events reported by the fenced frame.
+5. The solution proposed in this document allows the seller’s reporting worklet to register a URL to which data should be sent for events reported by the fenced frame.
 
 ## Buyer (DSP) flow of events
 
@@ -37,7 +37,7 @@ The following summarizes the sequence of events for the buyer and seller. Distin
 1. If the DSP participates in the contextual ad request, it will generate an event identifier, say buyerEventId, at contextual ad request/response time which is returned to the SSP as part of the perBuyerSignals, which the SSP in turn would specify in navigator.runAdAuction call. For DSPs that do not participate, buyerEventId could just be an ID that the worklet creates.
 2. Browser will provide the buyerEventId to the reporting worklet for the DSP via reportWin() as part of the perBuyerSignals. This enables the result to be joined with the corresponding contextual query. 
 3. Fenced frame can also communicate other events to the browser e.g. a click happened along with click coordinates.  
-4. The solution proposed in this document allows the buyer’s reporting worklet to register a url in reportWin(), to which data should be sent, when events happen in the fenced frame.
+4. The solution proposed in this document allows the buyer’s reporting worklet to register a URL in reportWin(), to which data should be sent, when events happen in the fenced frame.
 
 
 # APIs   
