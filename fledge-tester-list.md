@@ -2,16 +2,16 @@
 
 # FLEDGE Tester List
 
-## Ecosystem Testing of FLEDGE
+## Ecosystem Use of FLEDGE
 
-The purpose of this page is to consolidate testing information which is currently distributed across various GitHub issues, company blogs, social posts, etc.
+The purpose of this page is to consolidate information which is currently distributed across various GitHub issues, company blogs, social posts, etc.
 The usefulness of this page depends on testers sharing information and updates.
 
 ## Disclaimers
 
-- Not a complete list.  Testers are strongly encouraged to share their activities and insights publicly for the benefit of the broader community, but sharing is voluntary and therefore this page is not expected to reflect all testing activity.
+- Not a complete list. Participants are strongly encouraged to share their activities and insights publicly for the benefit of the broader community, but sharing is voluntary and therefore this page is not expected to reflect all activity.
 
-- Not evaluative. The purpose of this page is to consolidate links to information published by Privacy Sandbox testers.  Editors will review submissions for relevance and to ensure general conformance to the guidelines above, but are not evaluating or endorsing the information provided.
+- Not evaluative. The purpose of this page is to consolidate links to information published by Privacy Sandbox participants. Editors will review submissions for relevance and to ensure general conformance to the guidelines above, but are not evaluating or endorsing the information provided.
 
 - Editors will regularly review and approve submissions that meet the guidelines below. If you believe that an error has been submitted, please create an issue in the FLEDGE repository with the words ‘[Tester List]‘ in the subject and the Editors will respond in short order.
 
@@ -32,13 +32,13 @@ The usefulness of this page depends on testers sharing information and updates.
 
 1. On the FLEDGE GitHub page, navigate to the document in the main table called ‘fledge-tester-list.md’ (If you can read this sentence then you have already completed this step!)
 
-1. Click the ‘pencil’ icon on the right side to edit the table and add your information
+1. Click the ‘pencil’ icon on the right side to edit the appropriate table and add your information
     1. Use the | to make sure that the information that you provide correctly shows up in each cell
     1. After you select ‘Propose changes’ an editor will review and publish your updates in the coming days.
 
 1. You can find additional details here for [editing tables in GitHub](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/organizing-information-with-tables).
 
-## Table
+## Table - Direct Integrations
 
 | Company / Party | Role in testing | Est. Testing Timeframe | Link to testing plan and/or learnings | How to contact you |
 | --------------- | --------------- | ---------------------- | ------------------------------------- | ------------------ |
@@ -55,4 +55,11 @@ The usefulness of this page depends on testers sharing information and updates.
 | Neodata Group | SSP & DSP | | | privacysandbox@neodatagroup.com |
 | Adlook (subsidiary of RTB House) | DSP | Continuous testing ongoing; long term commitment. | | privacysandbox@adlook.com |
 | Microsoft (Xandr, MSAN) | SSP + DSP(s) | Testing | | privacy_sandbox@microsoft.com |
+| Tremor International | SSP & DSP| 2023-2024 | coming soon | subhag.oak@amobee.com |
 
+## Table - Publishers and Advertisers Interested in Testing or Early Adoption
+Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
+
+| Company / Party | Role (publisher/sellside, advertiser/buyside, etc.) | Additional details about your interest (Optional) | How to contact you |
+| --------------- | --------------------------------------------------- | ------------------------------------------------- | ------------------ |
+| INSERT | INSERT | INSERT | INSERT |
