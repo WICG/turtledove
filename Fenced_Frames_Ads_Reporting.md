@@ -76,7 +76,7 @@ destination).`
 
 ### Example
 
-To send a request with the POST request body `'{"clickX":"123","clickY":"456"}'` to the url registered for `buyer` and `seller` when a user click happens:
+To send a request with the POST request body `'{"clickX":"123","clickY":"456"}'` to the URL registered for `buyer` and `seller` when a user click happens:
 ```
 window.fence.reportEvent({
   'eventType': 'click',
@@ -86,7 +86,7 @@ window.fence.reportEvent({
 ```
 
 
-To send a request with the POST request body `'an example string'` to the url registered for `component-seller` when a user click happens:
+To send a request with the POST request body `'an example string'` to the URL registered for `component-seller` when a user click happens:
 ```
 window.fence.reportEvent({
   'eventType': 'click',
@@ -96,7 +96,7 @@ window.fence.reportEvent({
 ```
 
 
-To send a request with the POST request body `''` to the url registered for `buyer` when a user click happens:
+To send a request with the POST request body `''` to the URL registered for `buyer` when a user click happens:
 ```
 window.fence.reportEvent({
   'eventType': 'click',
