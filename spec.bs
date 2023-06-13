@@ -265,34 +265,34 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 1. 8 bytes, which is the size of |ig|'s [=interest group/priority=].
 1. The [=string/length=] of |ig|'s [=interest group/execution mode=].
 1. 2 bytes, which is the size of |ig|'s [=interest group/enable bidding signals prioritization=].
-1. If |ig|'s [=interest group/priority vector=] is not undefined, [=map/for each=] |key| → |value|
-  of [=interest group/priority vector=]:
+1. If |ig|'s [=interest group/priority vector=] is not null, [=map/for each=] |key| → |value| of
+  [=interest group/priority vector=]:
   1. The [=string/length=] of |key|.
   1. 8 bytes, which is the size of |value|.
-1. If |ig|'s [=interest group/priority signals overrides=] is not undefined, [=map/for each=]
-  |key| → |value| of [=interest group/priority signals overrides=]:
+1. If |ig|'s [=interest group/priority signals overrides=] is not null, [=map/for each=] |key| → |value| of
+  [=interest group/priority signals overrides=]:
   1. The [=string/length=] of |key|.
   1. 8 bytes, which is the size of |value|.
 1. The size of [=interest group/execution mode=].
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
-  [=interest group/bidding url=], if the field is not undefined.
+  [=interest group/bidding url=], if the field is not null.
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
-  [=interest group/bidding wasm helper url=], if the field is not undefined.
+  [=interest group/bidding wasm helper url=], if the field is not null.
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
-  [=interest group/update url=], if the field is not undefined.
+  [=interest group/update url=], if the field is not null.
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
-  [=interest group/trusted bidding signals url=], if the field is not undefined.
+  [=interest group/trusted bidding signals url=], if the field is not null.
 1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
   1. The [=string/length=] of |key|.
 1. The [=string/length=] of |ig|'s [=interest group/user bidding signals=].
-1. If |ig|'s [=interest group/ads=] is not undefined, [=list/for each=] |ad| of it:
+1. If |ig|'s [=interest group/ads=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
     [=interest group ad/render url=].
-  1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not undefined.
-1. If |ig|'s [=interest group/ad components=] is not undefined, [=list/for each=] |ad| of it:
+  1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
+1. If |ig|'s [=interest group/ad components=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
     [=interest group ad/render url=].
-  1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not undefined.
+  1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
 
 </div>
 
@@ -814,7 +814,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       with |biddingSignalsUrl| and true.
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
-        1. If |ig|'s [=interest group/bidding url=] is undefined, [=iteration/continue=].
+        1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
         1. TODO: If rerunning `generateBid()` with only k-anonymous ads, remember to swap out |ig|'s ads
           to just k-anonymous ones so that [=validating an ad url=] excludes the non-k-anonymous ones.
         1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=]
@@ -833,7 +833,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
           [=interest group/bidding url=].
         1. If |biddingScript| is failure, [=iteration/continue=].
-        1. If |ig|'s [=interest group/bidding wasm helper url=] is not undefined:
+        1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
           1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
             [=interest group/bidding wasm helper url=].
           1. If |wasmModuleObject| is not failure:
@@ -886,7 +886,7 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dt>{{GenerateBidInterestGroup/enableBiddingSignalsPrioritization}}
       <dd>|ig|'s [=interest group/enable bidding signals prioritization=]
       <dt>{{GenerateBidInterestGroup/priorityVector}}
-      <dd>|ig|'s [=interest group/priority vector=]
+      <dd>|ig|'s [=interest group/priority vector=] if not null, otherwise undefined
       <dt>{{GenerateBidInterestGroup/executionMode}}
       <dd>|ig|'s [=interest group/execution mode=]
       <dt>{{GenerateBidInterestGroup/biddingLogicURL}}
@@ -910,22 +910,22 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
 </div>
 
 <div algorithm>
-To <dfn>serialize a URL</dfn> given a [=URL=]-or-undefined |url|:
+To <dfn>serialize a URL</dfn> given a [=URL=]-or-null |url|:
 
-  1. If |url| is undefined, then return undefined.
+  1. If |url| is null, then return undefined.
   1. Return the [=URL serializer|serialization=] of |url|.
 </div>
 
 <div algorithm>
-To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-undefined |ads|:
+To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 
-  1. If |ads| is undefined, then return undefined.
+  1. If |ads| is null, then return undefined.
   1. Let |adsIDL| be a new [=list=].
   1. [=list/for each] |ad| of |ads|:
     1. Let |adIDL| be a new {{AuctionAd}}.
     1. [=map/Set=] |adIDL|["{{AuctionAd/renderURL}}"] to the [=URL serializer|serialization=] of
       |ad|'s [=interest group ad/render url=].
-    1. If |ad|'s [=interest group ad/metadata=] is not undefined, then [=map/set=]
+    1. If |ad|'s [=interest group ad/metadata=] is not null, then [=map/set=]
       |adIDL|["{{AuctionAd/metadata}}"] to the result of
       [=parsing a JSON string to a JavaScript value=] given |ad|'s [=interest group ad/metadata=].
     1. [=list/Append=] |adIDL| to |adsIDL|.
@@ -1894,7 +1894,7 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
 
         <dt>"`priorityVector`"
         <dd>
-        1. If |value| is undefined or an [=ordered map=] whose [=map/keys=] are [=strings=] and
+        1. If |value| is null or an [=ordered map=] whose [=map/keys=] are [=strings=] and
           whose [=map/values=] are {{double}}, set |ig|'s [=interest group/priority vector=] to
           |value|.
         1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
@@ -2036,55 +2036,55 @@ An interest group is a [=struct=] with the following items:
 :: A [=boolean=], initially false. Being true if the interest group's priority should be
   calculated using vectors from bidding signals fetch.
 : <dfn>priority vector</dfn>
-:: Undefined or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+:: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   {{double}}. Its dot product with the {{AuctionAdConfig/perBuyerPrioritySignals}} will be used
   in place of [=interest group/priority=], if set.
 : <dfn>priority signals overrides</dfn>
-:: Undefined or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+:: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
 : <dfn>execution mode</dfn>
 :: A [=string=], initially "<code>compatibility</code>". Acceptable values are
   "<code>compatibility</code>" and "<code>group-by-origin</code>".
   TODO: Define spec for these execution modes, link to it from here and explain these modes.
 : <dfn>bidding url</dfn>
-:: Undefined or a [=URL=]. The URL to fetch the buyer's JavaScript from.
+:: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from.
   <p class="note">
-    When defined, the [=interest group/bidding url=]'s [=origin=] will always be [=same origin=]
+    When non-null, the [=interest group/bidding url=]'s [=origin=] will always be [=same origin=]
     with [=interest group/owner=].
   </p>
 : <dfn>bidding wasm helper url</dfn>
-:: Undefined or a [=URL=]. Lets the bidder provide computationally-expensive subroutines in
-  WebAssembly, in addition to JavaScript, to be driven from the JavaScript function provided by
+:: Null or a [=URL=]. Lets the bidder provide computationally-expensive subroutines in WebAssembly,
+  in addition to JavaScript, to be driven from the JavaScript function provided by
   [=interest group/bidding url=].
   <p class="note">
-    When defined, the [=interest group/bidding wasm helper url=]'s [=origin=] will always be
+    When non-null, the [=interest group/bidding wasm helper url=]'s [=origin=] will always be
     [=same origin=] with [=interest group/owner=].
   </p>
 : <dfn>update url</dfn>
-:: Undefined or a [=URL=]. Provides a mechanism for the group's owner to periodically update the
+:: Null or a [=URL=]. Provides a mechanism for the group's owner to periodically update the
   attributes of the interest group. See [interest group updates](#interest-group-updates).
   <p class="note">
-    When defined, the [=interest group/update url=]'s [=origin=] will always be [=same origin=]
+    When non-null, the [=interest group/update url=]'s [=origin=] will always be [=same origin=]
     with [=interest group/owner=].
   </p>
 : <dfn>trusted bidding signals url</dfn>
-:: Undefined or a [=URL=]. Provide a mechanism for making real-time data available for use at
-  bidding time. See [=building trusted bidding signals url=].
+:: Null or a [=URL=]. Provide a mechanism for making real-time data available for use at bidding
+  time. See [=building trusted bidding signals url=].
   <p class="note">
-    When defined, the [=interest group/trusted bidding signals url=]'s [=origin=] will always be
+    When non-null, the [=interest group/trusted bidding signals url=]'s [=origin=] will always be
     [=same origin=] with [=interest group/owner=].
   </p>
 : <dfn>trusted bidding signals keys</dfn>
-:: Undefined or a [=list=] of [=string=]. See [=building trusted bidding signals url=].
+:: Null or a [=list=] of [=string=]. See [=building trusted bidding signals url=].
 : <dfn>user bidding signals</dfn>
-:: Undefined or a [=string=]. Additional metadata that the owner can use during on-device bidding.
+:: Null or a [=string=]. Additional metadata that the owner can use during on-device bidding.
 : <dfn>ads</dfn>
-:: Undefined or a [=list=] of [=interest group ad=]. Contains various ads that the interest group
-  might show.
+:: Null or a [=list=] of [=interest group ad=]. Contains various ads that the interest group might
+  show.
 : <dfn>ad components</dfn>
-:: Undefined or a [=list=] of [=interest group ad=]. Contains various ad components (or "products")
-  that can be used to construct ads composed of multiple pieces — a top-level ad template
-  "container" which includes some slots that can be filled in with specific "products".
+:: Null or a [=list=] of [=interest group ad=]. Contains various ad components (or "products") that
+  can be used to construct ads composed of multiple pieces — a top-level ad template "container"
+  which includes some slots that can be filled in with specific "products".
 : <dfn>joining origin</dfn>
 :: An [=origin=]. The top level page origin from where the interest group was joined.
 : <dfn>join counts</dfn>
@@ -2116,7 +2116,7 @@ An interest group ad is a [=struct=] with the following items:
   be returned by {{Navigator/runAdAuction()}}. This URL is intended to be loaded into an ad
   <{iframe}> (or a <{fencedframe}>).
 : <dfn>metadata</dfn>
-:: Undefined or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
+:: Null or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
 
 </dl>
 
