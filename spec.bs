@@ -94,15 +94,13 @@ dictionary AuctionAd {
   any metadata;
 };
 
-dictionary AuctionAdInterestGroup {
+dictionary GenerateBidInterestGroup {
   required USVString owner;
   required USVString name;
   required double lifetimeMs;
 
-  double priority = 0.0;
   boolean enableBiddingSignalsPrioritization = false;
   record<DOMString, double> priorityVector;
-  record<DOMString, double> prioritySignalsOverrides;
 
   DOMString executionMode = "compatibility";
   USVString biddingLogicURL;
@@ -114,7 +112,18 @@ dictionary AuctionAdInterestGroup {
   sequence<AuctionAd> ads;
   sequence<AuctionAd> adComponents;
 };
+
+dictionary AuctionAdInterestGroup : GenerateBidInterestGroup {
+  double priority = 0.0;
+  record<DOMString, double> prioritySignalsOverrides;
+};
 </xmp>
+
+{{AuctionAdInterestGroup}} is used by {{Window/navigator}}.{{Navigator/joinAdInterestGroup()}}, and
+when an interest group is stored to [=interest group set=].
+`priority` and `prioritySignalsOverrides` are not passed to `generateBid()` because they can be
+modified by `generatedBid()` calls, so could theoretically be used to create a cross-site profile of
+a user accessible to `generateBid()` methods, otherwise.
 
 <div algorithm="joinAdInterestGroup()">
 
@@ -2004,34 +2013,6 @@ Issue(WICG/turtledove#522): Move from "`*`" to "`self`".
 
 
 # Structures # {#structures}
-
-
-<xmp class="idl">
-
-dictionary GenerateBidInterestGroup {
-  required USVString owner;
-  required USVString name;
-
-  boolean enableBiddingSignalsPrioritization = false;
-  record<DOMString, double> priorityVector;
-
-  DOMString executionMode = "compatibility";
-  USVString biddingLogicURL;
-  USVString biddingWasmHelperURL;
-  USVString updateURL;
-  USVString trustedBiddingSignalsURL;
-  sequence<USVString> trustedBiddingSignalsKeys;
-  any userBiddingSignals;
-  sequence<AuctionAd> ads;
-  sequence<AuctionAd> adComponents;
-};
-</xmp>
-
-{{GenerateBidInterestGroup}} is {{AuctionAdInterestGroup}} with its `priority` and
-`prioritySignalsOverrides` fields removed.
-`priority` and `prioritySignalsOverrides` are not included when interest group is passed to
-`generateBid()` because they can be modified by `generatedBid()` calls, so could theoretically be
-used to create a cross-site profile of a user accessible to `generateBid()` methods, otherwise.
 
 <h3 dfn-type=dfn>Interest group</h3>
 
