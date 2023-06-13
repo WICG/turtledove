@@ -29,10 +29,10 @@ spec: html; urlPrefix: https://html.spec.whatwg.org/C
 spec: ECMASCRIPT; urlPrefix: https://tc39.es/ecma262/
   type: dfn
     text: abrupt completion; url: sec-completion-record-specification-type
+    text: Object; url: sec-object-type
     text: CreateDataProperty; url: sec-createdataproperty
     text: Get; url: sec-get-o-p
     text: HasProperty; url: sec-hasproperty
-    text: is not an Object; url: sec-object-type
     text: IsArray; url: sec-runtime-semantics-scriptevaluation
     text: ordinary object; url: ordinary-object
     text: ParseScript; url: sec-parse-script
@@ -508,9 +508,11 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/auction signals=] with |result|:
       1. Set |auctionConfig|'s [=auction config/auction signals=] to the result of
         [=serializing a JavaScript value to a JSON string=], given |result|.
+      1. Set |auctionConfig|'s [=auction config/config idl=]{{AuctionAdConfig/auctionSignals}}.
       1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
     1. [=Upon rejection=] of |auctionConfig|'s [=auction config/auction signals=]:
       1. Set |auctionConfig|'s [=auction config/auction signals=] to failure.
+      1. Set |auctionConfig|'s [=auction config/config idl=]{{AuctionAdConfig/auctionSignals}}
       1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
   1. Otherwise, set |auctionConfig|'s [=auction config/auction signals=] to the result of
     [=serializing a JavaScript value to a JSON string=], given
@@ -886,7 +888,7 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dt>{{GenerateBidInterestGroup/enableBiddingSignalsPrioritization}}
       <dd>|ig|'s [=interest group/enable bidding signals prioritization=]
       <dt>{{GenerateBidInterestGroup/priorityVector}}
-      <dd>|ig|'s [=interest group/priority vector=] if not null, otherwise undefined
+      <dd>|ig|'s [=interest group/priority vector=] if not null, otherwise {{undefined}}
       <dt>{{GenerateBidInterestGroup/executionMode}}
       <dd>|ig|'s [=interest group/execution mode=]
       <dt>{{GenerateBidInterestGroup/biddingLogicURL}}
@@ -912,22 +914,24 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
 <div algorithm>
 To <dfn>serialize a URL</dfn> given a [=URL=]-or-null |url|:
 
-  1. If |url| is null, then return undefined.
+  1. If |url| is null, then return {{undefined}}.
   1. Return the [=URL serializer|serialization=] of |url|.
 </div>
 
 <div algorithm>
 To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 
-  1. If |ads| is null, then return undefined.
+  1. If |ads| is null, then return {{undefined}}.
   1. Let |adsIDL| be a new [=list=].
   1. [=list/for each] |ad| of |ads|:
     1. Let |adIDL| be a new {{AuctionAd}}.
     1. [=map/Set=] |adIDL|["{{AuctionAd/renderURL}}"] to the [=URL serializer|serialization=] of
       |ad|'s [=interest group ad/render url=].
-    1. If |ad|'s [=interest group ad/metadata=] is not null, then [=map/set=]
-      |adIDL|["{{AuctionAd/metadata}}"] to the result of
-      [=parsing a JSON string to a JavaScript value=] given |ad|'s [=interest group ad/metadata=].
+    1. If |ad|'s [=interest group ad/metadata=] is not null, then:
+      1. [=map/Set=] |adIDL|["{{AuctionAd/metadata}}"] to the result of
+        [=parsing a JSON string to a JavaScript value=] given |ad|'s [=interest group ad/metadata=].
+    1. Otherwise,
+      1. [=map/Set=] |adIDL|["{{AuctionAd/metadata}}"] to {{undefined}}
     1. [=list/Append=] |adIDL| to |adsIDL|.
   1. Return |adsIDL|.
 </div>
@@ -1170,13 +1174,13 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
   1. Wait for |signals| to be set.
   1. Return « null, null » if any of the following conditions hold:
     * |signals| is a parsing exception;
-    * |signals| [=is not an Object=];
+    * |signals| is not an [=Object=];
     * [=IsArray=](|signals|);
   1. If |formatVersion| is 2:
     1. If ![=HasProperty=](|signals|, "`keys`"), return « null, null ».
     1. Set |signals| to [=Get=](|signals|, "`keys`").
     1. TODO: handle priority vector.
-    1. If |signals| [=is not an Object=], or [=IsArray=](|signals|), return « null, null ».
+    1. If |signals| is not an [=Object=], or [=IsArray=](|signals|), return « null, null ».
   1. Return « |signals|, |dataVersion| ».
 </div>
 
@@ -1408,7 +1412,7 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig|, a
   {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null |auctionSignals|, an
-  [=ordered map=]-or-null |perBuyerSignals|, an [=ordinary object=] |trustedBiddingSignals|, a
+  [=string=]-or-null |perBuyerSignals|, an [=ordinary object=] |trustedBiddingSignalsJS|, a
   [=record=]<{{DOMString}}, {{any}}> |browserSignals|, and an integer millisecond [=duration=] |timeout|:
 
     1. Let |global| be a new {{InterestGroupBiddingScriptRunnerGlobalScope}}.
@@ -1421,14 +1425,12 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/interest group=] to |ig|.
     1. Let |igJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
       given |igGenerateBid|.
-    1. Let |auctionSignalsJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
-      given |auctionSignals|.
-    1. Let |perBuyerSignalsJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
-      given |perBuyerSignals|.
-    1. Let |trustedBiddingSignalsJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
-      given |trustedBiddingSignals|.
+    1. Let |auctionSignalsJS| be the result of [=parsing a JSON string to a JavaScript value=] given
+      |auctionSignals| if |auctionSignals| is not null, otherwise undefined.
+    1. Let |perBuyerSignalsJS| be the result of [=parsing a JSON string to a JavaScript value=]
+      given |perBuyerSignals| if |perBuyerSignals| is not null, otherwise undefined.
     1. Let |browserSignalsJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
-      given |browserSignals|.      
+      given |browserSignals|.
     1. Return the result of [=evaluating a script=] with |global|, |script|, "`generateBid`",
       « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignalsJS|, |browserSignalsJS| »,
       and |timeout|.
@@ -1665,7 +1667,7 @@ an [=interest group=] |ig|, a [=boolean=] |isComponentAuction| and a [=boolean=]
     1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponents}}"].
     1. Return failure if any of the following conditions hold:
       * |groupHasAdComponents| is false;
-      * |adComponents| is not an array;
+      * |adComponents| is not a [=sequence=];
       * |adComponents|'s size is greater than 20.
     1. Let |adComponentDescriptors| be a new [=list=] of [=ad descriptors=].
     1. For |component| in |adComponents|:
@@ -2149,10 +2151,10 @@ An auction config is a [=struct=] with the following items:
   must be "<code>https</code>".
 : <dfn>auction signals</dfn>
 :: Null or a [=string=] or a {{Promise}} or failure.
-  Opaque JSON data passed to both sellers' and buyers' script runners.
+  Opaque JSON data, passed to both sellers' and buyers' script runners as [=Objects=].
 : <dfn>seller signals</dfn>
 :: Null or a [=string=] or a {{Promise}} or failure.
-  Opaque JSON data passed to the seller's script runner.
+  Opaque JSON data, passed to the seller's script runner as an [=Object=].
 : <dfn>seller timeout</dfn>
 :: A [=duration=] in milliseconds, initially 50 milliseconds.
   Restricts the runtime of the seller's `scoreAd()` script. If scoring does not complete before
@@ -2160,8 +2162,8 @@ An auction config is a [=struct=] with the following items:
 : <dfn>per buyer signals</dfn>
 :: Null or a {{Promise}} or failure or an [=ordered map=] whose [=map/keys=] are [=origins=] and
   whose [=map/values=] are [=strings=].
-  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
-  passed to corresponding buyer's script runner.
+  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data,
+  passed to corresponding buyer's script runner as [=Object=].
 : <dfn>per buyer timeouts</dfn>
 :: Null or a {{Promise}} or failure or an [=ordered map=] whose [=map/keys=] are [=origins=] and
   whose [=map/values=] are [=durations=] in milliseconds.
