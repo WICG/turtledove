@@ -121,7 +121,7 @@ dictionary AuctionAdInterestGroup {
 The <dfn for=Navigator method>joinAdInterestGroup(|group|)</dfn> method steps are:
 <div class="note">
 
-Temporarily, Chromium does not include the <span class="allow-2119">[=dictionary member/required=]</span> keyword
+Temporarily, Chromium does not include the <span class="allow-2119">required</span> keyword
 for {{AuctionAdInterestGroup/lifetimeMs}}, and instead starts this algorithm with the step
 
 1. If |group|["{{AuctionAdInterestGroup/lifetimeMs}}"] does not [=map/exist=], throw a {{TypeError}}.
@@ -749,7 +749,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |topLevelHost| be [=this=]'s [=relevant settings object=]'s
   [=environment/top-level origin=]'s [=origin/host=].
 1. If |topLevelHost| is an integer:
-  1. Let |topLevelHost| be the result of converting |topLevelHost| to a [=string=].
+  1. Let |topLevelHost| be the result of [=serializing an integer=] given |topLevelHost|.
 1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=string=] |topLevelHost|.
 1. [=map/Set=] |browserSignals|["seller"] to the [=serialization of an origin|serialization=] of
   |auctionConfig|'s [=auction config/seller=].
@@ -881,23 +881,30 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dt>{{GenerateBidInterestGroup/executionMode}}
       <dd>|ig|'s [=interest group/execution mode=]
       <dt>{{GenerateBidInterestGroup/biddingLogicURL}}
-      <dd>The [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
+      <dd>The [=serialize a URL|serialization=] of |ig|'s [=interest group/bidding url=]
       <dt>{{GenerateBidInterestGroup/biddingWasmHelperURL}}
-      <dd>The [=URL serializer|serialization=] of |ig|'s [=interest group/bidding wasm helper url=]
+      <dd>The [=serialize a URL|serialization=] of |ig|'s [=interest group/bidding wasm helper url=]
       <dt>{{GenerateBidInterestGroup/updateURL}}
-      <dd>The [=URL serializer|serialization=] of |ig|'s [=interest group/update url=]
+      <dd>The [=serialize a URL|serialization=] of |ig|'s [=interest group/update url=]
       <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsURL}}
-      <dd>The [=URL serializer|serialization=] of |ig|'s [=interest group/trusted bidding signals url=]
-      <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsURL}}
-      <dd>The [=URL serializer|serialization=] of |ig|'s [=interest group/trusted bidding signals keys=]
+      <dd>The [=serialize a URL|serialization=] of |ig|'s [=interest group/trusted bidding signals url=]
+      <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}}
+      <dd>|ig|'s [=interest group/trusted bidding signals keys=]
       <dt>{{GenerateBidInterestGroup/userBiddingSignals}}
-      <dd>The [=URL serializer|serialization=] of |ig|'s [=interest group/user bidding signals=]
+      <dd>[=Parsed a JSON string to a JavaScript value=] given |ig|'s [=interest group/user bidding signals=]
       <dt>{{GenerateBidInterestGroup/ads}}
       <dd>|ig|'s [=interest group/ads=] [=converted to an AuctionAd sequence=]
       <dt>{{GenerateBidInterestGroup/adComponents}}
       <dd>|ig|'s [=interest group/ad components=] [=converted to an AuctionAd sequence=]
     </dl>
   1. Return |igGenerateBid|.
+</div>
+
+<div algorithm>
+To <dfn>serialize a URL</dfn> given a [=URL=]-or-undefined |url|:
+
+  1. If |url| is undefined, then return undefined.
+  1. Return the [=URL serializer|serialization=] of |url|.
 </div>
 
 <div algorithm>
@@ -910,9 +917,10 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-undefined |ad
     1. [=map/Set=] |adIDL|["{{AuctionAd/renderURL}}"] to the [=URL serializer|serialization=] of
       |ad|'s [=interest group ad/render url=].
     1. If |ad|'s [=interest group ad/metadata=] is not undefined, then [=map/set=]
-      |adIDL|["{{AuctionAd/metadata}}"] to it.
+      |adIDL|["{{AuctionAd/metadata}}"] to the result of
+      [=parsing a JSON string to a JavaScript value=] given |ad|'s [=interest group ad/metadata=].
     1. [=list/Append=] |adIDL| to |adsIDL|.
-  1. Return |adsIDL|
+  1. Return |adsIDL|.
 </div>
 
 <div algorithm>
@@ -1391,8 +1399,8 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig|, a
   {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null |auctionSignals|, an
-  [=ordered map=]-or-null |perBuyerSignals|, an [=ordered map=] |trustedBiddingSignals|, an
-  [=ordered map=] |browserSignals|, and an integer millisecond [=duration=] |timeout|:
+  [=ordered map=]-or-null |perBuyerSignals|, an [=ordinary object=] |trustedBiddingSignals|, a
+  [=record=]<{{DOMString}}, {{any}}> |browserSignals|, and an integer millisecond [=duration=] |timeout|:
 
     1. Let |global| be a new {{InterestGroupBiddingScriptRunnerGlobalScope}}.
     1. Set |global|'s
