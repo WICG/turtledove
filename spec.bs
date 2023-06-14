@@ -417,7 +417,7 @@ bid in the auction for the chance to display their advertisement.
 <xmp class="idl">
 [SecureContext]
 partial interface Navigator {
-  Promise<USVString?> runAdAuction(AuctionAdConfig config);
+  Promise<(USVString or FencedFrameConfig)?> runAdAuction(AuctionAdConfig config);
 };
 
 dictionary AuctionAdConfig {
@@ -437,6 +437,7 @@ dictionary AuctionAdConfig {
   record<USVString, record<USVString, double>> perBuyerPrioritySignals;
   sequence<AuctionAdConfig> componentAuctions = [];
   AbortSignal? signal;
+  Promise<boolean> resolveToConfig;
 };
 </xmp>
 
@@ -472,9 +473,14 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
       with null.
   1. Otherwise:
-    1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to resolve
-      |p| with |winner|'s [=generated bid/ad descriptor=]. TODO: resolve |p| with urn-uuid, instead
-      of a URL.
+    1. Let |urn| and |fencedFrameConfig| be the result of TODO: constructing the relevant
+       {{FencedFrameConfig}} with |winner|'s [=generated bid/ad descriptor=].
+    1. Wait until |auctionConfig|'s [=auction config/resolve to config=] is a boolean.
+    1. Let |result| be |fencedFrameConfig|.
+    1. If |auctionConfig|'s [=auction config/resolve to config=] is false:
+      1. Set |result| to |urn|.
+    1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
+       resolve |p| with |result|.
     1. [=Increment ad k-anonymity count=] given |winner|'s [=generated bid/interest group=] and
       |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
     1. If |winner|'s [=generated bid/ad component descriptors=] is not null:
@@ -671,6 +677,12 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. Let |componentAuction| be the result of running [=validate and convert auction ad config=] with
     |component| and false.
   1. [=list/Append=] |componentAuction| to |auctionConfig|'s [=auction config/component auctions=].
+1. If |config|["{{AuctionAdConfig/resolveToConfig}}"] [=map/exists=]:
+  1. Let |auctionConfig|'s [=auction config/resolve to config=] be
+     |config|["{{AuctionAdConfig/resolveToConfig}}"].
+  1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/resolve to config=] with
+     |resolveToConfig|, set |auctionConfig|'s [=auction config/resolve to config=] to
+     |resolveToConfig|.
 1. Return |auctionConfig|.
 
 </div>
@@ -2308,6 +2320,9 @@ An auction config is a [=struct=] with the following items:
 :: An integer, initially 0. The number of [=auction config/auction signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer timeouts=], or
   [=auction config/seller signals=] whose {{Promise}}s are not yet resolved.
+: <dfn>resolve to config</dfn>
+:: A [=boolean=] or a {{Promise}}, initially false.
+  Whether the ad should be returned as a {{FencedFrameConfig}}, or otherwise as a [=urn uuid=].
 
 </dl>
 
