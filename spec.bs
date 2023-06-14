@@ -45,6 +45,10 @@ spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
 spec: WebAssembly-js-api; urlPrefix: https://webassembly.github.io/spec/js-api/
   type: dfn
     text: compiling a WebAssembly module; url: #compile-a-webassembly-module
+spec: Fenced Frame; urlPrefix: https://wicg.github.io/fenced-frame/
+  type: dfn
+    for: browsing context
+      text: fenced frame config instance; url: #browsing-context-fenced-frame-config-instance
 </pre>
 
 <style>
@@ -359,16 +363,10 @@ In order to remove a user from a particular interest group,
 
 {{Window/navigator}}.{{Navigator/leaveAdInterestGroup()}} can be called.
 
-TODO: Edit the following from the explainer. As a special case to support in-ad UIs, invoking
-navigator.leaveAdInterestGroup() from inside an ad that is being targeted at a particular interest
-group will cause the browser to leave that group, irrespective of permission policies. Note that
-calling navigator.leaveAdInterestGroup() without arguments isn't supported inside a component ad
-frame.
-
 <xmp class="idl">
 [SecureContext]
 partial interface Navigator {
-  Promise<undefined> leaveAdInterestGroup(AuctionAdInterestGroupKey group);
+  Promise<undefined> leaveAdInterestGroup(optional AuctionAdInterestGroupKey group = {});
 };
 
 dictionary AuctionAdInterestGroupKey {
@@ -382,24 +380,38 @@ dictionary AuctionAdInterestGroupKey {
 The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps
 are:
 
-1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
-  "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
-  "{{NotAllowedError}}" {{DOMException}}.
 1. Let |frameOrigin| be the [=relevant settings object=]'s [=environment settings object/origin=].
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
-1. Let |owner| be the result of [=parsing an origin=] with
-  |group|["{{AuctionAdInterestGroupKey/owner}}"].
-1. If |owner| is failure, [=exception/throw=] a {{TypeError}}.
-1. Let |name| be |group|["{{AuctionAdInterestGroupKey/name}}"].
 1. Let |p| be [=a new promise=].
-1. Run these steps [=in parallel=]:
-  1. Let |permission| be the result of [=checking interest group permissions=] with 
-    |owner|, |frameOrigin|, and false.
-  1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
-     "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
-  1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
-  1. [=list/Remove=] [=interest groups=] from the user agent's [=interest group set=] whose
-    [=interest group/owner=] is |owner| and [=interest group/name=] is |name|.
+1. If |group| [=map/is empty=]:
+  1. Let |instance| be [=this=]'s [=relevant global object=]'s [=Window/browsing context=]'s
+    [=browsing context/fenced frame config instance=].
+  1. If |instance| is null, [=exception/throw=] a {{TypeError}}.
+  1. Let |interestGroup| be |instance|'s [=fenced frame config instance/interest group descriptor=].
+  1. Run these steps [=in parallel=]:
+    1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
+    1. If |interestGroup| is not null:
+      1. Let |owner| be |interestGroup|'s [=interest group descriptor/owner=].
+      1. Let |name| be |interestGroup|'s [=interest group descriptor/name=].
+      1. If |owner| is [=same origin=] with |frameOrigin|:
+        1. [=list/Remove=] [=interest groups=] from the user agent's [=interest group set=] whose
+          [=interest group/owner=] is |owner| and [=interest group/name=] is |name|.
+1. Otherwise:
+  1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
+    "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
+    "{{NotAllowedError}}" {{DOMException}}.
+  1. Let |owner| be the result of [=parsing an origin=] with
+    |group|["{{AuctionAdInterestGroupKey/owner}}"].
+  1. If |owner| is failure, [=exception/throw=] a {{TypeError}}.
+  1. Let |name| be |group|["{{AuctionAdInterestGroupKey/name}}"].
+  1. Run these steps [=in parallel=]:
+    1. Let |permission| be the result of [=checking interest group permissions=] with 
+      |owner|, |frameOrigin|, and false.
+    1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
+       "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
+    1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
+    1. [=list/Remove=] [=interest groups=] from the user agent's [=interest group set=] whose
+      [=interest group/owner=] is |owner| and [=interest group/name=] is |name|.
 1. Return |p|.
 
 </div>
@@ -417,7 +429,7 @@ bid in the auction for the chance to display their advertisement.
 <xmp class="idl">
 [SecureContext]
 partial interface Navigator {
-  Promise<USVString?> runAdAuction(AuctionAdConfig config);
+  Promise<(USVString or FencedFrameConfig)?> runAdAuction(AuctionAdConfig config);
 };
 
 dictionary AuctionAdConfig {
@@ -437,6 +449,7 @@ dictionary AuctionAdConfig {
   record<USVString, record<USVString, double>> perBuyerPrioritySignals;
   sequence<AuctionAdConfig> componentAuctions = [];
   AbortSignal? signal;
+  Promise<boolean> resolveToConfig;
 };
 </xmp>
 
@@ -472,9 +485,14 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
       with null.
   1. Otherwise:
-    1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to resolve
-      |p| with |winner|'s [=generated bid/ad descriptor=]. TODO: resolve |p| with urn-uuid, instead
-      of a URL.
+    1. Let |urn| and |fencedFrameConfig| be the result of TODO: constructing the relevant
+       {{FencedFrameConfig}} with |winner|'s [=generated bid/ad descriptor=].
+    1. Wait until |auctionConfig|'s [=auction config/resolve to config=] is a boolean.
+    1. Let |result| be |fencedFrameConfig|.
+    1. If |auctionConfig|'s [=auction config/resolve to config=] is false:
+      1. Set |result| to |urn|.
+    1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
+       resolve |p| with |result|.
     1. [=Increment ad k-anonymity count=] given |winner|'s [=generated bid/interest group=] and
       |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
     1. If |winner|'s [=generated bid/ad component descriptors=] is not null:
@@ -671,6 +689,12 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. Let |componentAuction| be the result of running [=validate and convert auction ad config=] with
     |component| and false.
   1. [=list/Append=] |componentAuction| to |auctionConfig|'s [=auction config/component auctions=].
+1. If |config|["{{AuctionAdConfig/resolveToConfig}}"] [=map/exists=]:
+  1. Let |auctionConfig|'s [=auction config/resolve to config=] be
+     |config|["{{AuctionAdConfig/resolveToConfig}}"].
+  1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/resolve to config=] with
+     |resolveToConfig|, set |auctionConfig|'s [=auction config/resolve to config=] to
+     |resolveToConfig|.
 1. Return |auctionConfig|.
 
 </div>
@@ -777,7 +801,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. If |compWinner| is failure, return failure.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
-        |decisionLogicScript|, null, true and |settings|'s [=environment/top-level origin=].
+        |decisionLogicScript|, null, "top-level-auction" and |settings|'s [=environment/top-level origin=].
 
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
@@ -815,12 +839,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=this=]'s [=relevant settings object=]'s
   [=environment/top-level origin=]'s [=origin/host=].
 1. [=map/Set=] |browserSignals|["seller"] to |auctionConfig|'s [=auction config/seller=].
-1. Let |isComponentAuction| be false.
+1. Let |auctionLevel| be "single-level-auction".
 1. If |topLevelAuctionConfig| is not null:
   1. [=map/Set=] |browserSignals|["topLevelSeller"] to the
     [=serialization of an origin|serialization=] of |topLevelAuctionConfig|'s
     [=auction config/seller=].
-  1. Set |isComponentAuction| to true.
+  1. Set |auctionLevel| to "component-auction".
 1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -904,7 +928,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
           1. If |generatedBid| is failure, [=iteration/continue=].
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
-          |decisionLogicScript|, |dataVersion|, |isComponentAuction|, and |settings|'s
+          |decisionLogicScript|, |dataVersion|, |auctionLevel|, and |settings|'s
           [=environment/top-level origin=].
 
   1. Decrement |pendingBuyers| by 1.
@@ -922,8 +946,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
 |generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
-{{unsigned long}}-or-null |biddingDataVersion|, a [=boolean=] |isComponentAuction|, and an [=origin=]
-|topWindowOrigin|:
+{{unsigned long}}-or-null |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction", or "component-auction", and an [=origin=] |topWindowOrigin|:
 1. Let |renderURLs| be a new [=set=].
 1. Let |adComponentRenderUrls| be a new [=set=].
 1. [=set/Append=] |generatedBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] to |renderURLs|.
@@ -982,11 +1005,11 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
    |browserSignals| », and |auctionConfig|'s [=auction config/seller timeout=].
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
 1. If |scoreAdOutput| is failure, return.
-1. If |isComponentAuction| is true, and |scoreAdOutput|
+1. If |auctionLevel| is not "single-level-auction", and |scoreAdOutput|
   ["{{ScoreAdOutput/allowComponentAuction}}"] is false, return.
 1. Let |score| be |scoreAdOutput|["{{ScoreAdOutput/desirability}}"].
 1. If |score| is negative or 0, return.
-1. If |isComponentAuction| is true and |scoreAdOutput|["{{ScoreAdOutput/bid}}"] [=map/exists=]:
+1. If |auctionLevel| is "component-auction" and |scoreAdOutput|["{{ScoreAdOutput/bid}}"] [=map/exists=]:
   1. Set |generatedBid|'s [=generated bid/modified bid=] to |scoreAdOutput|["{{ScoreAdOutput/bid}}"].
 1. Let |updateLeadingBid| be false.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, or |score| is greater than
@@ -2308,6 +2331,9 @@ An auction config is a [=struct=] with the following items:
 :: An integer, initially 0. The number of [=auction config/auction signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer timeouts=], or
   [=auction config/seller signals=] whose {{Promise}}s are not yet resolved.
+: <dfn>resolve to config</dfn>
+:: A [=boolean=] or a {{Promise}}, initially false.
+  Whether the ad should be returned as a {{FencedFrameConfig}}, or otherwise as a [=urn uuid=].
 
 </dl>
 
