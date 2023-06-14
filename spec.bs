@@ -32,6 +32,7 @@ spec: ECMASCRIPT; urlPrefix: https://tc39.es/ecma262/
   type: dfn
     text: ParseScript; url: sec-parse-script
     text: ScriptEvaluation; url: sec-runtime-semantics-scriptevaluation
+    text: Number; url: sec-ecmascript-language-types-number-type
 spec: RFC8941; urlPrefix: https://httpwg.org/specs/rfc8941.html
   type: dfn
     text: structured header; url: top
@@ -45,6 +46,38 @@ spec: WebAssembly-js-api; urlPrefix: https://webassembly.github.io/spec/js-api/
   type: dfn
     text: compiling a WebAssembly module; url: #compile-a-webassembly-module
 </pre>
+
+<style>
+/* domintro from https://resources.whatwg.org/standard.css */
+.domintro {
+  position: relative;
+  color: green;
+  background: #DDFFDD;
+  margin: 2.5em 0 2em 0;
+  padding: 1.5em 1em 0.5em 2em;
+}
+
+.domintro dt, .domintro dt * {
+  color: black;
+  font-size: inherit;
+}
+.domintro dd {
+  margin: 0.5em 0 1em 2em; padding: 0;
+}
+.domintro dd p {
+  margin: 0.5em 0;
+}
+.domintro::before {
+  content: 'For web developers (non-normative)';
+  background: green;
+  color: white;
+  padding: 0.15em 0.25em;
+  font-style: normal;
+  position: absolute;
+  top: -0.8em;
+  left: -0.8em;
+}
+</style>
 
 # Introduction # {#intro}
 
@@ -944,16 +977,17 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. If |scoringDataVersion| is not null:
   1. [=map/Set=] |browserSignals|["`dataVersion`"] to |scoringDataVersion|.
 1. TODO: Remove fields of |auctionConfig| that don't pass through.
-1. Let |scoreAdOutput| be the result of [=evaluating a scoring script=] with
+1. Let |scoreAdResult| be the result of [=evaluating a scoring script=] with
    |decisionLogicScript|, « |adMetadata|, |bidValue|, |auctionConfig|, |trustedScoringSignals|,
    |browserSignals| », and |auctionConfig|'s [=auction config/seller timeout=].
-1. If |isComponentAuction| is true, and |scoreAdOutput|'s
-  [=score ad output/allow component auction=] is false, return.
-1. Let |score| be |scoreAdOutput|'s [=score ad output/desirability=].
+1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
+1. If |scoreAdOutput| is failure, return.
+1. If |isComponentAuction| is true, and |scoreAdOutput|
+  ["{{ScoreAdOutput/allowComponentAuction}}"] is false, return.
+1. Let |score| be |scoreAdOutput|["{{ScoreAdOutput/desirability}}"].
 1. If |score| is negative or 0, return.
-1. If |isComponentAuction| is true and |scoreAdOutput|'s [=score ad output/bid=] is not null:
-  1. Set |generatedBid|'s [=generated bid/modified bid=] to |scoreAdOutput|'s
-    [=score ad output/bid=].
+1. If |isComponentAuction| is true and |scoreAdOutput|["{{ScoreAdOutput/bid}}"] [=map/exists=]:
+  1. Set |generatedBid|'s [=generated bid/modified bid=] to |scoreAdOutput|["{{ScoreAdOutput/bid}}"].
 1. Let |updateLeadingBid| be false.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, or |score| is greater than
   |leadingBidInfo|'s [=leading bid info/top score=]:
@@ -1486,7 +1520,7 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
     1. If |result| is a [=ECMAScript/normal completion=]:
       1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
         |result|'s \[[Value]] to a {{GenerateBidOutput}}.
-      1. If no exception was caught in the previous step:
+      1. If no exception was [=exception/thrown=] in the previous step:
         1. Let |groupHasAdComponents| be true.
         1. If |ig|'s [=interest group/ad components=] is null, set |groupHasAdComponents| be false.
         1. Let |possibleGeneratedBid| be the result of [=converting GenerateBidOutput to generated bid=]
@@ -2352,26 +2386,44 @@ Width and height of an ad.
 
 <h3 dfn-type=dfn>Score ad output</h3>
 
-The output of running a Protected Audience `scoreAd()` script.
+The output of running a Protected Audience `scoreAd()` script, is represented using the following type:
+<pre class="idl">
+dictionary ScoreAdOutput {
+  required double desirability;
+  double bid;
+  boolean allowComponentAuction = false;
+};
+</pre>
+Either a dictionary of this type, or a {{double}}, are handled as the return values.
 
-<dl dfn-for="score ad output">
-: <dfn>desirability</dfn>
-:: A {{double}}.
-  Numeric score of the bid. Must be positive or the ad will be rejected. The winner of the auction
+The meanings of the fields are as follows:
+<dl class=domintro>
+  <dt>{{ScoreAdOutput/desirability}}
+  <dd>Numeric score of the bid. Must be positive or the ad will be rejected. The winner of the auction
   is the bid which was given the highest score.
-: <dfn>allow component auction</dfn>
-:: A [=boolean=].
-   If the bid being scored is from a component auction and this value is not true, the bid is
-   ignored. This field must be present and true both when the component seller scores a bid, and
-   when that bid is being scored by the top-level auction.
-: <dfn>bid</dfn>
-:: Null or a {{double}}.
-  Is null if the auction has no component auction, or if the auction is a top-level auction.
-  Modified bid value to provide to the top-level seller script. If present, this will be passed to
-  the top-level seller's `scoreAd()` and `reportResult()` methods instead of the original bid, if
-  the ad wins the component auction and top-level auction, respectively.
-
+  <dt>{{ScoreAdOutput/bid}}
+  <dd>Only relevant if this is a component auction.  If present, this will be passed to the top-level seller's `scoreAd()` and `reportResult()` methods instead of the original bid, if the ad wins the component auction and top-level auction, respectively.
+  <dt>{{ScoreAdOutput/allowComponentAuction}}
+  <dd>If the bid being scored is from a component auction and this value is not true, the bid is ignored. This field must be present and true both when the component seller scores a bid, and when that bid is being scored by the top-level auction.
 </dl>
+
+TODO: This also has an ad field, which should behave similar to the way {{ScoreAdOutput/bid}} affects [=generated bid/modified bid=], and then affecting the adMetadata parameter to scoreAd.
+
+<div algorithm>
+
+To <dfn>process scoreAd output</dfn> given an [=ECMAScript/Completion Record=] |result|:
+  1. If |result| is an an [=ECMAScript/abrupt completion=], return failure.
+  1. If |result|.\[[Value]] is a [=Number=]:
+    1. Let |checkedScore| be the result of [=converted to an IDL value|converting=] |result|.\[[Value]] to a {{double}}.
+    1. If an exception was [=exception/thrown=] in the previous step, return failure.
+    1. Let |resultIDL| be a new {{ScoreAdOutput}}.
+    1. Set |resultIDL|'s {{ScoreAdOutput/desirability}} to |checkedScore|.
+    1. Return |resultIDL|.
+  1. Let |resultIDL| be the result of [=converted to an IDL value|converting=]
+          |result|.\[[Value]] to a {{ScoreAdOutput}}.
+  1. If an exception was [=exception/thrown=] in the previous step, return failure.
+  1. Return |resultIDL|.
+</div>
 
 <h3 dfn-type=dfn>Leading bid info</h3>
 
