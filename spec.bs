@@ -44,6 +44,10 @@ spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
 spec: WebAssembly-js-api; urlPrefix: https://webassembly.github.io/spec/js-api/
   type: dfn
     text: compiling a WebAssembly module; url: #compile-a-webassembly-module
+spec: Fenced Frame; urlPrefix: https://wicg.github.io/fenced-frame/
+  type: dfn
+    for: browsing context
+      text: fenced frame config instance; url: #browsing-context-fenced-frame-config-instance
 </pre>
 
 # Introduction # {#intro}
@@ -326,16 +330,10 @@ In order to remove a user from a particular interest group,
 
 {{Window/navigator}}.{{Navigator/leaveAdInterestGroup()}} can be called.
 
-TODO: Edit the following from the explainer. As a special case to support in-ad UIs, invoking
-navigator.leaveAdInterestGroup() from inside an ad that is being targeted at a particular interest
-group will cause the browser to leave that group, irrespective of permission policies. Note that
-calling navigator.leaveAdInterestGroup() without arguments isn't supported inside a component ad
-frame.
-
 <xmp class="idl">
 [SecureContext]
 partial interface Navigator {
-  Promise<undefined> leaveAdInterestGroup(AuctionAdInterestGroupKey group);
+  Promise<undefined> leaveAdInterestGroup(optional AuctionAdInterestGroupKey group);
 };
 
 dictionary AuctionAdInterestGroupKey {
@@ -349,24 +347,38 @@ dictionary AuctionAdInterestGroupKey {
 The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps
 are:
 
-1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
-  "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
-  "{{NotAllowedError}}" {{DOMException}}.
 1. Let |frameOrigin| be the [=relevant settings object=]'s [=environment settings object/origin=].
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
-1. Let |owner| be the result of [=parsing an origin=] with
-  |group|["{{AuctionAdInterestGroupKey/owner}}"].
-1. If |owner| is failure, [=exception/throw=] a {{TypeError}}.
-1. Let |name| be |group|["{{AuctionAdInterestGroupKey/name}}"].
 1. Let |p| be [=a new promise=].
-1. Run these steps [=in parallel=]:
-  1. Let |permission| be the result of [=checking interest group permissions=] with 
-    |owner|, |frameOrigin|, and false.
-  1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
-     "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
-  1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
-  1. [=list/Remove=] [=interest groups=] from the user agent's [=interest group set=] whose
-    [=interest group/owner=] is |owner| and [=interest group/name=] is |name|.
+1. If |group| is omitted:
+  1. Let |instance| be [=this=]'s [=relevant global object=]'s [=Window/browsing context=]'s
+    [=browsing context/fenced frame config instance=].
+  1. If |instance| is null, [=exception/throw=] a {{TypeError}}.
+  1. Let |interestGroup| be |instance|'s [=fenced frame config instance/interest group descriptor=].
+  1. Run these steps [=in parallel=]:
+    1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
+    1. If |interestGroup| is not null:
+      1. Let |owner| be |interestGroup|'s [=interest group descriptor/owner=].
+      1. Let |name| be |interestGroup|'s [=interest group descriptor/name=].
+      1. If |owner| is [=same origin=] with |frameOrigin|:
+        1. [=list/Remove=] [=interest groups=] from the user agent's [=interest group set=] whose
+          [=interest group/owner=] is |owner| and [=interest group/name=] is |name|.
+1. Otherwise:
+  1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
+    "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
+    "{{NotAllowedError}}" {{DOMException}}.
+  1. Let |owner| be the result of [=parsing an origin=] with
+    |group|["{{AuctionAdInterestGroupKey/owner}}"].
+  1. If |owner| is failure, [=exception/throw=] a {{TypeError}}.
+  1. Let |name| be |group|["{{AuctionAdInterestGroupKey/name}}"].
+  1. Run these steps [=in parallel=]:
+    1. Let |permission| be the result of [=checking interest group permissions=] with 
+      |owner|, |frameOrigin|, and false.
+    1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
+       "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
+    1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
+    1. [=list/Remove=] [=interest groups=] from the user agent's [=interest group set=] whose
+      [=interest group/owner=] is |owner| and [=interest group/name=] is |name|.
 1. Return |p|.
 
 </div>
