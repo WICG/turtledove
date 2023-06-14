@@ -385,9 +385,7 @@ dictionary AuctionAdConfig {
   USVString directFromSellerSignals;
   unsigned long long sellerTimeout;
   unsigned short sellerExperimentGroupId;
-
-  // Expects a record<USVString, any> or a Promise resolving to that.
-  any perBuyerSignals;
+  Promise<record<USVString, any>> perBuyerSignals;
   record<USVString, unsigned long long> perBuyerTimeouts;
   record<USVString, unsigned short> perBuyerGroupLimits;
   record<USVString, unsigned short> perBuyerExperimentGroupIds;
@@ -514,22 +512,20 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. Set |auctionConfig|'s [=auction config/seller experiment group id=] to
     |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"].
 1. If |config|["{{AuctionAdConfig/perBuyerSignals}}"] [=map/exists=]:
-  1. If |config|["{{AuctionAdConfig/perBuyerSignals}}"] is a {{Promise}}:
-    1. Set |auctionConfig|'s [=auction config/per buyer signals=] to
-      |config|["{{AuctionAdConfig/perBuyerSignals}}"].
-    1. Increment |auctionConfig|'s [=auction config/pending promise count=].
-    1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/per buyer signals=] with |result|:
-      1. Let |pendingException| be null.
-      1. Execute [=validate and convert per buyer signals=] with |auctionConfig| and |result|. If this [=exception/throws=] an exception |e|, set |pendingException| to |e|.
-      1. If |pendingException| is not null:
-        1. Set |auctionConfig|'s [=auction config/per buyer signals=] to failure.
-        1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
-        1. [=exception/Throw=] |pendingException|.
-      1. Otherwise, decrement |auctionConfig|'s [=auction config/pending promise count=].
-    1. [=Upon rejection=] of |auctionConfig|'s [=auction config/per buyer signals=]:
+  1. Set |auctionConfig|'s [=auction config/per buyer signals=] to
+    |config|["{{AuctionAdConfig/perBuyerSignals}}"].
+  1. Increment |auctionConfig|'s [=auction config/pending promise count=].
+  1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/per buyer signals=] with |result|:
+    1. Let |pendingException| be null.
+    1. Execute [=validate and convert per buyer signals=] with |auctionConfig| and |result|. If this [=exception/throws=] an exception |e|, set |pendingException| to |e|.
+    1. If |pendingException| is not null:
       1. Set |auctionConfig|'s [=auction config/per buyer signals=] to failure.
       1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
-  1. Otherwise, execute [=validate and convert per buyer signals=] with |auctionConfig| and |config|["{{AuctionAdConfig/perBuyerSignals}}"].
+      1. [=exception/Throw=] |pendingException|.
+    1. Otherwise, decrement |auctionConfig|'s [=auction config/pending promise count=].
+  1. [=Upon rejection=] of |auctionConfig|'s [=auction config/per buyer signals=]:
+    1. Set |auctionConfig|'s [=auction config/per buyer signals=] to failure.
+    1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
 1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] [=map/exists=]:
   1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] is a {{Promise}}:
     1. Set |auctionConfig|'s [=auction config/per buyer timeouts=] to
