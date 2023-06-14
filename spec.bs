@@ -777,7 +777,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. If |compWinner| is failure, return failure.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
-        |decisionLogicScript|, null, true and |settings|'s [=environment/top-level origin=].
+        |decisionLogicScript|, null, "top-level-auction" and |settings|'s [=environment/top-level origin=].
 
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
@@ -815,12 +815,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=this=]'s [=relevant settings object=]'s
   [=environment/top-level origin=]'s [=origin/host=].
 1. [=map/Set=] |browserSignals|["seller"] to |auctionConfig|'s [=auction config/seller=].
-1. Let |isComponentAuction| be false.
+1. Let |auctionLevel| be "single-level-auction".
 1. If |topLevelAuctionConfig| is not null:
   1. [=map/Set=] |browserSignals|["topLevelSeller"] to the
     [=serialization of an origin|serialization=] of |topLevelAuctionConfig|'s
     [=auction config/seller=].
-  1. Set |isComponentAuction| to true.
+  1. Set |auctionLevel| to "component-auction".
 1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -904,7 +904,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
           1. If |generatedBid| is failure, [=iteration/continue=].
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
-          |decisionLogicScript|, |dataVersion|, |isComponentAuction|, and |settings|'s
+          |decisionLogicScript|, |dataVersion|, |auctionLevel|, and |settings|'s
           [=environment/top-level origin=].
 
   1. Decrement |pendingBuyers| by 1.
@@ -922,8 +922,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
 |generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
-{{unsigned long}}-or-null |biddingDataVersion|, a [=boolean=] |isComponentAuction|, and an [=origin=]
-|topWindowOrigin|:
+{{unsigned long}}-or-null |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction", or "component-auction", and an [=origin=] |topWindowOrigin|:
 1. Let |renderURLs| be a new [=set=].
 1. Let |adComponentRenderUrls| be a new [=set=].
 1. [=set/Append=] |generatedBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] to |renderURLs|.
@@ -982,11 +981,11 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
    |browserSignals| », and |auctionConfig|'s [=auction config/seller timeout=].
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
 1. If |scoreAdOutput| is failure, return.
-1. If |isComponentAuction| is true, and |scoreAdOutput|
+1. If |auctionLevel| is not "single-level-auction", and |scoreAdOutput|
   ["{{ScoreAdOutput/allowComponentAuction}}"] is false, return.
 1. Let |score| be |scoreAdOutput|["{{ScoreAdOutput/desirability}}"].
 1. If |score| is negative or 0, return.
-1. If |isComponentAuction| is true and |scoreAdOutput|["{{ScoreAdOutput/bid}}"] [=map/exists=]:
+1. If |auctionLevel| is "component-auction" and |scoreAdOutput|["{{ScoreAdOutput/bid}}"] [=map/exists=]:
   1. Set |generatedBid|'s [=generated bid/modified bid=] to |scoreAdOutput|["{{ScoreAdOutput/bid}}"].
 1. Let |updateLeadingBid| be false.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, or |score| is greater than
