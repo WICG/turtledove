@@ -474,17 +474,17 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       [=auction config/interest group buyers=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|, null,
-    |global|, and |settings|.
-  1. If |winner| is failure:
+  1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
+    null, |global|, and |settings|.
+  1. If |winnerInfo| is failure:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=reject=]
       |p| with a "{{TypeError}}".
-  1. If |winner| is null:
+  1. If |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
       with null.
   1. Otherwise:
     1. Let |fencedFrameConfig| be the result of [=filling in a pending fenced frame config=] with
-       |pendingConfig| and |winner|.
+       |pendingConfig| and |winnerInfo|.
     1. [=fenced frame config mapping/Finalize a pending config=] on |configMapping| with |urn| and
        |fencedFrameConfig|.
     1. Wait until |auctionConfig|'s [=auction config/resolve to config=] is a boolean.
@@ -493,6 +493,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       1. Set |result| to |urn|.
     1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
        resolve |p| with |result|.
+    1. Let |winner| be |winnerInfo|'s [=leading bid info/leading bid=].
     1. [=Increment ad k-anonymity count=] given |winner|'s [=generated bid/interest group=] and
       |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
     1. If |winner|'s [=generated bid/ad component descriptors=] is not null:
@@ -560,7 +561,7 @@ To <dfn>construct a pending fenced frame config</dfn> given an [=auction config=
     :: "<a for=visibility>`opaque`</a>"
 
   : [=fenced frame config/fenced frame reporting metadata=]
-  :: TODO
+  :: null
 
   : [=fenced frame config/exfiltration budget metadata=]
   :: null
@@ -581,10 +582,11 @@ To <dfn>construct a pending fenced frame config</dfn> given an [=auction config=
 <div algorithm="fill in a pending fenced frame config">
 
 To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame config=] |pendingConfig|
-and [=generated bid=] |generatedBid|:
+and [=leading bid info=] |winningBidInfo|:
+1. Let |winningBid| be |winningBidInfo|'s [=leading bid info/leading bid=].
 1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
-   |generatedBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-1. Let |adSize| be |generatedBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/size=].
+   |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+1. Let |adSize| be |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/size=].
 1. If |adSize| is not null:
    1. Set |pendingConfig|'s [=fenced frame config/content size=] to a struct with the following members:
      : [=content size/value=]
@@ -595,16 +597,40 @@ and [=generated bid=] |generatedBid|:
 1. Set |pendingConfig|'s [=fenced frame config/interest group descriptor=]'s
    [=interest group descriptor/value=] to a struct with the following members:
      : owner
-     :: |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=]
+     :: |winningBid|'s [=generated bid/interest group=]'s [=interest group/owner=]
 
      : name
-     :: |generatedBid|'s [=generated bid/interest group=]'s [=interest group/name=]
-1. Set |pendingConfig|'s [=fenced frame config/on navigate callback=] to TODO.
-1. Set |pendingConfig|'s [=fenced frame config/fenced frame reporting metadata=] to TODO.
+     :: |winningBid|'s [=generated bid/interest group=]'s [=interest group/name=]
+1. Set |pendingConfig|'s [=fenced frame config/fenced frame reporting metadata=] to a struct with
+   the following members:
+    : [=fenced frame reporting metadata/value=]
+    :: a struct with the following members:
+      : [=fenced frame reporting metadata/fenced frame reporting map=]
+      :: a [=map=] «[ "<code>buyer</code>" → «», "<code>seller</code>" → «»,
+         "<code>component-seller</code>" → «»]»
+
+      : [=fenced frame reporting metadata/direct seller is seller=]
+      :: whether |winningBidInfo|'s [=leading bid info/component seller=] is null
+
+    : [=fenced frame reporting metadata/visibility=]
+    :: "<a for=visibility>`opaque`</a>"
+1. Set |pendingConfig|'s [=fenced frame config/on navigate callback=] to a closure of
+   [=asynchronously finish reporting=] partially evaluated with a reference to |pendingConfig|'s
+   [=fenced frame config/fenced frame reporting metadata=]'s
+   [=fenced frame reporting metadata/value=]'s
+   [=fenced frame reporting metadata/fenced frame reporting map=].
 1. Set |pendingConfig|'s [=fenced frame config/nested configs=]'s [=nested configs/value=] to
-   the result of running [=create nested configs=] with |generatedBid|'s
+   the result of running [=create nested configs=] with |winningBid|'s
    [=generated bid/ad component descriptors=].
 1. Return |pendingConfig|.
+
+</div>
+
+<div algorithm="asynchronously finish reporting">
+
+To <dfn>asynchronously finish reporting</dfn> given a reference to a
+[=fencedframetype/fenced frame reporting map=] |reportingMap|:
+1. TODO: [=Finalize a reporting destination=] with |reportingMap|
 
 </div>
 
@@ -999,7 +1025,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
     [=report result=] with |leadingBidInfo|.
   1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, and |reportResultBrowserSignals|.
-  1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
+  1. Return |leadingBidInfo|.
 
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
@@ -1116,7 +1142,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
     [=report result=] with |leadingBidInfo|.
   1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, and |reportResultBrowserSignals|.
-1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
+1. Return |leadingBidInfo|.
 
 </div>
 
