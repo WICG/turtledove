@@ -160,7 +160,7 @@ This is detectable because it can change the set of fields that are read from th
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
   "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
   "{{NotAllowedError}}" {{DOMException}}.
-1. Let |frameOrigin| be the [=relevant settings object=]'s [=environment settings object/origin=].
+1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s [=environment settings object/origin=].
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
@@ -316,14 +316,32 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 
 To <dfn>check interest group permissions</dfn> given an [=origin=]
 |ownerOrigin|, an [=origin=] |frameOrigin|, and a [=boolean=] |isJoin|:
-1. If |ownerOrigin| is [=same origin=] to |frameOrigin|, then return true.
-1. Let |permissionsUrl| be the result of [=building an interest group permissions url=]
-  with |ownerOrigin| and |frameOrigin|.
-1. Let |request| be the result of [=creating a request=] with |permissionsUrl|,
-  "`application/json`", and null.
+1. If |ownerOrigin| is [=same origin=] with |frameOrigin|, then return true.
+1. Let |permissionsUrl| be the result of [=building an interest group permissions url=] with
+  |ownerOrigin| and |frameOrigin|.
+1. Let |request| be a new [=request=] with the following properties:
+  :   [=request/URL=]
+  ::  |permissionsUrl|
+  :   [=request/header list=]
+  ::  «`Accept`: `application/json`»
+  :   [=request/client=]
+  ::  `null`
+  :   [=request/service-workers mode=]
+  ::  "`none`"
+  :   [=request/origin=]
+  ::  |frameOrigin|
+  :   [=request/mode=]
+  ::  "`cors`"
+  :   [=request/referrer=]
+  :: "`no-referrer`"
+  :   [=request/credentials mode=]
+  ::  "`omit`"
+  :   [=request/redirect mode=]
+  :: "`error`"
 1. Let |resource| be null.
-1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
-  [=response=] |response| and |responseBody|:
+1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
+  [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
+  and null, failure, or a [=byte sequence=] |responseBody|:
   1. If |responseBody| is null or failure, set |resource| to failure and return.
   1. Let |headers| be |response|'s [=response/header list=].
   1. Let |mimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
@@ -804,7 +822,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinner| be the result of running [=generate and score bids=] with |component|,
-      |auctionConfig|, and |global|.
+      |auctionConfig|, |global|, and |settings|.
     1. If |compWinner| is failure, return failure.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
@@ -953,7 +971,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
 |generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
-{{unsigned long}}-or-null |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction", or "component-auction", and an [=origin=] |topWindowOrigin|:
+{{unsigned long}}-or-null |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction",
+"top-level-auction", or "component-auction", and an [=origin=] |topWindowOrigin|:
+
 1. Let |renderURLs| be a new [=set=].
 1. Let |adComponentRenderUrls| be a new [=set=].
 1. [=set/Append=] |generatedBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] to |renderURLs|.
@@ -1074,35 +1094,8 @@ To <dfn>update highest scoring other bid</dfn> given a {{double}} |score|, a
 </div>
 
 <div algorithm>
-To <dfn>create a request</dfn> given a [=URL=] |url|, a [=string=] |accept|, and an [=origin=] or
-null |origin|:
-  1. Let |request| be a new [=request=] with the following properties:
-    :   [=request/URL=]
-    ::  |url|
-    :   [=request/header list=]
-    ::  A new [=header list=] containing a [=header=] named "`Accept`" whose value is |accept|
-    :   [=request/client=]
-    ::  `null`
-    :   [=request/window=]
-    ::  "`no-window`" TODO: verify
-    :   [=request/service-workers mode=]
-    ::  "`none`"
-    :   [=request/origin=]
-    ::  If |origin| is null, then [=opaque origin=], otherwise |origin|.
-    :   [=request/referrer=]
-    :: "`no-referrer`"
-    :   [=request/credentials mode=]
-    ::  "`omit`"
-    :   [=request/cache mode=]
-    ::  "`no-store`"
-    :   [=request/redirect mode=]
-    :: "`error`"
-  1. Return |request|.
-</div>
-
-<div algorithm>
-To <dfn>validate fetching response</dfn> given a [=response=] |response| and |responseBody|, and a
-[=string=] |mimeType|:
+To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, failure, or a
+[=byte sequence=]|responseBody|, and a [=string=] |mimeType|:
 
   1. If |responseBody| is null or failure, return false.
   1. If [=header list/getting a structured field value|getting=] "X-Allow-Protected-Audience" from
@@ -1123,12 +1116,27 @@ To <dfn>validate fetching response</dfn> given a [=response=] |response| and |re
 
 <div algorithm>
 To <dfn>fetch script</dfn> given a [=URL=] |url|:
-
-  1. Let |request| be the result of [=creating a request=] with |url|, "`text/javascript`", and
-    null.
+  1. Let |request| be a new [=request=] with the following properties:
+    :   [=request/URL=]
+    ::  |url|
+    :   [=request/header list=]
+    ::  «`Accept`: `text/javascript`»
+    :   [=request/client=]
+    ::  `null`
+    :   [=request/service-workers mode=]
+    ::  "`none`"
+    :   [=request/mode=]
+    ::  "`no-cors`"
+    :   [=request/referrer=]
+    :: "`no-referrer`"
+    :   [=request/credentials mode=]
+    ::  "`omit`"
+    :   [=request/redirect mode=]
+    :: "`error`"
   1. Let |script| be null.
-  1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
-    a [=response=] |response| and |responseBody|:
+  1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
+    [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
+    and null, failure, or a [=byte sequence=] |responseBody|:
     1. If [=validate fetching response=] with |response|, |responseBody| and "`text/javascript`"
       returns false, set |script| to failure and return.
     1. Set |script| to |responseBody|.
@@ -1139,8 +1147,23 @@ To <dfn>fetch script</dfn> given a [=URL=] |url|:
 <div algorithm>
 To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
 
-  1. Let |request| be the result of [=creating a request=] with |url|, "`application/wasm`", and
-    null.
+  1. Let |request| be a new [=request=] with the following properties:
+    :   [=request/URL=]
+    ::  |url|
+    :   [=request/header list=]
+    ::  «`Accept`: `application/wasm`»
+    :   [=request/client=]
+    ::  `null`
+    :   [=request/service-workers mode=]
+    ::  "`none`"
+    :   [=request/mode=]
+    ::  "`no-cors`"
+    :   [=request/referrer=]
+    :: "`no-referrer`"
+    :   [=request/credentials mode=]
+    ::  "`omit`"
+    :   [=request/redirect mode=]
+    :: "`error`"
   1. Let |moduleObject| be null.
   1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
     a [=response=] |response| and |responseBody|:
@@ -1163,13 +1186,29 @@ HTTP response header is a [=structured header=] whose value must be an [=structu
 <div algorithm>
 To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |isBiddingSignal|:
 
-  1. Let |request| be the result of [=creating a request=] with |url|, "`application/json`", and
-    null.
+  1. Let |request| be a new [=request=] with the following properties:
+    :   [=request/URL=]
+    ::  |url|
+    :   [=request/header list=]
+    ::  «`Accept`: `application/json`»
+    :   [=request/client=]
+    ::  `null`
+    :   [=request/service-workers mode=]
+    ::  "`none`"
+    :   [=request/mode=]
+    ::  "`no-cors`"
+    :   [=request/referrer=]
+    :: "`no-referrer`"
+    :   [=request/credentials mode=]
+    ::  "`omit`"
+    :   [=request/redirect mode=]
+    :: "`error`"
   1. Let |signals| be null.
   1. Let |dataVersion| be null.
   1. Let |formatVersion| be null.
-  1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
-    a [=response=] |response| and |responseBody|:
+  1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
+    [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
+    and null, failure, or a [=byte sequence=] |responseBody|:
     1. If [=validate fetching response=] with |response|, |responseBody| and "`application/json`"
       returns false, set |signals| to failure and return.
     1. Let |headers| be |response|'s [=response/header list=].
@@ -1982,11 +2021,27 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
     Note: Implementations can consider loading only a portion of these interest groups
     at a time to avoid issuing too many requests at once.
     1. Let |ig| be a deep copy of |originalInterestGroup|.
-    1. Let |request| be the result of [=creating a request=] with |ig|'s
-      [=interest group/update url=], "`application/json`", and |owner|.
+    1. Let |request| be a new [=request=] with the following properties:
+      :   [=request/URL=]
+      ::  |ig|'s [=interest group/update url=]
+      :   [=request/header list=]
+      ::  «`Accept`: `application/json`»
+      :   [=request/client=]
+      ::  `null`
+      :   [=request/service-workers mode=]
+      ::  "`none`"
+      :   [=request/mode=]
+      ::  "`no-cors`"
+      :   [=request/referrer=]
+      :: "`no-referrer`"
+      :   [=request/credentials mode=]
+      ::  "`omit`"
+      :   [=request/redirect mode=]
+      :: "`error`"
     1. Let |update| be null.
-    1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps
-      given a [=response=] |response| and |responseBody|:
+    1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
+      [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
+      and null, failure, or a [=byte sequence=] |responseBody|:
       1. If [=validate fetching response=] with |response|, |responseBody| and "`application/json`"
         returns false, set |update| to failure and return.
       1. Set |update| to |responseBody|.
