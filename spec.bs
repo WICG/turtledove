@@ -31,13 +31,7 @@ spec: html; urlPrefix: https://html.spec.whatwg.org/C
 spec: ECMASCRIPT; urlPrefix: https://tc39.es/ecma262/
   type: dfn
     text: abrupt completion; url: sec-completion-record-specification-type
-    text: Object; url: sec-object-type
-    text: CreateDataProperty; url: sec-createdataproperty
-    text: Get; url: sec-get-o-p
-    text: HasProperty; url: sec-hasproperty
-    text: IsArray; url: sec-runtime-semantics-scriptevaluation
     text: Number; url: sec-ecmascript-language-types-number-type
-    text: ordinary object; url: ordinary-object
     text: ParseScript; url: sec-parse-script
     text: ScriptEvaluation; url: sec-runtime-semantics-scriptevaluation
     text: throw completion; url: sec-completion-record-specification-type
@@ -788,10 +782,12 @@ whose [=map/values=] are {{any}} |browserSignals|, a [=string=] |perBuyerSignals
       [=interest group/bidding wasm helper url=].
     1. If |wasmModuleObject| is not failure:
       1. [=map/Set=] |browserSignals|["`wasmHelper`"] to |wasmModuleObject|.
-  1. Let |trustedBiddingSignals| be a new [=ordinary object=].
+  1. Let |trustedBiddingSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and
+    whose [=map/values=] are {{any}}.
   1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
-    1. If [=HasProperty=](|allTrustedBiddingSignals|, |key|), then 
-      [=CreateDataProperty=](|trustedBiddingSignals|, [|key|], [=Get=](|allTrustedBiddingSignals|, [|key|]).
+    1. If |allTrustedBiddingSignals| is an [=ordered map=] and |allTrustedBiddingSignals|[|key|]
+      [=map/exists=], then [=map/set=] |trustedBiddingSignals|[|key|] to
+      |allTrustedBiddingSignals|[|key|].
   1. Return be the result of [=evaluating a bidding script=] with
      |biddingScript|, |ig|, |igGenerateBid|, |auctionSignals|, |perBuyerSignals|,
      |trustedBiddingSignals|, |browserSignals|, and |perBuyerTimeout|.
@@ -854,10 +850,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   [=auction config/per buyer signals=], or [=auction config/per buyer timeouts=] is failure, return
   failure.
 1. Let |browserSignals| be a [=record=]<{{DOMString}}, {{any}}>.
-1. Let |topLevelHost| be [=this=]'s [=relevant settings object=]'s
-  [=environment/top-level origin=]'s [=origin/host=].
-1. If |topLevelHost| is an integer:
-  1. Let |topLevelHost| be the result of [=serializing an integer=] given |topLevelHost|.
+1. Let |topLevelHost| be the result of running the <a spec=url>host serializer</a> on [=this=]'s
+  [=relevant settings object=]'s [=environment/top-level origin=]'s [=origin/host=].
 1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=string=] |topLevelHost|.
 1. [=map/Set=] |browserSignals|["seller"] to the [=serialization of an origin|serialization=] of
   |auctionConfig|'s [=auction config/seller=].
@@ -1011,7 +1005,7 @@ To <dfn>serialize a URL</dfn> given a [=URL=]-or-null |url|:
 To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 
   1. If |ads| is null, then return {{undefined}}.
-  1. Let |adsIDL| be a new <code>{{sequence}}&lt;{{AuctionAd}}></code>.
+  1. Let |adsIDL| be a new <code>[=sequence=]<{{AuctionAd}}></code>.
   1. [=list/For each] |ad| of |ads|:
     1. Let |adIDL| be a new {{AuctionAd}}.
     1. [=map/Set=] |adIDL|["{{AuctionAd/renderURL}}"] to the [=URL serializer|serialization=] of
@@ -1019,8 +1013,6 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
     1. If |ad|'s [=interest group ad/metadata=] is not null, then:
       1. [=map/Set=] |adIDL|["{{AuctionAd/metadata}}"] to the result of
         [=parsing a JSON string to a JavaScript value=] given |ad|'s [=interest group ad/metadata=].
-    1. Otherwise,
-      1. [=map/Set=] |adIDL|["{{AuctionAd/metadata}}"] to {{undefined}}
     1. [=list/Append=] |adIDL| to |adsIDL|.
   1. Return |adsIDL|.
 </div>
@@ -1258,17 +1250,15 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
     1. If |isBiddingSignal| is true:
       1. Set |formatVersion| to the result of [=header list/getting a structured field value=]
         given [:X-protected-audience-bidding-signals-format-version:] and "`item`" from |headers|.
-    1. Set |signals| to the result of [=parsing JSON bytes to a JavaScript value=] |responseBody|.
+    1. Set |signals| to the result of [=parsing JSON bytes to an Infra value=] |responseBody|.
   1. Wait for |signals| to be set.
-  1. Return « null, null » if any of the following conditions hold:
-    * |signals| is a parsing exception;
-    * |signals| is not an [=Object=];
-    * [=IsArray=](|signals|);
+  1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return « null,
+    null ».
   1. If |formatVersion| is 2:
-    1. If ![=HasProperty=](|signals|, "`keys`"), return « null, null ».
-    1. Set |signals| to [=Get=](|signals|, "`keys`").
+    1. If |signals|["`keys`"] does not [=map/exist=], return « null, null ».
+    1. Set |signals| to |signals|["`keys`"].
+    1. If |signals| is not an [=ordered map=], return « null, null ».
     1. TODO: handle priority vector.
-    1. If |signals| is not an [=Object=], or [=IsArray=](|signals|), return « null, null ».
   1. Return « |signals|, |dataVersion| ».
 </div>
 
@@ -1391,12 +1381,13 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
   1. If |reportResultOutputJS| is an [=abrupt completion=], [=iteration/continue=].
   1. Let |reportResultOutputIDL| be the result of [=converted to an IDL value|converting=]
      |reportResultOutputJS| to a {{ReportResultOutput}}.
-  1. TODO: Store |reportResultOutputIDL|["{{ReportResultOutput/reportUrl}}"] and
-     |reportResultOutputIDL|["{{ReportResultOutput/reportingBeaconMap}}"] in the
-     {{FencedFrameConfig}} as appropriate.
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
   1. [=map/Remove=] |browserSignals|["`modifiedBid`"].
   1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].
+  1. If an exception was [=exception/thrown=] in the previous step, return « null, |browserSignals| ».
+  1. TODO: Store |reportResultOutputIDL|["{{ReportResultOutput/reportUrl}}"] and
+     |reportResultOutputIDL|["{{ReportResultOutput/reportingBeaconMap}}"] in the
+     {{FencedFrameConfig}} as appropriate.
   1. Return « |reportResultOutputIDL|["{{ReportResultOutput/signalsForWinner}}"], |browserSignals| ».
 </div>
 
@@ -1597,7 +1588,7 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig|, a
   {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null |auctionSignals|, an
-  [=string=]-or-null |perBuyerSignals|, an [=ordinary object=] |trustedBiddingSignalsJS|, a
+  [=string=]-or-null |perBuyerSignals|, an [=ordered map=] |trustedBiddingSignals|, a
   [=record=]<{{DOMString}}, {{any}}> |browserSignals|, and an integer millisecond [=duration=] |timeout|:
 
     1. Let |global| be a new {{InterestGroupBiddingScriptRunnerGlobalScope}}.
@@ -1619,7 +1610,8 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
       given |browserSignals|.
     1. Let |startTime| be the [=current wall time=].
     1. Let |result| be the result of [=evaluating a script=] with |global|, |script|, "`generateBid`",
-      « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignalsJS|, |browserSignalsJS| », and |timeout|.
+      « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignals|, |browserSignalsJS| »,
+      and |timeout|.
     1. Let |duration| be the [=current wall time=] minus |startTime| in milliseconds.
     1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null:
       1. Set |ig|'s [=interest group/priority=] to |global|'s
@@ -1879,7 +1871,6 @@ an [=interest group=] |ig|, a [=boolean=] |isComponentAuction| and a [=boolean=]
     1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponents}}"].
     1. Return failure if any of the following conditions hold:
       * |groupHasAdComponents| is false;
-      * |adComponents| is not a [=sequence=];
       * |adComponents|'s size is greater than 20.
     1. Let |adComponentDescriptors| be a new [=list=] of [=ad descriptors=].
     1. For |component| in |adComponents|:
@@ -2363,10 +2354,10 @@ An auction config is a [=struct=] with the following items:
   must be "<code>https</code>".
 : <dfn>auction signals</dfn>
 :: Null or a [=string=] or a {{Promise}} or failure.
-  Opaque JSON data, passed to both sellers' and buyers' script runners as [=Objects=].
+  Opaque JSON data passed to both sellers' and buyers' [=script runners=].
 : <dfn>seller signals</dfn>
 :: Null or a [=string=] or a {{Promise}} or failure.
-  Opaque JSON data, passed to the seller's script runner as an [=Object=].
+  Opaque JSON data passed to the seller's [=script runner=].
 : <dfn>seller timeout</dfn>
 :: A [=duration=] in milliseconds, initially 50 milliseconds.
   Restricts the runtime of the seller's `scoreAd()` script. If scoring does not complete before
@@ -2374,8 +2365,8 @@ An auction config is a [=struct=] with the following items:
 : <dfn>per buyer signals</dfn>
 :: Null or a {{Promise}} or failure or an [=ordered map=] whose [=map/keys=] are [=origins=] and
   whose [=map/values=] are [=strings=].
-  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data,
-  passed to corresponding buyer's script runner as [=Object=].
+  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
+  passed to corresponding buyer's [=script runner=].
 : <dfn>per buyer timeouts</dfn>
 :: Null or a {{Promise}} or failure or an [=ordered map=] whose [=map/keys=] are [=origins=] and
   whose [=map/values=] are [=durations=] in milliseconds.
