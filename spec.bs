@@ -171,7 +171,7 @@ This is detectable because it can change the set of fields that are read from th
 1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
   "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
   "{{NotAllowedError}}" {{DOMException}}.
-1. Let |frameOrigin| be the [=relevant settings object=]'s [=environment settings object/origin=].
+1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s [=environment settings object/origin=].
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
@@ -329,14 +329,32 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 
 To <dfn>check interest group permissions</dfn> given an [=origin=]
 |ownerOrigin|, an [=origin=] |frameOrigin|, and a [=boolean=] |isJoin|:
-1. If |ownerOrigin| is [=same origin=] to |frameOrigin|, then return true.
-1. Let |permissionsUrl| be the result of [=building an interest group permissions url=]
-  with |ownerOrigin| and |frameOrigin|.
-1. Let |request| be the result of [=creating a request=] with |permissionsUrl|,
-  "`application/json`", and null.
+1. If |ownerOrigin| is [=same origin=] with |frameOrigin|, then return true.
+1. Let |permissionsUrl| be the result of [=building an interest group permissions url=] with
+  |ownerOrigin| and |frameOrigin|.
+1. Let |request| be a new [=request=] with the following properties:
+  :   [=request/URL=]
+  ::  |permissionsUrl|
+  :   [=request/header list=]
+  ::  «`Accept`: `application/json`»
+  :   [=request/client=]
+  ::  `null`
+  :   [=request/service-workers mode=]
+  ::  "`none`"
+  :   [=request/origin=]
+  ::  |frameOrigin|
+  :   [=request/mode=]
+  ::  "`cors`"
+  :   [=request/referrer=]
+  :: "`no-referrer`"
+  :   [=request/credentials mode=]
+  ::  "`omit`"
+  :   [=request/redirect mode=]
+  :: "`error`"
 1. Let |resource| be null.
-1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given a
-  [=response=] |response| and |responseBody|:
+1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
+  [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
+  and null, failure, or a [=byte sequence=] |responseBody|:
   1. If |responseBody| is null or failure, set |resource| to failure and return.
   1. Let |headers| be |response|'s [=response/header list=].
   1. Let |mimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
@@ -514,7 +532,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
         1. [=Increment component ad k-anonymity count=] given |adComponentDescriptor|'s
           [=ad descriptor/url=].
   1. Run [=interest group update=] with |auctionConfig|'s [=auction config/interest group buyers=].
-  1. TODO: Update bidCount and prevWins for interest groups that participated in the auction.
+  1. TODO: Update bidCount and prevWinsMs for interest groups that participated in the auction.
 1. Return |p|.
 
 </div>
@@ -761,17 +779,23 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 To <dfn>generate a bid</dfn> given an [=ordered map=] |allTrustedBiddingSignals|, a 
 [=string=] |auctionSignals|, an [=ordered map=] whose [=map/keys=] are [=strings=] and
 whose [=map/values=] are {{any}} |browserSignals|, a [=string=] |perBuyerSignals|, a
-[=duration=] |perBuyerTimeout| in milliseconds, and an [=interest group=] |ig|:
+[=duration=] |perBuyerTimeout| in milliseconds, an [=interest group=] |ig|, and a [=moment=]
+|auctionStartTime|:
   1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=]
     with |ig|.
   1. [=map/Set=] |browserSignals|["`joinCount`"] to the sum of |ig|'s
      [=interest group/join counts=] for all days within the last 30 days.
   1. [=map/Set=] |browserSignals|["`bidCount`"] to the sum of |ig|'s
      [=interest group/bid counts=] for all days within the last 30 days.
-  1. [=map/Set=] |browserSignals|["`prevWins`"] to a [=list=] containing [=tuples=] of the
-     time and the corresponding winning [=interest group ad=] from |ig|'s
-     [=interest group/previous wins=] field with a date within the last 30 days. The time
-     field is specified in seconds relative to the start of the auction.
+  1. Let |prevWins| be a [=list=] of [=tuples=], with each [=tuple=] consisting of a timeDelta (a 
+    [=duration=] in milliseconds), and adJSON (a [=string=]).
+  1. [=list/For each] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
+    the last 30 days:
+    1. Let |timeDelta| be |auctionStartTime| minus |prevWin|[=previous win/time=].
+    1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
+      otherwise.
+    1. [=list/Append=] (|timeDelta|, |prevWin|'s [=previous win/ad json=]) to |prevWins|.
+  1. [=map/Set=] |browserSignals|["`prevWinsMs`"] to |prevWins|.
   1. If |dataVersion| is not null:
     1. [=map/Set=] |browserSignals|["`dataVersion`"] to |dataVersion|.
   1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
@@ -799,6 +823,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, and an
 [=environment settings object=] |settings|:
 1. [=Assert=] that these steps are running [=in parallel=].
+1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
   [=auction config/decision logic url=].
 1. If |decisionLogicScript| is failure, return null.
@@ -812,7 +837,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinner| be the result of running [=generate and score bids=] with |component|,
-      |auctionConfig|, and |global|.
+      |auctionConfig|, |global|, and |settings|.
     1. If |compWinner| is failure, return failure.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
@@ -910,7 +935,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
         1. Let |generatedBid| be the result of [=generate a bid=] given
           |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
-          |perBuyerSignals|, |perBuyerTimeout|, and |ig|.
+          |perBuyerSignals|, |perBuyerTimeout|, |ig|, and |auctionStartTime|.
         1. If |generatedBid| is failure, [=iteration/continue=].
         1. If [=query generated bid k-anonymity count=] given |generatedBid| returns false:
 
@@ -1021,7 +1046,9 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
 |generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
-{{unsigned long}}-or-null |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction", or "component-auction", and an [=origin=] |topWindowOrigin|:
+{{unsigned long}}-or-null |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction",
+"top-level-auction", or "component-auction", and an [=origin=] |topWindowOrigin|:
+
 1. Let |renderURLs| be a new [=set=].
 1. Let |adComponentRenderUrls| be a new [=set=].
 1. [=set/Append=] |generatedBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] to |renderURLs|.
@@ -1142,35 +1169,8 @@ To <dfn>update highest scoring other bid</dfn> given a {{double}} |score|, a
 </div>
 
 <div algorithm>
-To <dfn>create a request</dfn> given a [=URL=] |url|, a [=string=] |accept|, and an [=origin=] or
-null |origin|:
-  1. Let |request| be a new [=request=] with the following properties:
-    :   [=request/URL=]
-    ::  |url|
-    :   [=request/header list=]
-    ::  A new [=header list=] containing a [=header=] named "`Accept`" whose value is |accept|
-    :   [=request/client=]
-    ::  `null`
-    :   [=request/window=]
-    ::  "`no-window`" TODO: verify
-    :   [=request/service-workers mode=]
-    ::  "`none`"
-    :   [=request/origin=]
-    ::  If |origin| is null, then [=opaque origin=], otherwise |origin|.
-    :   [=request/referrer=]
-    :: "`no-referrer`"
-    :   [=request/credentials mode=]
-    ::  "`omit`"
-    :   [=request/cache mode=]
-    ::  "`no-store`"
-    :   [=request/redirect mode=]
-    :: "`error`"
-  1. Return |request|.
-</div>
-
-<div algorithm>
-To <dfn>validate fetching response</dfn> given a [=response=] |response| and |responseBody|, and a
-[=string=] |mimeType|:
+To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, failure, or a
+[=byte sequence=]|responseBody|, and a [=string=] |mimeType|:
 
   1. If |responseBody| is null or failure, return false.
   1. If [=header list/getting a structured field value|getting=] "X-Allow-Protected-Audience" from
@@ -1191,12 +1191,27 @@ To <dfn>validate fetching response</dfn> given a [=response=] |response| and |re
 
 <div algorithm>
 To <dfn>fetch script</dfn> given a [=URL=] |url|:
-
-  1. Let |request| be the result of [=creating a request=] with |url|, "`text/javascript`", and
-    null.
+  1. Let |request| be a new [=request=] with the following properties:
+    :   [=request/URL=]
+    ::  |url|
+    :   [=request/header list=]
+    ::  «`Accept`: `text/javascript`»
+    :   [=request/client=]
+    ::  `null`
+    :   [=request/service-workers mode=]
+    ::  "`none`"
+    :   [=request/mode=]
+    ::  "`no-cors`"
+    :   [=request/referrer=]
+    :: "`no-referrer`"
+    :   [=request/credentials mode=]
+    ::  "`omit`"
+    :   [=request/redirect mode=]
+    :: "`error`"
   1. Let |script| be null.
-  1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
-    a [=response=] |response| and |responseBody|:
+  1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
+    [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
+    and null, failure, or a [=byte sequence=] |responseBody|:
     1. If [=validate fetching response=] with |response|, |responseBody| and "`text/javascript`"
       returns false, set |script| to failure and return.
     1. Set |script| to |responseBody|.
@@ -1207,8 +1222,23 @@ To <dfn>fetch script</dfn> given a [=URL=] |url|:
 <div algorithm>
 To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
 
-  1. Let |request| be the result of [=creating a request=] with |url|, "`application/wasm`", and
-    null.
+  1. Let |request| be a new [=request=] with the following properties:
+    :   [=request/URL=]
+    ::  |url|
+    :   [=request/header list=]
+    ::  «`Accept`: `application/wasm`»
+    :   [=request/client=]
+    ::  `null`
+    :   [=request/service-workers mode=]
+    ::  "`none`"
+    :   [=request/mode=]
+    ::  "`no-cors`"
+    :   [=request/referrer=]
+    :: "`no-referrer`"
+    :   [=request/credentials mode=]
+    ::  "`omit`"
+    :   [=request/redirect mode=]
+    :: "`error`"
   1. Let |moduleObject| be null.
   1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
     a [=response=] |response| and |responseBody|:
@@ -1231,13 +1261,29 @@ HTTP response header is a [=structured header=] whose value must be an [=structu
 <div algorithm>
 To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |isBiddingSignal|:
 
-  1. Let |request| be the result of [=creating a request=] with |url|, "`application/json`", and
-    null.
+  1. Let |request| be a new [=request=] with the following properties:
+    :   [=request/URL=]
+    ::  |url|
+    :   [=request/header list=]
+    ::  «`Accept`: `application/json`»
+    :   [=request/client=]
+    ::  `null`
+    :   [=request/service-workers mode=]
+    ::  "`none`"
+    :   [=request/mode=]
+    ::  "`no-cors`"
+    :   [=request/referrer=]
+    :: "`no-referrer`"
+    :   [=request/credentials mode=]
+    ::  "`omit`"
+    :   [=request/redirect mode=]
+    :: "`error`"
   1. Let |signals| be null.
   1. Let |dataVersion| be null.
   1. Let |formatVersion| be null.
-  1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
-    a [=response=] |response| and |responseBody|:
+  1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
+    [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
+    and null, failure, or a [=byte sequence=] |responseBody|:
     1. If [=validate fetching response=] with |response|, |responseBody| and "`application/json`"
       returns false, set |signals| to failure and return.
     1. Let |headers| be |response|'s [=response/header list=].
@@ -2065,11 +2111,27 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
     Note: Implementations can consider loading only a portion of these interest groups
     at a time to avoid issuing too many requests at once.
     1. Let |ig| be a deep copy of |originalInterestGroup|.
-    1. Let |request| be the result of [=creating a request=] with |ig|'s
-      [=interest group/update url=], "`application/json`", and |owner|.
+    1. Let |request| be a new [=request=] with the following properties:
+      :   [=request/URL=]
+      ::  |ig|'s [=interest group/update url=]
+      :   [=request/header list=]
+      ::  «`Accept`: `application/json`»
+      :   [=request/client=]
+      ::  `null`
+      :   [=request/service-workers mode=]
+      ::  "`none`"
+      :   [=request/mode=]
+      ::  "`no-cors`"
+      :   [=request/referrer=]
+      :: "`no-referrer`"
+      :   [=request/credentials mode=]
+      ::  "`omit`"
+      :   [=request/redirect mode=]
+      :: "`error`"
     1. Let |update| be null.
-    1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps
-      given a [=response=] |response| and |responseBody|:
+    1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
+      [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
+      and null, failure, or a [=byte sequence=] |responseBody|:
       1. If [=validate fetching response=] with |response|, |responseBody| and "`application/json`"
         returns false, set |update| to failure and return.
       1. Set |update| to |responseBody|.
@@ -2302,9 +2364,7 @@ An interest group is a [=struct=] with the following items:
   is calculated based on local time. The bid count is a count of the number of
   times the bid calculated during {{Navigator/runAdAuction()}} was greater than 0.
 : <dfn>previous wins</dfn>
-:: A [=list=] containing [=tuples=] of the time and the corresponding
-  [=interest group ad=] for each instance that this interest group won an
-  auction.
+:: A [=list=] of [=previous wins=].
 : <dfn>next update after</dfn>
 :: A point in time at which the browser will permit updating this interest group. See
   [interest group updates](#interest-group-updates).
@@ -2440,6 +2500,19 @@ A per buyer bid generator is an [=ordered map=] whose [=map/keys=] are [=URLs=] 
 A per signals url bid generator is an [=ordered map=] whose [=map/keys=] are [=origins=]
 representing [=interest group/joining origins=], and whose [=map/values=] are [=lists=] of
 [=interest groups=].
+
+<h3 dfn-type=dfn>Previous win</h3>
+
+The [=interest group=]'s auction win history, to allow on-device frequency capping.
+
+
+<dl dfn-for="previous win">
+: <dfn>time</dfn>
+:: A [=moment=]. Approximate time the [=interest group=] won an auction.
+: <dfn>ad json</dfn>
+:: A [=string=]. A JSON serialized object corresponding to the ad that won the auction.
+
+</dl>
 
 <h3 dfn-type=dfn>Generated bid</h3>
 
