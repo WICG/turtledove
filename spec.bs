@@ -515,14 +515,15 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. Set |auctionConfig|'s [=auction config/per buyer signals=] to
     |config|["{{AuctionAdConfig/perBuyerSignals}}"].
   1. Increment |auctionConfig|'s [=auction config/pending promise count=].
-  1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/per buyer signals=] with |result|:
-    1. Execute [=validate and convert per buyer signals=] with |auctionConfig| and |result|.
-    1. If the previous step [=exception/throws=] an exception |e|:
-      1. Set |auctionConfig|'s [=auction config/per buyer signals=] to failure.
+  1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps [=upon fulfillment=] of |auctionConfig|'s [=auction config/per buyer signals=] with |result|:
+    1. Set |auctionConfig|'s [=auction config/per buyer signals=] to a new [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
+    1. [=map/For each=] |key| → |value| of |result|:
+      1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is failure, throw a {{TypeError}}.
+      1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=], given |value|.
+      1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to |signalsString|.
+    1. If the previous step did not [=exception/throw=] an exception:
       1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
-      1. [=exception/Throw=] |e|.
-    1. Otherwise, decrement |auctionConfig|'s [=auction config/pending promise count=].
-  1. [=Upon rejection=] of |auctionConfig|'s [=auction config/per buyer signals=]:
+  1. [=Upon rejection=] of |resolvedAndTypeChecked|:
     1. Set |auctionConfig|'s [=auction config/per buyer signals=] to failure.
     1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
 1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] [=map/exists=]:
@@ -2080,19 +2081,6 @@ An auction config is a [=struct=] with the following items:
   [=auction config/seller signals=] whose {{Promise}}s are not yet resolved.
 
 </dl>
-
-<div algorithm="validate and convert per buyer signals">
-
-To <dfn>validate and convert per buyer signals</dfn> given an {{AuctionAdConfig}} |auctionConfig| and a JavaScript value |value|:
-1. If |value| is not a [=record=] mapping from {{USVString}} to {{any}}, throw a {{TypeError}}.
-1. Set |auctionConfig|'s [=auction config/per buyer signals=] to a new [=ordered map=] whose
-  [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
-1. [=map/For each=] |key| → |value| of |value|:
-  1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is failure, throw a {{TypeError}}.
-  1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=], given |value|.
-  1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to |signalsString|.
-
-</div>
 
 <h3 dfn-type=dfn>Per buyer bid generator</h3>
 
