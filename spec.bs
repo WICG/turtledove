@@ -574,13 +574,17 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       |config|["{{AuctionAdConfig/auctionSignals}}"].
     1. Increment |auctionConfig|'s [=auction config/pending promise count=].
     1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/auction signals=] with |result|:
-      1. Set |auctionConfig|'s [=auction config/auction signals=] to the result of
+      1. Let |auctionSignalsJSON| be the result of
         [=serializing a JavaScript value to a JSON string=], given |result|.
-      1. Set |auctionConfig|'s [=auction config/config idl=]{{AuctionAdConfig/auctionSignals}}.
+      1. If no exception was [=exception/thrown=] in the previous step:
+        1. Set |auctionConfig|'s [=auction config/auction signals=] to |auctionSignalsJSON|.
+        1. Set |auctionConfig|'s [=auction config/config idl=]{{AuctionAdConfig/auctionSignals}} to
+          |result|.
       1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
     1. [=Upon rejection=] of |auctionConfig|'s [=auction config/auction signals=]:
       1. Set |auctionConfig|'s [=auction config/auction signals=] to failure.
-      1. Set |auctionConfig|'s [=auction config/config idl=]{{AuctionAdConfig/auctionSignals}}
+      1. Set |auctionConfig|'s [=auction config/config idl=]{{AuctionAdConfig/auctionSignals}} to
+        undefined.
       1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
   1. Otherwise, set |auctionConfig|'s [=auction config/auction signals=] to the result of
     [=serializing a JavaScript value to a JSON string=], given
@@ -777,35 +781,36 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 <div algorithm="generate a bid">
 
 To <dfn>generate a bid</dfn> given an [=ordered map=] |allTrustedBiddingSignals|, a 
-[=string=] |auctionSignals|, an [=ordered map=] whose [=map/keys=] are [=strings=] and
-whose [=map/values=] are {{any}} |browserSignals|, a [=string=] |perBuyerSignals|, a
-[=duration=] |perBuyerTimeout| in milliseconds, an [=interest group=] |ig|, and a [=moment=]
-|auctionStartTime|:
+[=string=] |auctionSignals|, an {{BiddingBrowserSignals}} |browserSignals|, a [=string=]
+|perBuyerSignals|, a [=duration=] |perBuyerTimeout| in milliseconds, an [=interest group=] |ig|, and
+a [=moment=] |auctionStartTime|:
+  1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
+    [=interest group/bidding url=].
+  1. If |biddingScript| is failure, return failure.
   1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=]
     with |ig|.
-  1. [=map/Set=] |browserSignals|["`joinCount`"] to the sum of |ig|'s
+  1. Set |browserSignals|["{{BiddingBrowserSignals/joinCount}}"] to the sum of |ig|'s
      [=interest group/join counts=] for all days within the last 30 days.
-  1. [=map/Set=] |browserSignals|["`bidCount`"] to the sum of |ig|'s
+  1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/bidCount}}"] to the sum of |ig|'s
      [=interest group/bid counts=] for all days within the last 30 days.
-  1. Let |prevWins| be a [=list=] of [=tuples=], with each [=tuple=] consisting of a timeDelta (a 
-    [=duration=] in milliseconds), and adJSON (a [=string=]).
+  1. Let |prevWins| be a new <code>[=sequence=]<{{PreviousWin}}></code>.
   1. [=list/For each] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
     the last 30 days:
     1. Let |timeDelta| be |auctionStartTime| minus |prevWin|[=previous win/time=].
     1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
       otherwise.
-    1. [=list/Append=] (|timeDelta|, |prevWin|'s [=previous win/ad json=]) to |prevWins|.
-  1. [=map/Set=] |browserSignals|["`prevWinsMs`"] to |prevWins|.
+    1. Let |prevWinIDL| be a new {{PreviousWin}}.
+    1. [=map/Set=] |prevWinIDL|["{{PreviousWin/timeDelta}}"] to |timeDelta|.
+    1. [=map/Set=] |prevWinIDL|["{{PreviousWin/adJSON}}"] to |prevWin|'s [=previous win/ad json=].
+    1. [=list/Append=] |prevWinIDL| to |prevWins|.
+  1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/prevWinsMs}}"] to |prevWins|.
   1. If |dataVersion| is not null:
-    1. [=map/Set=] |browserSignals|["`dataVersion`"] to |dataVersion|.
-  1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
-    [=interest group/bidding url=].
-  1. If |biddingScript| is failure, return failure.
+    1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
   1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
     1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
       [=interest group/bidding wasm helper url=].
     1. If |wasmModuleObject| is not failure:
-      1. [=map/Set=] |browserSignals|["`wasmHelper`"] to |wasmModuleObject|.
+      1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/wasmHelper}}"] to |wasmModuleObject|.
   1. Let |trustedBiddingSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and
     whose [=map/values=] are {{any}}.
   1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
@@ -874,15 +879,15 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. If |auctionSignals|, |auctionConfig|'s [=auction config/seller signals=],
   [=auction config/per buyer signals=], or [=auction config/per buyer timeouts=] is failure, return
   failure.
-1. Let |browserSignals| be a [=record=]<{{DOMString}}, {{any}}>.
+1. Let |browserSignals| be a {{BiddingBrowserSignals}}.
 1. Let |topLevelHost| be the result of running the <a spec=url>host serializer</a> on [=this=]'s
   [=relevant settings object=]'s [=environment/top-level origin=]'s [=origin/host=].
-1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=string=] |topLevelHost|.
-1. [=map/Set=] |browserSignals|["seller"] to the [=serialization of an origin|serialization=] of
-  |auctionConfig|'s [=auction config/seller=].
+1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/topWindowHostname}}"] to |topLevelHost|.
+1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/seller}}"] to the [=serialization of an
+  origin|serialization=] of |auctionConfig|'s [=auction config/seller=].
 1. Let |auctionLevel| be "single-level-auction".
 1. If |topLevelAuctionConfig| is not null:
-  1. [=map/Set=] |browserSignals|["topLevelSeller"] to the
+  1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/topLevelSeller}}"]] to the
     [=serialization of an origin|serialization=] of |topLevelAuctionConfig|'s
     [=auction config/seller=].
   1. Set |auctionLevel| to "component-auction".
@@ -1635,7 +1640,7 @@ an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] a
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig|, a
   {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null |auctionSignals|, an
   [=string=]-or-null |perBuyerSignals|, an [=ordered map=] |trustedBiddingSignals|, a
-  [=record=]<{{DOMString}}, {{any}}> |browserSignals|, and an integer millisecond [=duration=] |timeout|:
+  {{BiddingBrowserSignals}} |browserSignals|, and an integer millisecond [=duration=] |timeout|:
 
     1. Let |global| be a new {{InterestGroupBiddingScriptRunnerGlobalScope}}.
     1. Set |global|'s
@@ -2280,6 +2285,26 @@ Issue(WICG/turtledove#522): Move from "`*`" to "`self`".
 
 
 # Structures # {#structures}
+
+<xmp class="idl">
+
+dictionary PreviousWin {
+  required long long timeDelta;
+  required DOMString adJSON;
+};
+
+dictionary BiddingBrowserSignals {
+  required DOMString topWindowHostname;
+  required USVString seller;
+  required double joinCount;
+  required double bidCount;
+
+  USVString topLevelSeller;
+  sequence<PreviousWin> prevWinsMs;
+  object? wasmHelper;
+  long dataVersion;
+};
+</xmp>
 
 <h3 dfn-type=dfn>Interest group</h3>
 
