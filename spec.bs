@@ -460,7 +460,7 @@ dictionary AuctionAdConfig {
   USVString directFromSellerSignals;
   unsigned long long sellerTimeout;
   unsigned short sellerExperimentGroupId;
-  record<USVString, any> perBuyerSignals;
+  Promise<record<USVString, any>> perBuyerSignals;
   record<USVString, unsigned long long> perBuyerTimeouts;
   record<USVString, unsigned short> perBuyerGroupLimits;
   record<USVString, unsigned short> perBuyerExperimentGroupIds;
@@ -601,42 +601,20 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. Set |auctionConfig|'s [=auction config/seller experiment group id=] to
     |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"].
 1. If |config|["{{AuctionAdConfig/perBuyerSignals}}"] [=map/exists=]:
-  1. If |config|["{{AuctionAdConfig/perBuyerSignals}}"] is a {{Promise}}:
-    1. Set |auctionConfig|'s [=auction config/per buyer signals=] to
-      |config|["{{AuctionAdConfig/perBuyerSignals}}"].
-    1. Increment |auctionConfig|'s [=auction config/pending promise count=].
-    1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/per buyer signals=] with |result|:
-      1. Let |pendingException| be null.
-      1. If |result| is not a [=record=] mapping from {{USVString}} to {{any}}, set |pendingException| to
-        a {{TypeError}} and jump to the step labeled
-        <i><a href=#validate-per-buyer-signals-finish>finish</a></i>.
-      1. Set |auctionConfig|'s [=auction config/per buyer signals=] to a new [=ordered map=] whose
-        [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
-      1. [=map/For each=] |key| → |value| of |result|:
-        1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is failure,
-          set |pendingException| to a {{TypeError}} and jump to the step labeled
-          <i><a href=#validate-per-buyer-signals-finish>finish</a></i>.
-        1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=], given
-          |value|. If this [=exception/throws=] an exception |e|, set |pendingException| to |e| and jump
-          to the step labeled <i><a href=#validate-per-buyer-signals-finish>finish</a></i>.
-        1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to
-          |signalsString|.
-      1. <i id=validate-per-buyer-signals-finish>Finish</i>:
-        1. If |pendingException| is not null:
-          1. Set |auctionConfig|'s [=auction config/per buyer signals=] to failure.
-          1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
-          1. [=exception/Throw=] |pendingException|.
-        1. Otherwise, decrement |auctionConfig|'s [=auction config/pending promise count=].
-    1. [=Upon rejection=] of |auctionConfig|'s [=auction config/per buyer signals=]:
-      1. Set |auctionConfig|'s [=auction config/per buyer signals=] to failure.
+  1. Set |auctionConfig|'s [=auction config/per buyer signals=] to
+    |config|["{{AuctionAdConfig/perBuyerSignals}}"].
+  1. Increment |auctionConfig|'s [=auction config/pending promise count=].
+  1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps [=upon fulfillment=] of |auctionConfig|'s [=auction config/per buyer signals=] with |result|:
+    1. Set |auctionConfig|'s [=auction config/per buyer signals=] to a new [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
+    1. [=map/For each=] |key| → |value| of |result|:
+      1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is failure, throw a {{TypeError}}.
+      1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=], given |value|.
+      1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to |signalsString|.
+    1. If the previous steps did not [=exception/throw=] an exception:
       1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
-  1. [=map/For each=] |key| → |value| of |config|["{{AuctionAdConfig/perBuyerSignals}}"]:
-    1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is failure,
-      [=exception/throw=] a {{TypeError}}.
-    1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=], given
-      |value|.
-    1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to
-      |signalsString|.
+  1. [=Upon rejection=] of |resolvedAndTypeChecked|:
+    1. Set |auctionConfig|'s [=auction config/per buyer signals=] to failure.
+    1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
 1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] [=map/exists=]:
   1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] is a {{Promise}}:
     1. Set |auctionConfig|'s [=auction config/per buyer timeouts=] to
