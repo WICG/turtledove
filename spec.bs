@@ -566,18 +566,19 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     1. Set |auctionConfig|'s [=auction config/auction signals=] to
       |config|["{{AuctionAdConfig/auctionSignals}}"].
     1. Increment |auctionConfig|'s [=auction config/pending promise count=].
-    1. [=Upon fulfillment=] of |auctionConfig|'s [=auction config/auction signals=] with |result|:
+    1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps
+      [=upon fulfillment=] of |auctionConfig|'s [=auction config/auction signals=] with |result|:    
       1. Let |auctionSignalsJSON| be the result of
         [=serializing a JavaScript value to a JSON string=], given |result|.
       1. If no exception was [=exception/thrown=] in the previous step:
         1. Set |auctionConfig|'s [=auction config/auction signals=] to |auctionSignalsJSON|.
-        1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"] to
-          |result|.
-      1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
-    1. [=Upon rejection=] of |auctionConfig|'s [=auction config/auction signals=]:
+        1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"]
+          to |result|.
+        1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
+    1. [=Upon rejection=] of |resolvedAndTypeChecked|:
       1. Set |auctionConfig|'s [=auction config/auction signals=] to failure.
-      1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"] to
-        undefined.
+      1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"]
+        to undefined.
       1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
   1. Otherwise, set |auctionConfig|'s [=auction config/auction signals=] to the result of
     [=serializing a JavaScript value to a JSON string=], given
@@ -794,8 +795,6 @@ a [=moment=] |auctionStartTime|:
     1. [=map/Set=] |prevWinIDL|["{{PreviousWin/adJSON}}"] to |prevWin|'s [=previous win/ad json=].
     1. [=list/Append=] |prevWinIDL| to |prevWins|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/prevWinsMs}}"] to |prevWins|.
-  1. If |dataVersion| is not null:
-    1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
   1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
     [=interest group/bidding url=].
   1. If |biddingScript| is failure, return failure.
@@ -928,6 +927,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|.
     1. Let « |allTrustedBiddingSignals|, |dataVersion| » be the result of [=fetching trusted signals=]
       with |biddingSignalsUrl| and true.
+    1. If |dataVersion| is not null:
+      1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
@@ -1423,10 +1424,10 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
     [=auction config/decision logic url=].
   1. Let |reportResultOutputJS| be the result of [=evaluating a reporting script=] with
      |sellerReportingScript|, "`reportResult`", and « |config|, |browserSignals|».
-  1. If |reportResultOutputJS| is an [=ECMAScript/abrupt completion=], [=iteration/continue=].
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
   1. [=map/Remove=] |browserSignals|["`modifiedBid`"].
   1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].
+  1. If |reportResultOutputJS| is an [=ECMAScript/abrupt completion=], return « null, |browserSignals| ».
   1. Let |reportResultOutputIDL| be the result of [=converted to an IDL value|converting=]
      |reportResultOutputJS| to a {{ReportResultOutput}}.
   1. If an exception was [=exception/thrown=] in the previous step, return « null, |browserSignals| ».
@@ -2291,13 +2292,13 @@ dictionary PreviousWin {
 dictionary BiddingBrowserSignals {
   required DOMString topWindowHostname;
   required USVString seller;
-  required double joinCount;
-  required double bidCount;
+  required long joinCount;
+  required long bidCount;
 
   USVString topLevelSeller;
   sequence<PreviousWin> prevWinsMs;
-  object? wasmHelper;
-  long dataVersion;
+  object wasmHelper;
+  unsigned long dataVersion;
 };
 </xmp>
 
