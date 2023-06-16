@@ -461,7 +461,7 @@ dictionary AuctionAdConfig {
   required USVString decisionLogicURL;
   USVString trustedScoringSignalsURL;
   sequence<USVString> interestGroupBuyers;
-  any auctionSignals;
+  Promise<any> auctionSignals;
   any sellerSignals;
   USVString directFromSellerSignals;
   unsigned long long sellerTimeout;
@@ -562,27 +562,23 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     1. [=list/Append=] |buyer| to |buyers|.
   1. Set |auctionConfig|'s [=auction config/interest group buyers=] to |buyers|.
 1. If |config|["{{AuctionAdConfig/auctionSignals}}"] [=map/exists=]:
-  1. If |config|["{{AuctionAdConfig/auctionSignals}}"] is a {{Promise}}:
-    1. Set |auctionConfig|'s [=auction config/auction signals=] to
-      |config|["{{AuctionAdConfig/auctionSignals}}"].
-    1. Increment |auctionConfig|'s [=auction config/pending promise count=].
-    1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps
-      [=upon fulfillment=] of |auctionConfig|'s [=auction config/auction signals=] with |result|:    
-      1. Let |auctionSignalsJSON| be the result of
-        [=serializing a JavaScript value to a JSON string=], given |result|.
-      1. If no exception was [=exception/thrown=] in the previous step:
-        1. Set |auctionConfig|'s [=auction config/auction signals=] to |auctionSignalsJSON|.
-        1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"]
-          to |result|.
-        1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
-    1. [=Upon rejection=] of |resolvedAndTypeChecked|:
-      1. Set |auctionConfig|'s [=auction config/auction signals=] to failure.
-      1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"]
-        to undefined.
-      1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
-  1. Otherwise, set |auctionConfig|'s [=auction config/auction signals=] to the result of
-    [=serializing a JavaScript value to a JSON string=], given
+  1. Set |auctionConfig|'s [=auction config/auction signals=] to
     |config|["{{AuctionAdConfig/auctionSignals}}"].
+  1. Increment |auctionConfig|'s [=auction config/pending promise count=].
+  1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps
+    [=upon fulfillment=] of |auctionConfig|'s [=auction config/auction signals=] with |result|:    
+    1. Let |auctionSignalsJSON| be the result of
+      [=serializing a JavaScript value to a JSON string=], given |result|.
+    1. If no exception was [=exception/thrown=] in the previous step:
+      1. Set |auctionConfig|'s [=auction config/auction signals=] to |auctionSignalsJSON|.
+      1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"]
+        to |result|.
+      1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
+  1. [=Upon rejection=] of |resolvedAndTypeChecked|:
+    1. Set |auctionConfig|'s [=auction config/auction signals=] to failure.
+    1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"]
+      to undefined.
+    1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
 1. If |config|["{{AuctionAdConfig/sellerSignals}}"] [=map/exists=]:
   1. If |config|["{{AuctionAdConfig/sellerSignals}}"] is a {{Promise}}:
     1. Set |auctionConfig|'s [=auction config/seller signals=] to
