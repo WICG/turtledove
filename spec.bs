@@ -941,7 +941,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               [=interest group/ad components=].
           1. Set |generatedBid| to the result of [=generate a bid=] given
             |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
-            |perBuyerSignals|, |perBuyerTimeout|, |expectedCurrency|, |ig|.
+            |perBuyerSignals|, |perBuyerTimeout|, |expectedCurrency|, and |ig|.
+
           1. Set |ig|'s [=interest group/ads=] to |originalAds|.
           1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
           1. If |generatedBid| is failure, [=iteration/continue=].
@@ -1009,7 +1010,8 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. Let |owner| be |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=].
 1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are {{any}}.
-1. [=map/Set=] |browserSignals|["`bidCurrency`"] to the result of [=serializing a currency tag=] applied to |generatedBid|'s [=generated bid/bid=]'s [=bid with currency/currency=].
+1. [=map/Set=] |browserSignals|["`bidCurrency`"] to the result of [=serializing a currency tag=] with |generatedBid|'s [=generated bid/bid=]'s [=bid with currency/currency=].
+
 1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to |topWindowOrigin|'s [=origin/host=].
 1. [=map/Set=] |browserSignals|["`interestGroupOwner`"] to |owner|.
 1. [=map/Set=] |browserSignals|["`renderURL`"] to |generatedBid|'s [=generated bid/ad descriptor=]'s
@@ -1348,7 +1350,8 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo| and [=
   1. [=map/Set=] |browserSignals|["`desirability`"] to |leadingBidInfo|'s
     [=leading bid info/top score=].
   1. [=map/Set=] |browserSignals|["`bid`"] to |winner|'s [=generated bid/bid=]'s [=bid with currency/value=] (TODO: This gets rounded).
-  1. [=map/Set=] |browserSignals|["`bidCurrency`"] to the result of [=serializing a currency tag=] applied to |bidCurrency|.
+  1. [=map/Set=] |browserSignals|["`bidCurrency`"] to the result of [=serializing a currency tag=] with |bidCurrency|.
+
   1. If |sellerCurrency| is null:
     1. [=map/Set=] |browserSignals|["`highestScoringOtherBid`"] to |leadingBidInfo|'s [=leading bid info/highest scoring other bid=]'s [=generated bid/bid=]'s [=bid with currency/value=] (or 0 if encountered a null).
     1. [=map/Set=] |browserSignals|["`highestScoringOtherBidCurrency`"] to "`???`".
@@ -2359,7 +2362,8 @@ A currency tag is a [=string=] containing exactly 3 upper-case ASCII letters, or
 </div>
 
 <div algorithm>
-  To <dfn lt="check a currency tag">check a currency tag</dfn> given [=currency tags=] |expected|,|actual|:
+  To <dfn lt="check a currency tag">check a currency tag</dfn> given the [=currency tags=] |expected| and |actual|:
+
   1. If |expected| is null, return true.
   1. If |actual| is null, return true.
   1. If |actual| is equal to |expected|, return true.
@@ -2466,11 +2470,14 @@ An auction config is a [=struct=] with the following items:
 :: A [=boolean=] or a {{Promise}}, initially false.
   Whether the ad should be returned as a {{FencedFrameConfig}}, or otherwise as a [=urn uuid=].
 : <dfn>seller currency</dfn>
-:: A [=currency tag=]. Specifies the currency bids returned by scoreAd() are expected to use, and which reporting for this auction will agree on.
+:: A [=currency tag=]. Specifies the currency bids returned by `scoreAd()` are expected to use, and which reporting for this auction will agree on.
+
 : <dfn>per buyer currencies</dfn>
-:: An [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=currency tags=]. Specifies the currency bids returned by generateBid() or scoreAd() in component auctions are expected to use.
+:: An [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=currency tags=]. Specifies the currency bids returned by `generateBid()` or `scoreAd()` in component auctions are expected to use.
+
 : <dfn>all buyers currency</dfn>
-:: A [=currency tag=]. Specifies the currency bids returned by generateBid() or scoreAd() in component auctions are expected to use if [=auction config/per buyer priority signals=] does not specify a particular value.
+:: A [=currency tag=]. Specifies the currency bids returned by `generateBid()` or `scoreAd()` in component auctions are expected to use if [=auction config/per buyer priority signals=] does not specify a particular value.
+
 
 </dl>
 
