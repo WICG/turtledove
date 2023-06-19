@@ -1648,26 +1648,6 @@ of the following global objects:
  * {{InterestGroupScoringScriptRunnerGlobalScope}}
  * {{InterestGroupReportingScriptRunnerGlobalScope}}
 
-Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
-<dfn for=InterestGroupBiddingScriptRunnerGlobalScope>bid</dfn>, which is a [=generated bid=], a
-<dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority</dfn>, which is a {{double}} or null,
-a <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>priority signals</dfn>, which is an
-[=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}}, an
-<dfn for=InterestGroupBiddingScriptRunnerGlobalScope>interest group</dfn>, which is an
-[=interest group=],
-an <dfn for=InterestGroupBiddingScriptRunnerGlobalScope>expected currency</dfn>, which is a [=currency tag=], an
-<dfn for=InterestGroupBiddingScriptRunnerGlobalScope>is component auction</dfn>, which is a
-[=boolean=], and a
-<dfn for=InterestGroupBiddingScriptRunnerGlobalScope>group has ad components</dfn>, which is a
-[=boolean=].
-
-Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
-<dfn for=InterestGroupReportingScriptRunnerGlobalScope>report url</dfn>, which is null or a [=URL=]
-(initially null), and a
-<dfn for=InterestGroupReportingScriptRunnerGlobalScope>reporting beacon map</dfn>, which is null or
-an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are [=URLs=]
-(initially null).
-
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig|, a
   [=currency tag=] |expectedCurrency|, a {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null
@@ -1865,7 +1845,11 @@ specification are those that explicitly list the global names provided here.
 interface InterestGroupScriptRunnerGlobalScope {
 };
 
+</pre>
 
+### InterestGroupBiddingScriptRunnerGlobalScope ### {#bidding-global-scope}
+
+<pre class="idl">
 [Exposed=InterestGroupBiddingScriptRunnerGlobalScope,
  Global=(InterestGroupScriptRunnerGlobalScope,
          InterestGroupBiddingScriptRunnerGlobalScope)]
@@ -1875,22 +1859,6 @@ interface InterestGroupBiddingScriptRunnerGlobalScope
   boolean setBid(GenerateBidOutput generateBidOutput);
   undefined setPriority(double priority);
   undefined setPrioritySignalsOverride(DOMString key, double priority);
-};
-
-[Exposed=InterestGroupScoringScriptRunnerGlobalScope,
- Global=(InterestGroupScriptRunnerGlobalScope,
-         InterestGroupScoringScriptRunnerGlobalScope)]
-interface InterestGroupScoringScriptRunnerGlobalScope
-        : InterestGroupScriptRunnerGlobalScope {
-};
-
-[Exposed=InterestGroupReportingScriptRunnerGlobalScope,
- Global=(InterestGroupScriptRunnerGlobalScope,
-         InterestGroupReportingScriptRunnerGlobalScope)]
-interface InterestGroupReportingScriptRunnerGlobalScope
-        : InterestGroupScriptRunnerGlobalScope {
-  undefined sendReportTo(DOMString url);
-  undefined registerAdBeacon(record&lt;DOMString, USVString&gt; map);
 };
 
 dictionary AdRender {
@@ -1910,12 +1878,26 @@ dictionary GenerateBidOutput {
   boolean allowComponentAuction = false;
 };
 
-dictionary ReportResultOutput {
-  DOMString signalsForWinner;
-  USVString reportUrl;
-  any reportingBeaconMap;
-};
 </pre>
+
+Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
+<dl dfn-for="InterestGroupBiddingScriptRunnerGlobalScope">
+: <dfn>bid</dfn>
+:: A [=generated bid=]
+: <dfn>priority</dfn>
+:: Null or a {{double}}
+: <dfn>priority signals</dfn>
+:: An [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}}
+: <dfn>interest group</dfn>
+:: An [=interest group=]
+: <dfn>expected currency</dfn>
+:: A [=currency tag=]
+: <dfn>is component auction</dfn>
+:: A [=boolean=]
+: <dfn>group has ad components</dfn>
+:: A [=boolean=]
+
+</dl>
 
 <div algorithm>
   The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid()</dfn> method steps are:
@@ -2087,6 +2069,48 @@ an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|, a [=boolean=]
   1. [=map/Set=] [=this=]'s [=relevant global object=]'s
     [=InterestGroupBiddingScriptRunnerGlobalScope/priority signals=][|key|] to |priority|.
 </div>
+
+### InterestGroupScoringScriptRunnerGlobalScope ### {#scoring-global-scope}
+
+<pre class="idl">
+[Exposed=InterestGroupScoringScriptRunnerGlobalScope,
+ Global=(InterestGroupScriptRunnerGlobalScope,
+         InterestGroupScoringScriptRunnerGlobalScope)]
+interface InterestGroupScoringScriptRunnerGlobalScope
+        : InterestGroupScriptRunnerGlobalScope {
+};
+
+</pre>
+
+### InterestGroupReportingScriptRunnerGlobalScope ### {#reporting-global-scope}
+
+<pre class="idl">
+[Exposed=InterestGroupReportingScriptRunnerGlobalScope,
+ Global=(InterestGroupScriptRunnerGlobalScope,
+         InterestGroupReportingScriptRunnerGlobalScope)]
+interface InterestGroupReportingScriptRunnerGlobalScope
+        : InterestGroupScriptRunnerGlobalScope {
+  undefined sendReportTo(DOMString url);
+  undefined registerAdBeacon(record&lt;DOMString, USVString&gt; map);
+};
+
+dictionary ReportResultOutput {
+  DOMString signalsForWinner;
+  USVString reportUrl;
+  any reportingBeaconMap;
+};
+
+</pre>
+
+Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
+<dl dfn-for="InterestGroupReportingScriptRunnerGlobalScope">
+: <dfn>report url</dfn>
+:: Null or a [=URL=]. Defaulting to null.
+: <dfn>reporting beacon map</dfn>
+:: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+  [=URLs=]. Defaulting to null.
+
+</dl>
 
 <div algorithm>
   The <dfn method for="InterestGroupReportingScriptRunnerGlobalScope">sendReportTo(|url|)</dfn>
@@ -2350,11 +2374,11 @@ dictionary BiddingBrowserSignals {
 
 <h3 dfn-type=dfn>Interest group</h3>
 
-An interest group is a [=struct=] with the following items:
+An interest group is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="interest group">
 : <dfn>expiry</dfn>
-:: A point in time at which the browser will forget about this interest group.
+:: A [=moment=] at which the browser will forget about this interest group.
 : <dfn>owner</dfn>
 :: An [=origin=]. Frames that join interest groups owned by [=interest group/owner=] must either be
   served from [=interest group/owner=], or another origin delegated by [=interest group/owner=] (See
@@ -2433,14 +2457,14 @@ An interest group is a [=struct=] with the following items:
 : <dfn>previous wins</dfn>
 :: A [=list=] of [=previous wins=].
 : <dfn>next update after</dfn>
-:: A point in time at which the browser will permit updating this interest group. See
+:: A [=moment=] at which the browser will permit updating this interest group. See
   [interest group updates](#interest-group-updates).
 
 </dl>
 
 <h3 dfn-type=dfn>Interest group ad</h3>
 
-An interest group ad is a [=struct=] with the following items:
+An interest group ad is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="interest group ad">
 : <dfn>render url</dfn>
@@ -2503,7 +2527,7 @@ An auction config is a [=struct=] with the following items:
     [=same origin=] with [=auction config/seller=].
   </p>
 : <dfn>interest group buyers</dfn>
-:: Null or a [=list=] of [=origin=].
+:: Null or a [=list=] of [=origins=].
   Owners of interest groups allowed to participate in the auction. Each [=origin's=] [=origin/scheme=]
   must be "<code>https</code>".
 : <dfn>auction signals</dfn>
