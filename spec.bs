@@ -474,17 +474,17 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       [=auction config/interest group buyers=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|, null,
-     |global|, and |settings|.
-  1. If |winner| is failure:
+  1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
+     null, |global|, and |settings|.
+  1. If |winnerInfo| is failure:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=reject=]
       |p| with a "{{TypeError}}".
-  1. If |winner| is null:
+  1. If |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
       with null.
   1. Otherwise:
     1. Let |fencedFrameConfig| be the result of [=filling in a pending fenced frame config=] with
-       |pendingConfig|, |auctionConfig|, and |winner|.
+       |pendingConfig|, |auctionConfig|, and |winnerInfo|.
     1. [=fenced frame config mapping/Finalize a pending config=] on |configMapping| with |urn| and
        |fencedFrameConfig|.
     1. Wait until |auctionConfig|'s [=auction config/resolve to config=] is a boolean.
@@ -581,7 +581,8 @@ To <dfn>construct a pending fenced frame config</dfn> given an [=auction config=
 <div algorithm="fill in a pending fenced frame config">
 
 To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame config=]
-|pendingConfig|, [=auction config=] |auctionConfig|, and [=generated bid=] |winningBid|:
+|pendingConfig|, [=auction config=] |auctionConfig|, and [=leading bid info=] |winningBidInfo|:
+1. Let |winningBid| be |winningBidInfo|'s [=leading bid info/leading bid=].
 1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
    |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
 1. Let |adSize| be |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/size=].
@@ -635,7 +636,8 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 <div algorithm="asynchronously finish reporting">
 
 To <dfn>asynchronously finish reporting</dfn> given a reference to a
-[=fencedframetype/fenced frame reporting map=] |reportingMap|:
+[=fencedframetype/fenced frame reporting map=] |reportingMap| and [=leading bid info=]
+|leadingBidInfo|:
 1. TODO: [=Finalize a reporting destination=] with |reportingMap|
 
 </div>
@@ -1515,7 +1517,12 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|:
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap| » be the result of [=evaluating a
      reporting script=] with |sellerReportingScript|, "`reportResult`", and « |config|,
      |browserSignals|».
-  1. TODO: Store |reportUrl| and |reportingBeaconMap| in the {{FencedFrameConfig}} as appropriate.
+  1. Let |reportingResult| be a [=reporting result=] where [=reporting result/report url=] is
+     |reportUrl| and [=reporting result/reporting beacon map=] is |reportingBeaconMap|.
+  1. If TODO, set |leadingBidInfo|'s [=leading bid info/seller reporting result=] to
+     |reportingResult|.
+  1. Otherwise, set |leadingBidInfo|'s [=leading bid info/component seller reporting result=] to
+     |reportingResult|.
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
   1. [=map/Remove=] |browserSignals|["`modifiedBid`"].
   1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].  
@@ -1560,7 +1567,9 @@ To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=stri
      reporting script=] with |buyerReportingScript|, "`reportWin`", and « |leadingBidInfo|'s
      [=leading bid info/auction config=]'s [=auction config/auction signals=],
      |perBuyerSignalsForBuyer|, |sellerSignals|, |browserSignals| ».
-  1. TODO: Store |resultUrl| and |reportingBeaconMap| in the {{FencedFrameConfig}} as appropriate.
+  1. Set |leadingBidInfo|'s [=leading bid info/buyer reporting result=] to a [=reporting result=],
+     where [=reporting result/report url=] is |resultUrl| and
+     [=reporting result/reporting beacon map=] is |reportingBeaconMap|.
 </div>
 
 # K-anonymity # {#k-anonymity}
@@ -2711,7 +2720,24 @@ Information of the auction's leading bid so far when ranking scored bids.
   Data-Version value from the trusted scoring signals server's response. Will only be not null if
   the Data-Version header was provided in the response headers from the trusted scoring signals
   server.
+: <dfn>buyer reporting result</dfn>
+:: Null or a [=reporting result=], initially null.
+: <dfn>seller reporting result</dfn>
+:: Null or a [=reporting result=], initially null.
+: <dfn>component seller reporting result</dfn>
+:: Null or a [=reporting result=], initially null.
 
+</dl>
+
+A <dfn>reporting result</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="reporting result">
+  : <dfn>report url</dfn>
+  :: Null or a [=url=], initially null.
+
+  : <dfn>reporting beacon map</dfn>
+  :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+     [=URLs=], initially null.
 </dl>
 
 # Privacy Considerations # {#privacy-considerations}
