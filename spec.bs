@@ -1185,7 +1185,7 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 <div algorithm>
 To <dfn>convert to a string sequence</dfn> given a [=list=]-or-null |adComponents|:
 
-  1. If |adComponents| is null, then return {{undefined}}.
+  1. If |adComponents| is null, then return {}.
   1. Let |result| be a new <code>[=sequence=]<{{USVString}}></code>.
   1. [=list/For each=] |component| of |adComponents|:
     1. [=list/Append=] [=URL serializer|serialized=] |component|'s [=ad descriptor/url=] to |result|.
@@ -1752,23 +1752,39 @@ execution environment. In particular, they:
 </div>
 
 <div algorithm>
-  To <dfn>create a new realm</dfn> with a [=realm/global object=] |global| and a [=string=] |script|,
-  run these steps:
+  To <dfn>create a new customized realm</dfn> with a global type |globalType|, run these steps:
 
     1. [=Assert=] that these steps are running [=in parallel=].
 
-    1. Let |agent| be the result of [=obtaining a script runner agent=] given null, true, and
-       false.
+    1. Let |agent| be the result of [=obtaining a script runner agent=] given null, true, and false.
+      Run the rest of these steps in |agent|.
 
-       Issue: This exclusively creates a new [=ECMAScript/agent cluster=] for the given |script| to
-       run in, but we should make this work with [=interest group/execution mode=] somehow.
+       Issue: This exclusively creates a new [=ECMAScript/agent cluster=] for a given script to run
+       in, but we should make this work with [=interest group/execution mode=] somehow.
 
     1. Let |realmExecutionContext| be the result of [=creating a new realm=] given |agent| and the
        following customizations:
 
-        * For the global object, use |global|.
+        * For the global object, create a new object of type |globalType|.
 
-    1. Return |realmExecutionContext|'s Realm component.
+    1. Let |realm| be |realmExecutionContext|'s Realm component.
+
+    1. Let |global| be |realm|'s [=realm/global object=], and run these steps:
+
+      1. Perform !|global|.\[[Delete]]("`Date`").
+
+      1. If !|global|.\[[HasProperty]]("`Temporal`") is true, then perform
+         !|global|.\[[Delete]]("`Temporal`").
+
+      Advisement: This is not the best way to perform such API neutering (see <a
+      href=https://github.com/tc39/ecma262/issues/1357#issuecomment-817560121>tc39/ecma262#1357</a>),
+      but at the moment it's the way that host environments do this.
+
+      Note: Removing time-referencing APIs from the |global| object is imperative for privacy, as a
+      script might otherwise be able to more easily exfiltrate data by using more accurate time
+      measurements.
+
+    1. Return |realm|.
 </div>
 
 ## Script evaluation ## {#script-evaluation}
@@ -1786,8 +1802,9 @@ of the following global objects:
   |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=] |trustedBiddingSignals|, a
   {{BiddingBrowserSignals}} |browserSignals|, and an integer millisecond [=duration=] |timeout|:
 
-    1. Let |global| be a new {{InterestGroupBiddingScriptRunnerGlobalScope}}.
-    1. Let |realm| be the result of [=creating a new realm=] given |global| and |script|.
+    1. Let |realm| be the result of [=creating a new customized realm=] given
+      {{InterestGroupBiddingScriptRunnerGlobalScope}}.
+    1. Let |global| be |realm|'s [=realm/global object=].
     1. Set |global|'s
       [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=] to true if |ig|'s
       [=interest group/ad components=] is not null, or false otherwise.
@@ -1845,8 +1862,8 @@ of the following global objects:
   |trustedScoringSignals|, a {{ScoringBrowserSignals}} |browserSignals|, and an integer millisecond
   [=duration=] |timeout|:
 
-    1. Let |global| be a new {{InterestGroupScoringScriptRunnerGlobalScope}}.
-    1. Let |realm| be the result of [=creating a new realm=] given |global| and |script|.
+    1. Let |realm| be the result of [=creating a new customized realm=] given
+      {{InterestGroupScoringScriptRunnerGlobalScope}}.
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
     1. TODO: convert |trustedScoringSignals| to a JS value.
     1. Return the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
@@ -1858,8 +1875,9 @@ of the following global objects:
   To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=]
   |functionName|, and a [=list=] of arguments |arguments|:
 
-    1. Let |global| be a new {{InterestGroupReportingScriptRunnerGlobalScope}}.
-    1. Let |realm| be the result of [=creating a new realm=] given |global| and |script|.
+    1. Let |realm| be the result of [=creating a new customized realm=] given
+      {{InterestGroupReportingScriptRunnerGlobalScope}}.
+    1. Let |global| be |realm|'s [=realm/global object=].
     1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|,
       |functionName|, |arguments|, and 50 milliseconds.
     1. Return « |result|, |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=],
@@ -1876,19 +1894,6 @@ of the following global objects:
     1. [=Assert=] that these steps are running [=in parallel=].
 
     1. Let |global| be |realm|'s [=realm/global object=], and run these steps in |realm|'s [=realm/agent=]:
-
-      1. Perform !|global|.\[[Delete]]("`Date`").
-
-      1. If !|global|.\[[HasProperty]]("`Temporal`") is true, then perform
-         !|global|.\[[Delete]]("`Temporal`").
-
-      Advisement: This is not the best way to perform such API neutering (see <a
-      href=https://github.com/tc39/ecma262/issues/1357#issuecomment-817560121>tc39/ecma262#1357</a>),
-      but at the moment it's the way that host environments do this.
-
-      Note: Removing time-referencing APIs from the |global| object is imperative for privacy, as
-      |script| might otherwise be able to more easily exfiltrate data by using more accurate time
-      measurements.
 
     1. Let |result| be [$ParseScript$](|script|, |realm|, `empty`).
 
@@ -2478,9 +2483,9 @@ dictionary ScoringBrowserSignals {
   required USVString renderURL;
   required unsigned long biddingDurationMsec;
   required DOMString bidCurrency;
+  required sequence<USVString> adComponents;
 
   unsigned long dataVersion;
-  sequence<USVString> adComponents;
 };
 </xmp>
 
