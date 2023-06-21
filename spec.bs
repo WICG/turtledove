@@ -1082,24 +1082,31 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. Let |bidValue| be |generatedBid|'s [=generated bid/bid=].
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null:
   1. Set |bidValue| to |generatedBid|'s [=generated bid/modified bid=].
+1. Let |browserSignals| be a {{ScoringBroserSignals}}.
+1. [=map/Set=] |browserSignals|["{{ScoringBrowserSignals/topWindowHostname}}"] to the result of
+  running the <a spec=url>host serializer</a> on |topWindowOrigin|'s [=origin/host=].
 1. Let |owner| be |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=].
-1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
-  [=map/values=] are {{any}}. TODO: Change to an IDL record<>.
-1. [=map/Set=] |browserSignals|["`bidCurrency`"] to the result of [=serializing a currency tag=] with |generatedBid|'s
-  [=generated bid/bid=]'s [=bid with currency/currency=].
-1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to |topWindowOrigin|'s [=origin/host=].
-1. [=map/Set=] |browserSignals|["`interestGroupOwner`"] to |owner|.
-1. [=map/Set=] |browserSignals|["`renderURL`"] to |generatedBid|'s [=generated bid/ad descriptor=]'s
+1. [=map/Set=] |browserSignals|["{{ScoringBrowserSignals/interestGroupOwner}}"] to
+  [=serialization of an origin|serialized=] |owner|.
+1. [=map/Set=] |browserSignals|["{{ScoringBrowserSignals/renderURL}}"] to
+  [=URL serializer|serialized=] |generatedBid|'s [=generated bid/ad descriptor=]'s
   [=ad descriptor/url=].
-1. [=map/Set=] |browserSignals|["`adComponents`"] to |generatedBid|'s
-  [=generated bid/ad component descriptors=].
-1. [=map/Set=] |browserSignals|["`biddingDurationMsec`"] to |generatedBid|'s
+1. [=map/Set=] |browserSignals|["{{ScoringBrowserSignals/biddingDurationMsec}}"] to |generatedBid|'s
   [=generated bid/bid duration=].
+1. [=map/Set=] |browserSignals|["{{ScoringBrowserSignals/bidCurrency}}"] to the result of
+  [=serializing a currency tag=] with |generatedBid|'s [=generated bid/bid=]'s
+  [=bid with currency/currency=].
 1. If |scoringDataVersion| is not null:
-  1. [=map/Set=] |browserSignals|["`dataVersion`"] to |scoringDataVersion|.
+  1. [=map/Set=] |browserSignals|["{{ScoringBrowserSignals/dataVersion}}"] to |scoringDataVersion|.
+1. If |generatedBid|'s [=generated bid/ad component descriptors=] is not null:
+  1. Let |adComponents| be a new <code>[=sequence=]<{{USVString}}></code>.
+  1. [=list/For each=] |descriptor| of |generatedBid|'s [=generated bid/ad component descriptors=]:
+    1. [=list/Append=] [=URL serializer|serialized=] |descriptor|'s [=ad descriptor/url=] to
+      |adComponents|.
+  1. [=map/Set=] |browserSignals|["{{ScoringBrowserSignals/adComponents}}"] to |adComponents|.
 1. Let |scoreAdResult| be the result of [=evaluating a scoring script=] with
-   |decisionLogicScript|, « |adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|'s
-   [=auction config/config idl=], |trustedScoringSignals|, |browserSignals| », and |auctionConfig|'s
+   |decisionLogicScript|, |adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|'s
+   [=auction config/config idl=], |trustedScoringSignals|, |browserSignals|, and |auctionConfig|'s
    [=auction config/seller timeout=].
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
 1. If |scoreAdOutput| is failure, return.
@@ -1737,12 +1744,14 @@ of the following global objects:
 </div>
 
 <div algorithm>
-  To <dfn>evaluate a scoring script</dfn> given a [=string=] |script|, a [=list=] of arguments
-  |arguments|, and an integer millisecond duration |timeout|:
+  To <dfn>evaluate a scoring script</dfn> given a [=string=] |script|, « |adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|'s
+   [=auction config/config idl=], |trustedScoringSignals|, |browserSignals| », and an integer millisecond duration |timeout|:
 
     1. Let |global| be a new {{InterestGroupScoringScriptRunnerGlobalScope}}.
+    1. 
     1. Return the result of [=evaluating a script=] with |global|, |script|, "`scoreAd`",
-      |arguments|, and |timeout|.
+      «|adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|'s
+   [=auction config/config idl=], |trustedScoringSignals|, |browserSignals|», and |timeout|.
 </div>
 
 <div algorithm>
@@ -2400,6 +2409,17 @@ dictionary BiddingBrowserSignals {
   sequence<PreviousWin> prevWinsMs;
   object wasmHelper;
   unsigned long dataVersion;
+};
+
+dictionary ScoringBrowserSignals {
+  required DOMString topWindowHostname;
+  required USVString interestGroupOwner;
+  required USVString renderURL;
+  required unsigned long biddingDurationMsec;
+  required DOMString bidCurrency;
+
+  unsigned long dataVersion;
+  sequence<USVString> adComponents;
 };
 </xmp>
 
