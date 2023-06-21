@@ -64,3 +64,5 @@ Companies who may be interested in participating in tests and early adoption opp
 | --------------- | --------------------------------------------------- | ------------------------------------------------- | ------------------ |
 | Mail Metro Media | Publisher | Transact through Google Ad Manager and Prebid fledgeForGpt module | programmatic.platforms@assocnews.co.uk |
 | Vocento | Publisher | | privacysandbox@vocento.com |
+| Clarin | Publisher | | mfranco@clarin.com |
+
