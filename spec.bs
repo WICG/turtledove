@@ -239,7 +239,7 @@ This is detectable because it can change the set of fields that are read from th
         <td>[=interest group/ad components=]</td>
       </tr>
     </table>
-    1. [=list/For each=] |ad| of |group|[|groupMember|]:
+    1. If |group| [=map/contains=] |groupMember|, [=list/for each=] |ad| of |group|[|groupMember|]:
       1. Let |igAd| be a new [=interest group ad=].
       1. Let |renderURL| be the result of running the [=URL parser=] on
         |ad|["{{AuctionAd/renderURL}}"].
@@ -953,19 +953,19 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             k-anonymous has a higher score than the highest scoring k-anonymous bid, then call
             [=increment ad k-anonymity count=] on it.
           1. Let |originalAds| be |ig|'s [=interest group/ads=].
-          1. Let |originalAdComponents| be |ig|'s [=interest group/ad components=].
-          1. Set |ig|'s [=interest group/ads=] to a new empty [=list=] of
-            [=interest group ad=].
-          1. Set |ig|'s [=interest group/ad components=] to a new [=list/is empty|empty=]
-            [=list=] of [=interest group ad=].
-          1. [=list/For each=] |ad| in |originalAds|:
+          1. If |originalAds| is not null:
+            1. Set |ig|'s [=interest group/ads=] to a new [=list=] of [=interest group ad=].
+            1. [=list/For each=] |ad| in |originalAds|:
             1. If [=query ad k-anonymity count=] given |ig| and |ad|'s
               [=interest group ad/render url=] returns true, [=list/append=] |ad| to |ig|'s
               [=interest group/ads=].
-          1. [=list/For each=] |adComponent| in |originalAdComponents|:
-            1. If [=query component ad k-anonymity count=] given |adComponent|'s
-              [=interest group ad/render url=] returns true, [=list/append=] |adComponent| to |ig|'s
-              [=interest group/ad components=].
+          1. Let |originalAdComponents| be |ig|'s [=interest group/ad components=].
+          1. If |originalAdComponents| is not null:
+            1. Set |ig|'s [=interest group/ad components=] to a new [=list=] of [=interest group ad=].
+            1. [=list/For each=] |adComponent| in |originalAdComponents|:
+              1. If [=query component ad k-anonymity count=] given |adComponent|'s
+                [=interest group ad/render url=] returns true, [=list/append=] |adComponent| to |ig|'s
+                [=interest group/ad components=].
           1. Set |generatedBid| to the result of [=generate a bid=] given
             |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
             |perBuyerSignals|, |perBuyerTimeout|, |expectedCurrency|, and |ig|.
@@ -1053,8 +1053,7 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 |generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
 {{unsigned long}}-or-null |biddingDataVersion|, an enum |auctionLevel|, which is
 "single-level-auction", "top-level-auction", or "component-auction", a [=currency tag=]
-|componentAuctionExpectedCurrency|, and an [=origin=]
-|topWindowOrigin|:
+|componentAuctionExpectedCurrency|, and an [=origin=] |topWindowOrigin|:
 
 1. Let |renderURLs| be a new [=set=].
 1. Let |adComponentRenderUrls| be a new [=set=].
@@ -1185,7 +1184,7 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 <div algorithm>
 To <dfn>convert to a string sequence</dfn> given a [=list=]-or-null |adComponents|:
 
-  1. If |adComponents| is null, then return {}.
+  1. If |adComponents| is null, return {{undefined}}.
   1. Let |result| be a new <code>[=sequence=]<{{USVString}}></code>.
   1. [=list/For each=] |component| of |adComponents|:
     1. [=list/Append=] [=URL serializer|serialized=] |component|'s [=ad descriptor/url=] to |result|.
@@ -1359,7 +1358,7 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
 <div algorithm>
 
 To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=] |keys|:
-1. Let |list| be a new empty [=list=].
+1. Let |list| be a new [=list=].
 1. Let |keysStr| be the result of [=string/concatenating=] |keys| with separator set to ",".
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keysStr| using
   [=component percent-encode set=] to |list|.
@@ -1372,7 +1371,7 @@ To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=
 To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
 [=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, and an {{unsigned short}}-or-null
 |experimentGroupId|:
-1. Let |queryParamsList| be a new empty [=list=].
+1. Let |queryParamsList| be a new [=list=].
 1. [=list/Append=] "hostname=" to |queryParamsList|.
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] [=this=]'s
   [=relevant settings object=]'s [=environment/top-level origin=] using
@@ -1399,13 +1398,13 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
 To <dfn>build trusted scoring signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
 [=URLs=] |renderURLs|, an [=ordered set=] of [=URLs=] |adComponentRenderUrls|, an {{unsigned short}}
 |experimentGroupId|, and an [=origin=] |topWindowOrigin|:
-1. Let |queryParamsList| be a new empty [=list=].
+1. Let |queryParamsList| be a new [=list=].
 1. [=list/Append=] "hostname=" to |queryParamsList|.
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topWindowOrigin| using
   [=component percent-encode set=] to |queryParamsList|.
 1. If |renderURLs| is not [=set/is empty|empty=]:
   1. [=list/Append=] "&renderURLs=" to |queryParamsList|.
-  1. Let |renderURLsStrings| be a new empty [=list=].
+  1. Let |renderURLsStrings| be a new [=list=].
   1. [=list/For each=] |renderURL| of |renderURLs|:
     1. [=list/Append=] the result of [=URL serializer|serialization=] of |renderURL| to
       |renderURLsStrings|.
@@ -1413,7 +1412,7 @@ To <dfn>build trusted scoring signals url</dfn> given a [=URL=] |signalsUrl|, an
     |renderURLsStrings|.
 1. If |adComponentRenderUrls| is not [=set/is empty|empty=]:
   1. [=list/Append=] "&adComponentRenderUrls=" to |queryParamsList|.
-  1. Let |adComponentRenderUrlsStrings| be a new empty [=list=].
+  1. Let |adComponentRenderUrlsStrings| be a new [=list=].
   1. [=list/For each=] |adComponentRenderUrl| of |adComponentRenderUrls|:
     1. [=list/Append=] the result of [=URL serializer|serialization=] of |adComponentRenderUrl| to
       |adComponentRenderUrlsStrings|.
@@ -2483,11 +2482,15 @@ dictionary ScoringBrowserSignals {
   required USVString renderURL;
   required unsigned long biddingDurationMsec;
   required DOMString bidCurrency;
-  required sequence<USVString> adComponents;
 
   unsigned long dataVersion;
+  sequence<USVString> adComponents;
 };
 </xmp>
+
+{{ScoringBrowserSignals}}'s {{ScoringBrowserSignals/adComponents}} is {{undefined}} when
+[=generated bid/ad component descriptors=] is null or [=list/is empty|an empty list=]. It cannot be
+an [=list/is empty|empty list=].
 
 <h3 dfn-type=dfn>Interest group</h3>
 
