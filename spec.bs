@@ -807,8 +807,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. Let |compWinner| be the result of running [=generate and score bids=] with |component|,
       |auctionConfig|, |global|, and |settings|.
     1. If |compWinner| is failure, return failure.
+    1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns failure, return failure.
     1. If |compWinner| is not null:
-      1. If [=waiting until configuration input promises resolve=] given |auctionConfig| returns failure, return failure.
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
         |decisionLogicScript|, null, "top-level-auction", null, and |settings|'s [=environment/top-level origin=].
 
@@ -2666,6 +2666,14 @@ To <dfn>wait until configuration input promises resolve</dfn> given an [=auction
 1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=] or [=auction config/per buyer timeouts=] is failure, return failure.
 1. TODO: the above two steps should also check directFromSellerSignals once something handles it.
+
+</div>
+
+<div algorithm>
+To <dfn>recursively wait until configuration input promises resolve</dfn> given an [=auction config=] |auctionConfig|:
+1. [=list/For each=] |componentAuctionConfig| in |auctionConfig|'s [=auction config/component auctions=]:
+  1. If the result of [=waiting until configuration input promises resolve=] given |componentAuctionConfig| is failure, return failure.
+1. Return the result of [=waiting until configuration input promises resolve=] given |auctionConfig|.
 
 </div>
 
