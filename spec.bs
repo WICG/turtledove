@@ -28,6 +28,7 @@ spec: html; urlPrefix: https://html.spec.whatwg.org/C
   type: dfn
     text: create an agent; url: create-an-agent
     text: immediately; url: immediately
+    text: valid floating-point number; url: valid-floating-point-number
 spec: RFC8941; urlPrefix: https://httpwg.org/specs/rfc8941.html
   type: dfn
     text: structured header; url: top
@@ -1424,6 +1425,23 @@ Issue: This would ideally be replaced by a more descriptive algorithm in Infra. 
 </div>
 
 <div algorithm>
+To <dfn>round a value</dfn> given a {{double}} |value|:
+  1. If |value| is not a [=valid floating-point number=], return |value|.
+  1. Let |valueExp| be |value|'s IEEE 754 biased exponent field minus 1023.
+  1. Let |normValue| be |value| multiplied by 2<sup>(&minus;1 &times; |valueExp|)</sup>.
+  1. If |valueExp| is less than &minus;128:
+    1. If |value| is less than 0, return &minus;0.
+    1. Otherwise, return 0.
+  1. If |valueExp| is greater than 127:
+    1. If |value| is less than 0, return &minus;&infin;.
+    1. Otherwise, return &infin;.
+  1. Let |precisionScaledValue| be |normValue| multiplied by 256.
+  1. Let |noisyScaledValue| be |precisionScaledValue| plus a random {{double}} value greater than or equal to 0 but less than 0.5.
+  1. Let |truncatedScaledValue| be the largest integer not greater than |noisyScaledValue|.
+  1. Return |truncatedScaledValue| multiplied by 2<sup>(|valueExp| &minus; 8)</sup>.
+
+</div>
+
 To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo| and [=auction config=] or
 null |winningComponentConfig|:
   1. Let |config| be |leadingBidInfo|'s [=leading bid info/auction config=].
@@ -1450,8 +1468,8 @@ null |winningComponentConfig|:
   1. Let |sellerCurrency| be |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/seller currency=].
   1. [=map/Set=] |browserSignals|["`desirability`"] to |leadingBidInfo|'s
     [=leading bid info/top score=].
-  1. [=map/Set=] |browserSignals|["`bid`"] to |winner|'s [=generated bid/bid=]'s
-    [=bid with currency/value=] (TODO: This gets rounded).
+  1. [=map/Set=] |browserSignals|["`bid`"] to the result of [=rounding a value=] given
+    |winner|'s [=generated bid/bid=]'s [=bid with currency/value=].
   1. [=map/Set=] |browserSignals|["`bidCurrency`"] to the result of [=serializing a currency tag=]
     with |bidCurrency|.
 
@@ -1517,8 +1535,8 @@ To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=stri
 
     1. [=map/Set=] |browserSignals|["`interestGroupName`"] to |winner|'s
       [=generated bid/interest group=] [=interest group/name=].
-  1. [=map/Set=] |browserSignals|["`bid`"] to |winner|'s [=generated bid/bid=]'s
-    [=bid with currency/value=]. (TODO: This gets rounded).
+  1. [=map/Set=] |browserSignals|["`bid`"] to the result of [=rounding a value=]
+    given |winner|'s [=generated bid/bid=]'s [=bid with currency/value=].
   1. [=map/Set=] |browserSignals|["`bidCurrency`"] to |serializedPerBuyerCurrency|.
   1. [=map/Set=] |browserSignals|["`madeHighestScoringOtherBid`"] to false.
   1. Let |highestScoringOtherBidOwner| be |leadingBidInfo|'s
@@ -1527,9 +1545,9 @@ To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=stri
     |highestScoringOtherBidOwner|:
     1. [=map/Set=] |browserSignals|["`madeHighestScoringOtherBid`"] to true.
   1. If |sellerCurrency| is null:
-    1. [=map/Set=] |browserSignals|["`highestScoringOtherBid`"] to |leadingBidInfo|'s
-      [=leading bid info/highest scoring other bid=]'s [=generated bid/bid=]'s
-      [=bid with currency/value=] (or 0 if encountered a null). (TODO: This get rounded).
+    1. [=map/Set=] |browserSignals|["`highestScoringOtherBid`"] to the result of [=rounding a value=]
+      given |leadingBidInfo|'s [=leading bid info/highest scoring other bid=]'s [=generated bid/bid=]'s
+      [=bid with currency/value=] (or 0 if encountered a null).
     1. [=map/Set=] |browserSignals|["`highestScoringOtherBidCurrency`"] to "`???`".
   1. Otherwise:
     1. [=map/Set=] |browserSignals|["`highestScoringOtherBid`"] to |leadingBidInfo|'s
