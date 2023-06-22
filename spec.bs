@@ -1327,7 +1327,7 @@ To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
     :: "`error`"
   1. Let |moduleObject| be null.
   1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
-    a [=response=] |response| and |responseBody|:
+    a [=response=] |response| and null, failure, or a [=byte sequence=] |responseBody|:
     1. Set |moduleObject| to failure and return, if any of the following conditions hold:
       * |responseBody| is null or failure;
       * [=header list/getting a structured field value|Getting=] "X-Allow-Protected-Audience" and
@@ -1550,19 +1550,14 @@ null |winningComponentConfig|:
   1. Set |config| to |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
-  1. Let |reportResultOutputJS| be the result of [=evaluating a reporting script=] with
-     |sellerReportingScript|, "`reportResult`", and « |config|, |browserSignals|».
+  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap| » be the result of
+    [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`", and
+    « |config|, |browserSignals|».
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
   1. [=map/Remove=] |browserSignals|["`modifiedBid`"].
   1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].
-  1. If |reportResultOutputJS| is an [=ECMAScript/abrupt completion=], return « null, |browserSignals| ».
-  1. Let |reportResultOutputIDL| be the result of [=converted to an IDL value|converting=]
-     |reportResultOutputJS| to a {{ReportResultOutput}}.
-  1. If an exception was [=exception/thrown=] in the previous step, return « null, |browserSignals| ».
-  1. TODO: Store |reportResultOutputIDL|["{{ReportResultOutput/reportUrl}}"] and
-     |reportResultOutputIDL|["{{ReportResultOutput/reportingBeaconMap}}"] in the
-     {{FencedFrameConfig}} as appropriate.
-  1. Return « |reportResultOutputIDL|["{{ReportResultOutput/signalsForWinner}}"], |browserSignals| ».
+  1. TODO: Store |reportUrl| and |reportingBeaconMap| in [=fenced frame config=] as appropriate.
+  1. Return « |sellerSignals|, |browserSignals| ».
 </div>
 
 <div algorithm>
@@ -1622,7 +1617,7 @@ To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=stri
      reporting script=] with |buyerReportingScript|, "`reportWin`", and « |leadingBidInfo|'s
      [=leading bid info/auction config=]'s [=auction config/auction signals=],
      |perBuyerSignalsForBuyer|, |sellerSignals|, |browserSignals| ».
-  1. TODO: Store |resultUrl| and |reportingBeaconMap| in the {{FencedFrameConfig}} as appropriate.
+  1. TODO: Store |resultUrl| and |reportingBeaconMap| in [=fenced frame config=] as appropriate.
 </div>
 
 # K-anonymity # {#k-anonymity}
@@ -1935,7 +1930,14 @@ of the following global objects:
     1. Let |global| be |realm|'s [=realm/global object=].
     1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|,
       |functionName|, |arguments|, and 50 milliseconds.
-    1. Return « |result|, |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=],
+    1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null ».
+    1. Let |resultJSON| be "null".
+    1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
+      [=serializing a JavaScript value to a JSON string=] given |result|.
+    
+      Note: Consider a return value that can't be converted to JSON a valid result, so if an
+      exception was [=exception/thrown=] in the previous step, keep |resultJSON| as "null".
+    1. Return « |resultJSON|, |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=],
        |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=] ».
 </div>
 
@@ -2027,7 +2029,7 @@ dictionary AdRender {
 dictionary GenerateBidOutput {
   required double bid;
   DOMString bidCurrency;
-  required (DOMString or AdRender) adRender;
+  required (DOMString or AdRender) render;
   any ad;
   sequence<(DOMString or AdRender)> adComponents;
   double adCost;
@@ -2090,15 +2092,15 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
     1. If |adJSON| is failure, return failure.
     1. Set |bid|'s [=generated bid/ad=] to |adJSON|.
   1. Let |adDescriptor| be a new [=ad descriptor=].
-  1. If |generateBidOutput|["{{GenerateBidOutput/adRender}}"] is a {{DOMString}}:
+  1. If |generateBidOutput|["{{GenerateBidOutput/render}}"] is a {{DOMString}}:
     1. Let |adUrl| be the result of running the [=URL parser=] on
-      |generateBidOutput|["{{GenerateBidOutput/adRender}}"].
+      |generateBidOutput|["{{GenerateBidOutput/render}}"].
     1. If |adUrl| is failure, return failure.
     1. If [=validating an ad url=] given |adUrl|, |ig|, and false returns false, return failure.
     1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
   1. Otherwise:
     1. Set |adDescriptor| to the result of [=converting an ad render=] given
-      |generateBidOutput|["{{GenerateBidOutput/adRender}}"], |ig| and false.
+      |generateBidOutput|["{{GenerateBidOutput/render}}"], |ig| and false.
     1. If |adDescriptor| is failure, return failure.
   1. Set |bid|'s [=generated bid/ad descriptor=] to |adDescriptor|.
   1. If |generateBidOutput|["{{GenerateBidOutput/adComponents}}"] [=map/exists=]:
@@ -2253,12 +2255,6 @@ interface InterestGroupReportingScriptRunnerGlobalScope
         : InterestGroupScriptRunnerGlobalScope {
   undefined sendReportTo(DOMString url);
   undefined registerAdBeacon(record&lt;DOMString, USVString&gt; map);
-};
-
-dictionary ReportResultOutput {
-  DOMString signalsForWinner;
-  USVString reportUrl;
-  any reportingBeaconMap;
 };
 
 </pre>
