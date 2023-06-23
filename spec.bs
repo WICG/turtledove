@@ -240,7 +240,7 @@ This is detectable because it can change the set of fields that are read from th
         <td>[=interest group/ad components=]</td>
       </tr>
     </table>
-    1. [=list/For each=] |ad| of |group|[|groupMember|]:
+    1. If |group| [=map/contains=] |groupMember|, [=list/for each=] |ad| of |group|[|groupMember|]:
       1. Let |igAd| be a new [=interest group ad=].
       1. Let |renderURL| be the result of running the [=URL parser=] on
         |ad|["{{AuctionAd/renderURL}}"].
@@ -567,7 +567,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. Set |auctionConfig|'s [=auction config/trusted scoring signals url=] to
     |trustedScoringSignalsURL|.
 1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=]:
-  1. Let |buyers| be a new [=list=].
+  1. Let |buyers| be a new empty [=list=].
   1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
     1. Let |buyer| be the result of [=parsing an origin=] with |buyerString|.
     1. If |buyer| is failure, or |buyer|'s [=url/scheme=] is not "`https`", then [=exception/throw=]
@@ -590,7 +590,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. [=Upon rejection=] of |resolvedAndTypeChecked|:
     1. Set |auctionConfig|'s [=auction config/auction signals=] to failure.
     1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"]
-      to undefined.
+      to {{undefined}}.
     1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
 1. If |config|["{{AuctionAdConfig/sellerSignals}}"] [=map/exists=]:
   1. If |config|["{{AuctionAdConfig/sellerSignals}}"] is a {{Promise}}:
@@ -991,19 +991,19 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             k-anonymous has a higher score than the highest scoring k-anonymous bid, then call
             [=increment ad k-anonymity count=] on it.
           1. Let |originalAds| be |ig|'s [=interest group/ads=].
-          1. Let |originalAdComponents| be |ig|'s [=interest group/ad components=].
-          1. Set |ig|'s [=interest group/ads=] to a new empty [=list=] of
-            [=interest group ad=].
-          1. Set |ig|'s [=interest group/ad components=] to a new [=list/is empty|empty=]
-            [=list=] of [=interest group ad=].
-          1. [=list/For each=] |ad| in |originalAds|:
+          1. If |originalAds| is not null:
+            1. Set |ig|'s [=interest group/ads=] to a new [=list=] of [=interest group ad=].
+            1. [=list/For each=] |ad| in |originalAds|:
             1. If [=query ad k-anonymity count=] given |ig| and |ad|'s
               [=interest group ad/render url=] returns true, [=list/append=] |ad| to |ig|'s
               [=interest group/ads=].
-          1. [=list/For each=] |adComponent| in |originalAdComponents|:
-            1. If [=query component ad k-anonymity count=] given |adComponent|'s
-              [=interest group ad/render url=] returns true, [=list/append=] |adComponent| to |ig|'s
-              [=interest group/ad components=].
+          1. Let |originalAdComponents| be |ig|'s [=interest group/ad components=].
+          1. If |originalAdComponents| is not null:
+            1. Set |ig|'s [=interest group/ad components=] to a new [=list=] of [=interest group ad=].
+            1. [=list/For each=] |adComponent| in |originalAdComponents|:
+              1. If [=query component ad k-anonymity count=] given |adComponent|'s
+                [=interest group ad/render url=] returns true, [=list/append=] |adComponent| to |ig|'s
+                [=interest group/ad components=].
           1. Set |generatedBid| to the result of [=generate a bid=] given
             |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
             |perBuyerSignals|, |perBuyerTimeout|, |expectedCurrency|, and |ig|.
@@ -1092,8 +1092,7 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 |generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
 {{unsigned long}}-or-null |biddingDataVersion|, an enum |auctionLevel|, which is
 "single-level-auction", "top-level-auction", or "component-auction", a [=currency tag=]
-|componentAuctionExpectedCurrency|, and an [=origin=]
-|topWindowOrigin|:
+|componentAuctionExpectedCurrency|, and an [=origin=] |topWindowOrigin|:
 
 1. Let |renderURLs| be a new [=set=].
 1. Let |adComponentRenderUrls| be a new [=set=].
@@ -1135,23 +1134,27 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null:
   1. Set |bidValue| to |generatedBid|'s [=generated bid/modified bid=].
 1. Let |owner| be |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=].
-1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
-  [=map/values=] are {{any}}. TODO: Change to an IDL record<>.
-1. [=map/Set=] |browserSignals|["`bidCurrency`"] to the result of [=serializing a currency tag=]
-  with |generatedBid|'s [=generated bid/bid=]'s [=bid with currency/currency=].
-1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to |topWindowOrigin|'s [=origin/host=].
-1. [=map/Set=] |browserSignals|["`interestGroupOwner`"] to |owner|.
-1. [=map/Set=] |browserSignals|["`renderURL`"] to |generatedBid|'s [=generated bid/ad descriptor=]'s
-  [=ad descriptor/url=].
-1. [=map/Set=] |browserSignals|["`adComponents`"] to |generatedBid|'s
-  [=generated bid/ad component descriptors=].
-1. [=map/Set=] |browserSignals|["`biddingDurationMsec`"] to |generatedBid|'s
-  [=generated bid/bid duration=].
-1. If |scoringDataVersion| is not null:
-  1. [=map/Set=] |browserSignals|["`dataVersion`"] to |scoringDataVersion|.
+1. Let |browserSignals| be a {{ScoringBrowserSignals}} with the following fields:
+  <dl>
+    <dt>{{ScoringBrowserSignals/topWindowHostname}}
+    <dd>The result of running the <a spec=url>host serializer</a> on |topWindowOrigin|'s [=origin/host=]
+    <dt>{{ScoringBrowserSignals/interestGroupOwner}}
+    <dd>[=serialization of an origin|Serialized=] |owner|
+    <dt>{{ScoringBrowserSignals/renderURL}}
+    <dd>[=URL serializer|Serialized=] |generatedBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=]
+    <dt>{{ScoringBrowserSignals/biddingDurationMsec}}
+    <dd>|generatedBid|'s [=generated bid/bid duration=]
+    <dt>{{ScoringBrowserSignals/bidCurrency}}
+    <dd>The result of [=serializing a currency tag=] with |generatedBid|'s [=generated bid/bid=]'s
+      [=bid with currency/currency=]
+    <dt>{{ScoringBrowserSignals/dataVersion}}
+    <dd>|scoringDataVersion| if it is not null, {{undefined}} otherwise
+    <dt>{{ScoringBrowserSignals/adComponents}}
+    <dd>|generatedBid|'s [=generated bid/ad component descriptors=] [=converted to a string sequence=]
+  </dl>
 1. Let |scoreAdResult| be the result of [=evaluating a scoring script=] with
-   |decisionLogicScript|, « |adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|'s
-   [=auction config/config idl=], |trustedScoringSignals|, |browserSignals| », and |auctionConfig|'s
+   |decisionLogicScript|, |adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|'s
+   [=auction config/config idl=], |trustedScoringSignals|, |browserSignals|, and |auctionConfig|'s
    [=auction config/seller timeout=].
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
 1. If |scoreAdOutput| is failure, return.
@@ -1215,6 +1218,16 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
   1. Set |leadingBidInfo|'s [=leading bid info/bidding data version=] to |biddingDataVersion|.
   1. Set |leadingBidInfo|'s [=leading bid info/scoring data version=] to |scoringDataVersion|.
 
+</div>
+
+<div algorithm>
+To <dfn>convert to a string sequence</dfn> given a [=list=]-or-null |adComponents|:
+
+  1. If |adComponents| is null, return {{undefined}}.
+  1. Let |result| be a new <code>[=sequence=]<{{USVString}}></code>.
+  1. [=list/For each=] |component| of |adComponents|:
+    1. [=list/Append=] [=URL serializer|serialized=] |component|'s [=ad descriptor/url=] to |result|.
+  1. Return |result|.
 </div>
 
 <div algorithm>
@@ -1758,6 +1771,72 @@ execution environment. In particular, they:
      inside them are not run with the familiar [[WebIDL]] [=invoke|invocation=] mechanism.
    * They do not [=perform a microtask checkpoints=].
 
+## Realm and agent ## {#realm-and-agent}
+
+<div algorithm>
+  To <dfn>create a new script runner agent</dfn>, run these steps:
+
+    1. Let |signifier| be a new unique internal value.
+
+    1. Let |candidateExecution| be a new [=ECMAScript/candidate execution=].
+
+    1. Return a new [=ECMAScript/agent=] whose \[[CanBlock]] is false, \[[Signifier]] is
+       |signifier|, \[[CandidateExecution]] is |candidateExecution|, and \[[IsLockFree1]],
+       \[[IsLockFree2]], and \[[LittleEndian]] are set at the implementation's discretion.
+
+  Note: This algorithm is almost identical to [[HTML]]'s [=create an agent=] algorithm, with the
+  exception that we do not give the returned agent a new [=event loop=], since it does not process
+  [=tasks=] within [=task sources=] in the usual way.
+</div>
+
+<div algorithm>
+  To <dfn>obtain a script runner agent</dfn>, run these steps:
+
+    1. Let |agentCluster| be a new [=ECMAScript/agent cluster=].
+
+    1. Let |agent| be the result of [=creating a new script runner agent=].
+
+    1. Add |agent| to |agentCluster|.
+
+    1. Return |agent|.
+</div>
+
+<div algorithm>
+  To <dfn>create a new script runner realm</dfn> with a global type |globalType|, run these steps:
+
+    1. [=Assert=] that these steps are running [=in parallel=].
+
+    1. Let |agent| be the result of [=obtaining a script runner agent=] given null, true, and false.
+      Run the rest of these steps in |agent|.
+
+       Issue: This exclusively creates a new [=ECMAScript/agent cluster=] for a given script to run
+       in, but we should make this work with [=interest group/execution mode=] somehow.
+
+    1. Let |realmExecutionContext| be the result of [=creating a new realm=] given |agent| and the
+       following customizations:
+
+        * For the global object, create a new object of type |globalType|.
+
+    1. Let |realm| be |realmExecutionContext|'s Realm component.
+
+    1. Let |global| be |realm|'s [=realm/global object=], and run these steps:
+
+      1. Perform !|global|.\[[Delete]]("`Date`").
+
+      1. If !|global|.\[[HasProperty]]("`Temporal`") is true, then perform
+         !|global|.\[[Delete]]("`Temporal`").
+
+      Advisement: This is not the best way to perform such API neutering (see <a
+      href=https://github.com/tc39/ecma262/issues/1357#issuecomment-817560121>tc39/ecma262#1357</a>),
+      but at the moment it's the way that host environments do this.
+
+      Note: Removing time-referencing APIs from the |global| object is imperative for privacy, as a
+      script might otherwise be able to more easily exfiltrate data by using more accurate time
+      measurements.
+
+    1. Return |realm|.
+</div>
+
 ## Script evaluation ## {#script-evaluation}
 
 Concretely, a <dfn>script runner</dfn> is a JavaScript execution environment instantiated with one
@@ -1773,7 +1852,9 @@ of the following global objects:
   |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=] |trustedBiddingSignals|, a
   {{BiddingBrowserSignals}} |browserSignals|, and an integer millisecond [=duration=] |timeout|:
 
-    1. Let |global| be a new {{InterestGroupBiddingScriptRunnerGlobalScope}}.
+    1. Let |realm| be the result of [=creating a new script runner realm=] given
+      {{InterestGroupBiddingScriptRunnerGlobalScope}}.
+    1. Let |global| be |realm|'s [=realm/global object=].
     1. Set |global|'s
       [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=] to true if |ig|'s
       [=interest group/ad components=] is not null, or false otherwise.
@@ -1786,13 +1867,12 @@ of the following global objects:
     1. Let |igJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
       given |igGenerateBid|.
     1. Let |auctionSignalsJS| be the result of [=parsing a JSON string to a JavaScript value=] given
-      |auctionSignals| if |auctionSignals| is not null, otherwise undefined.
+      |auctionSignals| if |auctionSignals| is not null, otherwise {{undefined}}.
     1. Let |perBuyerSignalsJS| be the result of [=parsing a JSON string to a JavaScript value=]
-      given |perBuyerSignals| if |perBuyerSignals| is not null, otherwise undefined.
-    1. Let |browserSignalsJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
-      given |browserSignals|.
+      given |perBuyerSignals| if |perBuyerSignals| is not null, otherwise {{undefined}}.
+    1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
     1. Let |startTime| be the [=current wall time=].
-    1. Let |result| be the result of [=evaluating a script=] with |global|, |script|, "`generateBid`",
+    1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
       « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignals|, |browserSignalsJS| »,
       and |timeout|.
     1. Let |duration| be the [=current wall time=] minus |startTime| in milliseconds.
@@ -1827,21 +1907,29 @@ of the following global objects:
 </div>
 
 <div algorithm>
-  To <dfn>evaluate a scoring script</dfn> given a [=string=] |script|, a [=list=] of arguments
-  |arguments|, and an integer millisecond duration |timeout|:
+  To <dfn>evaluate a scoring script</dfn> given a [=string=] |script|, a [=string=] |adMetadata|,
+  a {{double}} |bidValue|, an {{AuctionAdConfig}} |auctionConfigIDL|, an [=ordered map=]
+  |trustedScoringSignals|, a {{ScoringBrowserSignals}} |browserSignals|, and an integer millisecond
+  [=duration=] |timeout|:
 
-    1. Let |global| be a new {{InterestGroupScoringScriptRunnerGlobalScope}}.
-    1. Return the result of [=evaluating a script=] with |global|, |script|, "`scoreAd`",
-      |arguments|, and |timeout|.
+    1. Let |realm| be the result of [=creating a new script runner realm=] given
+      {{InterestGroupScoringScriptRunnerGlobalScope}}.
+    1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
+    1. TODO: convert |trustedScoringSignals| to a JS value.
+    1. Return the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
+      «|adMetadata|, |bidValue|, |auctionConfigIDL|, |trustedScoringSignals|, |browserSignalsJS|»,
+      and |timeout|.
 </div>
 
 <div algorithm>
   To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=]
   |functionName|, and a [=list=] of arguments |arguments|:
 
-    1. Let |global| be a new {{InterestGroupReportingScriptRunnerGlobalScope}}.
-    1. Let |result| be the result of [=evaluating a script=] with |global|, |script|,
-      |functionName|, |arguments|, and 50.
+    1. Let |realm| be the result of [=creating a new script runner realm=] given
+      {{InterestGroupReportingScriptRunnerGlobalScope}}.
+    1. Let |global| be |realm|'s [=realm/global object=].
+    1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|,
+      |functionName|, |arguments|, and 50 milliseconds.
     1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null ».
     1. Let |resultJSON| be "null".
     1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
@@ -1853,39 +1941,8 @@ of the following global objects:
        |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=] ».
 </div>
 
-<br>
-
 <div algorithm>
-  To <dfn>create a new script runner agent</dfn>, run these steps:
-
-    1. Let |signifier| be a new unique internal value.
-
-    1. Let |candidateExecution| be a new [=ECMAScript/candidate execution=].
-
-    1. Return a new [=ECMAScript/agent=] whose \[[CanBlock]] is false, \[[Signifier]] is
-       |signifier|, \[[CandidateExecution]] is |candidateExecution|, and \[[IsLockFree1]],
-       \[[IsLockFree2]], and \[[LittleEndian]] are set at the implementation's discretion.
-
-  Note: This algorithm is almost identical to [[HTML]]'s [=create an agent=] algorithm, with the
-  exception that we do not give
-  the returned agent a new [=event loop=], since it does not process
-  [=tasks=] within [=task sources=] in the usual way.
-</div>
-
-<div algorithm>
-  To <dfn>obtain a script runner agent</dfn>, run these steps:
-
-    1. Let |agentCluster| be a  new [=ECMAScript/agent cluster=].
-
-    1. Let |agent| be the result of [=creating a new script runner agent=].
-
-    1. Add |agent| to |agentCluster|.
-
-    1. Return |agent|.
-</div>
-
-<div algorithm>
-  To <dfn>evaluate a script</dfn> with a [=realm/global object=] |global|, [=string=] |script|, [=string=]
+  To <dfn>evaluate a script</dfn> with a [=ECMAScript/realm=] |realm|, [=string=] |script|, [=string=]
   |functionName|, a [=list=] |arguments|, and an integer millisecond duration |timeout|, run these steps.
   They return a [=ECMAScript/Completion Record=], which is either an [=ECMAScript/abrupt completion=] (in
   the case of a parse failure or execution error), or a [=ECMAScript/normal completion=] populated with the
@@ -1893,33 +1950,7 @@ of the following global objects:
 
     1. [=Assert=] that these steps are running [=in parallel=].
 
-    1. Let |agent| be the result of [=obtaining a script runner agent=] given null, true, and
-       false. Run the rest of these steps in |agent|.
-
-       Issue: This exclusively creates a new [=ECMAScript/agent cluster=] for the given |script| to
-       run in, but we should make this work with [=interest group/execution mode=] somehow.
-
-    1. Let |realmExecutionContext| be the result of [=creating a new realm=] given |agent| and the
-       following customizations:
-
-        * For the global object, use |global|.
-
-    1. Let |realm| be |realmExecutionContext|'s Realm component.
-
-    1. Let |global| be |realm|'s [=realm/global object=], and run these steps:
-
-      1. Perform !|global|.\[[Delete]]("`Date`").
-
-      1. If !|global|.\[[HasProperty]]("`Temporal`") is true, then perform
-         !|global|.\[[Delete]]("`Temporal`").
-
-      Advisement: This is not the best way to perform such API neutering (see <a
-      href=https://github.com/tc39/ecma262/issues/1357#issuecomment-817560121>tc39/ecma262#1357</a>),
-      but at the moment it's the way that host environments do this.
-
-      Note: Removing time-referencing APIs from the |global| object is imperative for privacy, as
-      |script| might otherwise be able to more easily exfiltrate data by using more accurate time
-      measurements.
+    1. Let |global| be |realm|'s [=realm/global object=], and run these steps in |realm|'s [=realm/agent=]:
 
     1. Let |result| be [$ParseScript$](|script|, |realm|, `empty`).
 
@@ -2496,7 +2527,22 @@ dictionary BiddingBrowserSignals {
   object wasmHelper;
   unsigned long dataVersion;
 };
+
+dictionary ScoringBrowserSignals {
+  required DOMString topWindowHostname;
+  required USVString interestGroupOwner;
+  required USVString renderURL;
+  required unsigned long biddingDurationMsec;
+  required DOMString bidCurrency;
+
+  unsigned long dataVersion;
+  sequence<USVString> adComponents;
+};
 </xmp>
+
+Note: {{ScoringBrowserSignals}}'s {{ScoringBrowserSignals/adComponents}} is {{undefined}} when
+[=generated bid/ad component descriptors=] is null or [=list/is empty|an empty list=]. It cannot be
+an [=list/is empty|empty list=].
 
 <h3 dfn-type=dfn>Interest group</h3>
 
