@@ -80,7 +80,7 @@ Michael Kleber: First item is from Gianni - is he on? [Silence.] Moving on and m
 
 
 
-*   [Click related data in browserSignals #579](https://github.com/WICG/turtledove/issues/579) [Maciek Zdanowicz]
+### *   [Click related data in browserSignals #579](https://github.com/WICG/turtledove/issues/579) [Maciek Zdanowicz]
 
 Maciej Zdanowicz: I work at RTBHouse and this issue is about click related data included in the browser signals. In the browser signals we have some data related to previous events related to the IG. In this case this is previous wins. We would be very glad and have found that it would be useful if previous clicks were also included. [PJ asks what this means in Chat]. This would be previous clicks on the FF for the same ad. Question from Alsonso?
 
@@ -140,7 +140,7 @@ Michael Kleber: Is Gianni here? [Nope.] Moving on.
 
 
 
-*   “[Mode A](https://developer.chrome.com/en/blog/shipping-privacy-sandbox/#mode-a)” Plans/Timeline
+### *   “[Mode A](https://developer.chrome.com/en/blog/shipping-privacy-sandbox/#mode-a)” Plans/Timeline
 
 Michael Kleber: Jonasz put this here?
 
@@ -191,7 +191,7 @@ Michael Kleber: Right now in Chrome Stable settings there is a switch to allow 3
 
 
 
-*   [Leave all IGs for a given domain #475](https://github.com/WICG/turtledove/issues/475) [Gianni Campion]
+### *   [Leave all IGs for a given domain #475](https://github.com/WICG/turtledove/issues/475) [Gianni Campion]
 
 Michael Kleber: Based on reading Gianni’s original request I think I know the answer to Paul’s question. This looks like a request for the ability to leave all the IGs that a user was added to by a particular ad-tech on a particular site. That seems reasonable to enable.
 
