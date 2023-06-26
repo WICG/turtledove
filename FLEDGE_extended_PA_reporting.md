@@ -38,7 +38,7 @@ reportResult()/reportWin() methods using a new API available in the worklet:
 ```
 function reportResult(auctionConfig, browserSignals) {
   …
-  privateAggregation.sendHistogramReport({
+  privateAggregation.contributeToHistogram({
       bucket: convertBuyerToBucketId(browserSignals.interestGroupOwner),
       value: convertBidToReportingValue(browserSignals.bid)
     });
@@ -80,11 +80,11 @@ The buyer can then do the following during generateBid (when the above informati
 ```
 function generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
  …
-  privateAggregation.reportContributionForEvent(“reserved.win”, {
+  privateAggregation.contributeToHistogramOnEvent(“reserved.win”, {
       bucket: getImpressionReportBucket(),
       value: 1
   });
-  privateAggregation.reportContributionForEvent("click", {
+  privateAggregation.contributeToHistogramOnEvent("click", {
       bucket: getClickReportBuckets(), // 128-bit integer as BigInt
       value: 1
   });
@@ -118,7 +118,7 @@ The following example shows how to return the gap between an ad bid and the winn
 ```
 function generateBid(...) {
   bid = 100;
-  privateAggregation.reportContributionForEvent(
+  privateAggregation.contributeToHistogramOnEvent(
     "reserved.loss",
     {
       bucket: 1596n, // represents a bucket for interest group x winning bid price
@@ -154,7 +154,7 @@ example allows the buyer to keep track of how many times their bid was rejected 
 
 ```
 function generateBid(...) {
-  privateAggregation.reportContributionForEvent(
+  privateAggregation.contributeToHistogramOnEvent(
     "reserved.loss",
     {
       bucket: {
@@ -177,7 +177,7 @@ value: 1
 ## Reporting API informal specification
 
 ```
-privateAggregation.reportContributionForEvent(eventType, contribution)
+privateAggregation.contributeToHistogramOnEvent(eventType, contribution)
 ```
 
 The parameters consist of:
@@ -223,7 +223,7 @@ by calling into a new API:
 window.fence.reportEvent("click");
 ```
 
-This will cause any contributions associated with a call to `reportContributionForEvent()`
+This will cause any contributions associated with a call to `contributeToHistogramOnEvent()`
 with an event-type of `click` to be reported/sent. 
 
 In this example, `"click"` is an event-name chosen by the auction bidder. There are a number
