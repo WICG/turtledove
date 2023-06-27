@@ -41,6 +41,9 @@ spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
 spec: WebAssembly-js-api; urlPrefix: https://webassembly.github.io/spec/js-api/
   type: dfn
     text: compiling a WebAssembly module; url: #compile-a-webassembly-module
+spec: WebIDL; urlPrefix: https://webidl.spec.whatwg.org/
+  type: dfn
+    text: convert a Web IDL arguments list to an ECMAScript arguments list; url: #web-idl-arguments-list-converting
 spec: Fenced Frame; urlPrefix: https://wicg.github.io/fenced-frame/
   type: dfn
     for: browsing context
@@ -825,7 +828,7 @@ an [=interest group=] |ig|, and a [=moment=] |auctionStartTime|:
   1. Let |prevWins| be a new <code>[=sequence=]<{{PreviousWin}}></code>.
   1. [=list/For each] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
     the last 30 days:
-    1. Let |timeDelta| be |auctionStartTime| minus |prevWin|[=previous win/time=].
+    1. Let |timeDelta| be |auctionStartTime| minus |prevWin|'s [=previous win/time=].
     1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
       otherwise.
     1. Let |prevWinIDL| be a new {{PreviousWin}}.
@@ -1493,6 +1496,7 @@ To <dfn>round a value</dfn> given a {{double}} |value|:
 
 </div>
 
+<div algorithm>
 To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo| and [=auction config=] or
 null |winningComponentConfig|:
   1. Let |config| be |leadingBidInfo|'s [=leading bid info/auction config=].
@@ -1507,116 +1511,123 @@ null |winningComponentConfig|:
     1. Set |bidCurrency| to the result of [=looking up per-buyer currency=] with |config| and
       |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/interest group=]'s
       [=interest group/owner=].
-  1. Let |browserSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
-    [=map/values=] are {{any}}.
-  1. [=map/Set=] |browserSignals|["`topWindowHostname`"] to [=this=]'s
-    [=relevant settings object=]'s [=environment/top-level origin=]'s [=origin/host=].
   1. Let |winner| be |leadingBidInfo|'s [=leading bid info/leading bid=].
-  1. [=map/Set=] |browserSignals|["`interestGroupOwner`"] to |winner|'s
-    [=generated bid/interest group=]'s [=interest group/owner=].
-  1. [=map/Set=] |browserSignals|["`renderURL`"] to |winner|'s [=generated bid/ad descriptor=]'s
-    [=ad descriptor/url=].
-  1. Let |sellerCurrency| be |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/seller currency=].
-  1. [=map/Set=] |browserSignals|["`desirability`"] to |leadingBidInfo|'s
-    [=leading bid info/top score=].
-  1. [=map/Set=] |browserSignals|["`bid`"] to the result of [=rounding a value=] given
-    |winner|'s [=generated bid/bid=]'s [=bid with currency/value=].
-  1. [=map/Set=] |browserSignals|["`bidCurrency`"] to the result of [=serializing a currency tag=]
-    with |bidCurrency|.
-
+  1. Let |sellerCurrency| be |leadingBidInfo|'s [=leading bid info/auction config=]'s
+    [=auction config/seller currency=].
+  1. Let |highestScoringOtherBid| be |leadingBidInfo|'s
+    [=leading bid info/highest scoring other bid=]'s [=generated bid/bid in seller currency=] (or
+    0 if encountered a null).
   1. If |sellerCurrency| is null:
-    1. [=map/Set=] |browserSignals|["`highestScoringOtherBid`"] to |leadingBidInfo|'s
+    1. Set |highestScoringOtherBid| to |leadingBidInfo|'s
       [=leading bid info/highest scoring other bid=]'s [=generated bid/bid=]'s
       [=bid with currency/value=] (or 0 if encountered a null).
-    1. [=map/Set=] |browserSignals|["`highestScoringOtherBidCurrency`"] to "`???`".
-  1. Otherwise:
-    1. [=map/Set=] |browserSignals|["`highestScoringOtherBid`"] to |leadingBidInfo|'s
-      [=leading bid info/highest scoring other bid=]'s [=generated bid/bid in seller currency=] (or
-      0 if encountered a null).
-    1. [=map/Set=] |browserSignals|["`highestScoringOtherBidCurrency`"] to |sellerCurrency|.
-  1. If |leadingBidInfo|'s [=leading bid info/scoring data version=] is not null, [=map/Set=]
-    |browserSignals|["`dataVersion`"] to it.
-  1. If |leadingBidInfo|'s [=leading bid info/top level seller=] is not null, [=map/set=]
-    |browserSignals|["`topLevelSeller`"] to it.
-  1. If |leadingBidInfo|'s [=leading bid info/top level seller signals=] is not null, [=map/set=]
-    |browserSignals|["`topLevelSellerSignals`"] to it.
-  1. If |leadingBidInfo|'s [=leading bid info/component seller=] is not null:
-    1. [=map/Set=] |browserSignals|["`componentSeller`"] to |leadingBidInfo|'s
-      [=leading bid info/component seller=].
-    1. If |winner|'s [=generated bid/modified bid=] is not null, [=map/set=]
-      |browserSignals|["`bid`"] to it.
-  1. Otherwise, if |winner|'s [=generated bid/modified bid=] is not null, [=map/set=]
-    |browserSignals|["`modifiedBid`"] to it.
-  1. Set |config| to |leadingBidInfo|'s [=leading bid info/auction config=].
+  1. Let |bid| be |winner|'s [=generated bid/bid=]'s [=bid with currency/value=].
+  1. Let |modifiedBid| be null.
+  1. If |winner|'s [=generated bid/modified bid=] is not null:
+    1. If |leadingBidInfo|'s [=leading bid info/component seller=] is not null:
+      1. Set |bid| to |winner|'s [=generated bid/modified bid=].
+    1. Otherwise:
+      1. Set |modifiedBid| to |winner|'s [=generated bid/modified bid=].
+  1. Let |browserSignals| be a {{ReportResultBrowserSignals}} with the following fields:
+    <dl>
+      <dt>{{ReportingBrowserSignals/topWindowHostname}}
+      <dd>The result of running the <a spec=url>host serializer</a> on |[=this=]'s
+        [=relevant settings object=]'s [=environment/top-level origin=]'s [=origin/host=].
+      <dt>{{ReportingBrowserSignals/interestGroupOwner}}
+      <dd>[=serialization of an origin|Serialized=] |winner|'s [=generated bid/interest group=]'s
+        [=interest group/owner=].
+      <dt>{{ReportingBrowserSignals/renderURL}}
+      <dd>[=URL serializer|Serialized=] |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=]
+      <dt>{{ReportResultBrowserSignals/desirability}}
+      <dd>[=round a value|Rounded=] |leadingBidInfo|'s [=leading bid info/top score=]
+      <dt>{{ReportingBrowserSignals/bid}}
+      <dd>[=round a value|Rounded=] |bid|
+      <dt>{{ReportingBrowserSignals/bidCurrency}}
+      <dd>The result of [=serializing a currency tag=] with |bidCurrency|
+      <dt>{{ReportingBrowserSignals/highestScoringOtherBid}}
+      <dd>|highestScoringOtherBid|
+      <dt>{{ReportingBrowserSignals/highestScoringOtherBidCurrency}}
+      <dd>|sellerCurrency| if it is not null, "`???`" otherwise
+      <dt>{{ReportingBrowserSignals/dataVersion}}
+      <dd>|leadingBidInfo|'s [=leading bid info/scoring data version=] if it is not null,
+        {{undefined}} otherwise
+      <dt>{{ReportingBrowserSignals/topLevelSeller}}
+      <dd>|leadingBidInfo|'s [=leading bid info/top level seller=] if it is not null, {{undefined}}
+        otherwise
+      <dt>{{ReportResultBrowserSignals/topLevelSellerSignals}}
+      <dd>|leadingBidInfo|'s [=leading bid info/top level seller signals=] if it is not null,
+        {{undefined}} otherwise
+      <dt>{{ReportingBrowserSignals/componentSeller}}
+      <dd>|leadingBidInfo|'s [=leading bid info/component seller=] if it is not null, {{undefined}}
+        otherwise
+      <dt>{{ReportResultBrowserSignals/modifiedBid}}
+      <dd>[=round a value|Rounded=] |modifiedBid| if it is not null, {{undefined}} otherwise
+    </dl>
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap| » be the result of
     [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`", and
-    « |config|, |browserSignals|».
+    « |config|'s [=auction config/config idl=], |browserSignals| ».
+  1. [=map/Remove=] |browserSignals|["`desirability`"].
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
   1. [=map/Remove=] |browserSignals|["`modifiedBid`"].
   1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].
+
+  Note: Remove fields specific to {{ReportResultBrowserSignals}} so that they are not passed to
+  [=report win=].
+
   1. TODO: Store |reportUrl| and |reportingBeaconMap| in [=fenced frame config=] as appropriate.
   1. Return « |sellerSignals|, |browserSignals| ».
 </div>
 
 <div algorithm>
-To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=string=]
-|sellerSignals| and an [=ordered map=] |browserSignals| whose [=map/keys=] are [=strings=] and whose
-[=map/values=] are {{any}}:
+To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=string=] |sellerSignals|
+and a {{ReportResultBrowserSignals}} |browserSignals|:
 
   1. Let |config| be |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Let |winner| be |leadingBidInfo|'s [=leading bid info/leading bid=].
   1. Let |perBuyerSignals| be |config|'s [=auction config/per buyer signals=].
   1. Let |buyer| be |winner|'s [=generated bid/interest group=]'s [=interest group/owner=].
-  1. Let |sellerCurrency| be |config|'s [=auction config/seller currency=].
-  1. Let |perBuyerCurrency| be result of [=looking up per-buyer currency=] with |config| and |buyer|.
-  1. Let |serializedPerBuyerCurrency| be the result of [=serializing a currency tag=] applied to |perBuyerCurrency|.
   1. Let |perBuyerSignalsForBuyer| be |perBuyerSignals|[|buyer|] if that member [=map/exists=],
     and null otherwise.
-  1. [=map/Remove=] |browserSignals|["`desirability`"].
-  1. If the result of [=query reporting ID k-anonymity count=] given |winner|'s [=generated bid/interest group=]
+  1. Let |reportWinBrowserSignals| be a {{ReportWinBrowserSignals}}.
+  1. [=map/For each=] |key| -> |value| of |browserSignals|:
+    1. [=map/Set=] |reportWinBrowserSignals|[|key|] to |value|.
+  
+  Note: Fields specific to {{ReportResultBrowserSignals}} have been removed from |browserSignals|,
+  so it only contains {{ReportingBrowserSignals}}'s fields.
 
-    and |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] is true:
-
-    1. [=map/Set=] |browserSignals|["`interestGroupName`"] to |winner|'s
-      [=generated bid/interest group=] [=interest group/name=].
-  1. [=map/Set=] |browserSignals|["`bid`"] to the result of [=rounding a value=]
-    given |winner|'s [=generated bid/bid=]'s [=bid with currency/value=].
-  1. [=map/Set=] |browserSignals|["`bidCurrency`"] to |serializedPerBuyerCurrency|.
-  1. [=map/Set=] |browserSignals|["`madeHighestScoringOtherBid`"] to false.
-  1. Let |highestScoringOtherBidOwner| be |leadingBidInfo|'s
-    [=leading bid info/highest scoring other bid owner=].
-  1. If |highestScoringOtherBidOwner| is not null, and |buyer| is [=same origin=] with
-    |highestScoringOtherBidOwner|:
-    1. [=map/Set=] |browserSignals|["`madeHighestScoringOtherBid`"] to true.
-  1. If |sellerCurrency| is null:
-    1. [=map/Set=] |browserSignals|["`highestScoringOtherBid`"] to the result of [=rounding a value=]
-      given |leadingBidInfo|'s [=leading bid info/highest scoring other bid=]'s [=generated bid/bid=]'s
-      [=bid with currency/value=] (or 0 if encountered a null).
-    1. [=map/Set=] |browserSignals|["`highestScoringOtherBidCurrency`"] to "`???`".
-  1. Otherwise:
-    1. [=map/Set=] |browserSignals|["`highestScoringOtherBid`"] to |leadingBidInfo|'s
-      [=leading bid info/highest scoring other bid=]'s [=generated bid/bid in seller currency=] (or
-      0 if encountered a null).  (TODO: This get rounded).
-    1. [=map/Set=] |browserSignals|["`highestScoringOtherBidCurrency`"] to |sellerCurrency|.
-  1. If |leadingBidInfo|'s [=leading bid info/bidding data version=] is not null:
-    1. [=map/Set=] |browserSignals|["`dataVersion`"] to |leadingBidInfo|'s
-      [=leading bid info/bidding data version=].
-  1. [=map/Set=] |browserSignals|["`adCost`"] to |winner|'s [=generated bid/ad cost=].
-  1. [=map/Set=] |browserSignals|["`seller`"] to |config|'s [=auction config/seller=].
-  1. If |leadingBidInfo|'s [=leading bid info/top level seller=] is not null:
-    1. [=map/Set=] |browserSignals|["`topLevelSeller`"] to |leadingBidInfo|'s
-      [=leading bid info/top level seller=].
-  1. If |winner|'s [=generated bid/modeling signals=] is not null:
-    1. [=map/Set=] |browserSignals|["`modelingSignals`"] to |winner|'s
-      [=generated bid/modeling signals=].
+  1. Let |interestGroupName| be null.
+  1. If the result of [=query reporting ID k-anonymity count=] given |winner|'s
+    [=generated bid/interest group=] and |winner|'s [=generated bid/ad descriptor=]'s
+    [=ad descriptor/url=] is true:
+    1. Set |interestGroupName| to |winner|'s [=generated bid/interest group=] [=interest group/name=].  
+  1. Add the following fields to |reportWinBrowserSignals|:
+    <dl>
+      <dt>{{ReportingBrowserSignals/dataVersion}}
+      <dd>|leadingBidInfo|'s [=leading bid info/bidding data version=] if it is not null,
+        {{undefined}} otherwise.
+      <dt>{{ReportWinBrowserSignals/adCost}}
+      <dd>[=Round a value|Rounded=] |winner|’s [=generated bid/ad cost=]
+      <dt>{{ReportWinBrowserSignals/seller}}
+      <dd>[=serialization of an origin|Serialized=] |config|'s [=auction config/seller=]
+      <dt>{{ReportWinBrowserSignals/madeHighestScoringOtherBid}}
+      <dd>Set to true if |leadingBidInfo|'s [=leading bid info/highest scoring other bid owner=] is
+        not null, and |buyer| is [=same origin=] with |leadingBidInfo|'s
+        [=leading bid info/highest scoring other bid owner=], false otherwise
+      <dt>{{ReportWinBrowserSignals/interestGroupName}}
+      <dd>|interestGroupName| if it is not null, {{undefined}} otherwise
+      <dt>{{ReportWinBrowserSignals/modelingSignals}}
+      <dd>|winner|'s [=generated bid/modeling signals=] if it is not null, {{undefined}} otherwise
+        (TODO: noise and bucket this signal)
+    </dl>
   1. Let |buyerReportingScript| be the result of [=fetching script=] with |winner|'s
     [=generated bid/interest group=]'s [=interest group/bidding url=].
   1. Let « ignored, |resultUrl|, |reportingBeaconMap| » be the result of [=evaluating a
-     reporting script=] with |buyerReportingScript|, "`reportWin`", and « |leadingBidInfo|'s
-     [=leading bid info/auction config=]'s [=auction config/auction signals=],
-     |perBuyerSignalsForBuyer|, |sellerSignals|, |browserSignals| ».
+     reporting script=] with |buyerReportingScript|, "`reportWin`", and
+     « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config idl=]'s
+      {{AuctionAdConfig/auctionSignals}}, |perBuyerSignalsForBuyer|, |sellerSignals|,
+      |reportWinBrowserSignals| ».
   1. TODO: Store |resultUrl| and |reportingBeaconMap| in [=fenced frame config=] as appropriate.
 </div>
 
@@ -1928,8 +1939,11 @@ of the following global objects:
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupReportingScriptRunnerGlobalScope}}.
     1. Let |global| be |realm|'s [=realm/global object=].
+    1. Let |argumentsJS| be the result of [=converting a Web IDL arguments list to an ECMAScript
+      arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
+      [=exception/throws=] an exception, return « "null", null, null ».
     1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|,
-      |functionName|, |arguments|, and 50 milliseconds.
+      |functionName|, |argumentsJS|, and 50 milliseconds.
     1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null ».
     1. Let |resultJSON| be "null".
     1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
@@ -2544,6 +2558,92 @@ Note: {{ScoringBrowserSignals}}'s {{ScoringBrowserSignals/adComponents}} is {{un
 [=generated bid/ad component descriptors=] is null or [=list/is empty|an empty list=]. It cannot be
 an [=list/is empty|empty list=].
 
+<xmp class="idl">
+
+dictionary ReportingBrowserSignals {
+  required DOMString topWindowHostname;
+  required USVString interestGroupOwner;
+  required USVString renderURL;
+  required double bid;
+  required DOMString bidCurrency;
+  required double highestScoringOtherBid;
+  required DOMString highestScoringOtherBidCurrency;
+
+  unsigned long dataVersion;
+  USVString topLevelSeller;
+  USVString componentSeller;
+};
+</xmp>
+
+{{ReportingBrowserSignals}} includes browser signals both `reportResult()` and `reportWin()` get.
+<dl class=domintro>
+  The meanings and notes of some fields:
+  <dt>{{ReportingBrowserSignals/renderURL}}
+  <dd>The render URL returned by "`generateBid()`". It is
+    [=query reporting ID k-anonymity count|k-anonymous=]
+  <dt>{{ReportingBrowserSignals/bid}}
+  <dd>The [=round a value|rounded value=] of the winning bid. This is always in the bidder's own
+    currency.
+  <dt>{{ReportingBrowserSignals/highestScoringOtherBid}}
+  <dd>The [=round a value|rounded value=] of the the bid that got the second highest score, or 0 if
+    it's not available This is always in the bidder's own currency.
+</dl>
+
+<xmp class="idl">
+
+dictionary ReportResultBrowserSignals : ReportingBrowserSignals {
+  required double desirability;
+
+  DOMString topLevelSellerSignals;
+  double modifiedBid;
+};
+</xmp>
+
+<dl class=domintro>
+  The meanings and notes of some fields:
+  <dt>{{ReportResultBrowserSignals/desirability}}
+  <dd>The [=round a value|rounded value=] of the score returned by "`scoreAd()`" for the winning bid.
+  <dt>{{ReportResultBrowserSignals/topLevelSellerSignals}}
+  <dd>Metadata returned by the top-level seller's "`reportResult()`", as JSON.
+  <dt>{{ReportResultBrowserSignals/modifiedBid}}
+  <dd>The [=round a value|rounded value=] of the bid value returned by the component seller's
+    "`scoreAd()`" method
+  <dt>{{ReportingBrowserSignals/dataVersion}}
+  <dd>Only set if the Data-Version header was provided in the response headers from the trusted
+    scoring signals server.
+</dl>
+
+<xmp class="idl">
+
+dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
+  double adCost;
+  USVString seller;
+  boolean madeHighestScoringOtherBid;
+  DOMString interestGroupName;
+  unsigned short modelingSignals;
+};
+</xmp>
+
+<dl class=domintro>
+  The meanings and notes of some fields:
+  <dt>{{ReportWinBrowserSignals/adCost}}
+  <dd>Advertiser click or conversion cost passed from `generateBid()` to `reportWin()`. Non-negative
+    and only the lowest 8 bits will be passed
+  <dt>{{ReportWinBrowserSignals/seller}}
+  <dd>The [=serialization of an origin|serialized=] origin of the seller running the ad auction
+  <dt>{{ReportWinBrowserSignals/madeHighestScoringOtherBid}}
+  <dd>Being true if the interest group owner was the only bidder that made bids with the second
+    highest score
+  <dt>{{ReportWinBrowserSignals/interestGroupName}}
+  <dd>Only set if the tuple of interest group owner, name, bidding script URL and ad creative URL
+    were [=query reporting ID k-anonymity count|jointly k-anonymous=]
+  <dt>{{ReportWinBrowserSignals/modelingSignals}}
+  <dd>A 0-4095 integer (12-bits) passed to `reportWin()`, with noising
+  <dt>{{ReportingBrowserSignals/dataVersion}}
+  <dd>Only set if the Data-Version header was provided in the response headers from the trusted
+    bidding signals server
+</dl>
+
 <h3 dfn-type=dfn>Interest group</h3>
 
 An interest group is a [=struct=] with the following [=struct/items=]:
@@ -2862,7 +2962,7 @@ the seller.
 : <dfn>ad cost</dfn>
 :: Null or a {{double}}. Advertiser click or conversion cost passed from `generateBid()` to
   `reportWin()`. Invalid values, such as negative, infinite, and NaN values, will be ignored and not
-  passed. Only the lowest 12 bits will be passed.
+  passed. Only the lowest 8 bits will be passed.
 : <dfn>modeling signals</dfn>
 :: Null or an {{unsigned short}}. A 0-4095 integer (12-bits) passed to `reportWin()`, with noising.
 : <dfn>interest group</dfn>
