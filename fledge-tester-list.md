@@ -63,3 +63,7 @@ Companies who may be interested in participating in tests and early adoption opp
 | Company / Party | Role (publisher/sellside, advertiser/buyside, etc.) | Additional details about your interest (Optional) | How to contact you |
 | --------------- | --------------------------------------------------- | ------------------------------------------------- | ------------------ |
 | Mail Metro Media | Publisher | Transact through Google Ad Manager and Prebid fledgeForGpt module | programmatic.platforms@assocnews.co.uk |
+| Vocento | Publisher | | privacysandbox@vocento.com |
+| Clarin | Publisher | | mfranco@clarin.com |
+| Terra Networks | Publisher | | adtech.terra.br@telefonica.com |
+
