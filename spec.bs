@@ -44,6 +44,9 @@ spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
 spec: WebAssembly-js-api; urlPrefix: https://webassembly.github.io/spec/js-api/
   type: dfn
     text: compiling a WebAssembly module; url: #compile-a-webassembly-module
+spec: attribution-reporting; urlPrefix: https://wicg.github.io/attribution-reporting-api/
+  type: dfn
+    text: attribution-reporting
 spec: Fenced Frame; urlPrefix: https://wicg.github.io/fenced-frame/
   type: dfn
     for: browsing context
@@ -262,7 +265,7 @@ This is detectable because it can change the set of fields that are read from th
 1. Let |p| be [=a new promise=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. Let |permission| be the result of [=checking interest group permissions=] with 
+  1. Let |permission| be the result of [=checking interest group permissions=] with
     |interestGroup|'s [=interest group/owner=], |frameOrigin|, and "`join`".
   1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
      "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
@@ -438,7 +441,7 @@ are:
   1. If |owner| is failure, [=exception/throw=] a {{TypeError}}.
   1. Let |name| be |group|["{{AuctionAdInterestGroupKey/name}}"].
   1. Run these steps [=in parallel=]:
-    1. Let |permission| be the result of [=checking interest group permissions=] with 
+    1. Let |permission| be the result of [=checking interest group permissions=] with
       |owner|, |frameOrigin|, and "`leave`".
     1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
        "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
@@ -500,6 +503,13 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   |config| and true.
 1. If |auctionConfig| is failure, then [=exception/throw=] a {{TypeError}}.
 1. Let |p| be [=a new promise=].
+1. Let |configMapping| be |global|'s [=associated Document=]'s [=node navigable=]'s
+  [=navigable/traversable navigable=]'s [=traversable navigable/fenced frame config mapping=].
+1. Let |pendingConfig| be the result of [=constructing a pending fenced frame config=] with
+  |auctionConfig|.
+1. Let |urn| be the result of running [=fenced frame config mapping/store a pending config=] on
+  |configMapping| with |pendingConfig|.
+1. If |urn| is failure, then resolve |p| with null and return |p|.
 1. Let |bidIgs| be a new [=list=] of [=interest groups=].
 1. If |config|["{{AuctionAdConfig/signal}}"] [=map/exists=], then:
   1. Let |signal| be |config|["{{AuctionAdConfig/signal}}"].
@@ -512,17 +522,20 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       [=auction config/interest group buyers=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. Let |winner| be the result of running [=generate and score bids=] with |auctionConfig|, null,
-    |global|, |settings|, and |bidIgs|.
-  1. If |winner| is failure:
+  1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
+     null, |global|, |settings|, and |bidIgs|.
+  1. If |winnerInfo| is failure:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=reject=]
       |p| with a "{{TypeError}}".
-  1. If |winner| is null:
+  1. If |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
       with null.
   1. Otherwise:
-    1. Let |urn| and |fencedFrameConfig| be the result of TODO: constructing the relevant
-       {{FencedFrameConfig}} with |winner|'s [=generated bid/ad descriptor=].
+    1. Let |winner| be |winnerInfo|'s [=leading bid info/leading bid=].
+    1. Let |fencedFrameConfig| be the result of [=filling in a pending fenced frame config=] with
+       |pendingConfig|, |auctionConfig|, and |winnerInfo|.
+    1. [=fenced frame config mapping/Finalize a pending config=] on |configMapping| with |urn| and
+       |fencedFrameConfig|.
     1. Wait until |auctionConfig|'s [=auction config/resolve to config=] is a boolean.
     1. Let |result| be |fencedFrameConfig|.
     1. If |auctionConfig|'s [=auction config/resolve to config=] is false:
@@ -543,6 +556,260 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   1. Run [=update bid counts=] with |bidIgs|.
   1. Run [=update previous wins=] with |winner|.
 1. Return |p|.
+
+</div>
+
+<div algorithm>
+
+To <dfn>construct a pending fenced frame config</dfn> given an [=auction config=]
+|config|:
+1. Return a [=fenced frame config=] with the following [=struct/items=]:
+  : [=fenced frame config/mapped url=]
+  :: a [=struct=] with the following [=struct/items=]:
+    : [=mapped url/value=]
+    :: `"about:blank"`
+
+    : [=mapped url/visibility=]
+    :: "<a for=visibility>`opaque`</a>"
+
+  : [=fenced frame config/container size=]
+  :: TODO: fill this in once container size is spec'd to be in |config|
+
+  : [=fenced frame config/content size=]
+  :: null
+
+  : [=fenced frame config/interest group descriptor=]
+  :: a [=struct=] with the following [=struct/items=]:
+    : [=interest group descriptor/value=]
+    :: a [=struct=] with the following [=struct/items=]:
+      : [=interest group descriptor/owner=]
+      :: ""
+
+      : [=interest group descriptor/name=]
+      :: ""
+
+    : [=interest group descriptor/visibility=]
+    :: "<a for=visibility>`opaque`</a>"
+
+  : [=fenced frame config/on navigate callback=]
+  :: null
+
+  : [=fenced frame config/effective sandbox flags=]
+  :: a [=struct=] with the following [=struct/items=]:
+    : [=effective sandbox flags/value=]
+    :: TODO: fill this in once fenced frame sandbox flags are more fully specified
+
+    : [=effective sandbox flags/visibility=]
+    :: "<a for=visibility>`opaque`</a>"
+
+  : [=fenced frame config/effective enabled permissions=]
+  :: a [=struct=] with the following [=struct/items=]:
+    : [=effective enabled permissions/value=]
+    :: «"<code><a spec="attribution-reporting-api">attribution-reporting</a></code>",
+        "<code>private-aggregation</code>" (TODO:ref), "<code>shared-storage</code>" (TODO:ref),
+        "<code>shared-storage-select-url</code>" (TODO:ref)»
+
+    : [=effective enabled permissions/visibility=]
+    :: "<a for=visibility>`opaque`</a>"
+
+  : [=fenced frame config/fenced frame reporting metadata=]
+  :: null
+
+  : [=fenced frame config/exfiltration budget metadata=]
+  :: null
+
+  : [=fenced frame config/nested configs=]
+  :: a [=struct=] with the following [=struct/items=]:
+    : [=nested configs/value=]
+    :: an empty [=list=] «»
+
+    : [=nested configs/visibility=]
+    :: "<a for=visibility>`opaque`</a>"
+
+  : [=fenced frame config/embedder shared storage context=]
+  :: null
+
+</div>
+
+<div algorithm>
+
+To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame config=]
+|pendingConfig|, [=auction config=] |auctionConfig|, and [=leading bid info=] |winningBidInfo|:
+1. Let |winningBid| be |winningBidInfo|'s [=leading bid info/leading bid=].
+1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
+   |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+1. Let |adSize| be |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/size=].
+1. If |adSize| is not null:
+   1. Set |pendingConfig|'s [=fenced frame config/content size=] to a [=struct=] with the following
+      [=struct/items=]:
+     : [=content size/value=]
+     :: |adSize| TODO: Resolve screen-relative sizes and macros and cast this properly.
+
+     : [=content size/visibility=]
+     :: "<a for=visibility>`opaque`</a>"
+1. Set |pendingConfig|'s [=fenced frame config/interest group descriptor=]'s
+   [=interest group descriptor/value=] to a [=struct=] with the following [=struct/items=]:
+     : owner
+     :: |winningBid|'s [=generated bid/interest group=]'s [=interest group/owner=]
+
+     : name
+     :: |winningBid|'s [=generated bid/interest group=]'s [=interest group/name=]
+1. Set |pendingConfig|'s [=fenced frame config/fenced frame reporting metadata=] to a [=struct=]
+   with the following [=struct/items=]:
+    : [=fenced frame reporting metadata/value=]
+    :: If |auctionConfig|'s [=auction config/component auctions=] is [=list/empty=] (i.e., if
+       there was no component auction), then a [=struct=]  with the following [=struct/items=]:
+       : [=fenced frame reporting metadata/fenced frame reporting map=]
+       :: a [=map=] «[ "<code>buyer</code>" → «», "<code>seller</code>" → «»]»
+
+       : [=fenced frame reporting metadata/direct seller is seller=]
+       :: true
+
+       Otherwise (i.e., if there was a component auction), a [=struct=] with the following
+       [=struct/items=]:
+       : [=fenced frame reporting metadata/fenced frame reporting map=]
+       :: a [=map=] «[ "<code>buyer</code>" → «», "<code>seller</code>" → «»,
+          "<code>component-seller</code>" → «»]»
+
+       : [=fenced frame reporting metadata/direct seller is seller=]
+       :: false
+
+    : [=fenced frame reporting metadata/visibility=]
+    :: "<a for=visibility>`opaque`</a>"
+1. Set |pendingConfig|'s [=fenced frame config/on navigate callback=] to an algorithm with these
+   steps:
+   1. [=Asynchronously finish reporting=] with |pendingConfig|'s
+      [=fenced frame config/fenced frame reporting metadata=]'s
+      [=fenced frame reporting metadata/value=]'s
+      [=fenced frame reporting metadata/fenced frame reporting map=] and |winningBidInfo|.
+1. Set |pendingConfig|'s [=fenced frame config/nested configs=]'s [=nested configs/value=] to
+   the result of running [=create nested configs=] with |winningBid|'s
+   [=generated bid/ad component descriptors=].
+1. Return |pendingConfig|.
+
+</div>
+
+<div algorithm>
+
+To <dfn>asynchronously finish reporting</dfn> given a
+[=fencedframetype/fenced frame reporting map=] |reportingMap| and [=leading bid info=]
+|leadingBidInfo|:
+1. Let |buyerDone|, |sellerDone|, and |componentSellerDone| be [=booleans=], initially false.
+1. If |leadingBidInfo|'s [=leading bid info/component seller=] is null, set |componentSellerDone|
+   to true.
+1. [=iteration/While=]:
+   1. If |buyerDone|, |sellerDone|, and |componentSellerDone| are all true, then
+      [=iteration/break=].
+   1. Wait until |leadingBidInfo|'s [=leading bid info/buyer reporting result=] is not null,
+      or |leadingBidInfo|'s [=leading bid info/seller reporting result=] is not null, or
+      |leadingBidInfo|'s [=leading bid info/component seller reporting result=] is not null.
+   1. If |buyerDone| is false and |leadingBidInfo|'s [=leading bid info/buyer reporting result=]
+      is not null:
+      1. Let |buyerMap| be |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
+         [=reporting result/reporting beacon map=].
+      1. If |buyerMap| is null, set |buyerMap| to an empty [=map=] «[]».
+      1. [=Finalize a reporting destination=] with |reportingMap|,
+         {{FenceReportingDestination/buyer}}, and |buyerMap|.
+      1. TODO: Fetch |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
+         [=reporting result/report url=].
+      1. Set |buyerDone| to true.
+   1. If |sellerDone| is false and |leadingBidInfo|'s [=leading bid info/seller reporting result=]
+      is not null:
+      1. Let |sellerMap| be |leadingBidInfo|'s [=leading bid info/seller reporting result=]'s
+         [=reporting result/reporting beacon map=].
+      1. If |sellerMap| is null, set |sellerMap| to an empty [=map=] «[]».
+      1. [=Finalize a reporting destination=] with |reportingMap|,
+         {{FenceReportingDestination/seller}}, and |sellerMap|.
+      1. TODO: Fetch |leadingBidInfo|'s [=leading bid info/seller reporting result=]'s
+         [=reporting result/report url=].
+      1. Set |sellerDone| to true.
+   1. If |componentSellerDone| is false and |leadingBidInfo|'s
+      [=leading bid info/component seller reporting result=] is not null:
+      1. Let |componentSellerMap| be |leadingBidInfo|'s
+         [=leading bid info/component seller reporting result=]'s
+         [=reporting result/reporting beacon map=].
+      1. If |componentSellerMap| is null, set |componentSellerMap| to an empty [=map=] «[]».
+      1. [=Finalize a reporting destination=] with |reportingMap|,
+         {{FenceReportingDestination/component-seller}}, and |componentSellerMap|.
+      1. TODO: Fetch |leadingBidInfo|'s [=leading bid info/component seller reporting result=]'s
+         [=reporting result/report url=].
+      1. Set |componentSellerDone| to true.
+
+</div>
+
+<div algorithm>
+
+To <dfn>create nested configs</dfn> given [=generated bid/ad component descriptors=]
+|adComponentDescriptors|:
+1. Let |nestedConfigs| be an empty [=list=] «».
+1. If |adComponentDescriptors| is null:
+  1. Return |nestedConfigs|.
+1. [=set/For each=] |adComponentDescriptor| of |adComponentDescriptors|:
+  1. Let |fencedFrameConfig| be a [=fenced frame config=] with the following [=struct/items=]:
+    : [=fenced frame config/mapped url=]
+    :: a [=struct=] with the following [=struct/items=]:
+      : [=mapped url/value=]
+      :: |adComponentDescriptor|'s [=ad descriptor/url=]
+
+      : [=mapped url/visibility=]
+      :: "<a for=visibility>`opaque`</a>"
+
+    : [=fenced frame config/container size=]
+    :: null
+
+    : [=fenced frame config/content size=]
+    :: If |adComponentDescriptor|'s [=ad descriptor/size=] is null, then null. Otherwise, a
+       [=struct=] with the following [=struct/items=]:
+       : [=content size/value=]
+       :: |adComponentDescriptor|'s [=ad descriptor/size=] TODO: Resolve screen-relative sizes and
+          macros and cast this properly.
+
+       : [=content size/visibility=]
+       :: "<a for=visibility>`opaque`</a>"
+
+    : [=fenced frame config/interest group descriptor=]
+    :: null
+
+    : [=fenced frame config/on navigate callback=]
+    :: null
+
+    : [=fenced frame config/effective sandbox flags=]
+    :: a [=struct=] with the following [=struct/items=]:
+      : [=effective sandbox flags/value=]
+      :: TODO: fill this in once fenced frame sandbox flags are more fully specified
+
+      : [=effective sandbox flags/visibility=]
+      :: "<a for=visibility>`opaque`</a>"
+
+    : [=fenced frame config/effective enabled permissions=]
+    :: a [=struct=] with the following [=struct/items=]:
+      : [=effective enabled permissions/value=]
+      :: «"<code><a spec="attribution-reporting-api">attribution-reporting</a></code>",
+          "<code>private-aggregation</code>" (TODO:ref), "<code>shared-storage</code>" (TODO:ref),
+          "<code>shared-storage-select-url</code>" (TODO:ref)»
+
+      : [=effective enabled permissions/visibility=]
+      :: "<a for=visibility>`opaque`</a>"
+
+    : [=fenced frame config/fenced frame reporting metadata=]
+    :: null
+
+    : [=fenced frame config/exfiltration budget metadata=]
+    :: null
+
+    : [=fenced frame config/nested configs=]
+    :: a [=struct=] with the following [=struct/items=]:
+      : [=nested configs/value=]
+      :: an empty [=list=] «»
+
+      : [=nested configs/visibility=]
+      :: "<a for=visibility>`opaque`</a>"
+
+    : [=fenced frame config/embedder shared storage context=]
+    :: null
+
+  1. [=list/Append=] |fencedFrameConfig| to |nestedConfigs|.
+1. Return |nestedConfigs|.
 
 </div>
 
@@ -756,7 +1023,7 @@ To <dfn>parse an origin</dfn> given a [=string=] |input|:
       the time set to the current UTC day and a count of 1.
     1. [=list/Replace=] the [=interest group=] that has |loadedIg|'s [=interest group/owner=] and
       [=interest group/name=] in the browser’s [=interest group set=] with |loadedIg|.
- 
+
 </div>
 
 <div algorithm>
@@ -776,9 +1043,9 @@ To <dfn>parse an origin</dfn> given a [=string=] |input|:
   1. [=list/Append=] |win| to |loadedIg|'s [=interest group/previous wins=].
   1. [=list/Replace=] the [=interest group=] that has |loadedIg|'s [=interest group/owner=] and
     [=interest group/name=] in the browser’s [=interest group set=] with |loadedIg|.
- 
-</div>  
-  
+
+</div>
+
 <div algorithm>
 
 To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfig|:
@@ -1541,14 +1808,25 @@ null |winningComponentConfig|:
       [=leading bid info/component seller=].
     1. If |winner|'s [=generated bid/modified bid=] is not null, [=map/set=]
       |browserSignals|["`bid`"] to it.
-  1. Otherwise, if |winner|'s [=generated bid/modified bid=] is not null, [=map/set=]
-    |browserSignals|["`modifiedBid`"] to it.
+  1. Otherwise (if |leadingBidInfo|'s [=leading bid info/component seller=] is null), if |winner|'s
+    [=generated bid/modified bid=] is not null, [=map/set=] |browserSignals|["`modifiedBid`"] to it.
   1. Set |config| to |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
-  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap| » be the result of
-    [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`", and
-    « |config|, |browserSignals|».
+  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap| » be the result of [=evaluating a
+     reporting script=] with |sellerReportingScript|, "`reportResult`", and « |config|,
+     |browserSignals|».
+  1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
+     : [=reporting result/report url=]
+     :: |reportUrl|
+
+     : [=reporting result/reporting beacon map=]
+     :: |reportingBeaconMap|
+  1. If |leadingBidInfo|'s [=leading bid info/top level seller=] is null (i.e., if we are reporting
+     for a component seller), set |leadingBidInfo|'s
+     [=leading bid info/component seller reporting result=] to |reportingResult|.
+  1. Otherwise, set |leadingBidInfo|'s [=leading bid info/seller reporting result=] to
+     |reportingResult|.
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
   1. [=map/Remove=] |browserSignals|["`modifiedBid`"].
   1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].
@@ -1613,7 +1891,13 @@ To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=stri
      reporting script=] with |buyerReportingScript|, "`reportWin`", and « |leadingBidInfo|'s
      [=leading bid info/auction config=]'s [=auction config/auction signals=],
      |perBuyerSignalsForBuyer|, |sellerSignals|, |browserSignals| ».
-  1. TODO: Store |resultUrl| and |reportingBeaconMap| in [=fenced frame config=] as appropriate.
+  1. Set |leadingBidInfo|'s [=leading bid info/buyer reporting result=] to a [=reporting result=]
+     with the following [=struct/items=]:
+     : [=reporting result/report url=]
+     :: |resultUrl|
+
+     : [=reporting result/reporting beacon map=]
+     :: |reportingBeaconMap|
 </div>
 
 # K-anonymity # {#k-anonymity}
@@ -1940,7 +2224,7 @@ of the following global objects:
     1. Let |resultJSON| be "null".
     1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
       [=serializing a JavaScript value to a JSON string=] given |result|.
-    
+
       Note: Consider a return value that can't be converted to JSON a valid result, so if an
       exception was [=exception/thrown=] in the previous step, keep |resultJSON| as "null".
     1. Return « |resultJSON|, |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=],
@@ -3017,7 +3301,26 @@ Information of the auction's leading bid so far when ranking scored bids.
   Data-Version value from the trusted scoring signals server's response. Will only be not null if
   the Data-Version header was provided in the response headers from the trusted scoring signals
   server.
+: <dfn>buyer reporting result</dfn>
+:: Null or a [=reporting result=], initially null.
+: <dfn>seller reporting result</dfn>
+:: Null or a [=reporting result=], initially null.
+: <dfn>component seller reporting result</dfn>
+:: Null or a [=reporting result=], initially null.
 
+</dl>
+
+A <dfn>reporting result</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="reporting result">
+  : <dfn>report url</dfn>
+  :: Null or a [=URL=], initially null. Set by
+     {{InterestGroupReportingScriptRunnerGlobalScope/sendReportTo(url)}}.
+
+  : <dfn>reporting beacon map</dfn>
+  :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+     [=URLs=], initially null. Set by
+     {{InterestGroupReportingScriptRunnerGlobalScope/registerAdBeacon(map)}}.
 </dl>
 
 # Privacy Considerations # {#privacy-considerations}
