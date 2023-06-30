@@ -43,6 +43,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Company / Party | Role in testing | Est. Testing Timeframe | Link to testing plan and/or learnings | How to contact you |
 | --------------- | --------------- | ---------------------- | ------------------------------------- | ------------------ |
 | Criteo | DSP | | | privacy-sandbox-testing@criteo.com |
+| Teads | DSP & SSP | | | privacysandbox@teads.com |
 | NextRoll | DSP | | | privacysandbox@nextroll.com |
 | OpenX | SSP | Limited testing in progress | | joel.meyer@openx.com |
 | RTB House | DSP | Continuous testing ongoing; long term commitment. | https://blog.rtbhouse.com/whitepaper-deep-insights-from-early-fledge-experiments/ | privacysandbox@rtbhouse.com |
