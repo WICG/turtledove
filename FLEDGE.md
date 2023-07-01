@@ -770,7 +770,10 @@ The arguments to this function are:
 
 The `reportWin()` function's reporting happens by calling `sendReportTo()`, same as for `reportResult()`, in the short-term, but will eventually go through the Private Aggregation API once it has been developed. Once the Private Aggregation API has been integrated with FLEDGE the `interestGroup` object passed to `generateBid()` will be available to `reportWin()`.
 
-Ads often need to report on events that happen once the ad is rendered.  One common example is reporting on whether an ad became viewable on-screen.  We will need a communications channel to allow the publisher page or the Fenced Frame to pass such information into the worklet responsible for reporting.  Some additional design work is needed here.
+Ads often need to report on events that happen once the ad is rendered.  Common examples include reporting on whether an ad became viewable on-screen, was clicked, or in the case of video creatives the percent of the video that was played and playback errors that may have occurred.  We will need a communications channel to allow the publisher page or the Fenced Frame to pass such information into the worklet responsible for reporting.  The current Fenced Frame design for this can be seen [here](https://github.com/WICG/turtledove/blob/main/Fenced_Frames_Ads_Reporting.md), but in short involves:
+1. Inside the reporting function (`reportResult`/`reportWin`) register a callback URL with the browser to be triggered by an event string, `myEvent`.
+2. Buyer code in the Fenced Frame triggers an event using that same event string, `myEvent`.
+3. Browser matches on the event string `myEvent` and triggers the call to the URL registered in step 1.
 
 ##### 5.2.1 Noised and Bucketed Signals
 
