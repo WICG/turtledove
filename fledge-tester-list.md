@@ -67,4 +67,4 @@ Companies who may be interested in participating in tests and early adoption opp
 | Vocento | Publisher | | privacysandbox@vocento.com |
 | Clarin | Publisher | | mfranco@clarin.com |
 | Terra Networks | Publisher | | adtech.terra.br@telefonica.com |
-
+| OLX Brasil | Publisher |  |  adtech@olxbr.com  |
