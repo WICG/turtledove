@@ -43,6 +43,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Company / Party | Role in testing | Est. Testing Timeframe | Link to testing plan and/or learnings | How to contact you |
 | --------------- | --------------- | ---------------------- | ------------------------------------- | ------------------ |
 | Criteo | DSP | | | privacy-sandbox-testing@criteo.com |
+| Teads | SSP & DSP | | | privacysandbox@teads.com |
 | NextRoll | DSP | | | privacysandbox@nextroll.com |
 | OpenX | SSP | Limited testing in progress | | joel.meyer@openx.com |
 | RTB House | DSP | Continuous testing ongoing; long term commitment. | https://blog.rtbhouse.com/whitepaper-deep-insights-from-early-fledge-experiments/ | privacysandbox@rtbhouse.com |
@@ -62,4 +63,8 @@ Companies who may be interested in participating in tests and early adoption opp
 
 | Company / Party | Role (publisher/sellside, advertiser/buyside, etc.) | Additional details about your interest (Optional) | How to contact you |
 | --------------- | --------------------------------------------------- | ------------------------------------------------- | ------------------ |
-| INSERT | INSERT | INSERT | INSERT |
+| Mail Metro Media | Publisher | Transact through Google Ad Manager and Prebid fledgeForGpt module | programmatic.platforms@assocnews.co.uk |
+| Vocento | Publisher | | privacysandbox@vocento.com |
+| Clarin | Publisher | | mfranco@clarin.com |
+| Terra Networks | Publisher | | adtech.terra.br@telefonica.com |
+
