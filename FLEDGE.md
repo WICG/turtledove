@@ -457,7 +457,7 @@ With this method, a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API
 let fetchResponse = await fetch("https://seller.com/signals", {adAuctionHeaders: true});
 ```
 
-The browser will make the request as in a normal (optionless) fetch call, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that any `Ad-Auction-Signals` response header from the server will only be loaded in auctions via `directFromSellerSignalsHeaderAdSlot` (this is analogous to the guarantees of `X-FLEDGE-Auction-Only` and `Sec-Fetch-Dest: webbundle` from the [subresource bundle version](#251-using-subresource-bundles) -- scripts on the page cannot set the `Sec-Ad-Auction-Fetch: ?1` request header without using the `{adAuctionHeaders: true}` option).
+The browser will make the request it would without `{adAuctionHeaders: true}`, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that any `Ad-Auction-Signals` response header from the server will only be loaded in auctions via `directFromSellerSignalsHeaderAdSlot` (this is analogous to the guarantees of `X-FLEDGE-Auction-Only` and `Sec-Fetch-Dest: webbundle` from the [subresource bundle version](#251-using-subresource-bundles) -- scripts on the page cannot set the `Sec-Ad-Auction-Fetch: ?1` request header without using the `{adAuctionHeaders: true}` option).
 
 The value of the Ad-Auction-Signals header should be JSON formatted, with the following schema:
 
