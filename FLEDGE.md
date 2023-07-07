@@ -490,6 +490,8 @@ Note that only the `Ad-Auction-Signals` response header from the server will onl
 
 Like `directFromSellerSignals`, `directFromSellerSignalsHeaderAdSlot` may be passed as a promise that resolves to the ad slot string -- the auction perform loading, but delays execution until the promise is resolved.
 
+The signals are only guaranteed to be available to `navigator.runAdAuction()` after the `fetch()` promise has resolved. Therefore, to avoid races, either `runAdAuction()` should be called after resolving the `fetch()` promise, or `directFromSellerSignalsHeaderAdSlot` should be passed a promise that only resolves after the `fetch()` promise resolves. 
+
 ### 3. Buyers Provide Ads and Bidding Functions (BYOS for now)
 
 
