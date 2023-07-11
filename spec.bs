@@ -1763,35 +1763,35 @@ null |winningComponentConfig|:
       <dt>{{topWindowHostname}}
       <dd>The result of running the <a spec=url>host serializer</a> on [=this=]'s
         [=relevant settings object=]'s [=environment/top-level origin=]'s [=origin/host=].
-      <dt>{{ReportingBrowserSignals/interestGroupOwner}}
+      <dt>{{interestGroupOwner}}
       <dd>[=serialization of an origin|Serialized=] |winner|'s [=generated bid/interest group=]'s
         [=interest group/owner=].
-      <dt>{{ReportingBrowserSignals/renderURL}}
+      <dt>{{renderURL}}
       <dd>[=URL serializer|Serialized=] |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=]
-      <dt>{{ReportResultBrowserSignals/desirability}}
-      <dd>[=round a value|Rounded=] |leadingBidInfo|'s [=leading bid info/top score=]
-      <dt>{{ReportingBrowserSignals/bid}}
-      <dd>[=round a value|Rounded=] |bid|
-      <dt>{{ReportingBrowserSignals/bidCurrency}}
+      <dt>{{bid}}
+      <dd>[=round a value|Stochastically rounded=] |bid|
+      <dt>{{bidCurrency}}
       <dd>The result of [=serializing a currency tag=] with |bidCurrency|
-      <dt>{{ReportingBrowserSignals/highestScoringOtherBid}}
+      <dt>{{highestScoringOtherBid}}
       <dd>|highestScoringOtherBid|
-      <dt>{{ReportingBrowserSignals/highestScoringOtherBidCurrency}}
+      <dt>{{highestScoringOtherBidCurrency}}
       <dd>|sellerCurrency| if it is not null, "`???`" otherwise
-      <dt>{{ReportingBrowserSignals/dataVersion}}
-      <dd>|leadingBidInfo|'s [=leading bid info/scoring data version=] if it is not null,
-        {{undefined}} otherwise
-      <dt>{{ReportingBrowserSignals/topLevelSeller}}
+      <dt>{{topLevelSeller}}
       <dd>|leadingBidInfo|'s [=leading bid info/top level seller=] if it is not null, {{undefined}}
         otherwise
+      <dt>{{componentSeller}}
+      <dd>|leadingBidInfo|'s [=leading bid info/component seller=] if it is not null, {{undefined}}
+        otherwise
+      <dt>{{ReportResultBrowserSignals/desirability}}
+      <dd>[=round a value|Stochastically rounded=] |leadingBidInfo|'s [=leading bid info/top score=]
       <dt>{{ReportResultBrowserSignals/topLevelSellerSignals}}
       <dd>|leadingBidInfo|'s [=leading bid info/top level seller signals=] if it is not null,
         {{undefined}} otherwise
-      <dt>{{ReportingBrowserSignals/componentSeller}}
-      <dd>|leadingBidInfo|'s [=leading bid info/component seller=] if it is not null, {{undefined}}
-        otherwise
       <dt>{{ReportResultBrowserSignals/modifiedBid}}
-      <dd>[=round a value|Rounded=] |modifiedBid| if it is not null, {{undefined}} otherwise
+      <dd>[=round a value|Stochastically rounded=] |modifiedBid| if it is not null, {{undefined}} otherwise
+      <dt>{{ReportResultBrowserSignals/dataVersion}}
+      <dd>|leadingBidInfo|'s [=leading bid info/scoring data version=] if it is not null,
+        {{undefined}} otherwise
     </dl>
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
@@ -1815,9 +1815,7 @@ null |winningComponentConfig|:
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
 
   Note: Remove fields specific to {{ReportResultBrowserSignals}} which only sellers can learn about,
-  so that they are not passed to "`reportWin()`". `dataVersion` is also removed because
-  "`reportWin()`"'s data version is from the trusted bidding signals response header, but
-  "`reportResult()`"'s is from trusted scoring signals response header.
+  so that they are not passed to "`reportWin()`".
 
   1. TODO: Store |reportUrl| and |reportingBeaconMap| in [=fenced frame config=] as appropriate.
   1. Return « |sellerSignals|, |browserSignals| ».
@@ -1842,7 +1840,7 @@ and a {{ReportResultBrowserSignals}} |browserSignals|:
     1. Set |interestGroupName| to |winner|'s [=generated bid/interest group=] [=interest group/name=].  
   1. Add the following fields to |reportWinBrowserSignals|:
     <dl>
-      <dt>{{ReportingBrowserSignals/dataVersion}}
+      <dt>{{ReportWinBrowserSignals/dataVersion}}
       <dd>|leadingBidInfo|'s [=leading bid info/bidding data version=] if it is not null,
         {{undefined}} otherwise.
       <dt>{{ReportWinBrowserSignals/adCost}}
@@ -2809,11 +2807,10 @@ dictionary ReportingBrowserSignals {
   required USVString interestGroupOwner;
   required USVString renderURL;
   required double bid;
-  required DOMString bidCurrency;
   required double highestScoringOtherBid;
-  required DOMString highestScoringOtherBidCurrency;
 
-  unsigned long dataVersion;
+  DOMString bidCurrency;
+  DOMString highestScoringOtherBidCurrency;
   USVString topLevelSeller;
   USVString componentSeller;
 };
@@ -2821,15 +2818,27 @@ dictionary ReportingBrowserSignals {
 
 {{ReportingBrowserSignals}} includes browser signals both `reportResult()` and `reportWin()` get.
 <dl class=domintro>
+  <dt>{{ReportingBrowserSignals/topWindowHostname}}
+  <dd>[=environment/Top-level origin=]'s [=origin/host=]
+  <dt>{{ReportingBrowserSignals/interestGroupOwner}}
+  <dd>The winning [=interest group=]'s [=interest group/owner=].
   <dt>{{ReportingBrowserSignals/renderURL}}
   <dd>The render URL returned by "`generateBid()`". It is
     [=query reporting ID k-anonymity count|k-anonymous=]
   <dt>{{ReportingBrowserSignals/bid}}
-  <dd>The [=round a value|rounded value=] of the winning bid. This is always in the bidder's own
-    currency.
+  <dd>[=round a value|Stochastically rounded=] winning bid. This is always in the bidder's own
+    currency
   <dt>{{ReportingBrowserSignals/highestScoringOtherBid}}
-  <dd>The [=round a value|rounded value=] of the the bid that got the second highest score, or 0 if
-    it's not available This is always in the bidder's own currency.
+  <dd>The [=round a value|rounded value=] of the bid that got the second highest score, or 0 if it's
+    not available. 0 for top-level auctions with components
+  <dt>{{ReportingBrowserSignals/bidCurrency}}
+  <dd>The currency the {{ReportingBrowserSignals/bid}} is in
+  <dt>{{ReportingBrowserSignals/highestScoringOtherBidCurrency}}
+  <dd>The currency the {{ReportingBrowserSignals/highestScoringOtherBid}} is in
+  <dt>{{ReportingBrowserSignals/topLevelSeller}}
+  <dd>Copied from [=leading bid info/top level seller=]
+  <dt>{{ReportingBrowserSignals/componentSeller}}
+  <dd>Copied from [=leading bid info/component seller=]
 </dl>
 
 <xmp class="idl">
@@ -2839,20 +2848,22 @@ dictionary ReportResultBrowserSignals : ReportingBrowserSignals {
 
   DOMString topLevelSellerSignals;
   double modifiedBid;
+  unsigned long dataVersion;
 };
 </xmp>
 
 <dl class=domintro>
   <dt>{{ReportResultBrowserSignals/desirability}}
-  <dd>The [=round a value|rounded value=] of the score returned by "`scoreAd()`" for the winning bid.
+  <dd>The [=round a value|stochastically rounded value=] of the score returned by "`scoreAd()`" for
+    the winning bid
   <dt>{{ReportResultBrowserSignals/topLevelSellerSignals}}
-  <dd>Metadata returned by the top-level seller's "`reportResult()`", as JSON.
+  <dd>Metadata returned by the top-level seller's "`reportResult()`", as JSON
   <dt>{{ReportResultBrowserSignals/modifiedBid}}
-  <dd>The [=round a value|rounded value=] of the bid value returned by the component seller's
-    "`scoreAd()`" method
-  <dt>{{ReportingBrowserSignals/dataVersion}}
+  <dd>The [=round a value|stochastically rounded value=] of the bid value returned by the component
+    seller's "`scoreAd()`" method
+  <dt>{{ReportResultBrowserSignals/dataVersion}}
   <dd>Only set if the Data-Version header was provided in the response headers from the trusted
-    scoring signals server.
+    scoring signals server
 </dl>
 
 <xmp class="idl">
@@ -2863,24 +2874,24 @@ dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
   boolean madeHighestScoringOtherBid;
   DOMString interestGroupName;
   unsigned short modelingSignals;
+  unsigned long dataVersion;
 };
 </xmp>
 
 <dl class=domintro>
   <dt>{{ReportWinBrowserSignals/adCost}}
-  <dd>Advertiser click or conversion cost passed from `generateBid()` to `reportWin()`. Non-negative
-    and only the lowest 8 bits will be passed
+  <dd>[=round a value|Stochastically rounded=] winner's [=generated bid/ad cost=].
   <dt>{{ReportWinBrowserSignals/seller}}
-  <dd>The [=serialization of an origin|serialized=] origin of the seller running the ad auction
+  <dd>The origin of the seller running the ad auction
   <dt>{{ReportWinBrowserSignals/madeHighestScoringOtherBid}}
-  <dd>True if the interest group owner was the only bidder that made bids with the second
-    highest score
+  <dd>True if the interest group owner was the only bidder that made bids with the second highest
+    score
   <dt>{{ReportWinBrowserSignals/interestGroupName}}
   <dd>Only set if the tuple of interest group owner, name, bidding script URL and ad creative URL
     were [=query reporting ID k-anonymity count|jointly k-anonymous=]
   <dt>{{ReportWinBrowserSignals/modelingSignals}}
   <dd>A 0-4095 integer (12-bits) passed to `reportWin()`, with noising
-  <dt>{{ReportingBrowserSignals/dataVersion}}
+  <dt>{{ReportWinBrowserSignals/dataVersion}}
   <dd>Only set if the Data-Version header was provided in the response headers from the trusted
     bidding signals server
 </dl>
@@ -3231,8 +3242,8 @@ the seller.
   [=interest group/ad components=] field.
 : <dfn>ad cost</dfn>
 :: Null or a {{double}}. Advertiser click or conversion cost passed from `generateBid()` to
-  `reportWin()`. Invalid values, such as negative, infinite, and NaN values, will be ignored and not
-  passed. Only the lowest 8 bits will be passed.
+  `reportWin()`. Negative values will be ignored and not passed. Will be
+  [=round a value|stochastically rounded=] when passed.
 : <dfn>modeling signals</dfn>
 :: Null or an {{unsigned short}}. A 0-4095 integer (12-bits) passed to `reportWin()`, with noising.
 : <dfn>interest group</dfn>
