@@ -1843,24 +1843,8 @@ and a {{ReportingBrowserSignals}} |browserSignals|:
   1. Let |buyer| be |winner|'s [=generated bid/interest group=]'s [=interest group/owner=].
   1. Let |perBuyerSignalsForBuyer| be |perBuyerSignals|[|buyer|] if that member [=map/exists=],
     and null otherwise.
-  1. If the result of [=query reporting ID k-anonymity count=] given |winner|'s [=generated bid/interest group=]
-
-    and |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] is true:
-    1. Let |igAd| be the [=interest group ad=] from |winner|'s [=generated bid/interest group=]'s [=interest group/ads=] whose [=interest group ad/render url=] is |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-    1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
-          [=map/exists=]:
-      1. [=map/Set=] |browserSignals|["`buyerAndSellerReportingId`"] to |igAd|'s [=interest group ad/buyer and seller reporting ID=].
-    1. Otherwise, if |igAd|'s [=interest group ad/buyer reporting ID=]
-          [=map/exists=]
-      1. [=map/Set=] |browserSignals|["`buyerReportingId`"] to |igAd|'s [=interest group ad/buyer reporting ID=].
-    1. Otherwise, [=map/Set=] |browserSignals|["`interestGroupName`"] to |winner|'s [=generated bid/interest group=] [=interest group/name=].
   1. Let |reportWinBrowserSignals| be a {{ReportWinBrowserSignals}} with the members that
     are declared on {{ReportingBrowserSignals}} initialized to their values in |browserSignals|.
-  1. Let |interestGroupName| be {{undefined}}.
-  1. If the result of [=query reporting ID k-anonymity count=] given |winner|'s
-    [=generated bid/interest group=] and |winner|'s [=generated bid/ad descriptor=]'s
-    [=ad descriptor/url=] is true:
-    1. Set |interestGroupName| to |winner|'s [=generated bid/interest group=] [=interest group/name=].  
   1. Add the following fields to |reportWinBrowserSignals|:
     <dl>
       <dt>{{ReportWinBrowserSignals/dataVersion}}
@@ -1880,6 +1864,20 @@ and a {{ReportingBrowserSignals}} |browserSignals|:
       <dd>|winner|'s [=generated bid/modeling signals=] if it is not null, {{undefined}} otherwise
         (TODO: noise and bucket this signal)
     </dl>
+  1. If the result of [=query reporting ID k-anonymity count=] given |winner|'s
+     [=generated bid/interest group=] and |winner|'s
+     [=generated bid/ad descriptor=]'s [=ad descriptor/url=] is true:
+    1. Let |igAd| be the [=interest group ad=] from |winner|'s
+      [=generated bid/interest group=]'s [=interest group/ads=] whose
+      [=interest group ad/render url=] is |winner|'s
+      [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+    1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
+          [=map/exists=]:
+      1. [=map/Set=] |reportWinBrowserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s [=interest group ad/buyer and seller reporting ID=].
+    1. Otherwise, if |igAd|'s [=interest group ad/buyer reporting ID=]
+          [=map/exists=]
+      1. [=map/Set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/buyerReportingId}}"] to |igAd|'s [=interest group ad/buyer reporting ID=].
+    1. Otherwise, [=map/Set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/interestGroupName}}"] to |winner|'s [=generated bid/interest group=] [=interest group/name=].
   1. Let |buyerReportingScript| be the result of [=fetching script=] with |winner|'s
     [=generated bid/interest group=]'s [=interest group/bidding url=].
   1. Let « ignored, |resultUrl|, |reportingBeaconMap| » be the result of [=evaluating a
@@ -2851,6 +2849,8 @@ dictionary ReportingBrowserSignals {
   DOMString highestScoringOtherBidCurrency;
   USVString topLevelSeller;
   USVString componentSeller;
+
+  DOMString buyerAndSellerReportingId;
 };
 </xmp>
 
@@ -2878,6 +2878,8 @@ dictionary ReportingBrowserSignals {
   <dd>Copied from [=leading bid info/top level seller=]
   <dt>{{ReportingBrowserSignals/componentSeller}}
   <dd>Copied from [=leading bid info/component seller=]
+  <dt>{{ReportingBrowserSignals/buyerAndSellerReportingId}}
+  <dd>###
 </dl>
 
 <xmp class="idl">
@@ -2912,6 +2914,7 @@ dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
   USVString seller;
   boolean madeHighestScoringOtherBid;
   DOMString interestGroupName;
+  DOMString buyerReportingId;
   unsigned short modelingSignals;
   unsigned long dataVersion;
 };
@@ -2925,8 +2928,10 @@ dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
   <dt>{{ReportWinBrowserSignals/madeHighestScoringOtherBid}}
   <dd>True if the interest group owner was the only bidder that made bids with the second highest
     score
+  <dt>{{ReportWinBrowserSignals/buyerReportingId}}
+  <dd>###
   <dt>{{ReportWinBrowserSignals/interestGroupName}}
-  <dd>Only set if the tuple of interest group owner, name, bidding script URL and ad creative URL
+  <dd>### Only set if the tuple of interest group owner, name, bidding script URL and ad creative URL
     were [=query reporting ID k-anonymity count|jointly k-anonymous=]
   <dt>{{ReportWinBrowserSignals/modelingSignals}}
   <dd>A 0-4095 integer (12-bits) passed to `reportWin()`, with noising
