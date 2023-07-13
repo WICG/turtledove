@@ -29,6 +29,14 @@ being passed to an ad's fenced frame via parameters like `size`.  Adding `size`
 to the k-anonymity check of the `renderUrl` is under discussion in [this
 issue](https://github.com/WICG/turtledove/issues/312#issuecomment-1307471709).
 
+k-anonymity is also applied at Reporting Time: if the buyer has provided a `reportWin`
+function in the script available at `biddingScriptUrl`, the `browserSignals` argument
+to the `reportWin` function call will include `interestGroupName` if the tuple of 
+interest group owner, name, bidding script URL and ad creative URL is jointly 
+k-anonymous (see 
+[here](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#52-buyer-reporting-on-render-and-ad-events)).
+
+
 Previously the [FLEDGE](FLEDGE.md) proposal called for k-anonymity thresholds on 
 Interest Group updates. The idea was a browser would not request an Interest Group 
 update from an untrusted server unless there were at least $k$ other browsers also 
