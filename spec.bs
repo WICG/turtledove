@@ -1621,6 +1621,11 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
   1. Wait for |signals| to be set.
   1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return « null,
     null ».
+  1. [=map/For each=] |key| → |value| of |signals|:
+    1. Let |serializedValue| be the result of [=serializing an Infra value to a JSON string=] given
+      |value|.
+    1. If |serializedValue| is not {{undefined}}:
+      1. [=map/Set=] |signals|[|key|] to |serializedValue|.
   1. If |formatVersion| is 2:
     1. If |signals|["`keys`"] does not [=map/exist=], return « null, null ».
     1. Set |signals| to |signals|["`keys`"].
@@ -2120,10 +2125,11 @@ of the following global objects:
       |auctionSignals| if |auctionSignals| is not null, otherwise {{undefined}}.
     1. Let |perBuyerSignalsJS| be the result of [=parsing a JSON string to a JavaScript value=]
       given |perBuyerSignals| if |perBuyerSignals| is not null, otherwise {{undefined}}.
+    1. Let |trustedBiddingSignalsJS| be |trustedBiddingSignals| [=converted to ECMAScript values=]. 
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
     1. Let |startTime| be the [=current wall time=].
     1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
-      « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignals|, |browserSignalsJS| »,
+      « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignalsJS|, |browserSignalsJS| »,
       and |timeout|.
     1. Let |duration| be the [=current wall time=] minus |startTime| in milliseconds.
     1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null:
@@ -2163,17 +2169,8 @@ of the following global objects:
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupScoringScriptRunnerGlobalScope}}.
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
-    1. Let |convertedTrustedScoringSignals| be a new empty [=map].
-    1. [=map/For each=] |key| -> |value| of |trustedScoringSignals|:
-      1. Let |valueString| be the result of [=serializing an Infra value to a JSON string=] given
-        |value|.
-      1. If the previous steps did not [=exception/throw=] an exception:
-        1. [=map/Set=] |convertedTrustedScoringSignals||key| to |valueString|.
-    1. Let |auctionConfigJS| be the result of [=converted to ECMAScript values|converting=]
-      |auctionConfigIDL| to an ECMAScript value.
-    1. Let |trustedScoringSignalsJS| be the result of
-      [=converting an Infra value to a JSON-compatible JavaScript value=] given
-      |convertedTrustedScoringSignals|.
+    1. Let |auctionConfigJS| be |auctionConfigIDL| [=converted to ECMAScript values=].
+    1. Let |trustedScoringSignalsJS| be |trustedScoringSignals| [=converted to ECMAScript values=].
     1. Return the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
       «|adMetadata|, |bidValue|, |auctionConfigJS|, |trustedScoringSignalsJS|, |browserSignalsJS|»,
       and |timeout|.
