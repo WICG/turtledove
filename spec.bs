@@ -2141,9 +2141,11 @@ of the following global objects:
       1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
         |result|'s \[[Value]] to a {{GenerateBidOutput}}.
       1. If no exception was [=exception/thrown=] in the previous step:
-        1. Set |generatedBid| to the result of [=converting GenerateBidOutput to generated bid=] with |generatedBidIDL|, |ig|, |expectedCurrency|, |isComponentAuction|, and |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=].
-      1. Otherwise, set |generatedBid| to failure.
-    1. If |generatedBid| is a [=generated bid=] and |generatedBid|'s [=generated bid/bid=]'s [=bid with currency/value=] &le; 0, set |generatedBid| to failure.
+        1. Let |groupHasAdComponents| be true.
+        1. If |ig|'s [=interest group/ad components=] is null, set |groupHasAdComponents| be false.
+        1. Let |possibleGeneratedBid| be the result of [=converting GenerateBidOutput to generated bid=]
+          with |generatedBidIDL|, |ig|, |expectedCurrency|, |isComponentAuction|, and |groupHasAdComponents|.
+        1. If |possibleGeneratedBid| is not failure, set |generatedBid| to it.
     1. If |generatedBid| is null, set it to failure.
     1. If |generatedBid| is not failure:
       1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
@@ -2259,25 +2261,26 @@ interface InterestGroupScriptRunnerGlobalScope {
          InterestGroupBiddingScriptRunnerGlobalScope)]
 interface InterestGroupBiddingScriptRunnerGlobalScope
         : InterestGroupScriptRunnerGlobalScope {
-  boolean setBid(optional GenerateBidOutput generateBidOutput = {});
+  boolean setBid();
+  boolean setBid(GenerateBidOutput generateBidOutput);
   undefined setPriority(double priority);
   undefined setPrioritySignalsOverride(DOMString key, double priority);
 };
 
 dictionary AdRender {
   required DOMString url;
-  DOMString width;
-  DOMString height;
+  required DOMString width;
+  required DOMString height;
 };
 
 dictionary GenerateBidOutput {
-  double bid = -1;
+  required double bid;
   DOMString bidCurrency;
-  (DOMString or AdRender) render;
+  required (DOMString or AdRender) render;
   any ad;
   sequence<(DOMString or AdRender)> adComponents;
   double adCost;
-  unrestricted double modelingSignals;
+  double modelingSignals;
   boolean allowComponentAuction = false;
 };
 
@@ -2302,20 +2305,24 @@ Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
 
 </dl>
 
+<div algorithm>
+  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid()</dfn> method steps are:
+
+  1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=]
+    to null.
+  1. Return true.
+</div>
 
 <div algorithm>
 
 To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOutput}}
 |generateBidOutput|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|, a [=boolean=]
 |isComponentAuction| and a [=boolean=] |groupHasAdComponents|:
-  1. Let |bid| be a new [=generated bid=].
-  1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] &le; 0:
-    1. Set |bid|'s [=generated bid/bid=] to a [=bid with currency=] with [=bid with currency/value=] |generateBidOutput|["{{GenerateBidOutput/bid}}"] and [=bid with currency/currency=] null.
-    1. Return |bid|.
-  1. If |generateBidOutput|["{{GenerateBidOutput/render}}"] does not [=map/exist=], return failure.
+  1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] is less than or equal to 0, return failure.
   1. If |isComponentAuction| is true, and
     |generateBidOutput|["{{GenerateBidOutput/allowComponentAuction}}"] is false:
     1. Return failure.
+  1. Let |bid| be a new [=generated bid=].
   1. Let |bidCurrency| be null.
   1. If |generateBidOutput|["{{GenerateBidOutput/bidCurrency}}"] is specified:
      1. If the result of [=checking whether a string is a valid currency tag=] on
@@ -2367,8 +2374,8 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
       |generateBidOutput|["{{GenerateBidOutput/adCost}}"].
   1. If |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"] [=map/exists=]:
     1. Let |modelingSignals| be |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"].
-    1. If |modelingSignals| &ge; 0 and |modelingSignals| < 4096:
-      1. Set |bid|'s [=generated bid/modeling signals=] to the result of [=converted to an IDL value|converting=] the ECMAScript value represented by |modelingSignals| to an {{unsigned short}}.
+    1. If |modelingSignals| is greater than or equal to 0 and less than 4096:
+      1. Set |bid|'s [=generated bid/modeling signals=] to |modelingSignals|.
   1. Return |bid|.
 
 </div>
@@ -2396,6 +2403,7 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   To <dfn>convert an ad render</dfn> given an {{AdRender}} |adRender|, an [=interest group=] |ig|,
   and a [=boolean=] |isComponent|:
 
+  1. If |adRender|["{{AdRender/url}}"] does not [=map/exist=], return false.
   1. Let |adUrl| be the result of running the [=URL parser=] on |adRender|["{{AdRender/url}}"].
   1. If |adUrl| is failure, return failure.
   1. If [=validating an ad url=] given |adUrl|, |ig|, and |isComponent| returns false, return failure.
@@ -2445,9 +2453,10 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
     [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=], and [=this=]'s
     [=relevant global object=]'s
     [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=].
-  1. If |bidToSet| is failure, [=exception/throw=] a {{TypeError}}.
+  1. If |bidToSet| is failure, return false.
   1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=]
     to |bidToSet|.
+  1. Return true.
 </div>
 
 <div algorithm>
