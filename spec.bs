@@ -118,6 +118,8 @@ partial interface Navigator {
 dictionary AuctionAd {
   required USVString renderURL;
   any metadata;
+  USVString buyerReportingId;
+  USVString buyerAndSellerReportingId;
 };
 
 dictionary GenerateBidInterestGroup {
@@ -256,6 +258,11 @@ This is detectable because it can change the set of fields that are read from th
         |igAd|'s [=interest group ad/metadata=] be the result of
         [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
         This can [=exception/throw=] a {{TypeError}}.
+      1. If |groupMember| is "{{GenerateBidInterestGroup/ads}}":
+        1. If |ad|["{{AuctionAd/buyerReportingId}}"] [=map/exists=], then set
+          |igAd|'s [=interest group ad/buyer reporting ID=] to it.
+        1. If |ad|["{{AuctionAd/buyerAndSellerReportingId}}"] [=map/exists=],
+          then set |igAd|'s [=interest group ad/buyer and seller reporting ID=] to it.
       1. [=list/Append=] |igAd| to |interestGroup|'s |interestGroupField|.
 1. If |interestGroup|'s [=interest group/estimated size=] is greater than 50 KB, then
   [=exception/throw=] a {{TypeError}}.
@@ -315,6 +322,8 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
     [=interest group ad/render url=].
   1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
+  1. The [=string/length=] of |ad|'s [=interest group ad/buyer reporting ID=] if the field is not null.
+  1. The [=string/length=] of |ad|'s [=interest group ad/buyer and seller reporting ID=] if the field is not null.
 1. If |ig|'s [=interest group/ad components=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
     [=interest group ad/render url=].
@@ -1061,7 +1070,7 @@ an [=interest group=] |ig|, and a [=moment=] |auctionStartTime|:
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/bidCount}}"] to the sum of |ig|'s
      [=interest group/bid counts=] for all days within the last 30 days.
   1. Let |prevWins| be a new <code>[=sequence=]<{{PreviousWin}}></code>.
-  1. [=list/For each] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
+  1. [=list/For each=] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
     the last 30 days:
     1. Let |timeDelta| be |auctionStartTime| minus |prevWin|'s [=previous win/time=].
     1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
@@ -1309,7 +1318,7 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 
   1. If |ads| is null, then return {{undefined}}.
   1. Let |adsIDL| be a new <code>[=sequence=]<{{AuctionAd}}></code>.
-  1. [=list/For each] |ad| of |ads|:
+  1. [=list/For each=] |ad| of |ads|:
     1. Let |adIDL| be a new {{AuctionAd}}.
     1. [=map/Set=] |adIDL|["{{AuctionAd/renderURL}}"] to the [=URL serializer|serialization=] of
       |ad|'s [=interest group ad/render url=].
@@ -1793,6 +1802,11 @@ null |winningComponentConfig|:
       <dd>|leadingBidInfo|'s [=leading bid info/scoring data version=] if it is not null,
         {{undefined}} otherwise
     </dl>
+  1. Let |igAd| be the [=interest group ad=] from |winner|'s [=generated bid/interest group=]'s [=interest group/ads=] whose [=interest group ad/render url=] is |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+  1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
+     [=map/exists=] and the result of [=query reporting ID k-anonymity count=]
+     given |winner|'s [=generated bid/interest group=] and |igAd| is true:
+    1. [=map/Set=] |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s [=interest group ad/buyer and seller reporting ID=].
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap| » be the result of
@@ -1833,11 +1847,6 @@ and a {{ReportingBrowserSignals}} |browserSignals|:
     and null otherwise.
   1. Let |reportWinBrowserSignals| be a {{ReportWinBrowserSignals}} with the members that
     are declared on {{ReportingBrowserSignals}} initialized to their values in |browserSignals|.
-  1. Let |interestGroupName| be {{undefined}}.
-  1. If the result of [=query reporting ID k-anonymity count=] given |winner|'s
-    [=generated bid/interest group=] and |winner|'s [=generated bid/ad descriptor=]'s
-    [=ad descriptor/url=] is true:
-    1. Set |interestGroupName| to |winner|'s [=generated bid/interest group=] [=interest group/name=].  
   1. Add the following fields to |reportWinBrowserSignals|:
     <dl>
       <dt>{{ReportWinBrowserSignals/dataVersion}}
@@ -1851,12 +1860,19 @@ and a {{ReportingBrowserSignals}} |browserSignals|:
       <dd>Set to true if |leadingBidInfo|'s [=leading bid info/highest scoring other bid owner=] is
         not null, and |buyer| is [=same origin=] with |leadingBidInfo|'s
         [=leading bid info/highest scoring other bid owner=], false otherwise
-      <dt>{{ReportWinBrowserSignals/interestGroupName}}
-      <dd>TODO: set this.
       <dt>{{ReportWinBrowserSignals/modelingSignals}}
       <dd>|winner|'s [=generated bid/modeling signals=] if it is not null, {{undefined}} otherwise
         (TODO: noise and bucket this signal)
     </dl>
+  1. Let |igAd| be the [=interest group ad=] from |winner|'s
+     [=generated bid/interest group=]'s [=interest group/ads=] whose
+     [=interest group ad/render url=] is |winner|'s
+     [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+  1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
+     does not [=map/exist=] and the result of [=query reporting ID k-anonymity count=] given |winner|'s [=generated bid/interest group=] and |igAd| is true:
+    1. If |igAd|'s [=interest group ad/buyer reporting ID=] [=map/exists=],
+      [=map/set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/buyerReportingId}}"] to |igAd|'s [=interest group ad/buyer reporting ID=].
+    1. Otherwise, [=map/Set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/interestGroupName}}"] to |winner|'s [=generated bid/interest group=] [=interest group/name=].
   1. Let |buyerReportingScript| be the result of [=fetching script=] with |winner|'s
     [=generated bid/interest group=]'s [=interest group/bidding url=].
   1. Let « ignored, |resultUrl|, |reportingBeaconMap| » be the result of [=evaluating a
@@ -1923,6 +1939,28 @@ threshold when responding to [=query k-anonymity count=].
 </div>
 
 <div algorithm>
+  To <dfn>compute the key hash of reporting ID</dfn> given an [=interest group=] |ig| and an [=interest group ad=] |igAd|:
+    1. Let |keyString| be the [=string/concatenation=] of the following strings separated with U+000A (LF):
+
+      1. "NameReport"
+      1. the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
+      1. the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
+      1. the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=]
+      1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
+          [=map/exists=]:
+        1. "BuyerAndSellerReportingId"
+        1. |igAd|'s [=interest group ad/buyer and seller reporting ID=]
+      1. Otherwise, if |igAd|'s [=interest group ad/buyer reporting ID=]
+          [=map/exists=]:
+        1. "BuyerReportingId"
+        1. |igAd|'s [=interest group ad/buyer reporting ID=]
+      1. Otherwise:
+        1. "IgName"
+        1. |ig|'s [=interest group/name=].
+    1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
+</div>
+
+<div algorithm>
   To <dfn>query component ad k-anonymity count</dfn> given a [=URL=] |ad|:
     1. Let |keyString| be the [=string/concatenation=] of the following strings separated with U+000A LF:
       1. "ComponentBid"
@@ -1946,15 +1984,9 @@ threshold when responding to [=query k-anonymity count=].
 </div>
 
 <div algorithm>
-  To <dfn>query reporting ID k-anonymity count</dfn> given an [=interest group=] |ig| and a [=URL=] |ad|:
-    1. Let |keyString| be the [=string/concatenation=] of the following strings separated with U+000A LF:
-      1. "NameReport"
-      1. the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
-      1. the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
-      1. the [=URL serializer|serialization=] of |ad|
-      1. |ig|'s [=interest group/name=].
-    1. Let |keyHash| be the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
-
+  To <dfn>query reporting ID k-anonymity count</dfn> given an [=interest group=]
+  |ig| and [=interest group ad=] |igAd|:
+    1. Let |keyHash| be the result of [=computing the key hash of reporting ID=] given |ig| and |igAd|.
     1. Return the result of [=query k-anonymity count|querying the k-anonymity count=] given |keyHash|.
 </div>
 
@@ -1986,13 +2018,8 @@ threshold when responding to [=query k-anonymity count=].
 <div algorithm>
   To <dfn>increment reporting ID k-anonymity count</dfn> given an [=interest group=] |ig| and a [=URL=]
   |ad|:
-    1. Let |keyString| be the [=string/concatenation=] of the following strings separated with U+000A LF:
-      1. "NameReport"
-      1. the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
-      1. the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
-      1. the [=URL serializer|serialization=] of |ad|
-      1. |ig|'s [=interest group/name=].
-    1. Let |keyHash| be the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
+    1. Let |igAd| be the [=interest group ad=] from |ig|'s [=interest group/ads=] whose [=interest group ad/render url=] is |ad|.
+    1. Let |keyHash| be the result of [=computing the key hash of reporting ID=] given |ig| and |igAd|.
     1. [=Increment k-anonymity count=] given |keyHash|.
 </div>
 
@@ -2731,6 +2758,12 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
               [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
               If this [=exception/throws=], jump to the step
               labeled <i><a href=#abort-update>Abort update</a></i>.
+            1. If |groupMember| is "`ads`":
+              1. If |ad|["{{AuctionAd/buyerReportingId}}"] [=map/exists=] then set
+                  |igAd|'s [=interest group ad/buyer reporting ID=] to it.
+              1. If |ad|["{{AuctionAd/buyerAndSellerReportingId}}"] [=map/exists=]
+                  then set |igAd|'s [=interest group ad/buyer and seller
+                  reporting ID=] to it.
             1. [=list/Append=] |igAd| to |ig|'s |interestGroupField|.
 
         </dl>
@@ -2804,6 +2837,8 @@ dictionary ReportingBrowserSignals {
   DOMString highestScoringOtherBidCurrency;
   USVString topLevelSeller;
   USVString componentSeller;
+
+  USVString buyerAndSellerReportingId;
 };
 </xmp>
 
@@ -2831,6 +2866,8 @@ dictionary ReportingBrowserSignals {
   <dd>Copied from [=leading bid info/top level seller=]
   <dt>{{ReportingBrowserSignals/componentSeller}}
   <dd>Copied from [=leading bid info/component seller=]
+  <dt>{{ReportingBrowserSignals/buyerAndSellerReportingId}}
+  <dd>Set if the winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its listing in the interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with interest group owner, bidding script URL, and ad creative URL.
 </dl>
 
 <xmp class="idl">
@@ -2865,6 +2902,7 @@ dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
   USVString seller;
   boolean madeHighestScoringOtherBid;
   DOMString interestGroupName;
+  DOMString buyerReportingId;
   unsigned short modelingSignals;
   unsigned long dataVersion;
 };
@@ -2878,9 +2916,15 @@ dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
   <dt>{{ReportWinBrowserSignals/madeHighestScoringOtherBid}}
   <dd>True if the interest group owner was the only bidder that made bids with the second highest
     score
+  <dt>{{ReportWinBrowserSignals/buyerReportingId}}
+  <dd>Set if the winning ad had a [=interest group ad/buyer reporting ID=] but not a [=interest group ad/buyer and seller reporting ID=] set in its listing in the interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with interest group owner, bidding script URL, and ad creative URL.
+
   <dt>{{ReportWinBrowserSignals/interestGroupName}}
   <dd>Only set if the tuple of interest group owner, name, bidding script URL and ad creative URL
-    were [=query reporting ID k-anonymity count|jointly k-anonymous=]
+
+    were [=query reporting ID k-anonymity count|jointly k-anonymous=], and the
+    winning ad had neither [=interest group ad/buyer and seller reporting ID=]
+    nor [=interest group ad/buyer reporting ID=] set in its listing in the interest group.
   <dt>{{ReportWinBrowserSignals/modelingSignals}}
   <dd>A 0-4095 integer (12-bits) passed to `reportWin()`, with noising
   <dt>{{ReportWinBrowserSignals/dataVersion}}
@@ -2988,6 +3032,10 @@ An interest group ad is a [=struct=] with the following [=struct/items=]:
   <{iframe}> (or a <{fencedframe}>).
 : <dfn>metadata</dfn>
 :: Null or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
+: <dfn>buyer reporting ID</dfn>
+:: Null or a [=string=]. Will be passed in place of interest group name to `reportWin()`, subject to k-anonymity checks.
+: <dfn>buyer and seller reporting ID</dfn>
+:: Null or a [=string=]. Will be passed in place of interest group name or [=interest group ad/buyer reporting ID=] to `reportWin()` and `reportResult()`, subject to k-anonymity checks.
 
 </dl>
 
