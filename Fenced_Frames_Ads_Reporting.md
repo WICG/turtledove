@@ -178,9 +178,17 @@ If invoked multiple times, the latest invocation before the top-level navigation
 
 If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon because the `destination` is unknown.
 
-`setReportEventDataForAutomaticBeacons` can also be invoked in the click handler of an anchor tag, and will be sent on navigation:
+An automatic beacon can be manually cleared out by calling `setReportEventDataForAutomaticBeacons` with an empty destination list.
+```
+window.fence.setReportEventDataForAutomaticBeacons({
+  'eventType': 'reserved.top_navigation',
+  'destination': [],
+});
+```
 
 `onlyForNextAutomaticBeacon` is optional, and, if empty, will default to false. If `onlyForNextAutomaticBeacon` is set to true, the automatic beacon will only be sent for the next `reserved.top_navigation` event. Beacons will not be sent for subsequent `reserved.top_navigation` events.
+
+`setReportEventDataForAutomaticBeacons` can also be invoked in the click handler of an anchor tag, and will be sent on navigation:
 
 ```
 <script>
