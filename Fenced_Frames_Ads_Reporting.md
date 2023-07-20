@@ -165,7 +165,7 @@ window.fence.setReportEventDataForAutomaticBeacons({
   'eventType': 'reserved.top_navigation',
   'eventData': 'an example string',
   'destination': ['seller', 'buyer'],
-  'onlyForNextAutomaticBeacon': false
+  'once': false
 });
 ```
 
@@ -186,7 +186,7 @@ window.fence.setReportEventDataForAutomaticBeacons({
 });
 ```
 
-`onlyForNextAutomaticBeacon` is optional, and, if empty, will default to false. If `onlyForNextAutomaticBeacon` is set to true, the automatic beacon will only be sent for the next `reserved.top_navigation` event. Beacons will not be sent for subsequent `reserved.top_navigation` events.
+`once` is optional, and, if empty, will default to false. If `once` is set to true, the automatic beacon will only be sent for the next `reserved.top_navigation` event. Beacons will not be sent for subsequent `reserved.top_navigation` events.
 
 `setReportEventDataForAutomaticBeacons` can also be invoked in the click handler of an anchor tag, and will be sent on navigation:
 
