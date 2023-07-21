@@ -58,6 +58,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Microsoft (Xandr, MSAN) | SSP + DSP(s) | Testing | | privacy_sandbox@microsoft.com |
 | Tremor International | SSP & DSP| 2023-2024 | coming soon | subhag.oak@amobee.com |
 | Triplelift | SSP | Testing in progress | | prod-privacysandbox@triplelift.com |
+| Seedtag | SSP & DSP| 2023-2024 | coming soon | privacysandbox@seedtag.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
