@@ -371,7 +371,7 @@ To <dfn>check interest group permissions</dfn> given an [=origin=]
   1. Set |resource| to |responseBody|.
 1. Wait for |resource| to be set.
 1. If |resource| is failure, then return false.
-1. Let |permissions| be the result of [=parsing a JSON string to an Infra value=] with |resource|,
+1. Let |permissions| be the result of [=parsing JSON bytes to an Infra value=] with |resource|,
   returning false on failure.
 1. If |permissions| is not an [=ordered map=], then return false.
 1. If |joinOrLeave| is "`join`" and |permissions|["`joinAdInterestGroup`"] [=map/exists=], then
@@ -1516,7 +1516,7 @@ To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, 
   1. Return false if any of the following conditions hold:
     * |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and |responseBody|
       is not [=UTF-8=] encoded;
-    * |mimeTypeCharset| is "us-ascii", and |responseBody| is not [=ascii string=].
+    * |mimeTypeCharset| is "us-ascii", and not all bytes in |responseBody| are [=ASCII bytes=].
   1. Return true.
 </div>
 
@@ -1621,8 +1621,8 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
     1. Set |dataVersion| to the result of [=header list/getting a structured field value=]
       given [:Data-Version:] and "`item`" from |headers|.
     1. If |dataVersion| is not null:
-      1. If |dataVersion| is not an integer, or is less than 0 or more than 4294967295, set
-        |signals| to failure and return.
+      1. If |dataVersion| is not an integer, or is less than 0 or more than 2<sup>32</sup>&minus;1,
+        set |signals| to failure and return.
     1. If |isBiddingSignal| is true:
       1. Set |formatVersion| to the result of [=header list/getting a structured field value=]
         given [:X-protected-audience-bidding-signals-format-version:] and "`item`" from |headers|.
@@ -3163,7 +3163,9 @@ An auction config is a [=struct=] with the following items:
   trusted servers for buyers without a specified experiment group.
 : <dfn>pending promise count</dfn>
 :: An integer, initially 0. The number of [=auction config/auction signals=],
-  [=auction config/per buyer signals=], [=auction config/per buyer currencies=], [=auction config/per buyer timeouts=], directFromSellerSignals, or [=auction config/seller signals=] whose {{Promise}}s are not yet resolved.
+  [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
+  [=auction config/per buyer timeouts=], directFromSellerSignals, or [=auction config/seller signals=]
+  whose {{Promise}}s are not yet resolved.
 : <dfn>config idl</dfn>
 :: {{AuctionAdConfig}}.
 : <dfn>resolve to config</dfn>
@@ -3174,12 +3176,14 @@ An auction config is a [=struct=] with the following items:
   which reporting for this auction will agree on.
 
 : <dfn>per buyer currencies</dfn>
-:: A {{Promise}} or failure or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=currency tags=]. Specifies the currency bids returned by `generateBid()` or `scoreAd()` in component auctions are expected to use. The initial value is an empty map.
+:: A {{Promise}} or failure or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose
+  [=map/values=] are [=currency tags=]. Specifies the currency bids returned by `generateBid()` or
+  `scoreAd()` in component auctions are expected to use. The initial value is an empty map.
 
 : <dfn>all buyers currency</dfn>
 :: A [=currency tag=]. Specifies the currency bids returned by `generateBid()` or `scoreAd()` in
-  component auctions are expected to use if [=auction config/per buyer priority signals=] does not
-  specify a particular value.
+  component auctions are expected to use if [=auction config/per buyer currencies=] does not specify
+  a particular value.
 
 
 </dl>
@@ -3187,9 +3191,12 @@ An auction config is a [=struct=] with the following items:
 <div algorithm>
 To <dfn>wait until configuration input promises resolve</dfn> given an [=auction config=] |auctionConfig|:
 1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
-1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=], [=auction config/per buyer signals=], [=auction config/per buyer currencies=], and [=auction config/per buyer timeouts=] are not {{Promise}}s.
+1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
+  [=auction config/per buyer signals=], [=auction config/per buyer currencies=], and
+  [=auction config/per buyer timeouts=] are not {{Promise}}s.
 1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
-  [=auction config/per buyer signals=], [=auction config/per buyer currencies=] or [=auction config/per buyer timeouts=] is failure, return failure.
+  [=auction config/per buyer signals=], [=auction config/per buyer currencies=] or
+  [=auction config/per buyer timeouts=] is failure, return failure.
 1. TODO: the above two steps should also check directFromSellerSignals once something handles it.
 
 </div>
@@ -3203,7 +3210,8 @@ To <dfn>recursively wait until configuration input promises resolve</dfn> given 
 </div>
 
 <div algorithm>
-To <dfn>handle an input promise in configuration</dfn> given an [=auction config=] |auctionConfig|, a {{Promise}} |p|, and two sequences of steps, covering the parsing of the value and error-handling:
+To <dfn>handle an input promise in configuration</dfn> given an [=auction config=] |auctionConfig|,
+a {{Promise}} |p|, and two sequences of steps, covering the parsing of the value and error-handling:
 1. Increment |auctionConfig|'s [=auction config/pending promise count=].
 1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps [=upon fulfillment=] of |p| with |result|:
   1. Execute the steps to be run for parsing of the value given |result|.
