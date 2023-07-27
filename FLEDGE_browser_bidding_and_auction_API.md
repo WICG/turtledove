@@ -11,13 +11,13 @@ This document seeks to propose an API for web pages to perform FLEDGE auctions u
 #### Step 1: Get auction blob from browser
 
 To execute an on-server FLEDGE auction, sellers begin by calling `navigator.startServerAdAuction()` which returns a `Promise<Uint8Array>`:
-```  
+```
 const auctionBlob = await navigator.startServerAdAuction({
   // ‘seller’ works the same as for runAdAuction.
   'seller': 'https://www.example-ssp.com',
 });
 ```
- 
+
 The returned `auctionBlob` is HPKE encrypted with an encryption header like that used in OHTTP. The encryption is done using public keys the browser fetches that correspond with private keys only shared with B&A servers running in TEEs. `auctionBlob` is a blob of compressed data derived from the interest groups stored in the browser and formatted like [the B&A API](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md) dictates. This derived information will include the contents of the interest groups, the k-anonymity status of the interest groups’ ads, and information like `joinCount`, `bidCount`, and `prevWins`. The blob contains padding (e.g. exponentially bucketed total sizes) to reduce the cross-site identity leaked by its size.
 
 #### Step 2: Send auction blob to servers
@@ -41,11 +41,23 @@ These response blobs are sent back to the browser. A seller’s JavaScript can [
 fetch('https://www.example-ssp.com/auction', { <b>adAuctionHeaders: true</b>, … })
 </pre>
 Note that `adAuctionHeaders` only works with HTTPS requests.
-For each response blob sent back to the browser, the seller’s server attaches a response header containing the SHA-256 hash of the response blob:
-  
+For each response blob sent back to the browser, the seller’s server attaches a response header containing the base64url encoded (RFC 4648 section 5) SHA-256 hash of the response blob:
+
 ```
-Ad-Auction-Result: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0=
 ```
+
+Multiple hashes can be included in a response by either repeating the
+header or by specifying multiple hashes separated by a `,` character. So
+```
+Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0=,9UTB-u-WshX66Xqz5DNCpEK9z-x5oCS5SXvgyeoRB1k=
+```
+is equivalent to
+```
+Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0=
+Ad-Auction-Result: 9UTB-u-WshX66Xqz5DNCpEK9z-x5oCS5SXvgyeoRB1k=
+```
+and both versions should be accepted.
 
 It should be noted that the `fetch()` request using `adAuctionHeaders` can also be used to send `auctionBlob` (e.g. in the request body) and receive the response blob (e.g. in the response body).
 
@@ -66,14 +78,14 @@ The browser verifies it witnessed a Fetch request to the `seller`’s origin wit
 
 The blobs sent to and received from the B&A servers can contain data that could be used to re-identify the user across different web sites. To prevent this data from being used to join the user’s cross-site identities, the data is encrypted with public keys whose corresponding private keys are only shared with B&A server instances running in TEEs and running public open-source binaries known to prevent cross-site identity joins (e.g. by preventing logging or other activities which might permit such joins).
 
-There are however side-channels that could leak a much smaller amount of cross-site identity, the first and most obvious one being the size of the encrypted blob. To minimize this leakage further we suggest above that the encrypted blob be padded. For example, we can use exponential bucketing for request blobs. Keeping the number of buckets small, for instance, 7 will lead to <3 bits of leaked entropy per call to `startServerAdAuction()`. Some [mitigation techniques for the “1-bit leak”](https://github.com/WICG/turtledove/issues/211#issuecomment-889269834) may be applicable here.  
+There are however side-channels that could leak a much smaller amount of cross-site identity, the first and most obvious one being the size of the encrypted blob. To minimize this leakage further we suggest above that the encrypted blob be padded. For example, we can use exponential bucketing for request blobs. Keeping the number of buckets small, for instance, 7 will lead to <3 bits of leaked entropy per call to `startServerAdAuction()`. Some [mitigation techniques for the “1-bit leak”](https://github.com/WICG/turtledove/issues/211#issuecomment-889269834) may be applicable here.
 
 To prevent repeated calls to `startServerAdAuction()` leaking additional cross-site identity, we’ve decided, at least in the near-term, to make repeated calls to `startServerAdAuction()` return a blob of the same size. The tradeoff being that the blob cannot be dependent on inputs to `startServerAdAuction()`. For example whereas `runAdAuction()` normally takes a `interestGroupBuyers` list dictating which buyers to include in the auction, `startServerAdAuction()`’s returned blob cannot depend on such a list and so must include all buyers that have stored interest groups on the device. This may cause larger blobs, and in turn slower network requests sending and receiving those blobs. This could in turn make the API more susceptible to abuse, e.g. fake calls to `joinAdInterestGroup()` bloating the blob size with spam interest groups.
 
 Another way to prevent the encrypted blob’s size from being a leak is to have the browser send the blob directly to the B&A servers instead of exposing it to JavaScript at all. Requiring this today has significant downsides:
 
 1.  This would hugely complicate the B&A server’s interactions and API, making adoption likely infeasible. The B&A API would no longer be a RESTful API as it would have to coordinate communication from both the browser and other servers (e.g. contextual auction server).
-    
+
 1.  This would also require the on-device JavaScript to determine whether to send the FLEDGE request to the B&A server, perhaps at a time before it has the results of the contextual auction which might influence the decision. Without this information the device would have to send the encrypted blob for every ad request, even in cases where the contextual call indicated it was wasteful to do so.
 
 Exposing size of the blob is a temporary leak that we hope to mitigate in the future:
