@@ -109,7 +109,7 @@ Note `window.fence` here is a new namespace for APIs that are only available fro
 
 ## registerAdBeacon
 
-A similar API was initially discussed here: https://github.com/WICG/turtledove/issues/99 for reporting clicks. The idea is that the buyer and seller side worklets are able to register a URL with the browser in their reportWin and reportResult APIs. The registered URL is required to be attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). If the URL is attested for Protected Audience API, a beacon will be sent to the registered URL when events are reported by the fenced frame via reportEvent. Otherwise the beacon will not be sent.
+A similar API was initially discussed here: https://github.com/WICG/turtledove/issues/99 for reporting clicks. The idea is that the buyer and seller side worklets are able to register a URL with the browser in their reportWin and reportResult APIs. The registered URL's site is required to be attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). If the URL is attested for Protected Audience API, a beacon will be sent to the registered URL when events are reported by the fenced frame via reportEvent. Otherwise the beacon will not be sent.
 
 
 ### Parameters
