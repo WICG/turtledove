@@ -186,8 +186,6 @@ window.fence.setReportEventDataForAutomaticBeacons({
 });
 ```
 
-`once` is optional, and, if empty, will default to false. If `once` is set to true, the automatic beacon will only be sent for the next `reserved.top_navigation` event. Beacons will not be sent for subsequent `reserved.top_navigation` events.
-
 `setReportEventDataForAutomaticBeacons` can also be invoked in the click handler of an anchor tag, and will be sent on navigation:
 
 ```
@@ -206,6 +204,8 @@ function addBeaconData(element) {
 ```
 
 The beacon data will be in place by the time that the navigation starts. When the navigation commits, the automatic beacon will be sent out with event data set to "link1 was clicked.".
+
+`once` is optional, and, if empty, will default to false. If `once` is set to true, the automatic beacon will only be sent for the next `reserved.top_navigation` event. Beacons will not be sent for subsequent `reserved.top_navigation` events until `setReportEventDataForAutomaticBeacons` is invoked again. When used with a click handler, this can be used to send beacons only for specific top-level navigations, rather than for every top-level navigation.
 
 # Support for Ad Components
 ## Goal
