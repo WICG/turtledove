@@ -165,7 +165,6 @@ window.fence.setReportEventDataForAutomaticBeacons({
   'eventType': 'reserved.top_navigation',
   'eventData': 'an example string',
   'destination': ['seller', 'buyer'],
-  'once': false
 });
 ```
 
@@ -205,7 +204,18 @@ function addBeaconData(element) {
 
 The beacon data will be in place by the time that the navigation starts. When the navigation commits, the automatic beacon will be sent out with event data set to "link1 was clicked.".
 
-`once` is optional, and, if empty, will default to false. If `once` is set to true, the automatic beacon will only be sent for the next `reserved.top_navigation` event. Beacons will not be sent for subsequent `reserved.top_navigation` events until `setReportEventDataForAutomaticBeacons` is invoked again. When used with a click handler, this can be used to send beacons only for specific top-level navigations, rather than for every top-level navigation.
+The dictionary passed into `setReportEventDataForAutomaticBeacons` also takes an optional `once` boolean that defaults to false. If `once` is set to true, the automatic beacon will only be sent for the next `reserved.top_navigation` event. Beacons will not be sent for subsequent `reserved.top_navigation` events until `setReportEventDataForAutomaticBeacons` is invoked again. When used with a click handler, this can be used to send beacons only for specific top-level navigations, rather than for every top-level navigation.
+
+For example, if a frame has multiple links that can perform top-level navigations, but only one of the links should have an automatic beacon associated with it, `setReportEventDataForAutomaticBeacons()` can be called in that link's click handler with `once` set to true. This will ensure that, if another link is clicked after the link with the associated automatic beacon, that other link will not result in a beacon being sent out.
+
+```
+window.fence.setReportEventDataForAutomaticBeacons({
+  'eventType': 'reserved.top_navigation',
+  'eventData': 'an example string',
+  'destination': ['seller', 'buyer'],
+  'once': true,
+});
+```
 
 # Support for Ad Components
 ## Goal
