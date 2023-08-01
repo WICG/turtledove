@@ -60,6 +60,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Triplelift | SSP | Testing in progress | | prod-privacysandbox@triplelift.com |
 | Seedtag | SSP & DSP| 2023-2024 | coming soon | privacysandbox@seedtag.com |
 | Index Exchange | SSP | Testing in progress | | privacy-sandbox-support@indexexchange.com |
+| PubMatic | SSP | 2023-2024 | | privacysandbox@pubmatic.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
