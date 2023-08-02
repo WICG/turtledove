@@ -127,6 +127,9 @@ registerAdBeacon({
 });
 ```
 
+In this example, the registered URL for a `click` event is 
+`"https://adtech.example.co.jp/click?buyer_event_id=123"`. The registrable domain of this URL is `"example.co.jp"`. [The Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model) requires its corresponding site `"https://example.co.jp"` to be enrolled as defined in [site-based enrollment](https://developer.chrome.com/blog/announce-enrollment-privacy-sandbox/#site-based-enrollment). Otherwise the beacon will not be sent when there is a `click` event.
+
 ## Support for Attribution Reporting 
 ### Goals
 *   While fenced frames still have unrestricted network access and FLEDGE supports event-level reporting, the solution below takes advantage of the `registerAdBeacon`/`reportEvent` information flow to enable [registering attribution sources](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#registering-attribution-sources). [ARA attribution triggering](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#triggering-attribution) is unchanged for registered FLEDGE impressions.
