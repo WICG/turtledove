@@ -127,7 +127,7 @@ registerAdBeacon({
 });
 ```
 
-In this example, the registered URL for a `click` event is 
+In this example, the registered URL for the `click` event is 
 `"https://adtech.example.co.jp/click?buyer_event_id=123"`. The registrable domain of this URL is `"example.co.jp"`. [The Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model) requires its corresponding site `"https://example.co.jp"` to be enrolled as defined in [site-based enrollment](https://developer.chrome.com/blog/announce-enrollment-privacy-sandbox/#site-based-enrollment). Otherwise the beacon will not be sent when there is a `click` event.
 
 ## Support for Attribution Reporting 
