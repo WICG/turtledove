@@ -2159,7 +2159,7 @@ of the following global objects:
       « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignalsJS|, |browserSignalsJS| »,
       and |timeout|.
     1. Let |duration| be the [=current wall time=] minus |startTime| in milliseconds.
-    1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null:
+    1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null and not failure:
       1. Set |ig|'s [=interest group/priority=] to |global|'s
         [=InterestGroupBiddingScriptRunnerGlobalScope/priority=].
       1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
@@ -2222,7 +2222,9 @@ of the following global objects:
 
       Note: Consider a return value that can't be converted to JSON a valid result, so if an
       exception was [=exception/thrown=] in the previous step, keep |resultJSON| as "null".
-    1. Return « |resultJSON|, |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=],
+    1. Let |reportURL| be |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=]
+    1. If |reportURL| is failure, set |reportURL| to null.
+    1. Return « |resultJSON|, |reportURL|,
        |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=] ».
 </div>
 
@@ -2328,7 +2330,7 @@ Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
 : <dfn>bid</dfn>
 :: A [=generated bid=]
 : <dfn>priority</dfn>
-:: Null or a {{double}}
+:: Null, failure, or a {{double}}. Defaulting to null.
 : <dfn>priority signals</dfn>
 :: An [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are {{double}} or null.
 : <dfn>interest group</dfn>
@@ -2497,8 +2499,8 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   1. If [=this=]'s [=relevant global object=]'s
     [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null:
     1. Set [=this=]'s [=relevant global object=]'s
-      [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] to null.
-    1. Return.
+      [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] to failure.
+    1. [=exception/Throw=] a {{TypeError}}.
   1. Set [=this=]'s [=relevant global object=]'s
     [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] to |priority|.
 </div>
@@ -2540,7 +2542,7 @@ interface InterestGroupReportingScriptRunnerGlobalScope
 Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
 <dl dfn-for="InterestGroupReportingScriptRunnerGlobalScope">
 : <dfn>report url</dfn>
-:: Null or a [=URL=]. Defaulting to null.
+:: Null, failure, or a [=URL=]. Defaulting to null.
 : <dfn>reporting beacon map</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   [=URLs=]. Defaulting to null.
@@ -2554,11 +2556,13 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
   1. If [=this=]'s [=relevant global object=]'s
     [=InterestGroupReportingScriptRunnerGlobalScope/report url=] is not null:
     1. Set [=this=]'s [=relevant global object=]'s
-      [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to null.
+      [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to failure.
     1. [=exception/Throw=] a {{TypeError}}.
   1. Let |parsedUrl| be the result of running the [=URL parser=] on |url|.
   1. If |parsedUrl| is failure, or |parsedUrl|'s [=url/scheme=] is not "`https`",
-    [=exception/Throw=] a {{TypeError}}.
+    set  [=this=]'s [=relevant global object=]'s
+      [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to failure
+      and [=exception/Throw=] a {{TypeError}}.
   1. Set [=this=]'s [=relevant global object=]'s
     [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to |parsedUrl|.
 </div>
