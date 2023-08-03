@@ -18,7 +18,13 @@ const auctionBlob = navigator.getInterestGroupAdAuctionData({
   'seller': 'https://www.example-ssp.com',
 });
 ```
-The returned `auctionBlob` is a Promise that will resolve to an `AdAuctionData` object. This object contains `requestId` and `request` fields. The `requestId` contains a UUID that needs to be presented to `runAdAuction` along with the response. The `request` field contains a `Uint8Array` containig an encrypted request blob as described in [the appendix](#request-blob-format), HPKE encrypted with an encryption header like that used in OHTTP. The encryption is done using public keys the browser fetches that correspond with private keys only shared with B&A servers running in TEEs.
+The returned `auctionBlob` is a Promise that will resolve to an `AdAuctionData` object. This object contains `requestId` and `request` fields.
+The `requestId` contains a UUID that needs to be presented to `runAdAuction` along with the response.
+The `request` field contains a `Uint8Array` containig an encrypted request blob derived from the interest groups stored in the browser and
+formatted as described in [the appendix](#request-blob-format), HPKE encrypted with an encryption header like that used in OHTTP. The encryption
+is done using public keys the browser fetches that correspond with private keys only shared with B&A servers running in TEEs. This derived
+information will include the contents of the interest groups, the k-anonymity status of the interest groups’ ads, and information like `joinCount`,
+`bidCount`, and `prevWins`. The blob contains padding (e.g. exponentially bucketed total sizes) to reduce the cross-site identity leaked by its size.
 
 ### Step 2: Send auction blob to servers
 
@@ -41,11 +47,24 @@ These response blobs are sent back to the browser. A seller’s JavaScript can [
 fetch('https://www.example-ssp.com/auction', { <b>adAuctionHeaders: true</b>, … })
 </pre>
 Note that `adAuctionHeaders` only works with HTTPS requests.
-For each response blob sent back to the browser, the seller’s server attaches a response header containing the SHA-256 hash of the response blob:
+
+For each response blob sent back to the browser, the seller’s server attaches a response header containing the base64url encoded (RFC 4648 section 5) SHA-256 hash of the response blob:
 
 ```
-Ad-Auction-Result: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0=
 ```
+
+Multiple hashes can be included in a response by either repeating the
+header or by specifying multiple hashes separated by a `,` character. So
+```
+Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0=,9UTB-u-WshX66Xqz5DNCpEK9z-x5oCS5SXvgyeoRB1k=
+```
+is equivalent to
+```
+Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0=
+Ad-Auction-Result: 9UTB-u-WshX66Xqz5DNCpEK9z-x5oCS5SXvgyeoRB1k=
+```
+and both versions should be accepted.
 
 It should be noted that the `fetch()` request using `adAuctionHeaders` can also be used to send `auctionBlob` (e.g. in the request body) and receive the response blob (e.g. in the response body).
 
@@ -68,7 +87,10 @@ The browser verifies it witnessed a Fetch request to the `seller`’s origin wit
 
 The blobs sent to and received from the B&A servers can contain data that could be used to re-identify the user across different web sites. To prevent this data from being used to join the user’s cross-site identities, the data is encrypted with public keys whose corresponding private keys are only shared with B&A server instances running in TEEs and running public open-source binaries known to prevent cross-site identity joins (e.g. by preventing logging or other activities which might permit such joins).
 
-There are however side-channels that could leak a much smaller amount of cross-site identity, the first and most obvious one being the size of the encrypted blob. To minimize this leakage further we suggest above that the encrypted blob be padded. For example, we can use exponential bucketing for request blobs. Keeping the number of buckets small, for instance, 7 will lead to <3 bits of leaked entropy per call to `getInterestGroupAdAuctionData()`. Some [mitigation techniques for the “1-bit leak”](https://github.com/WICG/turtledove/issues/211#issuecomment-889269834) may be applicable here.
+There are however side-channels that could leak a much smaller amount of cross-site identity, the first and most obvious one being the size of the encrypted blob.
+To minimize this leakage further we suggest above that the encrypted blob be padded. For example, we can use exponential bucketing for request blobs.
+Keeping the number of buckets small, for instance, 7 will lead to <3 bits of leaked entropy per call to `getInterestGroupAdAuctionData()`.
+Some [mitigation techniques for the “1-bit leak”](https://github.com/WICG/turtledove/issues/211#issuecomment-889269834) may be applicable here.
 
 To prevent repeated calls to `getInterestGroupAdAuctionData()` leaking additional cross-site identity, we’ve decided, at least in the near-term, to make repeated calls to `getInterestGroupAdAuctionData()` return a blob of the same size. The tradeoff being that the blob cannot be dependent on inputs to `getInterestGroupAdAuctionData()`. For example whereas `runAdAuction()` normally takes a `interestGroupBuyers` list dictating which buyers to include in the auction, `getInterestGroupAdAuctionData()`’s returned blob cannot depend on such a list and so must include all buyers that have stored interest groups on the device. This may cause larger blobs, and in turn slower network requests sending and receiving those blobs. This could in turn make the API more susceptible to abuse, e.g. fake calls to `joinAdInterestGroup()` bloating the blob size with spam interest groups.
 
@@ -201,6 +223,9 @@ The schema for the CBOR encoding of the interest group (specified using [JSON Sc
 
 This roughly matches the specification of the interest group in the B&A explainer.
 
+The request is framed with a 5 byte header, where the first byte is the value 0x02 and the following 4 bytes are the length of the request message in network byte order.
+Then the request is padded to a set of pre-configured lengths (TBD).
+
 ### Example
 
 The JSON equivalent of an example `auctionBlob` would look like this:
@@ -244,7 +269,10 @@ The JSON equivalent of the interest group would look like the following example:
 
 ## Response Blob Format
 
-The response blob from a B&A auction contains an HPKE encrypted AuctionResult. This response has an encryption header like that used in OHTTP and serves as the response for the encryption context started by the `auctionBlob` from `navigator.getInterestGroupAdAuctionData`. The response is a blob of compressed data, using the same schema version and same compression algorithm as specified in the `auctionBlob`. The response needs to be padded to a set of sizes to limit the amount of information leaking from the auction.
+The response blob from a B&A auction contains an HPKE encrypted AuctionResult. This response has an encryption header like that
+used in OHTTP and serves as the response for the encryption context started by the `auctionBlob` from `navigator.getInterestGroupAdAuctionData`.
+The response contains a framing header like the request and contains a blob of compressed data, using the same schema version and same compression algorithm as specified in the `auctionBlob`.
+The response needs to be padded to a set of sizes to limit the amount of information leaking from the auction.
 
 Prior to compression and encryption, the AuctionResult is encoded as CBOR with the following schema (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
 
