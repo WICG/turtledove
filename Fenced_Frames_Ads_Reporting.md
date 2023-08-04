@@ -1,3 +1,5 @@
+> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+
 # Objective
   
 As part of FLEDGE, interest based ads are [rendered in fenced frames](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#4-browsers-render-the-winning-ad) which are special embedded frames that do not have any communication channels with the publisher page, unlike iframes. Since fenced frames do not have any contextual information, part of the reporting that ads require needs to be done via separate JS contexts called [reporting worklets](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#5-event-level-reporting-for-now). The other part of the reporting which is based on user behavior in relation to the rendered ad comes from the fenced frame. There is thus a requirement from ads infrastructure to be able to correlate these two parts of reporting. Note that this correlation is required only for [event-level reporting](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#5-event-level-reporting-for-now).
@@ -26,7 +28,7 @@ The following summarizes the sequence of events for the buyer and seller. Distin
 2. SSP will provide the sellerEventId to the auction via auctionConfig, which will be available in the reporting worklet for the SSP.
 3. In reportResult(), the sellerEventId, along with any other contextual response fields relevant for reporting, will be available so that the result can be joined to the corresponding contextual query.
 4. Once the winning ad is rendered in the fenced frame, the fenced frame can also communicate other events to the browser e.g. what user interaction happened. Since the fenced frames run the buyer’s scripts, the buyer can also decide what information to be volunteered to the seller via the reportEvent API.
-5. The solution proposed in this document allows the seller’s reporting worklet to register a url to which data should be sent for events reported by the fenced frame.
+5. The solution proposed in this document allows the seller’s reporting worklet to register a URL to which data should be sent for events reported by the fenced frame.
 
 ## Buyer (DSP) flow of events
 
@@ -35,7 +37,7 @@ The following summarizes the sequence of events for the buyer and seller. Distin
 1. If the DSP participates in the contextual ad request, it will generate an event identifier, say buyerEventId, at contextual ad request/response time which is returned to the SSP as part of the perBuyerSignals, which the SSP in turn would specify in navigator.runAdAuction call. For DSPs that do not participate, buyerEventId could just be an ID that the worklet creates.
 2. Browser will provide the buyerEventId to the reporting worklet for the DSP via reportWin() as part of the perBuyerSignals. This enables the result to be joined with the corresponding contextual query. 
 3. Fenced frame can also communicate other events to the browser e.g. a click happened along with click coordinates.  
-4. The solution proposed in this document allows the buyer’s reporting worklet to register a url in reportWin(), to which data should be sent, when events happen in the fenced frame.
+4. The solution proposed in this document allows the buyer’s reporting worklet to register a URL in reportWin(), to which data should be sent, when events happen in the fenced frame.
 
 
 # APIs   
@@ -74,7 +76,7 @@ destination).`
 
 ### Example
 
-
+To send a request with the POST request body `'{"clickX":"123","clickY":"456"}'` to the URL registered for `buyer` and `seller` when a user click happens:
 ```
 window.fence.reportEvent({
   'eventType': 'click',
@@ -83,6 +85,8 @@ window.fence.reportEvent({
 });
 ```
 
+
+To send a request with the POST request body `'an example string'` to the URL registered for `component-seller` when a user click happens:
 ```
 window.fence.reportEvent({
   'eventType': 'click',
@@ -90,6 +94,16 @@ window.fence.reportEvent({
   'destination':['component-seller']
 });
 ```
+
+
+To send a request with the POST request body `''` to the URL registered for `buyer` when a user click happens:
+```
+window.fence.reportEvent({
+  'eventType': 'click',
+  'destination':['buyer']
+});
+```
+
 
 Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. In the interim period when FLEDGE supports rendering the winning ad in an iframe, `window.fence` will also be available in such an iframe.
 
@@ -159,8 +173,46 @@ Currently, the only `eventType` that `setReportEventDataForAutomaticBeacons` all
 
 If invoked multiple times, the latest invocation before the top-level navigation would be the one that’s honored.
 
-`eventData` can be empty, in which case the automatic beacon will still be sent but without an event data body in the HTTP request.
+`eventData` is optional, and can be empty. If `eventData` is not specified, or is empty, the automatic beacon will still be sent but without an event data body in the HTTP request.
 
 If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon because the `destination` is unknown.
 
+`setReportEventDataForAutomaticBeacons` can also be invoked in the click handler of an anchor tag, and will be sent on navigation:
 
+```
+<script>
+function addBeaconData(element) {
+  const data = element.id + " was clicked.";
+  let beacon_event = {
+    eventType: "reserved.top_navigation",
+    eventData: data,
+    destination: ["buyer"],
+  }
+  window.fence.setReportEventDataForAutomaticBeacons(beacon_event);
+}
+</script>
+<a onclick="addBeaconData(this)" id="link1" href="somesite.com" target="_blank">Click me!</a>
+```
+
+The beacon data will be in place by the time that the navigation starts. When the navigation commits, the automatic beacon will be sent out with event data set to "link1 was clicked.".
+
+# Support for Ad Components
+## Goal
+When a rendered ad is composed of [multiple pieces](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces), it is useful to detect user clicks that happened on ad components.
+
+## Design
+### Event Type and Reporting Destination
+For fenced frames rendering the ad components under the top-level ad fenced frame, the `reserved.top_navigation` event type and corresponding reporting destination registered for the top-level fenced frame are reused when beacons are sent from the ad component fenced frames.
+
+### Restricted to send `reserved.top_navigation` beacons only
+* Invocation of the `reportEvent` API from an ad component fenced frame is disallowed.
+* The only supported beacon to be sent from an ad component fenced frame is the `reserved.top_navigation` automatic beacon. Note this beacon is gated on a user activation (e.g. click).
+* To ensure that there is no arbitrary data that can be received at the server from the component ad, the `eventData` field via `window.fence.setReportEventDataForAutomaticBeacons`, if specified, will be ignored. This ensures that information from the component ad URL is not revealed in the event report, or else it could lead to the join of two independently k-anonymous URLs (parent and component ad) at the receiving server.
+* To send the beacon from a component fenced frame, `window.fence.setReportEventDataForAutomaticBeacons` must be invoked within the ad component fenced frame with `eventType` set to `'reserved.top_navigation'`. The beacon will be sent when there is a user activation (e.g. click) on the ad component fenced frame, which results in a top-level navigation.
+
+```
+window.fence.setReportEventDataForAutomaticBeacons({
+  'eventType': 'reserved.top_navigation',
+  'destination':['seller', 'buyer']
+});
+```

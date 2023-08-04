@@ -1,5 +1,10 @@
+> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+
 # FLEDGE Release Notes
 
+## Chrome M114
+
+*   Functions that are called from Protected Audience worklets are now only accessible from inside the worklets, not from the global scope.  See [#489](https://github.com/WICG/turtledove/issues/489) for more information.
 
 ## Chrome M114
 
@@ -12,8 +17,6 @@
 
 
 ## Chrome M109
-
-
 
 *   Since version 109.0.5414.16, the [`sendReports` parameter to `navigator.deprecatedURNToURL()`](https://github.com/WICG/turtledove/blob/main/Proposed_First_FLEDGE_OT_Details.md#advertisement-rendering) is respected.
 

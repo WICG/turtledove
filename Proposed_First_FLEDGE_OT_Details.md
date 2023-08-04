@@ -1,3 +1,5 @@
+> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+
 # Proposed First FLEDGE Origin Trial Details
 
 ## Summary
@@ -184,7 +186,7 @@ The plan is for the FOT#1 to include support for multi-seller/SSP auctions. This
 
 To make Chrome’s FLEDGE implementation function as described in this document, use a very recent version of Chrome, e.g. Chrome Canary, and pass this parameter to Chrome on the command line:
 
-`--enable-features=InterestGroupStorage,AdInterestGroupAPI,Fledge,AllowURNsInIframes,BiddingAndScoringDebugReportingAPI`
+`--enable-features=InterestGroupStorage,AdInterestGroupAPI,Fledge,AllowURNsInIframes,BiddingAndScoringDebugReportingAPI,OverridePrivacySandboxSettingsLocalTesting,PrivacySandboxAdsAPIsOverride`
 
 #### Privacy Limitations of FOT#1
 

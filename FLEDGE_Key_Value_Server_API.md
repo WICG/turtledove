@@ -1,3 +1,5 @@
+> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+
 # FLEDGE Key/Value Server APIs Explainer
 
 Authors:
@@ -378,63 +380,55 @@ If the restrictions are not followed by the client, for example due to misconfig
       "description": "A list of partitions. Each must be processed independently",
       "type": "array",
       "items": {
-        "$ref": "#/$defs/single_partition_object"
+        "title": "Single partition object",
+        "description": "A collection of keys that can be processed together",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "Unique id of the partition in this request",
+            "type": "number"
+          },
+          "compressionGroup": {
+            "description": "Unique id of a compression group in this request. Only partitions belonging to the same compression group will be compressed together in the response",
+            "type": "number"
+          },
+          "keyGroups": {
+            "type": "array",
+            "items": {
+              "description": "All keys from this group share some common attributes",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "tags": {
+                  "description": "List of tags describing this key group's attributes",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "keyList": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "id",
+          "compressionGroup",
+          "keyGroups"
+        ]
       }
     }
   },
   "required": [
     "context",
     "partitions"
-  ],
-  "$defs": {
-    "single_partition_object": {
-      "title": "Single partition object",
-      "description": "A collection of keys that can be processed together",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "description": "Unique id of the partition in this request",
-          "type": "number"
-        },
-        "compressionGroup": {
-          "description": "Unique id of a compression group in this request. Only partitions belonging to the same compression group will be compressed together in the response",
-          "type": "number"
-        },
-        "keyGroups": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/single_key_group_object"
-          }
-        }
-      },
-      "required": [
-        "id",
-        "compressionGroup",
-        "keyGroups"
-      ]
-    },
-    "single_key_group_object": {
-      "description": "All keys from this group share some common attributes",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "tags": {
-          "description": "List of tags describing this key group's attributes",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "keyList": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    }
-  }
+  ]
 }
 ```
 
@@ -521,78 +515,67 @@ The schema of the JSON in one compression group:
     "partitions": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/single_partition_output"
-      }
-    }
-  },
-  "$defs": {
-    "single_partition_output": {
-      "title": "Output for one partition",
-      "type": "object",
-      "properties": {
-        "id": {
-          "description": "Unique id of the partition from the request",
-          "type": "number"
-        },
-        "keyGroupOutputs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/single_key_group_output"
-          }
-        }
-      }
-    },
-    "single_key_group_output": {
-      "title": "Output for one key group",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "tags": {
-          "description": "Attributes of this key group.",
-          "type": "array",
-          "items": {
-            "description": "List of tags describing this key group's attributes",
-            "type": "string"
-          }
-        },
-        "keyValues": {
-          "description": "If a keyValues object exists, it must at least contain one key-value pair. If no key-value pair can be returned, the key group should not be in the response.",
-          "type": "object",
-          "patternProperties": {
-            ".*": {
-              "$ref": "#/$defs/single_value_output"
+        "title": "Output for one partition",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "Unique id of the partition from the request",
+            "type": "number"
+          },
+          "keyGroupOutputs": {
+            "type": "array",
+            "items": {
+              "title": "Output for one key group",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "tags": {
+                  "description": "Attributes of this key group.",
+                  "type": "array",
+                  "items": {
+                    "description": "List of tags describing this key group's attributes",
+                    "type": "string"
+                  }
+                },
+                "keyValues": {
+                  "description": "If a keyValues object exists, it must at least contain one key-value pair. If no key-value pair can be returned, the key group should not be in the response.",
+                  "type": "object",
+                  "patternProperties": {
+                    ".*": {
+                      "description": "One value to be returned in response for one key",
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "value": {
+                          "type": [
+                            "string",
+                            "number",
+                            "integer",
+                            "object",
+                            "array",
+                            "boolean"
+                          ]
+                        },
+                        "global_ttl_sec": {
+                          "description": "Adtech-specified TTL for client-side caching, not dedicated to a specific subkey. In seconds. Unset means no caching.",
+                          "type": "integer"
+                        },
+                        "dedicated_ttl_sec": {
+                          "description": "Adtech-specified TTL for client-side caching, specific to the subkey in the request. In seconds. Unset means no caching.",
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "value"
+                      ]
+                    }
+                  }
+                }
+              }
             }
           }
         }
       }
-    },
-    "single_value_output": {
-      "description": "One value to be returned in response for one key",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "value": {
-          "type": [
-            "string",
-            "number",
-            "integer",
-            "object",
-            "array",
-            "boolean"
-          ]
-        },
-        "global_ttl_sec": {
-          "description": "Adtech-specified TTL for client-side caching, not dedicated to a specific subkey. In seconds. Unset means no caching.",
-          "type": "integer"
-        },
-        "dedicated_ttl_sec": {
-          "description": "Adtech-specified TTL for client-side caching, specific to the subkey in the request. In seconds. Unset means no caching.",
-          "type": "integer"
-        }
-      },
-      "required": [
-        "value"
-      ]
     }
   }
 }
@@ -618,7 +601,7 @@ Example of one (trusted bidding signals server) response:
                   "signal1": 1
                 }
               },
-              "ttl_sec": 1
+              "dedicated_ttl_sec": 1
             }
           }
         },
@@ -630,14 +613,14 @@ Example of one (trusted bidding signals server) response:
           "keyValues": {
             "keyAfromInterestGroup1": {
               "value": "valueForA",
-              "ttl_sec": 120
+              "dedicated_ttl_sec": 120
             },
             "keyBfromInterestGroup1": {
               "value": [
                 "value1ForB",
                 "value2ForB"
               ],
-              "ttl_sec": 60
+              "dedicated_ttl_sec": 60
             }
           }
         }
@@ -663,11 +646,11 @@ Example of one trusted scoring signals server response:
           "keyValues": {
             "renderurls.com/1": {
               "value": "value3",
-              "ttl_sec": 120
+              "dedicated_ttl_sec": 120
             },
             "renderurls.com/2": {
               "value": "value4",
-              "ttl_sec": 120
+              "dedicated_ttl_sec": 120
             }
           }
         },
@@ -679,14 +662,14 @@ Example of one trusted scoring signals server response:
           "keyValues": {
             "adcomponents.com/1": {
               "value": "value1",
-              "ttl_sec": 120
+              "dedicated_ttl_sec": 120
             },
             "adcomponents.com/2": {
               "value": [
                 "value2A",
                 "value2B"
               ],
-              "ttl_sec": 60
+              "dedicated_ttl_sec": 60
             }
           }
         }
