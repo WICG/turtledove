@@ -746,7 +746,6 @@ The arguments to this function are:
     { 'topWindowHostname': 'www.example-publisher.com',
       'topLevelSeller': 'https://www.example-ssp.com',
       'componentSeller': 'https://www.some-other-ssp.com',
-      'requestedSize': {width: 100, height: 200}, /* if specified in the auction config */
       'interestGroupOwner': 'https://www.example-dsp.com/',
       'renderURL': 'https://cdn.com/url-of-winning-creative.wbn',
       'bid:' bidValue,
