@@ -686,7 +686,7 @@ The `FilterOnDataFromServer` interest group will result in fetching `https://buy
 
 If participants in the auction need to deal with multiple currencies, they can optionally take advantage of automated currency checking. All of it operates on currency tags, which are required to contain 3 upper-case ASCII letters.
 
-If the `generateBid()` method returns a `bidCurrency`, and the `perBuyerCurrencies` for that buyer is specified, their consistency will be checked, and if there is a mismatch, the bid will be dropped.  Both the configuration and the returned tag must be present for checking to take place.  The returned `bidCurrency` will be passed to `scoreAd()`'s `browserSignals.bidCurrency`, with unspecified currency rendered as `'???'`.
+If the `generateBid()` method returns a `bidCurrency`, and the `perBuyerCurrencies` for that buyer is specified, their consistency will be checked, and if there is a mismatch, the bid will be dropped.  Both the `perBuyerCurrencies` for that buyer and returned `bidCurrency` must be present for checking to take place.  The returned `bidCurrency` will be passed to `scoreAd()`'s `browserSignals.bidCurrency`, with unspecified currency rendered as `'???'`.
 
 Currency checking after `scoreAd()` happens only inside component auctions.  If `scoreAd()` modifies the bid, the modified bid's currency will be checked; if not, the passed-through bid from the original buyer's currency will be. In either case, the currency will be checked both against the component auction's `sellerCurrency` and top-level auction's `perBuyerCurrencies` as applied to the component auction.  As before, both the bid and the configuration in question must be specified for the checking to take place. If there is a mismatch, the bid will not take part in the component auction.
 
@@ -816,7 +816,7 @@ In auctions that involve multiple currencies, there may be values with different
 
 To help deal with this scenario, an optional mode is available that converts all bid-related information to seller's preferred currency (in component auctions, reporting for it is for that component's seller). This is configured via the `sellerCurrency` setting in each auction configuration.
 
-Regardless of configuration, the bid passed to `reportWin()` and `reportResult()` is always the bid that participated in that particular level of the auction (which, for top-level auction `reportResult()`, may be the bid altered by the component auction), subject to the usual rounding rules. Since passing the returned currency tags around could leak an unacceptable amount of information, the values provided for `browserSignals.bidCurrency` to those methods are the currencies required by the auction configuration in this context, or `'???'` if there isn't one.
+Regardless of configuration, the bid passed to `reportWin()` and `reportResult()` is always the bid that participated in that particular level of the auction (which, for top-level auction `reportResult()`, may be the bid altered by the component auction), subject to the usual rounding rules. Since passing the returned currency tags around could leak an unacceptable amount of information, the values provided for `browserSignals.bidCurrency` to those methods are the currencies required by the auction configuration (i.e. `sellerCurrency` and `perBuyerCurrencies`), or `'???'` if unspecified.
 
 (Warning: `reportResult` did not follow this rule in Chrome earlier than M116)
 
@@ -824,7 +824,7 @@ All other values, including `highestScoringOtherBid` and winning bids provided t
 
 If `sellerCurrency` is not set, all bids in those other ("mixed currency") contexts are passed as-is, and all the corresponding currency tags (`bidCurrency`, `highestScoringOtherBidCurrency`) are redacted to `'???'`.
 
-If `sellerCurrency` is set, `scoreAd()` for an auction is responsible for converting bids not already in that currency to `sellerCurrency`, via the `incomingBidInSellerCurrency` field of its return value. A bid already explicitly in the seller's currency can not be changed by `incomingBidInSellerCurrency`.  If neither the original bid is explicitly in proper currency nor an `incomingBidInSellerCurrency` is specified, a value of 0 is used. All currency tags for reporting in those "mixed currency" contexts will be set to `sellerCurrency`.
+If `sellerCurrency` is set, `scoreAd()` for an auction is responsible for converting bids not already in that currency to `sellerCurrency`, via the `incomingBidInSellerCurrency` field of its return value. A bid already explicitly in the seller's currency can not be changed by `incomingBidInSellerCurrency`.  If neither the original bid is explicitly in `sellerCurrency` nor an `incomingBidInSellerCurrency` is specified, a value of 0 is used for reporting in mixed-currency contexts. All currency tags for reporting in those "mixed currency" contexts will be set to `sellerCurrency`.
 
 Note that `incomingBidInSellerCurrency` is different from the modified bid returned by a component auction: it represents a mechanical currency translation of the original buyer's bid, rather than the bid the component auction is making in a top-level auction (which could, perhaps, be reduced by the intermediate seller's fee or the like). It can also be specified in top-level auctions, unlike the modified bid.
 

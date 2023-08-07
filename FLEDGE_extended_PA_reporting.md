@@ -204,8 +204,12 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
     * 6: indicates seller rejected bid because “Creative Filtered - Language Exclusions”
     * 7: indicates seller rejected bid because “Creative Filtered - Category Exclusions”
     * 8: indicates seller rejected bid because "Creative Filtered - Did Not Meet The K-anonymity Threshold"
-    * 9: indicates bid produced by `generateBid()` was rejected because it failed a currency check
-    * 10: indicates bid passed through or altered by `scoreAd()` was rejected because it failed a currency check
+    * 9: indicates bid produced by `generateBid()` was rejected because it failed a currency check (e.g. the bid returned by `generateBid()` doesn't match
+    what's specified by `perBuyerCurrency`)
+    * 10: indicates bid passed through or altered by `scoreAd()` was rejected
+    because it failed a currency check (e.g. the bid returned or passed through
+    by `scoreAd()` in a component auction doesn't match the `sellerCurrency` of
+    its auction or the `perBuyerCurrency` required by the top-level auction)
     * Perhaps other values indicating:
       * generateBid() hitting timeout
       * The auction was aborted (i.e. calling endAdAuction())
