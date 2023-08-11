@@ -765,7 +765,7 @@ The arguments to this function are:
     * The `recency` field is duration of time (in minutes) from when this device joined this interest group until now, using the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
     * `modelingSignals` is the `modelingSignals` returned from `generateBid()`, using the [noising scheme](#521-noised-and-bucketed-signals). This field is only present if `modelingSignals` was returned by `generateBid()`.
     * `kAnonStatus` indicates the k-anonymity status of the ad.  When k-anonymity is calculated but not enforced, this field can help bidders understand the impact of k-anonymity enforcement.
-        * `passedAndEnforced` If k-anonymity was truly enforced and it passed.
+        * `passedAndEnforced` The ad was k-anonymous and k-anonymity was required to win the auction.
         * `passedNotEnforced` If k-anonymity can determine the value and simulation is in action.
         * `belowThreshold` If the number of ad joins was below the k-anonymity threshold and simulation is active.
         * `notCalculated` If k-anonymity cannot determine the theoretical outcome, it will not report one.
