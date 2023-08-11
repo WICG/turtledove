@@ -228,8 +228,8 @@ In order to prevent leaking data, join and leave calls must request the `.well-k
 As buyers construct interest groups there are some things they should consider
 to protect themselves:
  * Buyers should join interest groups in an origin that is not also used for ad
-   rendering.  In other words, the ads renderURLs should not be same-origin
-   with the interest group’s owner.  This can help prevent ad creatives from
+   rendering.  In other words, the `ads` `renderURL`s should not be same-origin
+   with the interest group’s `owner`.  This can help prevent ad creatives from
    performing same-origin operations from the interest group owner’s origin.
  * Buyers should only place bids in auctions with sellers that they trust and
    have existing business relationships with, otherwise placing a bid may share
