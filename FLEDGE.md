@@ -764,7 +764,7 @@ The arguments to this function are:
     * The `joinCount` field is the number of times this device has joined this interest group in the last 30 days while the interest group has been continuously stored (that is, there are no gaps in the storage of the interest group on the device due to leaving or membership expiring), using the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
     * The `recency` field is duration of time (in minutes) from when this device joined this interest group until now, using the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
     * `modelingSignals` is the `modelingSignals` returned from `generateBid()`, using the [noising scheme](#521-noised-and-bucketed-signals). This field is only present if `modelingSignals` was returned by `generateBid()`.
-    * `kAnonStatus` is a field that provides bidders of k-anonymity an easy way to understand the impact of k-anonymity without strict enforcement that removes ads.
+    * `kAnonStatus` indicates the k-anonymity status of the ad.  When k-anonymity is calculated but not enforced, this field can help bidders understand the impact of k-anonymity enforcement.
         * `passedAndEnforced` If k-anonymity was truly enforced and it passed.
         * `passedNotEnforced` If k-anonymity can determine the value and simulation is in action.
         * `belowThreshold` If the number of ad joins was below the k-anonymity threshold and simulation is active.
