@@ -768,7 +768,7 @@ The arguments to this function are:
         * `passedAndEnforced` The ad was k-anonymous and k-anonymity was required to win the auction.
         * `passedNotEnforced` The ad was k-anonymous though k-anonymity was not required to win the auction.
         * `belowThreshold` The ad was not k-anonymous but k-anonymity was not required to win the auction.
-        * `notCalculated` If k-anonymity cannot determine the theoretical outcome, it will not report one.
+        * `notCalculated` The browser did not calculate the k-anonymity status of the ad, and k-anonymity was not required to win the auction.
 
 *   `directFromSellerSignals` is an object that may contain the following fields:
     *   `perBuyerSignals`: Like `auctionConfig.perBuyerSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
