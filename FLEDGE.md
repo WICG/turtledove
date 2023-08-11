@@ -767,7 +767,7 @@ The arguments to this function are:
     * `kAnonStatus` indicates the k-anonymity status of the ad.  When k-anonymity is calculated but not enforced, this field can help bidders understand the impact of k-anonymity enforcement.
         * `passedAndEnforced` The ad was k-anonymous and k-anonymity was required to win the auction.
         * `passedNotEnforced` The ad was k-anonymous though k-anonymity was not required to win the auction.
-        * `belowThreshold` If the number of ad joins was below the k-anonymity threshold and simulation is active.
+        * `belowThreshold` The ad was not k-anonymous but k-anonymity was not required to win the auction.
         * `notCalculated` If k-anonymity cannot determine the theoretical outcome, it will not report one.
 
 *   `directFromSellerSignals` is an object that may contain the following fields:
