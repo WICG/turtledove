@@ -17,6 +17,7 @@ See [the in progress FLEDGE specification](https://wicg.github.io/turtledove/).
     - [1.1 Joining Interest Groups](#11-joining-interest-groups)
     - [1.2 Interest Group Attributes](#12-interest-group-attributes)
     - [1.3 Permission Delegation](#13-permission-delegation)
+    - [1.4 Buyer Security Considerations](#14-buyer-security-considerations)
   - [2. Sellers Run On-Device Auctions](#2-sellers-run-on-device-auctions)
     - [2.1 Initiating an On-Device Auction](#21-initiating-an-on-device-auction)
     - [2.2 Auction Participants](#22-auction-participants)
@@ -221,6 +222,20 @@ Since joining or leaving a group may depend on a network request, browsers may d
 
 In order to prevent leaking data, join and leave calls must request the `.well-known` file, regardless of whether the user is in the group or not, as otherwise, whether or not a fetch is made can potentially leak data. Browsers may cache `.well-known` fetch results that share a network partition key.
 
+
+#### 1.4 Buyer Security Considerations
+
+As buyers construct interest groups there are some things they should consider
+to protect themselves:
+ * Buyers should join interest groups in an origin that is not also used for ad
+   rendering.  In other words, the `ads` `renderURL`s should not be same-origin
+   with the interest group’s `owner`.  This can help prevent ad creatives from
+   performing same-origin operations from the interest group owner’s origin.
+ * Buyers should only place bids in auctions with sellers that they trust and
+   have existing business relationships with, otherwise placing a bid may share
+   information the buyer learned about the user with an unknown seller.
+
+
 ### 2. Sellers Run On-Device Auctions
 
 Interest groups are used to bid in on-device auctions on sites selling ad space.  We refer to the party running the auction as the _seller_.  Many parties might act as sellers: a site might run its own ad auction, or might include a third-party script to run the auction for it, or might use an SSP that combines running an on-device auction with other server-side ad auction activities.
@@ -340,8 +355,6 @@ The values of some signals (those configured by fields `auctionSignals`, `seller
 #### 2.2 Auction Participants
 
 Each interest group the browser has joined and whose owner is in the list of `interestGroupBuyers` will have an opportunity to bid in the auction.  See the "Buyers Provide Ads and Bidding Functions" section, below, for how interest groups bid.
-
-The seller may instead specify `'interestGroupBuyers': '*'` to permit all interest groups into the auction, and decide ad admissibility later in the process, based on criteria other than the interest group owner.  For example, a seller with an out-of-band creative review process might decide admissibility solely based on the creative, not the buyer.
 
 
 #### 2.3 Scoring Bids
