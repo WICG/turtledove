@@ -314,7 +314,6 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   [=interest group/priority signals overrides=]:
   1. The [=string/length=] of |key|.
   1. 8 bytes, which is the size of |value|.
-1. The size of [=interest group/execution mode=].
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
   [=interest group/bidding url=], if the field is not null.
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
@@ -331,8 +330,11 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
     [=interest group ad/render url=].
   1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
   1. The [=string/length=] of |ad|'s [=interest group ad/buyer reporting ID=] if the field is not null.
-  1. The [=string/length=] of |ad|'s [=interest group ad/buyer and seller reporting ID=] if the field is not null.
-  1. 
+  1. The [=string/length=] of |ad|'s [=interest group ad/buyer and seller reporting ID=] if the
+    field is not null.
+  1. If |ad|'s [=interest group ad/allowed reporting origins=] is not null, [=list/for each=]
+    |origin_str| of it:
+    1. The [=string/length=] of |origin_str|.
 1. If |ig|'s [=interest group/ad components=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
     [=interest group ad/render url=].
@@ -715,14 +717,20 @@ To <dfn>asynchronously finish reporting</dfn> given a
 1. [=iteration/While=]:
    1. If |buyerDone|, |sellerDone|, and |componentSellerDone| are all true, then
       [=iteration/break=].
-   1. Wait until |leadingBidInfo|'s [=leading bid info/buyer reporting result=] is not null,
-      or |leadingBidInfo|'s [=leading bid info/seller reporting result=] is not null, or
-      |leadingBidInfo|'s [=leading bid info/component seller reporting result=] is not null.
+   1. Wait until one of the following field of |leadingBidInfo| being not null:
+      * [=leading bid info/buyer reporting result=];
+      * [=leading bid info/seller reporting result=];
+      * [=leading bid info/component seller reporting result=].
    1. If |buyerDone| is false and |leadingBidInfo|'s [=leading bid info/buyer reporting result=]
       is not null:
       1. Let |buyerMap| be |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
          [=reporting result/reporting beacon map=].
       1. If |buyerMap| is null, set |buyerMap| to an empty [=map=] «[]».
+      1. Let |macroMap| be |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
+         [=reporting result/reporting macro map=].
+      1. If |macroMap| is null, set |macroMap| to an empty [=map=] «[]».
+      1. TODO: Pass |macroMap| to [=Finalize a reporting destination=] when it is updated to take
+        the parameter.
       1. [=Finalize a reporting destination=] with |reportingMap|,
          {{FenceReportingDestination/buyer}}, and |buyerMap|.
       1. TODO: Fetch |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
@@ -1817,7 +1825,7 @@ null |winningComponentConfig|:
     1. [=map/Set=] |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s [=interest group ad/buyer and seller reporting ID=].
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
-  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap| » be the result of
+  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored » be the result of
     [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`", and
     « |config|'s [=auction config/config idl=], |browserSignals| ».
    1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
@@ -1882,8 +1890,8 @@ and a {{ReportingBrowserSignals}} |browserSignals|:
     1. Otherwise, [=map/Set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/interestGroupName}}"] to |winner|'s [=generated bid/interest group=] [=interest group/name=].
   1. Let |buyerReportingScript| be the result of [=fetching script=] with |winner|'s
     [=generated bid/interest group=]'s [=interest group/bidding url=].
-  1. Let « ignored, |resultUrl|, |reportingBeaconMap| » be the result of [=evaluating a
-     reporting script=] with |buyerReportingScript|, "`reportWin`", and
+  1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap| » be the result of
+    [=evaluating a reporting script=] with |buyerReportingScript|, "`reportWin`", and
      « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config idl=]'s
       {{AuctionAdConfig/auctionSignals}}, |perBuyerSignalsForBuyer|, |sellerSignals|,
       |reportWinBrowserSignals| ».
@@ -1894,6 +1902,9 @@ and a {{ReportingBrowserSignals}} |browserSignals|:
 
      : [=reporting result/reporting beacon map=]
      :: |reportingBeaconMap|
+
+     : [=reporting result/reporting macro map=]
+     :: |reportingMacroMap|
 </div>
 
 # K-anonymity # {#k-anonymity}
@@ -2229,8 +2240,10 @@ of the following global objects:
       exception was [=exception/thrown=] in the previous step, keep |resultJSON| as "null".
     1. Let |reportURL| be |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=]
     1. If |reportURL| is failure, set |reportURL| to null.
+    1. Let |macroMap| be |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting macro map=]
+      if |functionName| is "`reportWin`", null otherwise.
     1. Return « |resultJSON|, |reportURL|,
-       |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=] ».
+       |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap| ».
 </div>
 
 <div algorithm>
@@ -2540,9 +2553,12 @@ interface InterestGroupReportingScriptRunnerGlobalScope
         : InterestGroupScriptRunnerGlobalScope {
   undefined sendReportTo(DOMString url);
   undefined registerAdBeacon(record&lt;DOMString, USVString&gt; map);
+  undefined registerAdMacro(DOMString name, USVString value);
 };
 
 </pre>
+
+Note: Currently, registerAdMacro is only available in reportWin(), but not reportResult().
 
 Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
 <dl dfn-for="InterestGroupReportingScriptRunnerGlobalScope">
@@ -2551,6 +2567,9 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
 : <dfn>reporting beacon map</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   [=URLs=]. Defaulting to null.
+: <dfn>reporting macro map</dfn>
+:: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+  [=strings=]. Defaulting to null.
 
 </dl>
 
@@ -2591,6 +2610,13 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
      reporting beacon map=] to |map|.
 </div>
 
+<div algorithm>
+  The <dfn method for="InterestGroupReportingScriptRunnerGlobalScope">registerAdMacro(|name|,
+  |value|)</dfn> method steps are:
+
+  1. [=map/Set=] [=this=]'s [=relevant global object=]'s
+    [=InterestGroupReportingScriptRunnerGlobalScope/reporting macro map=][|name|] to |value|.
+</div>
 
 # Interest Group Updates # {#interest-group-updates}
 
@@ -3050,12 +3076,18 @@ An interest group ad is a [=struct=] with the following [=struct/items=]:
 : <dfn>metadata</dfn>
 :: Null or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
 : <dfn>buyer reporting ID</dfn>
-:: Null or a [=string=]. Will be passed in place of interest group name to `reportWin()`, subject to k-anonymity checks. Not useful in ad components.
+:: Null or a [=string=]. Will be passed in place of interest group name to `reportWin()`, subject to
+  k-anonymity checks. Only meaningful in [=interest group/ads=], but ignored in
+  [=interest group/ad components=].
 : <dfn>buyer and seller reporting ID</dfn>
-:: Null or a [=string=]. Will be passed in place of interest group name or [=interest group ad/buyer reporting ID=] to `reportWin()` and `reportResult()`, subject to k-anonymity checks. Not useful in ad components.
+:: Null or a [=string=]. Will be passed in place of interest group name or
+  [=interest group ad/buyer reporting ID=] to `reportWin()` and `reportResult()`, subject to
+  k-anonymity checks. Only meaningful in [=interest group/ads=], but ignored in
+  [=interest group/ad components=].
 : <dfn>allowed reporting origins</dfn>
-:: Null or a [=map=] whose ... [=string=]. Not useful in ad components.
-
+:: Null or a [=list=] of [=origins=]. A list of up to 10 reporting origins that can receive reports
+  with macros. All origins must be HTTPS and attested for Protected Audience (TODO: link). Only
+  meaningful in [=interest group/ads=], but ignored in [=interest group/ad components=].
 
 </dl>
 
@@ -3480,6 +3512,11 @@ A <dfn>reporting result</dfn> is a [=struct=] with the following [=struct/items=
   :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
      [=URLs=], initially null. Set by
      {{InterestGroupReportingScriptRunnerGlobalScope/registerAdBeacon(map)}}.
+
+  : <dfn>reporting macro map</dfn>
+  :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+     [=strings=], initially null. Set by
+     {{InterestGroupReportingScriptRunnerGlobalScope/registerAdMacro(name, value)}}.  
 </dl>
 
 # Privacy Considerations # {#privacy-considerations}
