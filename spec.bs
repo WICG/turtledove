@@ -268,8 +268,16 @@ This is detectable because it can change the set of fields that are read from th
           |igAd|'s [=interest group ad/buyer reporting ID=] to it.
         1. If |ad|["{{AuctionAd/buyerAndSellerReportingId}}"] [=map/exists=],
           then set |igAd|'s [=interest group ad/buyer and seller reporting ID=] to it.
-        1. If |ad|["{{AuctionAd/allowedReportingOrigins}}"] [=map/exists=],
-          then set |igAd|'s [=interest group ad/allowed reporting origins=] to it.
+        1. If |ad|["{{AuctionAd/allowedReportingOrigins}}"] [=map/exists=]:
+          1. Let |allowedReportingOrigins| be a new [=list=] of [=origins=].
+          1. [=list/For each=] |originStr| in |ad|["{{AuctionAd/allowedReportingOrigins}}"]:
+            1. Let |origin| be the result of [=parsing an origin=] on |originStr|.
+            1. If |origin| is failure, or its [=url/scheme=] is not "`https`", [=exception/throw=] a
+              {{TypeError}}.
+            1. [=list/Append=] |origin| to |allowedReportingOrigins|.
+            1. If [=list/size=] of |allowedReportingOrigins| is greater than 10, [=exception/throw=]
+              a {{TypeError}}.
+          1. Set |igAd|'s [=interest group ad/allowed reporting origins=] to |allowedReportingOrigins|.
       1. [=list/Append=] |igAd| to |interestGroup|'s |interestGroupField|.
 1. If |interestGroup|'s [=interest group/estimated size=] is greater than 50 KB, then
   [=exception/throw=] a {{TypeError}}.
@@ -333,8 +341,8 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   1. The [=string/length=] of |ad|'s [=interest group ad/buyer and seller reporting ID=] if the
     field is not null.
   1. If |ad|'s [=interest group ad/allowed reporting origins=] is not null, [=list/for each=]
-    |origin_str| of it:
-    1. The [=string/length=] of |origin_str|.
+    |origin| of it:
+    1. The [=string/length=] of the [=serialization of an origin|serialization=] of |origin|.
 1. If |ig|'s [=interest group/ad components=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
     [=interest group ad/render url=].
@@ -726,10 +734,13 @@ To <dfn>asynchronously finish reporting</dfn> given a
       1. Let |buyerMap| be |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
          [=reporting result/reporting beacon map=].
       1. If |buyerMap| is null, set |buyerMap| to an empty [=map=] «[]».
+      1. Let |allowedReportingOrigins| be |leadingBidInfo|'s [=leading bid info/leading bid=]'s
+        [=generated bid/bid ad=]'s [=interest group ad/allowed reporting origins=].
       1. Let |macroMap| be |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
          [=reporting result/reporting macro map=].
-      1. TODO: Pass |macroMap| to [=Finalize a reporting destination=] when it is updated to take
-        the parameter. May need to convert |macroMap| to a list, based on their need.
+      1. TODO: Pass |macroMap| and |allowedReportingOrigins| to [=Finalize a reporting destination=]
+        when it is updated to take the parameters. May need to convert |macroMap| to a list, based
+        on what that function expects.
       1. [=Finalize a reporting destination=] with |reportingMap|,
          {{FenceReportingDestination/buyer}}, and |buyerMap|.
       1. TODO: Fetch |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
@@ -1255,9 +1266,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. If |originalAds| is not null:
             1. Set |ig|'s [=interest group/ads=] to a new [=list=] of [=interest group ad=].
             1. [=list/For each=] |ad| in |originalAds|:
-            1. If [=query ad k-anonymity count=] given |ig| and |ad|'s
-              [=interest group ad/render url=] returns true, [=list/append=] |ad| to |ig|'s
-              [=interest group/ads=].
+              1. If [=query ad k-anonymity count=] given |ig| and |ad|'s
+                [=interest group ad/render url=] returns true, [=list/append=] |ad| to |ig|'s
+                [=interest group/ads=].
           1. Let |originalAdComponents| be |ig|'s [=interest group/ad components=].
           1. If |originalAdComponents| is not null:
             1. Set |ig|'s [=interest group/ad components=] to a new [=list=] of [=interest group ad=].
@@ -2395,13 +2406,15 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
     1. Let |adUrl| be the result of running the [=URL parser=] on
       |generateBidOutput|["{{GenerateBidOutput/render}}"].
     1. If |adUrl| is failure, return failure.
-    1. If [=validating an ad url=] given |adUrl|, |ig|, and false returns false, return failure.
     1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
   1. Otherwise:
     1. Set |adDescriptor| to the result of [=converting an ad render=] given
-      |generateBidOutput|["{{GenerateBidOutput/render}}"], |ig| and false.
+      |generateBidOutput|["{{GenerateBidOutput/render}}"].
     1. If |adDescriptor| is failure, return failure.
+  1. Let |bidAd| be the result of [=finding matching ad=] given |adDescriptor|, |ig|, and false.
+  1. If |bidAd| is null, return failure.
   1. Set |bid|'s [=generated bid/ad descriptor=] to |adDescriptor|.
+  1. Set |bid|'s [=generated bid/bid ad=] to |bidAd|.
   1. If |generateBidOutput|["{{GenerateBidOutput/adComponents}}"] [=map/exists=]:
     1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponents}}"].
     1. Return failure if any of the following conditions hold:
@@ -2413,12 +2426,11 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
       1. If |component| is {{DOMString}}:
         1. Let |componentUrl| be the result of running the [=URL parser=] on |component|.
         1. If |componentUrl| is failure, return failure.
-        1. If [=validating an ad url=] given |componentUrl|, |ig|, and true returns false, return failure.
         1. Set |componentDescriptor|'s [=ad descriptor/url=] to |componentUrl|.
       1. Otherwise:
-        1. Set |componentDescriptor| to the result of [=converting an ad render=] given |component|, |ig|,
-          and true.
+        1. Set |componentDescriptor| to the result of [=converting an ad render=] given |component|.
         1. If |componentDescriptor| is failure, return failure.
+      1. If [=finding matching ad=] given |componentUrl|, |ig|, and true returns null, return failure.
       1. [=list/Append=] |componentDescriptor| to |adComponentDescriptors|.
     1. Set |bid|'s [=generated bid/ad component descriptors=] to |adComponentDescriptors|.
   1. If |generateBidOutput|["{{GenerateBidOutput/adCost}}"] [=map/exists=]:
@@ -2452,12 +2464,10 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 </div>
 
 <div algorithm>
-  To <dfn>convert an ad render</dfn> given an {{AdRender}} |adRender|, an [=interest group=] |ig|,
-  and a [=boolean=] |isComponent|:
+  To <dfn>convert an ad render</dfn> given an {{AdRender}} |adRender|:
 
   1. Let |adUrl| be the result of running the [=URL parser=] on |adRender|["{{AdRender/url}}"].
   1. If |adUrl| is failure, return failure.
-  1. If [=validating an ad url=] given |adUrl|, |ig|, and |isComponent| returns false, return failure.
   1. Let |adDescriptor| be a new [=ad descriptor=].
   1. Set |adDescriptor|'s [=ad descriptor/url=] to |adUrl|.
   1. If |adRender|["{{AdRender/width}}"] [=map/exists=]:
@@ -2476,17 +2486,19 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 </div>
 
 <div algorithm>
-  To <dfn>validate an ad url</dfn> given a [=URL=] |adUrl|, an [=interest group=] |ig|, and a
-  [=boolean=] |isComponent|:
+  To <dfn>find matching ad</dfn> given an [=ad descriptor=] |adDescriptor|, an [=interest group=]
+  |ig|, and a [=boolean=] |isComponent|:
 
-  1. If |adUrl|'s [=url/scheme=] is not "`https`", return false.
+  1. Let |adUrl| be |adDescriptor|'s [=ad descriptor/url=].
+  1. If |adUrl|'s [=url/scheme=] is not "`https`", return null.
+  1. TODO: Need to check [=ad descriptor/size=] as well.
   1. If |isComponent|:
     1. [=list/For each=] |ad| in |ig|'s [=interest group/ad components=]:
-      1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return true.
+      1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return |ad|.
   1. Otherwise:
     1. [=list/For each=] |ad| in |ig|'s [=interest group/ads=]:
-      1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return true.
-  1. Return false.
+      1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return |ad|.
+  1. Return null.
 </div>
 
 <div algorithm>
@@ -3085,8 +3097,9 @@ An interest group ad is a [=struct=] with the following [=struct/items=]:
   [=interest group/ad components=].
 : <dfn>allowed reporting origins</dfn>
 :: Null or a [=list=] of [=origins=]. A list of up to 10 reporting origins that can receive reports
-  with macros. All origins must be HTTPS and attested for Protected Audience (TODO: link). Only
-  meaningful in [=interest group/ads=], but ignored in [=interest group/ad components=].
+  with registered macros. All origins must be HTTPS origins and
+  <a href="https://github.com/privacysandbox/attestation">enrolled</a>. Only meaningful in
+  [=interest group/ads=], but ignored in [=interest group/ad components=].
 
 </dl>
 
@@ -3347,6 +3360,8 @@ the seller.
 :: Null or an {{unsigned short}}. A 0-4095 integer (12-bits) passed to `reportWin()`, with noising.
 : <dfn>interest group</dfn>
 :: An [=interest group=], whose `generateBid()` invocation generated this bid.
+: <dfn>bid ad</dfn>
+:: The [=interest group ad=] within [=generated bid/interest group=] to display.
 : <dfn>modified bid</dfn>
 :: Null or a [=bid with currency=]. Being null for top level auction.
   The bid value a component auction's `scoreAd()` script returns.
