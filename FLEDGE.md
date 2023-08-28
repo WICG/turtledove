@@ -2,7 +2,7 @@
 
 This document describes an implementation for ads serving in the TURTLEDOVE family.
 
-Chrome experimented with this API from 2022Q1-2023Q2; at that time it was known as the First "Locally-Executed Decision over Groups" Experiment (FLEDGE).  The goal of the experiment was for us to gain implementer experience, and for the ads ecosystem to evaluate its usability, as soon as it is feasible to do so.  We need a robust API to take flight before the removal of third-party cookies shown on [Chrome's Privacy Sandbox timeline](https://privacysandbox.com/timeline).  The experiment was a success and Chrome shipped the Protected Audience API in Chrome milestone 115 making it generally available to web developers.
+Chrome shipped the Protected Audience API in 2023Q3 in Chrome milestone 115 making it generally available to web developers.  Chrome experimented with this API from 2022Q1-2023Q2; at that time it was known as the First "Locally-Executed Decision over Groups" Experiment (FLEDGE).  The goal of the experiment was for us to gain implementer experience, and for the ads ecosystem to evaluate its usability, as soon as it is feasible to do so.  We need a robust API to take flight before the removal of third-party cookies shown on [Chrome's Privacy Sandbox timeline](https://privacysandbox.com/timeline).
 
 We hold regular meetings under the auspices of the WICG to go through the details of this proposal and quickly make any needed changes.  Consult Issue [#88](https://github.com/WICG/turtledove/issues/88) if you want to attend these meetings to be involved in hammering out details.
 
