@@ -56,7 +56,7 @@ But while third-party cookies are still available, the Protected Audience API of
 
 ## Background
 
-In January 2020, Chrome published an explainer for TURTLEDOVE, proposing a new way that advertisers and ad tech companies could target an ad to an audience they had built, without the browser revealing anyone's browsing habits or ad interests.
+In January 2020, Chrome published [an explainer for TURTLEDOVE](https://github.com/WICG/turtledove/blob/main/Original-TURTLEDOVE.md), proposing a new way that advertisers and ad tech companies could target an ad to an audience they had built, without the browser revealing anyone's browsing habits or ad interests.
 
 Over the course of extensive engagement and discussion with many participants in the ad tech ecosystem, we've learned many ways in which the original proposal could better meet their needs.  Discussion took place over the past few years, primarily in (1) GitHub issues on the TURTLEDOVE repo, (2) the many counter-proposals that built on the original explainer (most things in [this list](https://github.com/w3c/web-advertising#ideas-and-proposals-links-outside-this-repo) with bird names), and (3) the weekly meetings of the W3C's Improving Web Advertising Business Group.
 
