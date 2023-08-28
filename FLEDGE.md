@@ -1,14 +1,12 @@
-> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+# Protected Audience API ([formerly known as FLEDGE](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge))
 
-# First Experiment (FLEDGE)
+This document describes an implementation for ads serving in the TURTLEDOVE family.
 
-This document describes an early prototype for ads serving in the TURTLEDOVE family, appropriate for experimentation before a fully-featured system is ready.  It would be the First "Locally-Executed Decision over Groups" Experiment.
+Chrome experimented with this API from 2022Q1-2023Q2; at that time it was known as the First "Locally-Executed Decision over Groups" Experiment (FLEDGE).  The goal of the experiment was for us to gain implementer experience, and for the ads ecosystem to evaluate its usability, as soon as it is feasible to do so.  We need a robust API to take flight before the removal of third-party cookies shown on [Chrome's Privacy Sandbox timeline](https://privacysandbox.com/timeline).  The experiment was a success and Chrome shipped the Protected Audience API in Chrome milestone 115 making it generally available to web developers.
 
-This first experiment is currently a Chrome [Origin Trial](https://github.com/GoogleChrome/OriginTrials).  The goal is for us to gain implementer experience, and for the ads ecosystem to evaluate its usability, as soon as it is feasible to do so.  We need a robust API to take flight before the removal of third-party cookies shown on [Chrome's Privacy Sandbox timeline](https://privacysandbox.com/timeline).
+We hold regular meetings under the auspices of the WICG to go through the details of this proposal and quickly make any needed changes.  Consult Issue [#88](https://github.com/WICG/turtledove/issues/88) if you want to attend these meetings to be involved in hammering out details.
 
-We plan to hold regular meetings under the auspices of the WICG to go through the details of this proposal and quickly make any needed changes.  Please comment on the timing question in Issue [#88](https://github.com/WICG/turtledove/issues/88) if you want to attend these meetings to be involved in hammering out details.
-
-See [the in progress FLEDGE specification](https://wicg.github.io/turtledove/).
+See [the Protected Audience API specification](https://wicg.github.io/turtledove/).
 
 - [Summary](#summary)
 - [Background](#background)
@@ -40,7 +38,7 @@ See [the in progress FLEDGE specification](https://wicg.github.io/turtledove/).
 
 ## Summary
 
-During 2021, Chrome plans to run an Origin Trial for a first experiment which includes:
+The Protected Audience API includes support for:
 
 *   Interest Groups, stored by the browser, and associated with arbitrary metadata that can affect how these groups bid and render ads.
 *   A mechanism for updating these interest groups. The updates are rate limited, fetched from buyers’ servers, performed off the ad serving critical-path, and contain no contextual information.
@@ -49,18 +47,18 @@ During 2021, Chrome plans to run an Origin Trial for a first experiment which in
 *   Microtargeting protection based on the browser ensuring that the same ad or ad component is being shown to at least some minimum number of people.
 *   Ad rendering in a temporarily relaxed version of Fenced Frames that prevents interaction with the surrounding page — but that does allow _normal network access for rendering the ad, and for logging and reporting some event-level outcomes_, as a temporary model until both a trusted-server reporting framework and ad delivery via Web Bundles are settled and in place.
 
-Most of these ideas are drawn from the past year's ongoing discussion of variants on the [original TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/Original-TURTLEDOVE.md) idea.  Interest group metadata, and applying k-anonymity thresholds only to the rendering and reporting of ads, come from [Outcome-based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) and [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md), as well as discussion [here](https://github.com/WICG/turtledove/issues/361#issuecomment-1430069343).  The separation and clarification of the DSP and SSP roles are along the lines described in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md) and [PARRROT](https://github.com/prebid/identity-gatekeeper/blob/master/proposals/PARRROT.md).  The trusted servers to support bidding, rendering, and reporting come from the [SPARROW](https://github.com/WICG/sparrow) Gatekeeper and [Dovekey](https://github.com/google/ads-privacy/tree/master/proposals/dovekey) Key-Value server.
+Most of these ideas are drawn from the previous ongoing discussion of variants on the [original TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/Original-TURTLEDOVE.md) idea.  Interest group metadata, and applying k-anonymity thresholds only to the rendering and reporting of ads, come from [Outcome-based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) and [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md), as well as discussion [here](https://github.com/WICG/turtledove/issues/361#issuecomment-1430069343).  The separation and clarification of the DSP and SSP roles are along the lines described in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md) and [PARRROT](https://github.com/prebid/identity-gatekeeper/blob/master/proposals/PARRROT.md).  The trusted servers to support bidding, rendering, and reporting come from the [SPARROW](https://github.com/WICG/sparrow) Gatekeeper and [Dovekey](https://github.com/google/ads-privacy/tree/master/proposals/dovekey) Key-Value server.
 
-This still lacks some features that are important for web advertising, and lacks some privacy protections that are important for preventing cross-site tracking.  For example, the first experiment does not (yet) have a mechanism for multi-level on-device auctions, an ad ecosystem feature that needs more design work before we can offer on-device support.  And the temporary italicized carve-outs in the above bulleted list all need privacy-safe replacements before our work is done.
+As we approach third-party cookie deprecation in Chrome, you may be wondering about the availability of specific Protected Audience API services and features. You can find a list of the scoped Protected Audience API features and when they'll be supported [here](https://developer.chrome.com/en/docs/privacy-sandbox/protected-audience-api/feature-status/).  The temporary italicized carve-outs in the above bulleted list all need privacy-safe replacements before our work is done.
 
-But while third-party cookies are still available, this simplified opt-in preview of a post-3p-cookies technique offers a way that we can all experiment with the on-device ad selection approach together.
+But while third-party cookies are still available, the Protected Audience API offers a preview of a post-3p-cookies technique so that we can all test out the on-device ad selection approach together.
 
 
 ## Background
 
 In January 2020, Chrome published an explainer for TURTLEDOVE, proposing a new way that advertisers and ad tech companies could target an ad to an audience they had built, without the browser revealing anyone's browsing habits or ad interests.
 
-Over the course of extensive engagement and discussion with many participants in the ad tech ecosystem, we've learned many ways in which the original proposal could better meet their needs.  Discussion took place over the past year, primarily in (1) GitHub issues on the TURTLEDOVE repo, (2) the many counter-proposals that built on the original explainer (most things in [this list](https://github.com/w3c/web-advertising#ideas-and-proposals-links-outside-this-repo) with bird names), and (3) the weekly meetings of the W3C's Improving Web Advertising Business Group.
+Over the course of extensive engagement and discussion with many participants in the ad tech ecosystem, we've learned many ways in which the original proposal could better meet their needs.  Discussion took place over the past few years, primarily in (1) GitHub issues on the TURTLEDOVE repo, (2) the many counter-proposals that built on the original explainer (most things in [this list](https://github.com/w3c/web-advertising#ideas-and-proposals-links-outside-this-repo) with bird names), and (3) the weekly meetings of the W3C's Improving Web Advertising Business Group.
 
 Of the improvements proposed, some can be accommodated through straightforward changes to APIs, some will require deeper gathering of requirements and careful design work, and some will require new server-side infrastructure with novel trust relations with multiple parties.  This update focuses primarily on the first of these types.
 
