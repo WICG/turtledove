@@ -2800,6 +2800,67 @@ This specification defines two [=policy-controlled features=] identified by the 
 Issue(WICG/turtledove#522): Move from "`*`" to "`self`".
 
 
+# Direct from Seller Signals # {#direct-from-seller-signals}
+
+This section specifies a manner by which signals may be provided to auctions such that the signals
+are only used within their intended auction.
+
+Scripts running on the page may peform a `fetch()` call using the `{adAuctionHeaders: true}`
+option, which causes the value of the `Ad-Auction-Signals` response header on that request to
+be used to provide signals in auctions running on the page whose seller matches the origin of the
+`fetch()` destination.
+
+<div algorithm="fetch adAuctionHeaders patch">
+Modify [[FETCH]]'s [[FETCH#requests]] to add: 
+
+A [=request=] has an associated <dfn>adAuctionHeaders</dfn> boolean. Unless stated otherwise it is false.
+
+Modify [[FETCH]]'s <a href="https://fetch.spec.whatwg.org/#requestinit">RequestInit</a> dictionary to add
+an adAuctionHeaders attribute:
+
+<pre class=idl>
+partial dictionary RequestInit {
+  boolean adAuctionHeaders;
+};
+</pre>
+
+Modify [[FETCH]]'s [[FETCH#infrastructure]] to add a new section called "Per Traversable Navigable Structures",
+with the following content:
+
+<h3 dfn-type=dfn>Direct from seller signals key</h3>
+A direct from seller signals key is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="direct from seller signals key">
+: <dfn>owner</dfn>
+:: An [=origin=]. Matches the origin that served the captured `Ad-Auction-Signals` header.
+: <dfn>ad slot</dfn>
+:: A [=string=]. Matches the `adSlot` key of the JSON dictionaries in the top level array of the
+  `Ad-Auction-Signals` value.
+
+</dl>
+
+<h3 dfn-type=dfn>Direct from seller signals</h3>
+A direct from seller signals is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="direct from seller signals">
+: <dfn>seller signals</dfn>
+:: Null or a [=string=].
+  Opaque JSON data passed to both buyers' and the seller's [=script runners=].
+: <dfn>auction signals</dfn>
+:: Null or a [=string=].
+  Opaque JSON data passed to the seller's [=script runner=].
+: <dfn>per buyer signals</dfn>
+:: Null or a [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
+  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
+  passed to corresponding buyer's [=script runner=].
+
+</dl> 
+
+Each [=traversable navigable=] has a <dfn>captured ad auction headers</dfn>, which is a [=map=]
+whose [=map/keys=] are [=direct from seller signals keys=] and whose values are [=direct from seller signals=].
+
+</div>
+
 # Structures # {#structures}
 
 <xmp class="idl">
