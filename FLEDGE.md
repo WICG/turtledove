@@ -200,7 +200,7 @@ All fields that accept arbitrary metadata objects (`userBiddingSignals` and `met
 All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
 `biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must be
 same-origin with `owner` and must point to URLs whose responses include the HTTP
-response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for
+response header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
 loading FLEDGE resources.
 
 The browser will provide protection against microtargeting, by only rendering an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 100 people would have seen the ad, if it were allowed to show).  While in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal this threshold applied only to the rendered creative, FLEDGE has the additional requirement that the tuple of the interest group owner, bidding script URL, and rendered creative must be k-anonymous for an ad to be shown (this is necessary to ensure the current event-level reporting for interest group win reporting is sufficiently private). For interest groups that have component ads, all of the component ads must also separately meet this threshold for the ad to be shown. Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold. This means that a small, specialized ad that is still below the k-anonymity threshold could still choose to participate in auctions, and its interest group has a way to fall back to a more generic ad until the more specialized one has a large enough audience.
@@ -340,7 +340,7 @@ Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame eleme
 All fields that accept arbitrary metadata objects (`auctionSignals`, `sellerSignals`, and keys of `perBuyerSignals`) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`decisionLogicURL` and
 `trustedScoringSignalsURL`) must be same-origin with `seller` and must point to
-URLs whose responses include the HTTP response header `X-Allow-FLEDGE: true` to
+URLs whose responses include the HTTP response header `Ad-Auction-Allowed: true` to
 ensure they are allowed to be used for loading FLEDGE resources.
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
@@ -428,7 +428,7 @@ The ultimate winner of the top-level auction is the single bid the top-level sel
 
 While the browser ensures (using TLS) that information stored in a buyer's interest group and coming from a buyer's trusted bidding signals server comes from the buyer, information passed into `runAdAuction()` is not known to come from the seller unless the seller calls `runAdAuction()` from its own iframe.  In a multi-seller auction it becomes impossible to have all sellers create the frame calling `runAdAuction()`.  `directFromSellerSignals` allows the browser to ensure the authenticity and integrity of information passed into an auction from the seller.
 
-The optional `directFromSellerSignals` field can be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `directFromSellerSignals` are trusted to come from a seller because the content loads from a [subresource bundle](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md) loaded from a seller's origin. If present, `directFromSellerSignals` should be an HTTPS URL prefix using the seller's origin -- when combined with a browser-provided suffix (see details below), the resultant URL should be a resource in a subresource bundle that has been loaded by the current document, whose contents are of type `application/json`, with the following response headers: `X-Allow-Fledge: true` and `X-FLEDGE-Auction-Only: true`.
+The optional `directFromSellerSignals` field can be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `directFromSellerSignals` are trusted to come from a seller because the content loads from a [subresource bundle](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md) loaded from a seller's origin. If present, `directFromSellerSignals` should be an HTTPS URL prefix using the seller's origin -- when combined with a browser-provided suffix (see details below), the resultant URL should be a resource in a subresource bundle that has been loaded by the current document, whose contents are of type `application/json`, with the following response headers: `Ad-Auction-Allowed: true` and `Ad-Auction-Only: true`.
 
 The URL prefix should not have a query string (i.e. `?a=b&c=d`). Different calls to `navigator.runAdAuction()` on a page may use different prefixes -- for instance, to give different signals to different ad slots. The browser will append the following suffixes to the prefix:
 
@@ -442,7 +442,7 @@ The signals will be passed as the parameter `directFromSellerSignals` on worklet
 
 If the signals subresource download somehow fails for a given signal, null will be set on the corresponding field of the directFromSellerSignals object passed to worklet functions. Worklet scripts expecting signals can decide to score / bid / report anyways, or fail (i.e. throw an exception).
 
-As the name implies, subresource bundles are bundles of HTTPS subresources.  These HTTPS subresources can contain various HTTPS response headers, including ones meant to enforce basic Web principles, e.g. CORS headers.  To prevent bypassing these basic Web principles by loading the bundles directly with [fetch()](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) or [XMLHttpRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) and ignoring the HTTPS headers within, the bundles should only be served when requested with the header `Sec-Fetch-Dest: webbundle`.  To protect against cross-origin side channel attacks, like what CORB does, the browser requires the subresources from the bundle are served with the header `X-FLEDGE-Auction-Only` which ensures they are only loaded via `directFromSellerSignals`.
+As the name implies, subresource bundles are bundles of HTTPS subresources.  These HTTPS subresources can contain various HTTPS response headers, including ones meant to enforce basic Web principles, e.g. CORS headers.  To prevent bypassing these basic Web principles by loading the bundles directly with [fetch()](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) or [XMLHttpRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) and ignoring the HTTPS headers within, the bundles should only be served when requested with the header `Sec-Fetch-Dest: webbundle`.  To protect against cross-origin side channel attacks, like what CORB does, the browser requires the subresources from the bundle are served with the header `Ad-Auction-Only` which ensures they are only loaded via `directFromSellerSignals`.
 
 The bundle may be fetched using credentials like cookies, as described in the [subresource bundles explainer](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md#requests-mode-and-credentials-mode).
 
@@ -501,7 +501,7 @@ The response from the server should be a JSON object of the form:
 }
 ```
 
-and the server must include the HTTP response header `X-fledge-bidding-signals-format-version: 2`.  If the server does not include the header, the response will assumed to be an in older format, where the response is only the contents of the `keys` dictionary.
+and the server must include the HTTP response header `Ad-Auction-Bidding-Signals-Format-Version: 2`.  If the server does not include the header, the response will assumed to be an in older format, where the response is only the contents of the `keys` dictionary.
 
 The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed from the `keys` dictionary to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no `trustedBiddingSignalsKeys` or `trustedBiddingSignalsURL` in the interest group, then the `trustedBiddingSignals` argument to generateBid() will be null.
 
