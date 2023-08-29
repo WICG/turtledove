@@ -37,6 +37,7 @@ spec: RFC8941; urlPrefix: https://httpwg.org/specs/rfc8941.html
     text: structured header; url: top
     for: structured header
       text: integer; url: integer
+      text: boolean; url: boolean
 spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
   type: dfn
     urlPrefix: appendix/embedding.html
@@ -2800,7 +2801,7 @@ This specification defines two [=policy-controlled features=] identified by the 
 Issue(WICG/turtledove#522): Move from "`*`" to "`self`".
 
 
-# Direct from Seller Signals # {#direct-from-seller-signals}
+# Handling Direct from Seller Signals # {#handling-direct-from-seller-signals}
 
 This section specifies a manner by which signals may be provided to auctions such that the signals
 are only used within their intended auction.
@@ -2813,7 +2814,8 @@ be used to provide signals in auctions running on the page whose seller matches 
 <div algorithm="fetch adAuctionHeaders patch">
 Modify [[FETCH]]'s [[FETCH#requests]] to add: 
 
-A [=request=] has an associated <dfn>adAuctionHeaders</dfn> boolean. Unless stated otherwise it is false.
+A [=request=] has an associated <dfn for=request>capture ad auction headers boolean</dfn>.
+Unless stated otherwise it is false.
 
 Modify [[FETCH]]'s <a href="https://fetch.spec.whatwg.org/#requestinit">RequestInit</a> dictionary to add
 an adAuctionHeaders attribute:
@@ -2823,6 +2825,19 @@ partial dictionary RequestInit {
   boolean adAuctionHeaders;
 };
 </pre>
+
+The following step will be added to the <a href="https://fetch.spec.whatwg.org/#dom-request">new Request(input, init) constructor steps</a>,
+before step "Set this's [=Request/request=] to |request|":
+
+1. If <var ignore=''>init</var>["{{RequestInit/adAuctionHeaders}}"] <a for=map>exists</a> and is `true`, then
+  set |request|'s [=request/capture ad auction headers boolean=] to it.
+
+The following step will be added to the <a href="https://fetch.spec.whatwg.org/#concept-http-network-or-cache-fetch">HTTP-network-or-cache fetch</a>
+algorithm, before step "Modify |httpRequest|'s [=request/header list=] per HTTP. ...":
+
+1. If [=request=]'s [=request/capture ad auction headers boolean=] is true, then
+  [=header list/set a structured field value=] given «`Sec-Ad-Auction-Fetch`, the [=structured header/boolean=] ?1» in
+  |httpRequest|'s [=header list=].
 
 Modify [[FETCH]]'s [[FETCH#infrastructure]] to add a new section called "Per Traversable Navigable Structures",
 with the following content:
