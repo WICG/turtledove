@@ -44,7 +44,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | --------------- | --------------- | ---------------------- | ------------------------------------- | ------------------ |
 | Criteo | DSP | | | privacy-sandbox-testing@criteo.com |
 | Teads | SSP & DSP | | | privacysandbox@teads.com |
-| NextRoll | DSP | | | privacysandbox@nextroll.com |
+| NextRoll | DSP | 2024-01-30 | coming soon | privacysandbox@nextroll.com |
 | OpenX | SSP | Limited testing in progress | | joel.meyer@openx.com |
 | RTB House | DSP | Continuous testing ongoing; long term commitment. | https://blog.rtbhouse.com/whitepaper-deep-insights-from-early-fledge-experiments/ | privacysandbox@rtbhouse.com |
 | SMN | DSP | | | privacy-sandbox-testing@so-netmedia.jp |
