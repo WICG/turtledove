@@ -474,6 +474,7 @@ bid in the auction for the chance to display their advertisement.
 
 <h3 id="runadauction">runAdAuction()</h3>
 
+TODO: Promise wiring, pass results to worklets.
 <xmp class="idl">
 [SecureContext]
 partial interface Navigator {
@@ -488,6 +489,7 @@ dictionary AuctionAdConfig {
   Promise<any> auctionSignals;
   Promise<any> sellerSignals;
   Promise<USVString> directFromSellerSignals;
+  Promise<DOMString> directFromSellerSignalsHeaderAdSlot;
   unsigned long long sellerTimeout;
   unsigned short sellerExperimentGroupId;
   USVString sellerCurrency;
@@ -2869,12 +2871,74 @@ A direct from seller signals is a [=struct=] with the following [=struct/items=]
   [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
   passed to corresponding buyer's [=script runner=].
 
-</dl> 
+</dl>
 
 Each [=traversable navigable=] has a <dfn>captured ad auction headers</dfn>, which is a [=map=]
 whose [=map/keys=] are [=direct from seller signals keys=] and whose values are [=direct from seller signals=].
 
+The following step will be added to the <a href="https://fetch.spec.whatwg.org/#concept-http-network-or-cache-fetch">HTTP-network-or-cache fetch</a>
+algorithm, before step "Return |response|.":
+
+1. If |response| is not null, then run [=update captured headers=] with [=this=]'s
+  [=relevant global object=]'s [=associated Document's=] [=node navigable's=]
+  [=traversable navigable's=] [=captured ad auction headers=], |response|'s
+  [=response/header list=], and |request|'s [=request/URL=]'s [=url/origin=].
+
+<div algorithm>
+  To <dfn>update captured headers</dfn> with a [=captured ad auction headers=] |storedHeaders|,
+  [=header list=] |responseHeaders|, and [=origin=] |requestOrigin|:
+  1. Let |adAuctionSignals| be the result of [=header list/get=] with "`Ad-Auction-Signals`",
+    |responseHeaders|.
+  1. If |adAuctionSignals| is null, return.
+  1. [=header list/delete=] "`Ad-Auction-Signals`" from |responseHeaders|.
+
+    NOTE: This step prevents the header value from being used outside the intended auctions.
+  1. Let |parsedSignals| be the result of [=parsing JSON bytes to an Infra value=], given
+    |adAuctionSignals|.
+  1. If |parsedSignals| is failure, return.
+  1. If |parsedSignals| is not a [=list=], return.
+  1. [=list/For each=] |signal| in |parsedSignals|:
+    1. If |signal| is not an [=ordered map=], [=iteration/continue=].
+    1. If |signal|["`adSlot`"] doesn't exist, [=iteration/continue=].
+    1. Create a new [=direct from seller signals key=] |signalsKey|, with its
+      [=direct from seller signals key/owner=] set to |requestOrigin| and its
+      [=direct from seller signals key/ad slot=] set to |signal|["`adSlot`"].
+    1. Create a new [=direct from seller signals=] |processedSignals|.
+    1. [=map/Remove=] |signal|["`adSlot`"].
+    1. [=map/For each=] |key| → |value| of |signal|:
+      1. Switch on |key|:
+        <dl class=switch>
+        <dt>"`sellerSignals`"
+        <dd>
+        1. Set |processedSignals|'s [=direct from seller signals/seller signals=] to the result
+          of [=serializing an Infra value to a JSON string=], given |value|. If this
+          [=exception/throws=], [=iteration/continue=].
+
+        <dt>"`auctionSignals`"
+        <dd>
+        1. Set |processedSignals|'s [=direct from seller signals/auction signals=] to the result
+          of [=serializing an Infra value to a JSON string=], given |value|. If this
+          [=exception/throws=], [=iteration/continue=].
+        
+        <dt>"`perBuyerSignals`"
+        <dd>
+        1. If |value| is not an [=ordered map=], [=iteration/continue=].
+        1. For each |buyer| → |buyerSignals| of |value|:
+          1. Let |buyerOrigin| be the result of [=parsing an origin=] on |buyer|. If this
+            [=exception/throws=], [=iteration/continue=].
+          1. Let |buyerSignalsString| be the result of
+            [=serializing an Infra value to a JSON string=], given |buyerSignals|. If this
+            [=exception/throws=], [=iteration/continue=].
+          1. Set |processedSignals|'s [=direct from seller signals/per buyer signals=][|buyerOrigin|]
+            to |buyerSignalsString|.
+        
+        </dl>
+
+    1. Set |storedHeaders|[|signalsKey|] to |processedSignals|.
 </div>
+
+</div>
+
 
 # Structures # {#structures}
 
