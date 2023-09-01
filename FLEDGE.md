@@ -562,9 +562,9 @@ generateBid(interestGroup, auctionSignals, perBuyerSignals,
   return {'ad': adObject,
           'adCost': optionalAdCost,
           'bid': bidValue,
-          'render': {url: renderURL, size: {width: renderWidth, height: renderHeight}},
-          'adComponents': [{url: adComponent1, size: {width: componentWidth1, height: componentHeight1}},
-                           {url: adComponent2, size: {width: componentWidth2, height: componentHeight2}}, ...],
+          'render': {url: renderURL, width: renderWidth, height: renderHeight},
+          'adComponents': [{url: adComponent1, width: componentWidth1, height: componentHeight1},
+                           {url: adComponent2, width: componentWidth2, height: componentHeight2}, ...],
           'allowComponentAuction': false,
           'modelingSignals': 123};
 }
