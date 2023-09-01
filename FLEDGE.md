@@ -51,7 +51,7 @@ Most of these ideas are drawn from the previous ongoing discussion of variants o
 
 As we approach third-party cookie deprecation in Chrome, you may be wondering about the availability of specific Protected Audience API services and features. You can find a list of the scoped Protected Audience API features and when they'll be supported [here](https://developer.chrome.com/en/docs/privacy-sandbox/protected-audience-api/feature-status/).  The temporary italicized carve-outs in the above bulleted list all need privacy-safe replacements before our work is done.
 
-But while third-party cookies are still available, the Protected Audience API offers a preview of a post-3p-cookies technique so that we can all test out the on-device ad selection approach together.
+But while third-party cookies are still available, the Protected Audience API offers a preview of a post-3p-cookies technique so that we can all test out this ad selection approach together.
 
 
 ## Background
@@ -201,7 +201,7 @@ same-origin with `owner` and must point to URLs whose responses include the HTTP
 response header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
 loading Protected Audience resources.
 
-The browser will provide protection against microtargeting, by only rendering an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 100 people would have seen the ad, if it were allowed to show).  While in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal this threshold applied only to the rendered creative, Protected Audience has the additional requirement that the tuple of the interest group owner, bidding script URL, and rendered creative must be k-anonymous for an ad to be shown (this is necessary to ensure the current event-level reporting for interest group win reporting is sufficiently private). For interest groups that have component ads, all of the component ads must also separately meet this threshold for the ad to be shown. Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold. This means that a small, specialized ad that is still below the k-anonymity threshold could still choose to participate in auctions, and its interest group has a way to fall back to a more generic ad until the more specialized one has a large enough audience.
+The browser will provide protection against microtargeting, by only rendering an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 50 people would have seen the ad, if it were allowed to show).  While in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal this threshold applied only to the rendered creative, Protected Audience has the additional requirement that the tuple of the interest group owner, bidding script URL, and rendered creative must be k-anonymous for an ad to be shown (this is necessary to ensure the current event-level reporting for interest group win reporting is sufficiently private). For interest groups that have component ads, all of the component ads must also separately meet this threshold for the ad to be shown. Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold. This means that a small, specialized ad that is still below the k-anonymity threshold could still choose to participate in auctions, and its interest group has a way to fall back to a more generic ad until the more specialized one has a large enough audience.
 
 
 #### 1.3 Permission Delegation
@@ -782,7 +782,7 @@ The arguments to this function are:
 
 The `reportWin()` function's reporting happens by calling `sendReportTo()`, same as for `reportResult()`, in the short-term, but will eventually go through the Private Aggregation API. Once the Private Aggregation API is the only allowed reporting mechanism available in Protected Audience, the `interestGroup` object passed to `generateBid()` will be available to `reportWin()`.
 
-Ads often need to report on events that happen once the ad is rendered.  One common example is reporting on whether an ad became viewable on-screen.  We will need a communications channel to allow the publisher page or the Fenced Frame to pass such information into the worklet responsible for reporting.  Some additional design work is needed here.
+Ads often need to report on events that happen once the ad is rendered.  One common example is reporting on whether an ad became viewable on-screen.  The [Fenced Frame Ads Reporting API](https://github.com/WICG/turtledove/blob/main/Fenced_Frames_Ads_Reporting.md) offers an event-level way to do this, in the short-term, while the [Extended Private Aggregaton reporting API](https://github.com/WICG/turtledove/blob/main/FLEDGE_extended_PA_reporting.md#example-1-correlating-bidding-signals-with-click-information) offers an aggregate method of doing so.
 
 ##### 5.2.1 Noised and Bucketed Signals
 
