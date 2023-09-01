@@ -1116,6 +1116,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |bidGenerators| be the result of running [=build bid generators map=] with |auctionConfig|.
 1. Let |leadingBidInfo| be a new [=leading bid info=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
+1. Let |capturedAuctionHeaders| be [=this=]'s [=relevant global object=]'s [=associated Document's=]
+  [=node navigable's=] [=traversable navigable's=] [=captured ad auction headers=].
 1. If |auctionConfig|'s [=auction config/component auctions=] are not [=list/is empty|empty=]:
   1. [=Assert=] |topLevelAuctionConfig| is null.
   1. Let |pendingComponentAuctions| be the [=list/size=] of |auctionConfig|'s
@@ -1136,17 +1138,33 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |auctionConfig|.
   1. Set |leadingBidInfo|'s [=leading bid info/component seller=] to |winningComponentConfig|'s
     [=auction config/seller=].
+  1. Let « ignored, |topLevelSellerDirectFromSellerSignals| » be the result of running
+    [=get direct from seller signals=] with |auctionConfig|'s
+    [=auction config/expects direct from seller signals header ad slot=], |auctionConfig|'s
+    [=auction config/seller=], |auctionConfig|'s
+    [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
   1. Let « |topLevelSellerSignals|, unusedTopLevelReportResultBrowserSignals » be the result of
-    running [=report result=] with |leadingBidInfo| and |winningComponentConfig|.
+    running [=report result=] with |leadingBidInfo|, |topLevelSellerDirectFromSellerSignals| and
+    |winningComponentConfig|.
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |winningComponentConfig|.
   1. Set |leadingBidInfo|'s [=leading bid info/component seller=] to null.
   1. Set |leadingBidInfo|'s [=leading bid info/top level seller=] to |auctionConfig|'s
     [=auction config/seller=].
   1. Set |leadingBidInfo|'s [=leading bid info/top level seller signals=] to
     |topLevelSellerSignals|.
+  1. Let « |directFromSellerSignals|, |sellerDirectFromSellerSignals| » be the result of running
+    [=get direct from seller signals=] with |auctionConfig|'s
+    [=auction config/expects direct from seller signals header ad slot=], |winningComponentConfig|'s
+    [=auction config/seller=], |auctionConfig|'s
+    [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
-    [=report result=] with |leadingBidInfo| and null.
-  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, and |reportResultBrowserSignals|.
+    [=report result=] with |leadingBidInfo|, |sellerDirectFromSellerSignals|, and null.
+  1. Let |buyerDirectFromSellerSignals| be the result of running
+    [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and
+    |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/interest group=]'s
+    [=interest group/owner=].
+  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|, and
+    |buyerDirectFromSellerSignals|.
   1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 
 1. If [=waiting until configuration input promises resolve=] given |auctionConfig| returns failure, return failure.
@@ -1154,10 +1172,11 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   [=auction config/all buyer experiment group id=].
 1. Let |allBuyersGroupLimit| be |auctionConfig|'s [=auction config/all buyers group limit=].
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
-1. Let |directFromSellerSignalsAdSlot| be |auctionConfig|'s
-  [=auction config/direct from seller signals header ad slot=].
-1. Let |capturedAuctionHeaders| be [=this=]'s [=relevant global object=]'s [=associated Document's=]
-  [=node navigable's=] [=traversable navigable's=] [=captured ad auction headers=].
+1. Let « |directFromSellerSignals|, |sellerDirectFromSellerSignals| » be the result of running
+  [=get direct from seller signals=] with |auctionConfig|'s
+  [=auction config/expects direct from seller signals header ad slot=], |auctionConfig|'s
+  [=auction config/seller=], |auctionConfig|'s
+  [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
 1. Let |browserSignals| be a {{BiddingBrowserSignals}}.
 1. Let |topLevelHost| be the result of running the <a spec=url>host serializer</a> on [=this=]'s
   [=relevant settings object=]'s [=environment/top-level origin=]'s [=origin/host=].
@@ -1223,19 +1242,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
-        1. Let |directFromSellerSignals| be null.
-        1. Let |buyerDirectFromSellerSignals| be {{undefined}}.
-        1. If |auctionConfig|'s [=auction config/expects direct from seller signals header ad slot=]:
-          1. Let |directFromSellerSignalsKey| be a new [=direct from seller signals key=] with its
-            [=direct from seller signals key/owner=] set to |ig|'s [=interest group/owner=], and
-            [=direct from seller signals key/ad slot=] set to |directFromSellerSignalsAdSlot|.
-          1. If |capturedAuctionHeaders|[|directFromSellerSignalsKey|] [=map/exists=]:
-            1. Set |directFromSellerSignals| to |capturedAuctionHeaders|[|directFromSellerSignalsKey|].
-            1. Set |buyerDirectFromSellerSignals| to a new [=direct from seller signals=] with its
-              [=direct from seller signals/auction signals=] set to
-              |directFromSellerSignals|'s [=direct from seller signals/auction signals=], and its
-              [=direct from seller signals/per buyer signals=] set to
-              |directFromSellerSignals|'s [=direct from seller signals/per buyer signals=].
+        1. Let |buyerDirectFromSellerSignals| be the result of running
+            [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and
+            |ig|'s [=interest group/owner=].
         1. Let |generatedBid| be the result of [=generate a bid=] given
           |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
           |perBuyerSignals|, |buyerDirectFromSellerSignals|, |perBuyerTimeout|, |expectedCurrency|,
@@ -1277,36 +1286,18 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. If |generatedBid| is failure, [=iteration/continue=].
         1. [=list/Insert=] |generatedBid|'s [=generated bid/interest group=] in |bidIgs|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
-          |decisionLogicScript|, |directFromSellerSignals|, |dataVersion|, |auctionLevel|,
+          |decisionLogicScript|, |sellerDirectFromSellerSignals|, |dataVersion|, |auctionLevel|,
           |componentAuctionExpectedCurrency|, and |settings|'s [=environment/top-level origin=].
-
   1. Decrement |pendingBuyers| by 1.
 1. Wait until |pendingBuyers| is 0.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
 1. If |topLevelAuctionConfig| is null:
-  1. Let |buyerDirectFromSellerSignals| be {{undefined}}.
-  1. Let |sellerDirectFromSellerSignals| be {{undefined}}.
-  1. If |leadingBidInfo|'s [=leading bid info/auction config=]'s
-    [=auction config/expects direct from seller signals header ad slot=]:
-    1. Let |owner| be |leadingBidInfo|'s [=leading bid info/leading bid=]'s
-      [=generated bid/interest group=]'s [=interest group/owner=].
-    1. Let |directFromSellerSignalsKey| be a new [=direct from seller signals key=] with its
-      [=direct from seller signals key/owner=] set to |owner|, and
-      [=direct from seller signals key/ad slot=] set to |directFromSellerSignalsAdSlot|.
-    1. If |capturedAuctionHeaders|[|directFromSellerSignalsKey|] [=map/exists=]:
-      1. Set |directFromSellerSignals| to |capturedAuctionHeaders|[|directFromSellerSignalsKey|].
-      1. Set |buyerDirectFromSellerSignals| to a new [=direct from seller signals=] with its
-        [=direct from seller signals/auction signals=] set to
-        |directFromSellerSignals|'s [=direct from seller signals/auction signals=], and its
-        [=direct from seller signals/per buyer signals=] set to
-        |directFromSellerSignals|'s [=direct from seller signals/per buyer signals=].
-      1. Set |sellerDirectFromSellerSignals| to a new [=direct from seller signals=] with its
-        [=direct from seller signals/auction signals=] set to
-        |directFromSellerSignals|'s [=direct from seller signals/auction signals=], and its
-        [=direct from seller signals/seller signals=] set to
-        |directFromSellerSignals|'s [=direct from seller signals/seller signals=].
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
     [=report result=] with |leadingBidInfo|, |sellerDirectFromSellerSignals|, and null.
+  1. Let |buyerDirectFromSellerSignals| be the result of running
+      [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and
+      |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/interest group=]'s
+      [=interest group/owner=].
   1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|, and
     |buyerDirectFromSellerSignals|.
 1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
@@ -1438,17 +1429,10 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     <dt>{{ScoringBrowserSignals/adComponents}}
     <dd>|generatedBid|'s [=generated bid/ad component descriptors=] [=converted to a string sequence=]
   </dl>
-1. Let |sellerDirectFromSellerSignals| be {{undefined}}.
-1. If |directFromSellerSignals| is not null:
-  1. Set |sellerDirectFromSellerSignals| to a new [=direct from seller signals=] with its
-    [=direct from seller signals/auction signals=] set to
-    |directFromSellerSignals|'s [=direct from seller signals/auction signals=], and its
-    [=direct from seller signals/seller signals=] set to
-    |directFromSellerSignals|'s [=direct from seller signals/seller signals=].
 1. Let |scoreAdResult| be the result of [=evaluating a scoring script=] with
    |decisionLogicScript|, |adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|'s
    [=auction config/config idl=], |trustedScoringSignals|, |browserSignals|,
-   |sellerDirectFromSellerSignals|,and |auctionConfig|'s [=auction config/seller timeout=].
+   |directFromSellerSignals|,and |auctionConfig|'s [=auction config/seller timeout=].
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
 1. If |scoreAdOutput| is failure, return.
 1. If |auctionLevel| is not "single-level-auction", and |scoreAdOutput|
@@ -1783,6 +1767,42 @@ To <dfn>round a value</dfn> given a {{double}} |value|:
   1. Let |noisyScaledValue| be |precisionScaledValue| plus a random {{double}} value greater than or equal to 0 but less than 1.
   1. Let |truncatedScaledValue| be the largest integer not greater than |noisyScaledValue|.
   1. Return |truncatedScaledValue| multiplied by 2<sup>(|valueExp| &minus; 8)</sup>.
+
+</div>
+
+<div algorithm>
+To <dfn>get direct from seller signals</dfn> given a [=boolean=] |expectHeaderAdSlot|, an [=origin=]
+|seller|, a [=string=] |adSlot|, and a [=map=] |capturedAuctionHeaders|:
+  1. Let |directFromSellerSignals| be null.
+  1. Let |sellerDirectFromSellerSignals| be {{undefined}}.
+  1. If |expectHeaderAdSlot|:
+    1. Let |directFromSellerSignalsKey| be a new [=direct from seller signals key=] with its
+      [=direct from seller signals key/seller=] set to |seller|, and
+      [=direct from seller signals key/ad slot=] set to |adSlot|.
+    1. If |capturedAuctionHeaders|[|directFromSellerSignalsKey|] [=map/exists=]:
+      1. Set |directFromSellerSignals| to |capturedAuctionHeaders|[|directFromSellerSignalsKey|].
+      1. Set |sellerDirectFromSellerSignals| to a new [=direct from seller signals=] with its
+        [=direct from seller signals/auction signals=] set to
+        |directFromSellerSignals|'s [=direct from seller signals/auction signals=], and its
+        [=direct from seller signals/seller signals=] set to
+        |directFromSellerSignals|'s [=direct from seller signals/seller signals=].
+  1. Return « |directFromSellerSignals|, |sellerDirectFromSellerSignals| ».
+
+</div>
+
+<div algorithm>
+To <dfn>get direct from seller signals for a buyer</dfn> given a [=direct from seller signals=]
+|directFromSellerSignals|, and an [=origin=] |owner|:
+  1. If |directFromSellerSignals| is null, then return null.
+  1. Let |filteredPerBuyerSignals| be null.
+  1. If |directFromSellerSignals|'s [=direct from seller signals/per buyer signals=][|owner|]
+    [=map/exists=]:
+    1. Set |filteredPerBuyerSignals| to |directFromSellerSignals|'s
+      [=direct from seller signals/per buyer signals=][|owner|].
+  1. Return a new [=direct from seller signals=] with its
+    [=direct from seller signals/auction signals=] set to
+    |directFromSellerSignals|'s [=direct from seller signals/auction signals=], and its
+    [=direct from seller signals/per buyer signals=] set to |filteredPerBuyerSignals|.
 
 </div>
 
@@ -3538,7 +3558,7 @@ TODO: Remove the following once https://github.com/WICG/turtledove/pull/771 is m
 A direct from seller signals key is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="direct from seller signals key">
-: <dfn>owner</dfn>
+: <dfn>seller</dfn>
 :: An [=origin=]. Matches the origin that served the captured `Ad-Auction-Signals` header.
 : <dfn>ad slot</dfn>
 :: A [=string=]. Matches the `adSlot` key of the JSON dictionaries in the top level array of the
