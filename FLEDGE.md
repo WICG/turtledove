@@ -864,7 +864,7 @@ Each additional bid may provide a value for **at most** one of the `negativeInte
 
 The `auctionNonce`, `seller`, and `topLevelSeller` fields are used to prevent replay of this additional bid. The `auctionNonce` is described below in section [6.1 Auction Nonce](#61-auction-nonce). The `seller` and `topLevelSeller` fields echo those present in the `browserSignals` argument to `generateBid()` as described in section [3.2 On-Device Bidding](#32-on-device-bidding). In `generateBid()`, these are meant to ensure that the buyer acknowledges and accepts that their bid can participate in an auction with those parties. Additional bids don't have a corresponding call to `generateBid()`, and so the `seller` and `topLevelSeller` fields in an additional bid are intended to allow for the same acknowledgement as those in `browserSignals`.
 
-Additional bids are not provided through the auction config passed to `runAdAuction()`, but rather through the response headers of a Fetch request, as described below in section [6.3 HTTP Response Headers](#63-http-response-headers). However, the auction config still has an `additionalBids` field, whose value is be a Promise with no value, used only to signal to the auction that the additional bids have arrived and are ready to be accepted in the auction.
+Additional bids are not provided through the auction config passed to `runAdAuction()`, but rather through the response headers of a Fetch request, as described below in section [6.3 HTTP Response Headers](#63-http-response-headers). However, the auction config still has an `additionalBids` field, whose value is a Promise with no value, used only to signal to the auction that the additional bids have arrived and are ready to be accepted in the auction.
 
 ```
 navigator.runAdAuction({
@@ -918,7 +918,7 @@ If an additional bid only needs to specify a single negative interest group, it 
 ```
 const additionalBid = {
   // ...
-  "negativeInterestGroup": "example_advertiser_negative_interest_group"
+  "negativeInterestGroup": "example_advertiser_negative_interest_group",
   // ...
 }
 ```
@@ -939,7 +939,7 @@ const additionalBid = {
 }
 ```
 
-Any negative interest group that wasn't joined from that identified site won't be considered for negative targeting. This restriction is enforced so that negative targeting can only use targeting data from a single site.  An additional bid that only specifies one negative interest group is not subject to the same restriction on joining origin.
+Any negative interest group that wasn't joined from that identified origin won't be considered for negative targeting. This restriction is enforced so that negative targeting can only use targeting data from a single origin.  An additional bid that only specifies one negative interest group is not subject to the same restriction on joining origin.
 
 ##### 6.2.3 Additional Bid Keys
 
