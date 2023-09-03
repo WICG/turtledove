@@ -36,14 +36,14 @@ See [the in progress FLEDGE specification](https://wicg.github.io/turtledove/).
     - [5.2 Buyer Reporting on Render and Ad Events](#52-buyer-reporting-on-render-and-ad-events)
       - [5.2.1 Noised and Bucketed Signals](#521-noised-and-bucketed-signals)
     - [5.3 Losing Bidder Reporting](#53-losing-bidder-reporting)
-  - [6. Additional Bids]()
-    - [6.1. Auction Nonce]()
-    - [6.2. Negative Targeting]()
-      - [6.2.1 Negative Interest Groups]()
-      - [6.2.2 How Additional Bids Specify their Negative Interest Groups]()
-      - [6.2.3 Additional Bid Keys]()
-    - [6.3 HTTP Response Headers]()
-    - [6.4 Reporting Additional Bid Wins]()
+  - [6. Additional Bids](#6-additional-bids)
+    - [6.1 Auction Nonce](#61-auction-nonce)
+    - [6.2 Negative Targeting](#62-negative-targeting)
+      - [6.2.1 Negative Interest Groups](#621-negative-interest-groups)
+      - [6.2.2 How Additional Bids Specify their Negative Interest Groups](#622-how-additional-bids-specify-their-negative-interest-groups)
+      - [6.2.3 Additional Bid Keys](#623-additional-bid-keys)
+    - [6.3 HTTP Response Headers](#63-http-response-headers)
+    - [6.4 Reporting Additional Bid Wins](#64-reporting-additional-bid-wins)
 
 
 ## Summary
@@ -862,7 +862,7 @@ const additionalBid = {
 }
 ```
 
-Additional bids are not provided through the auction config passed to runAdAuction(), but rather through the response headers of a Fetch request, as described in section 6.3 Response Headers. However, the auction config will still have an additionalBids field, whose value will be a Promise with no value, used only to signal to the auction that the additional bids have arrived and are ready to be accepted in the auction.
+Additional bids are not provided through the auction config passed to runAdAuction(), but rather through the response headers of a Fetch request, as described below in section [6.3 HTTP Response Headers](#63-http-response-headers). However, the auction config will still have an additionalBids field, whose value will be a Promise with no value, used only to signal to the auction that the additional bids have arrived and are ready to be accepted in the auction.
 
 ```
 navigator.runAdAuction({
@@ -871,7 +871,7 @@ navigator.runAdAuction({
 });
 ```
 
-#### 6.1. Auction Nonce
+#### 6.1 Auction Nonce
 
 To prevent unintended replaying of additional bids, any auction config, whether top-level or component auction config, must include an auction nonce value if it includes additional bids.  The auction nonce is fetched provided like so:
 
@@ -884,9 +884,9 @@ navigator.runAdAuction({
 });
 ```
 
-The same nonce value will need to appear in the auctionNonce field of each additional bid associated with that auction config. Auctions that don't use additional bids don't need to create or provide an auction nonce.
+The same nonce value will need to appear in the auctionNonce field of each [additional bid](#6-additional-bids) associated with that auction config. Auctions that don't use additional bids don't need to create or provide an auction nonce.
 
-#### 6.2. Negative Targeting
+#### 6.2 Negative Targeting
 
 In online ad auctions for ad space, it’s sometimes useful to prevent showing an ad to certain audiences, a concept known as negative targeting. For example, you might not want to show a new customer advertisement to existing customers. New customer acquisition campaigns most often have this as a critical requirement.
 
@@ -894,7 +894,7 @@ To facilitate negative targeting in Protected Audience auctions, each additional
 
 ##### 6.2.1 Negative Interest Groups
 
-Negative interest groups are joined using the same API as normal interest groups, though a different set of fields must be provided. Notably, only the owner, name, lifetimeMs, updateURL and additionalBidKey fields are allowed for negative interest groups. Conversely, only negative interest groups are allowed to specify the additionalBidKey field. The 'additionalBidKey' field is described in more detail in section 6.3. Additional Bid Keys.
+Negative interest groups are joined using the same API as normal interest groups, though a different set of fields must be provided. Notably, only the owner, name, lifetimeMs, updateURL and additionalBidKey fields are allowed for negative interest groups. Conversely, only negative interest groups are allowed to specify the additionalBidKey field. The 'additionalBidKey' field is described in more detail in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys).
 
 ```
 const myGroup = {
@@ -941,7 +941,7 @@ Any negative interest group that wasn't joined from that identified site won't b
 
 ##### 6.2.3 Additional Bid Keys
 
-We use a cryptographic signature mechanism to ensure that only the owner of a negative interest group can use it with additional bids. Each buyer will need to create a Ed25519 public/secret key pair to sign their additional bids to prove their authenticity, and to regularly rotate their key pairs.
+We use a cryptographic signature mechanism to ensure that only the owner of a negative interest group can use it with additional bids. Each buyer will need to create a [Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) public/secret key pair to sign their additional bids to prove their authenticity, and to regularly rotate their key pairs.
 
 When a buyer joins a user into a negative interest group, they must provide their 32-byte Ed25519 public key, expressed as a base64-encoded string, via the negative interest group's additionalBidKey field. This can be seen in the example above in section 6.2.1 Negative Interest Groups. The additionalBidKey can be then updated via the negative interest group's updateURL, for example, to enable a buyer to rotate their Ed25519 key pair faster than they could with the expiration of their negative interest groups alone.
 
