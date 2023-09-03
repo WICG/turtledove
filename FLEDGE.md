@@ -896,7 +896,7 @@ To facilitate negative targeting in Protected Audience auctions, each additional
 
 ##### 6.2.1 Negative Interest Groups
 
-Though negative interest groups are joined using the same `joinAdInterestGroup` API as normal interest groups, they remain distinct from one another. Only negative interest groups can provide an `additionalBidKey`, and only normal interest groups can provide `ads`; no interest group may provide both. The `additionalBidKey` field is described in more detail in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys).
+Though negative interest groups are joined using the same `joinAdInterestGroup` API as regular interest groups, they remain distinct from one another. Only negative interest groups can provide an `additionalBidKey`, and only regular interest groups can provide `ads`; no interest group may provide both. The `additionalBidKey` field is described in more detail in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys).
 
 ```
 const myGroup = {
