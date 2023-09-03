@@ -825,7 +825,6 @@ Each additional bid is expressed using the following JSON data structure:
 ```
 const additionalBid = {
   "bid": {
-    // Fields analogous to those returned by generateBid()
     "ad": 'ad-metadata',
     "adCost": 2.99,
     "bid": 1.99,
@@ -835,17 +834,13 @@ const additionalBid = {
     "allowComponentAuction": true,
     "modelingSignals": 123,
   },
-  // These facilitate running reportWin() if this bid wins the auction.
+
   "interestGroup": {
-    // These are be passed to reportWin()
     "owner": "https://www.example-dsp.com"
     "name": "campaign123",
-    // This is used for its definition of reportWin()
     "biddingLogicURL": "https://www.example-dsp.com/bid_logic.js"
   },
-  // Negative interest groups are described in more detail below.
-  // Only one of negativeInterestGroup or negativeInterestGroups
-  // should be specified on a given bid.
+
   "negativeInterestGroup": "campaign123_negative_interest_group",
   "negativeInterestGroups": {
     joiningOrigin: "https://www.example-advertiser.com",
@@ -855,14 +850,19 @@ const additionalBid = {
     ]
   },
 
-  // The following fields are used to prevent replay of this bid.
-  // auctionNonce is described in greater detail below.
   "auctionNonce": "12345678-90ab-cdef-fedcba09876543210",
-  // seller and topLevelSeller must match the auction's configuration.
   "seller": "https://www.example-ssp.com",
   "topLevelSeller": "https://www.another-ssp.com"
 }
 ```
+
+The fields in `bid` intentionally mimic those returned by generateBid(), as described in section [3.2 On-Device Bidding](#32-on-device-bidding). These fields in the additional bid have the same semantic meaning as those returned from `generateBid()`, except that `render` and `adComponents` are not limited to values from a corresponding stored interest group because the additional bid is not generated from a stored interest group.
+
+The fields in `interestGroup` facilitate running `reportAdditionalBidWin()` for an additional bid that wins an auction, as described below in section [6.4 Reporting Additional Bid Wins](#64-reporting-additional-bid-wins). `biddingLogicURL` is used for its definition of `reportAdditionalBidWin()`, while `owner` and `name` are passed to the call to that function.
+
+Each additional bid may provide a value for **at most** one of the `negativeInterestGroup` and `negativeInterestGroups` fields. These fields are described below in section [6.2.2 How Additional Bids Specify their Negative Interest Groups](#622-how-additional-bids-specify-their-negative-interest-groups).
+
+The `auctionNonce`, `seller`, and `topLevelSeller` fields are used to prevent replay of this additional bid. The `auctionNonce` is described below in section [6.1 Auction Nonce](#61-auction-nonce). The `seller` and `topLevelSeller` fields echo those present in the `browserSignals` argument to `generateBid()` as described in section [3.2 On-Device Bidding](#32-on-device-bidding). In `generateBid()`, these are meant to ensure that the buyer acknowledges and accepts that their bid can participate in an auction with those parties. Additional bids don't have a corresponding call to `generateBid()`, and so the `seller` and `topLevelSeller` fields in an additional bid are intended to allow for the same acknowledgement as those in `browserSignals`.
 
 Additional bids are not provided through the auction config passed to `runAdAuction()`, but rather through the response headers of a Fetch request, as described below in section [6.3 HTTP Response Headers](#63-http-response-headers). However, the auction config still has an `additionalBids` field, whose value is be a Promise with no value, used only to signal to the auction that the additional bids have arrived and are ready to be accepted in the auction.
 
@@ -892,11 +892,11 @@ The same nonce value will need to appear in the `auctionNonce` field of each [ad
 
 In online ad auctions for ad space, it’s sometimes useful to prevent showing an ad to certain audiences, a concept known as negative targeting. For example, you might not want to show a new customer advertisement to existing customers. New customer acquisition campaigns most often have this as a critical requirement.
 
-To facilitate negative targeting in Protected Audience auctions, each additional bid is allowed to identify one or more negative interest groups. If the user has been joined to any of the identified negative interest groups, the additional bid is dropped; otherwise it participates in the auction, competing alongside bids created by calls to `generateBid()`.
+To facilitate negative targeting in Protected Audience auctions, each additional bid is allowed to identify one or more negative interest groups. If the user has been joined to any of the identified negative interest groups, the additional bid is dropped; otherwise it participates in the auction, competing alongside bids created by calls to `generateBid()`. An additional bid that specifies no negative interest groups is always accepted into the auction.
 
 ##### 6.2.1 Negative Interest Groups
 
-Negative interest groups are joined using the same API as normal interest groups, though a different set of fields must be provided. Notably, only the `owner`, `name`, `lifetimeMs`, `updateURL` and `additionalBidKey` fields are allowed for negative interest groups. Conversely, only negative interest groups may provide a value for the `additionalBidKey` field. The `additionalBidKey` field is described in more detail in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys).
+Though negative interest groups are joined using the same `joinAdInterestGroup` API as normal interest groups, they remain distinct from one another. Only negative interest groups can provide an `additionalBidKey`, and only normal interest groups can provide `ads`; no interest group may provide both. The `additionalBidKey` field is described in more detail in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys).
 
 ```
 const myGroup = {
@@ -923,7 +923,7 @@ const additionalBid = {
 }
 ```
 
-If an additional bid needs to specify two or more negative interest groups, all of those negative interest groups must be joined from the same site, and that site must be identified ahead of time in the additional bid using the `joiningOrigin` field:
+If an additional bid needs to specify two or more negative interest groups, all of those negative interest groups must be joined from the same origin, and that origin must be identified ahead of time in the additional bid using the `joiningOrigin` field:
 
 ```
 const additionalBid = {
@@ -945,7 +945,7 @@ Any negative interest group that wasn't joined from that identified site won't b
 
 We use a cryptographic signature mechanism to ensure that only the owner of a negative interest group can use it with additional bids. Each buyer will need to create a [Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) public/secret key pair to sign their additional bids to prove their authenticity, and to regularly rotate their key pairs.
 
-When a buyer joins a user into a negative interest group, they must provide their 32-byte Ed25519 public key, expressed as a base64-encoded string, via the negative interest group's `additionalBidKey` field. This can be seen in the example above in section [6.2.1 Negative Interest Groups](#621-negative-interest-groups). The additional bid key can be then updated via the negative interest group's `updateURL`, for example, to enable a buyer to rotate their Ed25519 key pair faster than they could with the expiration of their negative interest groups alone.
+When a buyer joins a user into a negative interest group, they must provide their 32-byte Ed25519 public key, expressed as a base64-encoded string, via the negative interest group's `additionalBidKey` field. This can be seen in the example above in section [6.2.1 Negative Interest Groups](#621-negative-interest-groups). The additional bid key can then be updated via the negative interest group's `updateURL`, for example, to enable a buyer to rotate their Ed25519 key pair faster than they could with the expiration of their negative interest groups alone. Negative interest groups are updated at the same time and in the same way as regular interest groups, as described in section [1.2 Interest Group Attributes](#12-interest-group-attributes).
 
 When the buyer issues an additional bid, that bid needs to be signed using their Ed25519 secret key. During a key rotation, the buyer may need to provide a signature of the additional bid with both the old and the new additional bid keys while negative interest groups stored on users' devices are updated to the new key. It's for this reason that additional bids may have more than one signature provided alongside the bid.
 
