@@ -149,9 +149,11 @@ The `updateURL` provides a mechanism for the group's owner to update the attribu
 of the interest group: any new values returned in this way overwrite the values
 previously stored (except that the `name` and `owner` cannot be changed, and
 `prioritySignalsOverrides` will be merged with the previous value, with `null`
-meaning a value should be removed from the interest group's old dictionary). This
+meaning a value should be removed from the interest group's old dictionary). The HTTP request 
 will not include any metadata, so data such as the interest group `name` should be
-included within the URL. The updates are done after auctions so as not to slow down
+included within the URL. Note that the lifetime of an Interest Group is not affected by the update mechanism — ad targeting based on a person's activity on a site remains limited to 30 days after the most recent site visit.
+
+The updates are done after auctions so as not to slow down
 the auctions themselves.  The updates are rate limited to running at most daily to
 conserve resources.  An update request only contains information from the single site
 where the user was added to the interest group.  At a later date we can consider
