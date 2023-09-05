@@ -143,7 +143,7 @@ previously stored (except that the `name` and `owner` cannot be changed, and
 `prioritySignalsOverrides` will be merged with the previous value, with `null`
 meaning a value should be removed from the interest group's old dictionary). This
 will not include any metadata, so data such as the interest group `name` should be
-included within the URL. Note that the TTL of the Interest Group is not reset after the completion of the update.
+included within the URL. Note that the lifetime of an Interest Group is not affected by the update mechanism — ad targeting based on a person's activity on a site remains limited to 30 days after the most recent site visit.
 
 The updates are done after auctions so as not to slow down
 the auctions themselves.  The updates are rate limited to running at most daily to
