@@ -62,6 +62,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Index Exchange | SSP | Testing in progress | | privacy-sandbox-support@indexexchange.com |
 | PubMatic | SSP | 2023-2024 | | privacysandbox@pubmatic.com |
 | Adform | DSP & SSP | 2023-2024 | | privacysandbox@adform.com |
+| Onetag | DSP & SSP | 2023-2024 | | privacysandbox@onetag.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
