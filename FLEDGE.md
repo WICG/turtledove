@@ -362,6 +362,8 @@ scoreAd(adMetadata, bid, auctionConfig, trustedScoringSignals, browserSignals,
     directFromSellerSignals) {
   ...
   return {desirability: desirabilityScoreForThisAd,
+          incomingBidInSellerCurrency:
+              convertToEuros(bid, browserSignals.bidCurrency),
           allowComponentAuction: componentAuctionsAllowed};
 }
 ```
