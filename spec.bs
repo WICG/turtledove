@@ -20,6 +20,8 @@ Assume Explicit For: yes
 </pre>
 
 <pre class="anchors">
+urlPrefix: https://fetch.spec.whatwg.org/; spec: Fetch
+  text: http-network-or-cache fetch; url: #concept-http-network-or-cache-fetch; type: dfn
 urlPrefix: https://www.ietf.org/rfc/rfc4122.txt
   type: dfn; text: urn uuid
 spec: RFC6234; urlPrefix: https://www.ietf.org/rfc/rfc6234.txt
@@ -2842,56 +2844,65 @@ Issue(WICG/turtledove#522): Move from "`*`" to "`self`".
 This section specifies a manner by which signals may be provided to auctions such that the signals
 are only used within their intended auction.
 
-Scripts running on the page may peform a `fetch()` call using the `{adAuctionHeaders: true}`
-option, which causes the value of the `Ad-Auction-Signals` response header on that request to
-be used to provide signals in auctions running on the page whose seller matches the origin of the
-`fetch()` destination.
+Scripts running on the page may peform a {{WindowOrWorkerGlobalScope/fetch()}} call using the
+`{adAuctionHeaders: true}` option, which causes the value of the [:Ad-Auction-Signals:] response
+header on that request to be used to provide signals in auctions running on the page whose
+seller matches the origin of the {{WindowOrWorkerGlobalScope/fetch()}} destination.
 
-<div algorithm="fetch adAuctionHeaders patch">
-Modify [[FETCH]]'s [[FETCH#requests]] to add: 
+<div algorithm="fetch capture adAuctionHeaders boolean patch">
+Modify the definition of a [=request=]: 
 
-A [=request=] has an associated <dfn for=request>capture ad auction headers boolean</dfn>.
+A [=request=] has an associated boolean <dfn for=request>capture-ad-auction-headers</dfn>.
 Unless stated otherwise it is false.
+</div>
 
-Modify [[FETCH]]'s <a href="https://fetch.spec.whatwg.org/#requestinit">RequestInit</a> dictionary to add
-an adAuctionHeaders attribute:
+<div algorithm="fetch capture adAuctionHeaders RequestInit patch">
+Modify [[FETCH]]'s {{RequestInit}} dictionary to add an adAuctionHeaders attribute:
 
 <pre class=idl>
 partial dictionary RequestInit {
   boolean adAuctionHeaders;
 };
 </pre>
+</div>
 
-The following step will be added to the <a href="https://fetch.spec.whatwg.org/#dom-request">new Request(input, init) constructor steps</a>,
+<div algorithm="fetch new request patch">
+The following step will be added to the new <a href="https://fetch.spec.whatwg.org/#dom-request">new Request(input, init) constructor steps</a>,
 before step "Set this's [=Request/request=] to |request|":
 
 1. If <var ignore=''>init</var>["{{RequestInit/adAuctionHeaders}}"] <a for=map>exists</a>, then set |request|'s
-  [=request/capture ad auction headers boolean=] to it.
+  [=request/capture-ad-auction-headers=] to it.
 
-The following step will be added to the <a href="https://fetch.spec.whatwg.org/#concept-http-network-or-cache-fetch">HTTP-network-or-cache fetch</a>
-algorithm, before step "Modify |httpRequest|'s [=request/header list=] per HTTP. ...":
+</div>
 
-1. If [=request=]'s [=request/capture ad auction headers boolean=] is true, then
-  [=header list/set a structured field value=] given «`Sec-Ad-Auction-Fetch`, the [=structured header/boolean=] ?1» in
+<div algorithm="fetch Sec-Ad-Auction-Fetch patch">
+The following step will be added to the [=http-network-or-cache fetch=] algorithm, before step
+"Modify |httpRequest|'s [=request/header list=] per HTTP. ...":
+
+1. If [=request=]'s [=request/capture-ad-auction-headers=] is true, then
+  [=header list/set a structured field value=] given «[:Sec-Ad-Auction-Fetch:], the [=structured header/boolean=] `?1`» in
   |httpRequest|'s [=header list=].
 
+</div>
+
+<div algorithm="fetch per traversable navigable structures patch">
 Modify [[FETCH]]'s [[FETCH#infrastructure]] to add a new section called "Per Traversable Navigable Structures",
 with the following content:
 
-<h3 dfn-type=dfn>Direct from seller signals key</h3>
-A direct from seller signals key is a [=struct=] with the following [=struct/items=]:
+<h3 id=direct-from-sellers-signals-key-struct>Direct from seller signals key</h3>
+A <dfn>direct from seller signals key</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="direct from seller signals key">
 : <dfn>owner</dfn>
-:: An [=origin=]. Matches the origin that served the captured `Ad-Auction-Signals` header.
+:: An [=origin=]. Matches the origin that served the captured [:Ad-Auction-Signals:] header.
 : <dfn>ad slot</dfn>
 :: A [=string=]. Matches the `adSlot` key of the JSON dictionaries in the top level array of the
-  `Ad-Auction-Signals` value.
+  [:Ad-Auction-Signals:] value.
 
 </dl>
 
-<h3 dfn-type=dfn>Direct from seller signals</h3>
-A direct from seller signals is a [=struct=] with the following [=struct/items=]:
+<h3 id=direct-from-sellers-signals-struct>Direct from seller signals</h3>
+A <dfn>direct from seller signals</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="direct from seller signals">
 : <dfn>seller signals</dfn>
@@ -2909,22 +2920,48 @@ A direct from seller signals is a [=struct=] with the following [=struct/items=]
 
 Each [=traversable navigable=] has a <dfn>captured ad auction headers</dfn>, which is a [=map=]
 whose [=map/keys=] are [=direct from seller signals keys=] and whose values are [=direct from seller signals=].
+</div>
 
+<div algorithm="fetch auction headers patch">
+The following will be added to [[Fetch#http-extensions]]:
+
+<h3 id=sec-ad-auction-fetch-header>`Sec-Ad-Auction-Fetch` header</h3>
+
+The <dfn http-header><code>Sec-Ad-Auction-Fetch</code></dfn> request header is an optional
+[=structured header=] with of type [=structured header/boolean=]. If equal to `?1`, the user agent will remove any
+[:Ad-Auction-Signals:] from the response returned to {{WindowOrWorkerGlobalScope/fetch()}} -- the
+[:Ad-Auction-Signals:] value will instead only be used in Protected Audiences auctions. [:Sec-Ad-Auction-Fetch:]
+will only be set if the {{WindowOrWorkerGlobalScope/fetch()}} call was made with the `{adAuctionHeaders: true}`
+option.
+
+<h3 id=ad-auction-signals-header>`Ad-Auction-Signals` header</h3>
+
+The <dfn http-header><code>Ad-Auction-Signals</code></dfn> response header provides value
+of a JSON array of dictionaries, each with an `adSlot` key. Protected Audience non-component, component, and
+top-level auctions may specify which signals to load by the `adSlot` key.
+</div>
+
+<div algorithm="fetch auction signals response patch">
 The following step will be added to the <a href="https://fetch.spec.whatwg.org/#concept-http-network-or-cache-fetch">HTTP-network-or-cache fetch</a>
 algorithm, before step "Return |response|.":
 
 1. If |response| is not null, then run [=update captured headers=] with [=this=]'s
   [=relevant global object=]'s [=associated Document's=] [=node navigable's=]
   [=traversable navigable's=] [=captured ad auction headers=], |response|'s
-  [=response/header list=], and |request|'s [=request/URL=]'s [=url/origin=].
+  [=response/header list=], and <var ignore>request</var>'s [=request/URL=]'s [=url/origin=].
 
-<div algorithm>
+</div>
+
+<div algorithm="fetch update cached headers patch">
+The following algorithm will be added to the <a href="https://fetch.spec.whatwg.org/#concept-http-network-or-cache-fetch">HTTP-network-or-cache fetch</a>
+algorithm:
+
   To <dfn>update captured headers</dfn> with a [=captured ad auction headers=] |storedHeaders|,
   [=header list=] |responseHeaders|, and [=origin=] |requestOrigin|:
-  1. Let |adAuctionSignals| be the result of [=header list/get=] with "`Ad-Auction-Signals`",
+  1. Let |adAuctionSignals| be the result of [=header list/get=] with [:Ad-Auction-Signals:],
     |responseHeaders|.
   1. If |adAuctionSignals| is null, return.
-  1. [=header list/delete=] "`Ad-Auction-Signals`" from |responseHeaders|.
+  1. [=header list/delete=] "[:Ad-Auction-Signals:]" from |responseHeaders|.
 
     NOTE: This step prevents the header value from being used outside the intended auctions.
   1. Let |parsedSignals| be the result of [=parsing JSON bytes to an Infra value=], given
@@ -2969,7 +3006,6 @@ algorithm, before step "Return |response|.":
         </dl>
 
     1. Set |storedHeaders|[|signalsKey|] to |processedSignals|.
-</div>
 
 </div>
 
