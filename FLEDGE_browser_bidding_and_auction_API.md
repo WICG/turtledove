@@ -10,9 +10,9 @@ This document seeks to propose an API for web pages to perform FLEDGE auctions u
 
 #### Step 1: Get auction blob from browser
 
-To execute an on-server FLEDGE auction, sellers begin by calling `navigator.startServerAdAuction()` which returns a `Promise<Uint8Array>`:
+To execute an on-server FLEDGE auction, sellers begin by calling `navigator.getInterestGroupAdAuctionData()` which returns a `Promise<Uint8Array>`:
 ```
-const auctionBlob = await navigator.startServerAdAuction({
+const auctionBlob = await navigator.getInterestGroupAdAuctionData({
   // ‘seller’ works the same as for runAdAuction.
   'seller': 'https://www.example-ssp.com',
 });
@@ -72,15 +72,15 @@ const auctionResultPromise = navigator.runAdAuction({
 });
 ```
 
-The browser verifies it witnessed a Fetch request to the `seller`’s origin with `“adAuctionHeaders: true”` that included a `Ad-Auction-Result` header with hash of `response_blob`. Since the Fetch request required HTTPS which authenticates the seller’s origin, this verification authenticates that the seller produced the response blob. `runAdAuction()` then proceeds as if the auction happened on device. This specially configured auction configuration can be used for single seller auctions or as a component auction configuration for multi-seller auctions (in this case the `startServerAuction()` call must include a `top_level_seller` field that must later match the top-level seller passed to `runAdAuction()`). To facilitate parallelizing on-device and on-server auctions, the `serverResponse` could be a Promise that resolves to the blob later.
+The browser verifies it witnessed a Fetch request to the `seller`’s origin with `“adAuctionHeaders: true”` that included a `Ad-Auction-Result` header with hash of `response_blob`. Since the Fetch request required HTTPS which authenticates the seller’s origin, this verification authenticates that the seller produced the response blob. `runAdAuction()` then proceeds as if the auction happened on device. This specially configured auction configuration can be used for single seller auctions or as a component auction configuration for multi-seller auctions (in this case the `getInterestGroupAdAuctionData()` call must include a `top_level_seller` field that must later match the top-level seller passed to `runAdAuction()`). To facilitate parallelizing on-device and on-server auctions, the `serverResponse` could be a Promise that resolves to the blob later.
 
 ## Privacy Considerations
 
 The blobs sent to and received from the B&A servers can contain data that could be used to re-identify the user across different web sites. To prevent this data from being used to join the user’s cross-site identities, the data is encrypted with public keys whose corresponding private keys are only shared with B&A server instances running in TEEs and running public open-source binaries known to prevent cross-site identity joins (e.g. by preventing logging or other activities which might permit such joins).
 
-There are however side-channels that could leak a much smaller amount of cross-site identity, the first and most obvious one being the size of the encrypted blob. To minimize this leakage further we suggest above that the encrypted blob be padded. For example, we can use exponential bucketing for request blobs. Keeping the number of buckets small, for instance, 7 will lead to <3 bits of leaked entropy per call to `startServerAdAuction()`. Some [mitigation techniques for the “1-bit leak”](https://github.com/WICG/turtledove/issues/211#issuecomment-889269834) may be applicable here.
+There are however side-channels that could leak a much smaller amount of cross-site identity, the first and most obvious one being the size of the encrypted blob. To minimize this leakage further we suggest above that the encrypted blob be padded. For example, we can use exponential bucketing for request blobs. Keeping the number of buckets small, for instance, 7 will lead to <3 bits of leaked entropy per call to `getInterestGroupAdAuctionData()`. Some [mitigation techniques for the “1-bit leak”](https://github.com/WICG/turtledove/issues/211#issuecomment-889269834) may be applicable here.
 
-To prevent repeated calls to `startServerAdAuction()` leaking additional cross-site identity, we’ve decided, at least in the near-term, to make repeated calls to `startServerAdAuction()` return a blob of the same size. The tradeoff being that the blob cannot be dependent on inputs to `startServerAdAuction()`. For example whereas `runAdAuction()` normally takes a `interestGroupBuyers` list dictating which buyers to include in the auction, `startServerAdAuction()`’s returned blob cannot depend on such a list and so must include all buyers that have stored interest groups on the device. This may cause larger blobs, and in turn slower network requests sending and receiving those blobs. This could in turn make the API more susceptible to abuse, e.g. fake calls to `joinAdInterestGroup()` bloating the blob size with spam interest groups.
+To prevent repeated calls to `getInterestGroupAdAuctionData()` leaking additional cross-site identity, we’ve decided, at least in the near-term, to make repeated calls to `getInterestGroupAdAuctionData()` return a blob of the same size. The tradeoff being that the blob cannot be dependent on inputs to `getInterestGroupAdAuctionData()`. For example whereas `runAdAuction()` normally takes a `interestGroupBuyers` list dictating which buyers to include in the auction, `getInterestGroupAdAuctionData()`’s returned blob cannot depend on such a list and so must include all buyers that have stored interest groups on the device. This may cause larger blobs, and in turn slower network requests sending and receiving those blobs. This could in turn make the API more susceptible to abuse, e.g. fake calls to `joinAdInterestGroup()` bloating the blob size with spam interest groups.
 
 Another way to prevent the encrypted blob’s size from being a leak is to have the browser send the blob directly to the B&A servers instead of exposing it to JavaScript at all. Requiring this today has significant downsides:
 
