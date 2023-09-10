@@ -44,7 +44,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | --------------- | --------------- | ---------------------- | ------------------------------------- | ------------------ |
 | Criteo | DSP | | | privacy-sandbox-testing@criteo.com |
 | Teads | SSP & DSP | | | privacysandbox@teads.com |
-| NextRoll | DSP | | | privacysandbox@nextroll.com |
+| NextRoll | DSP | 2024-01-30 | coming soon | privacysandbox@nextroll.com |
 | OpenX | SSP | Limited testing in progress | | joel.meyer@openx.com |
 | RTB House | DSP | Continuous testing ongoing; long term commitment. | https://blog.rtbhouse.com/whitepaper-deep-insights-from-early-fledge-experiments/ | privacysandbox@rtbhouse.com |
 | SMN | DSP | | | privacy-sandbox-testing@so-netmedia.jp |
@@ -62,6 +62,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Index Exchange | SSP | Testing in progress | | privacy-sandbox-support@indexexchange.com |
 | PubMatic | SSP | 2023-2024 | | privacysandbox@pubmatic.com |
 | Adform | DSP & SSP | 2023-2024 | | privacysandbox@adform.com |
+| Onetag | DSP & SSP | 2023-2024 | | privacysandbox@onetag.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
