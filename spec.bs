@@ -53,6 +53,13 @@ spec: Fenced Frame; urlPrefix: https://wicg.github.io/fenced-frame/
   type: dfn
     for: browsing context
       text: fenced frame config instance; url: #browsing-context-fenced-frame-config-instance
+spec: Private Aggregation API; urlPrefix: https://patcg-individual-drafts.github.io/private-aggregation-api
+  type: dfn
+    text: private-aggregation; url: #private-aggregation
+spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
+  type: dfn
+    text: shared-storage; url: #permissionspolicy-shared-storage
+    text: shared-storage-select-url; url: #permissionspolicy-shared-storage-select-url
 </pre>
 
 <style>
@@ -190,6 +197,11 @@ This is detectable because it can change the set of fields that are read from th
     |group|["{{GenerateBidInterestGroup/owner}}"].
   1. If |interestGroup|'s [=interest group/owner=] is failure, or its [=url/scheme=] is not
     "`https`", [=exception/throw=] a {{TypeError}}.
+  1. Optionally, [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
+
+    Note: This [=implementation-defined=] condition is intended to allow user
+        agents to decline for a number of reasons, for example the [=interest group/owner=]'s [=site=]
+        not being <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
   1. Set |interestGroup|'s [=interest group/name=] to |group|["{{GenerateBidInterestGroup/name}}"].
   1. Set |interestGroup|'s [=interest group/priority=] to
     |group|["{{AuctionAdInterestGroup/priority}}"].
@@ -658,8 +670,8 @@ To <dfn>construct a pending fenced frame config</dfn> given an [=auction config=
   :: a [=struct=] with the following [=struct/items=]:
     : [=effective enabled permissions/value=]
     :: «"<code>{{PermissionPolicy/attribution-reporting}}</code>",
-        "<code>private-aggregation</code>" (TODO:ref), "<code>shared-storage</code>" (TODO:ref),
-        "<code>shared-storage-select-url</code>" (TODO:ref)»
+        "<code>[=private-aggregation=]</code>", "<code>[=shared-storage=]</code>",
+        "<code>[=shared-storage-select-url=]</code>"»
 
     : [=effective enabled permissions/visibility=]
     :: "<a for=visibility>`opaque`</a>"
@@ -837,9 +849,8 @@ To <dfn>create nested configs</dfn> given [=generated bid/ad component descripto
     :: a [=struct=] with the following [=struct/items=]:
       : [=effective enabled permissions/value=]
       :: «"<code>{{PermissionPolicy/attribution-reporting}}</code>",
-          "<code>private-aggregation</code>" (TODO:ref), "<code>shared-storage</code>" (TODO:ref),
-          "<code>shared-storage-select-url</code>" (TODO:ref)»
-
+          "<code>[=private-aggregation=]</code>", "<code>[=shared-storage=]</code>",
+          "<code>[=shared-storage-select-url=]</code>"»
       : [=effective enabled permissions/visibility=]
       :: "<a for=visibility>`opaque`</a>"
 
@@ -873,6 +884,11 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. Let |seller| be the result of [=parsing an origin=] with |config|["{{AuctionAdConfig/seller}}"].
 1. If |seller| is failure, or its [=url/scheme=] is not "`https`", then [=exception/throw=] a
   {{TypeError}}.
+1. Optionally, [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
+
+    Note: This [=implementation-defined=] condition is intended to allow user
+        agents to decline for a number of reasons, for example the [=auctionConfig]'s seller's [=site=]
+        not being <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
 1. Set |auctionConfig|'s [=auction config/seller=] to |seller|.
 1. Let |decisionLogicURL| be the result of running the [=URL parser=] on
   |config|["{{AuctionAdConfig/decisionLogicURL}}"].
@@ -2639,6 +2655,11 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
     set  [=this=]'s [=relevant global object=]'s
       [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to failure
       and [=exception/Throw=] a {{TypeError}}.
+  1. Optionally, return.
+
+    Note: This [=implementation-defined=] condition is intended to allow user
+        agents to decline for a number of reasons, for example the |parsedUrl|'s [=site=]
+        not being <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
   1. Set [=this=]'s [=relevant global object=]'s
     [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to |parsedUrl|.
 </div>
