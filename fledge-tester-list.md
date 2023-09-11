@@ -61,7 +61,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Seedtag | SSP & DSP| 2023-2024 | coming soon | privacysandbox@seedtag.com |
 | Index Exchange | SSP | Testing in progress | | privacy-sandbox-support@indexexchange.com |
 | PubMatic | SSP | 2023-2024 | | privacysandbox@pubmatic.com |
-| Adform | DSP & SSP | 2023-2024 | | privacysandbox@adform.com |
+| Adform | DSP | H1 2024 | | privacysandbox@adform.com |
 | Onetag | DSP & SSP | 2023-2024 | | privacysandbox@onetag.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
