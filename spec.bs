@@ -38,6 +38,7 @@ spec: RFC8941; urlPrefix: https://httpwg.org/specs/rfc8941.html
   type: dfn
     text: structured header; url: top
     for: structured header
+      text: boolean; url: boolean
       text: integer; url: integer
       text: boolean; url: boolean
 spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
@@ -1524,13 +1525,16 @@ To <dfn>update highest scoring other bid</dfn> given a {{double}} |score|, a
         1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid owner=] to null.
 </div>
 
+The <dfn http-header><code>Ad-Auction-Allowed</code></dfn> HTTP response header is a
+[=structured header=] whose value must be a [=structured header/boolean=].
+
 <div algorithm>
 To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, failure, or a
 [=byte sequence=]|responseBody|, and a [=string=] |mimeType|:
 
   1. If |responseBody| is null or failure, return false.
-  1. If [=header list/getting a structured field value|getting=] "X-Allow-Protected-Audience" and
-    "`item`" from |response|'s [=response/header list=] does not return true, return false.
+  1. If [=header list/getting a structured field value|getting=] [:Ad-Auction-Allowed:] and
+    "`item`" from |response|'s [=response/header list=] does not return a true value, return false.
   1. Let |headerMimeType| be the result of [=header list/extracting a MIME type=] from |response|'s
     [=response/header list=].
   1. Return false if any of the following conditions hold:
@@ -1608,8 +1612,8 @@ To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
     a [=response=] |response| and null, failure, or a [=byte sequence=] |responseBody|:
     1. Set |moduleObject| to failure and return, if any of the following conditions hold:
       * |responseBody| is null or failure;
-      * [=header list/getting a structured field value|Getting=] "X-Allow-Protected-Audience" and
-        "`item`" from |response|'s [=response/header list=] does not return true.
+      * [=header list/getting a structured field value|Getting=] [:Ad-Auction-Allowed:] and "`item`"
+        from |response|'s [=response/header list=] does not return a true value.
     1. Let |module| be the result of [=compiling a WebAssembly module=] |response|.
     1. If |module| is [=error=], set |moduleObject| to failure.
     1. Otherwise, set |moduleObject| to |module|.
@@ -1619,8 +1623,8 @@ To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
 
 The <dfn http-header><code>Data-Version</code></dfn> HTTP response header is a
 [=structured header=] whose value must be an [=structured header/integer=].
-The <dfn http-header><code>X-protected-audience-bidding-signals-format-version</code></dfn>
-HTTP response header is a [=structured header=] whose value must be an [=structured header/integer=].
+The <dfn http-header><code>X-fledge-bidding-signals-format-version</code></dfn> HTTP response header
+is a [=structured header=] whose value must be an [=structured header/integer=].
 
 <div algorithm>
 To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |isBiddingSignal|:
@@ -1662,7 +1666,7 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
         set |signals| to failure and return.
     1. If |isBiddingSignal| is true:
       1. Set |formatVersion| to the result of [=header list/getting a structured field value=]
-        given [:X-protected-audience-bidding-signals-format-version:] and "`item`" from |headers|.
+        given [:X-fledge-bidding-signals-format-version:] and "`item`" from |headers|.
     1. Set |signals| to the result of [=parsing JSON bytes to an Infra value=] |responseBody|.
   1. Wait for |signals| to be set.
   1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return « null,
@@ -3741,7 +3745,7 @@ JavaScript is controlled and limited as follows:
   {{Navigator/joinAdInterestGroup()}}.
 - URL schemes are required to be HTTPS.
 - Redirects are disallowed.
-- Responses are required to contain the `X-Allow-Protected-Audience: ?1` header.
+- Responses are required to contain the `Ad-Auction-Allowed: ?1` header.
 - Fetches are uncredentialed.
 
 Protected Audience has the browser pass in several “browserSignals” to the bidding script that give the script
