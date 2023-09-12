@@ -17,6 +17,7 @@ See [the in progress FLEDGE specification](https://wicg.github.io/turtledove/).
     - [1.1 Joining Interest Groups](#11-joining-interest-groups)
     - [1.2 Interest Group Attributes](#12-interest-group-attributes)
     - [1.3 Permission Delegation](#13-permission-delegation)
+    - [1.4 Buyer Security Considerations](#14-buyer-security-considerations)
   - [2. Sellers Run On-Device Auctions](#2-sellers-run-on-device-auctions)
     - [2.1 Initiating an On-Device Auction](#21-initiating-an-on-device-auction)
     - [2.2 Auction Participants](#22-auction-participants)
@@ -140,9 +141,11 @@ The `updateURL` provides a mechanism for the group's owner to update the attribu
 of the interest group: any new values returned in this way overwrite the values
 previously stored (except that the `name` and `owner` cannot be changed, and
 `prioritySignalsOverrides` will be merged with the previous value, with `null`
-meaning a value should be removed from the interest group's old dictionary). This
+meaning a value should be removed from the interest group's old dictionary). The HTTP request 
 will not include any metadata, so data such as the interest group `name` should be
-included within the URL. The updates are done after auctions so as not to slow down
+included within the URL. Note that the lifetime of an Interest Group is not affected by the update mechanism — ad targeting based on a person's activity on a site remains limited to 30 days after the most recent site visit.
+
+The updates are done after auctions so as not to slow down
 the auctions themselves.  The updates are rate limited to running at most daily to
 conserve resources.  An update request only contains information from the single site
 where the user was added to the interest group.  At a later date we can consider
@@ -220,6 +223,20 @@ Indicating whether the origin in the path has permissions to join and/or leave i
 Since joining or leaving a group may depend on a network request, browsers may delay these requests, or run them out of order. Each frame must, however, run all pending joins and leaves for a single owner in the order in which they were made. Same-origin operations should be applied immediately. When a page or frame is navigated, the browser should make a best-effort attempt to complete pending join and leave operations that are blocked on a network fetch, but may choose to drop them if there are more than 20 for a single top-level frame. This is intended to allow joining or leaving a cross-origin interest group at the same time as starting a navigation in response to a user gesture, though previous join/leave calls may still cause such an operation to be dropped.
 
 In order to prevent leaking data, join and leave calls must request the `.well-known` file, regardless of whether the user is in the group or not, as otherwise, whether or not a fetch is made can potentially leak data. Browsers may cache `.well-known` fetch results that share a network partition key.
+
+
+#### 1.4 Buyer Security Considerations
+
+As buyers construct interest groups there are some things they should consider
+to protect themselves:
+ * Buyers should join interest groups in an origin that is not also used for ad
+   rendering.  In other words, the `ads` `renderURL`s should not be same-origin
+   with the interest group’s `owner`.  This can help prevent ad creatives from
+   performing same-origin operations from the interest group owner’s origin.
+ * Buyers should only place bids in auctions with sellers that they trust and
+   have existing business relationships with, otherwise placing a bid may share
+   information the buyer learned about the user with an unknown seller.
+
 
 ### 2. Sellers Run On-Device Auctions
 
@@ -340,8 +357,6 @@ The values of some signals (those configured by fields `auctionSignals`, `seller
 #### 2.2 Auction Participants
 
 Each interest group the browser has joined and whose owner is in the list of `interestGroupBuyers` will have an opportunity to bid in the auction.  See the "Buyers Provide Ads and Bidding Functions" section, below, for how interest groups bid.
-
-The seller may instead specify `'interestGroupBuyers': '*'` to permit all interest groups into the auction, and decide ad admissibility later in the process, based on criteria other than the interest group owner.  For example, a seller with an out-of-band creative review process might decide admissibility solely based on the creative, not the buyer.
 
 
 #### 2.3 Scoring Bids
