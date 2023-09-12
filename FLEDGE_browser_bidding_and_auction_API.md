@@ -19,8 +19,14 @@ const auctionBlob = navigator.getInterestGroupAdAuctionData({
 });
 ```
 The returned `auctionBlob` is a Promise that will resolve to an `AdAuctionData` object. This object contains `requestId` and `request` fields.
-The `requestId` contains a UUID that needs to be presented to `runAdAuction` along with the response.
-The `request` field is a `Uint8Array` containing the information needed for the [ProtectedAudienceInput](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#protectedaudienceinput) in a `SelectAd` B&A call, encrypted using HPKE with an encryption header like that used in [OHTTP](https://www.ietf.org/archive/id/draft-thomson-http-oblivious-01.html).
+The `requestId` contains a UUID that needs to be presented to `runAdAuction()` along with the response.
+The `request` field is a `Uint8Array` containing the information needed for the [ProtectedAudienceInput](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#protectedaudienceinput) in a `SelectAd` B&A call,
+encrypted using HPKE with an encryption header like that used in [OHTTP](https://www.ietf.org/archive/id/draft-thomson-http-oblivious-01.html).
+The encryption is done using public keys the browser fetches from a trusted endpoint that correspond with
+private keys only shared with B&A servers running in TEEs. The `request` is derived from the interest groups
+stored in the browser to be provided to [the B&A API](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md).
+The request includes the contents of the interest groups, and information that the B&A server can pass
+unmodified in `browserSignals` for bidding like `joinCount`, `bidCount`, and `prevWins`.
 More details on the request format are given in [the appendix](#request-blob-format).
 
 ### Step 2: Send auction blob to servers
@@ -107,7 +113,9 @@ Exposing size of the blob is a temporary leak that we hope to mitigate in the fu
 
 ## Request Blob Format
 
-As described [earlier](#step-1-get-auction-blob-from-browser), The binary blob returned as the `request` from `navigator.getInterestGroupAdAuctionData()` contains the information needed for the [ProtectedAudienceInput](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#protectedaudienceinput) in a `SelectAd` B&A call. The encryption is done using public keys the browser fetches from a trusted endpoint that correspond with private keys only shared with B&A servers running in TEEs. The `request` is derived from the interest groups stored in the browser to be provided to [the B&A API](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md). The request includes the contents of the interest groups, and information that the B&A server can pass unmodified in `browserSignals` for bidding like `joinCount`, `bidCount`, and `prevWins`. The blob is padded to either one of the 7 allowed sizes to reduce the cross-site identity leaked by its size. In the event the `request` cannot be created the resulting array will have zero length.
+The schema below defines the format of the blob mentioned [earlier](#step-1-get-auction-blob-from-browser).
+The blob is padded to either one of the 7 allowed sizes to reduce the cross-site identity leaked by its size. In the
+event the `request` cannot be created the resulting array will have zero length.
 
 Prior to encryption the `request` is encoded as [CBOR](https://www.rfc-editor.org/rfc/rfc8949.html) with the following schema (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
 
@@ -119,7 +127,7 @@ Prior to encryption the `request` is encoded as [CBOR](https://www.rfc-editor.or
   "properties": {
     "version": {
       "type": "number",
-      "description": "Schema version used by this CBOR message" },
+      "description": "Schema version used by this CBOR message. The schema version represented here is version 0." },
     "compression": {
       "enum": ["gzip", "brotli", "none"],
       "default": "gzip",
@@ -133,7 +141,8 @@ Prior to encryption the `request` is encoded as [CBOR](https://www.rfc-editor.or
     },
     "enableDebugReporting": {
        "type": "boolean",
-       "default": "false"
+       "default": "false",
+       "description": "Controls whether the server should allow the forDebuggingOnly.reportAdAuctionLoss() and forDebuggingOnly.reportAdAuctionWin() APIs"
     },
     "interestGroups": {
       "patternProperties": {
@@ -162,7 +171,7 @@ The schema for the CBOR encoding of the interest group (specified using [JSON Sc
   "$defs": {
     "adRenderId": {
       "type": "string",
-      "description": "Ad Render ID that can be used to reconstruct the ad object based on server-side information. Sent instead of the ad object."
+      "description": "A short identifier (up to 12 characters long) that can be used to reconstruct the ad object based on server-side information. Sent instead of the ad object."
     }
   },
   "type": "object",
@@ -222,7 +231,7 @@ The schema for the CBOR encoding of the interest group (specified using [JSON Sc
 }
 ```
 
-This roughly matches the specification of the interest group in [the B&A API](https://github.com/privacysandbox/bidding-auction-servers/blob/main/api/bidding_auction_servers.proto#L96C26-L96C26).
+This roughly matches the specification of the interest group in [the B&A API](https://github.com/privacysandbox/bidding-auction-servers/blob/4a7accd09a7dabf891b5953e5cdbb35d038c83c6/api/bidding_auction_servers.proto#L96C26-L96C26).
 
 The request is framed with a 5 byte header, where the first byte is the value 0x02 and the following 4 bytes are the length of the request message in network byte order.
 Then the request is zero padded to a set of pre-configured lengths (TBD).
