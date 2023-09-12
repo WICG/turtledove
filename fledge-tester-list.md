@@ -42,7 +42,8 @@ The usefulness of this page depends on testers sharing information and updates.
 
 | Company / Party | Role in testing | Est. Testing Timeframe | Link to testing plan and/or learnings | How to contact you |
 | --------------- | --------------- | ---------------------- | ------------------------------------- | ------------------ |
-| Criteo | DSP | | | privacy-sandbox-testing@criteo.com |
+| Criteo | DSP | Started in 2022, long term commitment | [An update on FLEDGE testing](https://medium.com/criteo-engineering/an-update-on-fledge-chrome-testing-d0046430a3ec)| privacy-sandbox-testing@criteo.com |
+| Criteo | SSP | November 2023 | | privacy-sandbox-testing@criteo.com |
 | Teads | SSP & DSP | | | privacysandbox@teads.com |
 | NextRoll | DSP | 2024-01-30 | coming soon | privacysandbox@nextroll.com |
 | OpenX | SSP | Limited testing in progress | | joel.meyer@openx.com |
