@@ -160,7 +160,8 @@ dictionary AuctionAdInterestGroup : GenerateBidInterestGroup {
 };
 </xmp>
 
-TODO: Maybe add a note about additionalBidKey cannot co-exist with ads.
+Note: An {{AuctionAdInterestGroup}} cannot include both {{GenerateBidInterestGroup/ads}} and
+{{AuctionAdInterestGroup/additionalBidKey}} at the same time.
 
 {{AuctionAdInterestGroup}} is used by {{Window/navigator}}.{{Navigator/joinAdInterestGroup()}}, and
 when an interest group is stored to [=interest group set=].
@@ -188,7 +189,8 @@ This is detectable because it can change the set of fields that are read from th
 1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s [=environment settings object/origin=].
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
 1. Let |interestGroup| be a new [=interest group=].
-1. Validate the given |group| and set |interestGroup|'s fields accordingly.
+1. Validate the given |group| and set |interestGroup|'s fields accordingly. If an [=exception=] is
+  [=exception/thrown=], return [=a new promise=].
   1. Set |interestGroup|'s [=interest group/expiry=] to the [=current wall time=] plus
     |group|["{{GenerateBidInterestGroup/lifetimeMs}}"] milliseconds.
   1. Set |interestGroup|'s [=interest group/next update after=] to the [=current wall time=] plus 24
@@ -285,10 +287,13 @@ This is detectable because it can change the set of fields that are read from th
           then set |igAd|'s [=interest group ad/buyer and seller reporting ID=] to it.
       1. [=list/Append=] |igAd| to |interestGroup|'s |interestGroupField|.
   1. If |group|["{{AuctionAdInterestGroup/additionalBidKey}}"] [=map/exists=]:
-    1. If |group|["{{GenerateBidInterestGroup/ads}}"] [=map/exists=], then [=exception/throw=] a
-      {{TypeError}}.
-    1. If |group|["{{AuctionAdInterestGroup/additionalBidKey}}"]
-    1. Set |interestGroup|'s [=interest group/additional bid key=] to 
+    1. Let |decodedKey| be the result of running [=forgiving-base64 decode=] with
+      |group|["{{AuctionAdInterestGroup/additionalBidKey}}"].
+    1. [=exception/Throw=] a {{TypeError}} if any of the following conditions hold:
+      * |decodedKey| is a failure;
+      * |decodedKey|'s [=byte sequence/length=] is not 32;
+      * |group|["{{GenerateBidInterestGroup/ads}}"] [=map/exists=].
+    1. Set |interestGroup|'s [=interest group/additional bid key=] to |decodedKey|.
 1. If |interestGroup|'s [=interest group/estimated size=] is greater than 50 KB, then
   [=exception/throw=] a {{TypeError}}.
 1. Let |p| be [=a new promise=].
@@ -513,15 +518,13 @@ partial interface Navigator {
 </xmp>
 
 <div algorithm="createAuctionNonce()">
-
 The <dfn for=Navigator method>createAuctionNonce()</dfn> method steps are:
 
-1. Let |p| be [=a new promise=].
-1. Run the following steps [=in parallel=]:
-  1. Let |nonce| be the [=string representation=] of [=version 4 UUID=].
-  1. [=Queue a task=] to [=resolve=] |p| with |nonce|.
-1. Return |p|.
-
+  1. Let |p| be [=a new promise=].
+  1. Run the following steps [=in parallel=]:
+    1. Let |nonce| be the [=string representation=] of [=version 4 UUID=].
+    1. [=Queue a task=] to [=resolve=] |p| with |nonce|.
+  1. Return |p|.
 </div>
 
 <h3 id="runadauction">runAdAuction()</h3>
@@ -550,6 +553,8 @@ dictionary AuctionAdConfig {
   record<USVString, record<USVString, double>> perBuyerPrioritySignals;
   Promise<record<USVString, USVString>> perBuyerCurrencies;
   sequence<AuctionAdConfig> componentAuctions = [];
+  Promise<undefined> additionalBids;
+  USVString auctionNonce;
   AbortSignal? signal;
   Promise<boolean> resolveToConfig;
 };
@@ -932,6 +937,26 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       1. Set |auctionConfig|'s [=auction config/seller signals=] to the result of
         [=serializing a JavaScript value to a JSON string=], given |result|.
     * To handle an error, set |auctionConfig|'s [=auction config/seller signals=] to failure.
+1. If |config|["{{AuctionAdConfig/auctionNonce}}"] [=map/exists=]:
+  1. Let |nonce| be an empty [=string=].
+  1. [=list/For each=] |i| in [=the range=] from 1 to the [=string/length=] of
+    |config|["{{AuctionAdConfig/auctionNonce}}"]:
+    1. Let |c| be the |i|th [=code unit=] of |config|["{{AuctionAdConfig/auctionNonce}}"] if it is
+      0x0000 NULL or in the range 0x0020 SPACE to 0x007F DELETE, inclusive, otherwise "`?`".
+    1. Append |c| to the end of |nonce|.
+  1. Set |auctionConfig|'s [=auction config/auction nonce=] to the result of running
+    [=get uuid from string=] with |nonce|.
+1. If |config|["{{AuctionAdConfig/additionalBids}}"] [=map/exists=]:
+  1. If |config|["{{AuctionAdConfig/componentAuctions}}"]'s [=list/size=] is greater than 0, or
+    |config|["{{AuctionAdConfig/auctionNonce}}"] does not [=map/exist=], [=exception/throw=] a
+    {{TypeError}}.
+  1. [=Handle an input promise in configuration=] given |auctionConfig| and
+    |config|["{{AuctionAdConfig/additionalBids}}"]:
+    * To parse the value |result|:
+      1. Set |auctionConfig|'s [=auction config/expects additional bids=] to true.
+      1. TODO: handle additional bids.
+    * To handle an error:
+      1. Set |auctionConfig|'s [=auction config/expects additional bids=] to false.
 1. If |config|["{{AuctionAdConfig/directFromSellerSignals}}"] [=map/exists=]:
   1. TODO: The receiving end of this isn't specified yet, so there is no place to put the computed value.
   1. [=Handle an input promise in configuration=] given |auctionConfig| and |config|["{{AuctionAdConfig/directFromSellerSignals}}"]:
@@ -1047,6 +1072,24 @@ To <dfn>parse an origin</dfn> given a [=string=] |input|:
 1. Let |url| be the result of running the [=URL parser=] on |input|.
 1. If |url| is failure, then return failure.
 1. Return |url|'s [=url/origin=].
+
+</div>
+
+<div algorithm>
+
+To <dfn>get uuid from string</dfn> given a [=string=] |input|:
+1. If |input|'s [=string/length=] is not 36, return an empty [=string=].
+1. Let |uuid| be an empty [=string=].
+1. [=list/For each=] |i| in [=the range=] from 1 to 36:
+  1. Let |unit| be |input|'s |i|th [=code unit=].
+  1. If « 8, 13, 18, 23 » [=list/contains=] |i|:
+    1. If |unit| is not 0x002d (-):
+      1. Return an empty [=string=].
+  1. Otherwise:
+    1. If |unit| is not an [=ASCII lower hex digit=]:
+      1. Return an empty [=string=].
+  1. Append |unit| to the end of |uuid|.
+1. Return |uuid|.
 
 </div>
 
@@ -2309,8 +2352,8 @@ of the following global objects:
       |functionName|, |argumentsJS|, and 50 milliseconds.
     1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null ».
     1. Let |resultJSON| be "null".
-    1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
-      [=serializing a JavaScript value to a JSON string=] given |result|.
+    1. If |functionName| is "`reportResult`" or "`reportAdditionalBidResult`", then set |resultJSON|
+      to the result of [=serializing a JavaScript value to a JSON string=] given |result|.
 
       Note: Consider a return value that can't be converted to JSON a valid result, so if an
       exception was [=exception/thrown=] in the previous step, keep |resultJSON| as "null".
@@ -2875,8 +2918,17 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
                   reporting ID=] to it.
             1. [=list/Append=] |igAd| to |ig|'s |interestGroupField|.
 
-        </dl>
+        <dt>"`additionalBidKey`"
+        <dd>
+        1. Let |decodedKey| be the result of running [=forgiving-base64 decode=] with |value|.
+        1. Jump to the step labeled <i><a href=#abort-update>Abort update</a></i> if any of the
+          following conditions hold:
+            * |decodedKey| is a failure
+            * |decodedKey|'s [=byte sequence/length=] is not 32
+            * |parsedUpdate|["`ads`"] [=map/exists=]
+        1. Set |ig|'s [=interest group/additional bid key=] to |decodedKey|.
 
+        </dl>
     1. Set |ig|'s [=interest group/next update after=] to the [=current wall time=] plus 24 hours.
     1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
       [=interest group/name=] in the browser’s [=interest group set=] with |ig|.
@@ -3113,9 +3165,10 @@ An interest group is a [=struct=] with the following [=struct/items=]:
   can be used to construct ads composed of multiple pieces — a top-level ad template "container"
   which includes some slots that can be filled in with specific "products".
 : <dfn>additional bid key</dfn>
-:: Null or a [=string=]. Must be null if [=interest group/ads=] is not null. The Ed25519 public key
-  (a 256-bit EdDSA public key) used to guarantee that this [=interest group=], if used by an
-  additional bid for a negative targeting, can only be used by its [=interest group/owner=].
+:: Null or a [=byte sequence=]. Must be null if [=interest group/ads=] is not null. The
+  Ed25519 public key (a 256-bit EdDSA public key) used to guarantee that this [=interest group=],
+  if used by an additional bid for a negative targeting, can only be used by its
+  [=interest group/owner=].
 : <dfn>joining origin</dfn>
 :: An [=origin=]. The top level page origin from where the interest group was joined.
 : <dfn>join counts</dfn>
@@ -3279,8 +3332,8 @@ An auction config is a [=struct=] with the following items:
 : <dfn>pending promise count</dfn>
 :: An integer, initially 0. The number of [=auction config/auction signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-  [=auction config/per buyer timeouts=], directFromSellerSignals, or [=auction config/seller signals=]
-  whose {{Promise}}s are not yet resolved.
+  [=auction config/per buyer timeouts=], directFromSellerSignals, [=auction config/seller signals=],
+  or {{AuctionAdConfig/additionalBids}} whose {{Promise}}s are not yet resolved.
 : <dfn>config idl</dfn>
 :: {{AuctionAdConfig}}.
 : <dfn>resolve to config</dfn>
@@ -3289,17 +3342,23 @@ An auction config is a [=struct=] with the following items:
 : <dfn>seller currency</dfn>
 :: A [=currency tag=]. Specifies the currency bids returned by `scoreAd()` are expected to use, and
   which reporting for this auction will agree on.
-
 : <dfn>per buyer currencies</dfn>
 :: A {{Promise}} or failure or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose
   [=map/values=] are [=currency tags=]. Specifies the currency bids returned by `generateBid()` or
   `scoreAd()` in component auctions are expected to use. The initial value is an empty map.
-
 : <dfn>all buyers currency</dfn>
 :: A [=currency tag=]. Specifies the currency bids returned by `generateBid()` or `scoreAd()` in
   component auctions are expected to use if [=auction config/per buyer currencies=] does not specify
   a particular value.
-
+: <dfn>auction nonce</dfn>
+:: Null or a [=string=], initially null.
+  A unique identifier associated with this and only this invocation of
+  {{Window/navigator}}.{{Navigator/runAdAuction()}}. This must come from a prior call to
+  {{Window/navigator}}.{{Navigator/createAuctionNonce()}}. This is only required for auctions that
+  provide additional bids, and each of those additional bids must use the same auction nonce to
+  ensure that each of those additional bids was intended for this and only this auction.
+: <dfn>expects additional bids</dfn>
+:: A [=boolean=], initially false. Specifies that some bids will be provided as signed exchanges.
 
 </dl>
 
