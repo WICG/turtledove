@@ -60,7 +60,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Triplelift | SSP | Testing in progress | | prod-privacysandbox@triplelift.com |
 | Seedtag | SSP & DSP| 2023-2024 | coming soon | privacysandbox@seedtag.com |
 | Index Exchange | SSP | Testing in progress | | privacy-sandbox-support@indexexchange.com |
-| PubMatic | SSP | 2023-2024 | | privacysandbox@pubmatic.com |
+| PubMatic | SSP | Jan 2024 | | privacysandbox@pubmatic.com |
 | Adform | DSP & SSP | 2023-2024 | | privacysandbox@adform.com |
 | Onetag | DSP & SSP | 2023-2024 | | privacysandbox@onetag.com |
 
