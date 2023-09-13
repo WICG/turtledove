@@ -1,14 +1,12 @@
-> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+# Protected Audience API ([formerly known as FLEDGE](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge))
 
-# First Experiment (FLEDGE)
+This document describes an implementation for ads serving in the TURTLEDOVE family.
 
-This document describes an early prototype for ads serving in the TURTLEDOVE family, appropriate for experimentation before a fully-featured system is ready.  It would be the First "Locally-Executed Decision over Groups" Experiment.
+Chrome shipped the Protected Audience API in 2023Q3 in Chrome milestone 115 making it generally available to web developers.  Chrome experimented with this API from 2022Q1-2023Q2; at that time it was known as the First "Locally-Executed Decision over Groups" Experiment (FLEDGE).  The goal of the experiment was for us to gain implementer experience, and for the ads ecosystem to evaluate its usability, as soon as it is feasible to do so.  We need a robust API to take flight before the removal of third-party cookies shown on [Chrome's Privacy Sandbox timeline](https://privacysandbox.com/timeline).
 
-This first experiment is currently a Chrome [Origin Trial](https://github.com/GoogleChrome/OriginTrials).  The goal is for us to gain implementer experience, and for the ads ecosystem to evaluate its usability, as soon as it is feasible to do so.  We need a robust API to take flight before the removal of third-party cookies shown on [Chrome's Privacy Sandbox timeline](https://privacysandbox.com/timeline).
+We hold regular meetings under the auspices of the WICG to go through the details of this proposal and quickly make any needed changes.  Consult Issue [#88](https://github.com/WICG/turtledove/issues/88) if you want to attend these meetings to be involved in hammering out details.
 
-We plan to hold regular meetings under the auspices of the WICG to go through the details of this proposal and quickly make any needed changes.  Please comment on the timing question in Issue [#88](https://github.com/WICG/turtledove/issues/88) if you want to attend these meetings to be involved in hammering out details.
-
-See [the in progress FLEDGE specification](https://wicg.github.io/turtledove/).
+See [the Protected Audience API specification](https://wicg.github.io/turtledove/).
 
 - [Summary](#summary)
 - [Background](#background)
@@ -36,11 +34,19 @@ See [the in progress FLEDGE specification](https://wicg.github.io/turtledove/).
     - [5.2 Buyer Reporting on Render and Ad Events](#52-buyer-reporting-on-render-and-ad-events)
       - [5.2.1 Noised and Bucketed Signals](#521-noised-and-bucketed-signals)
     - [5.3 Losing Bidder Reporting](#53-losing-bidder-reporting)
+  - [6. Additional Bids](#6-additional-bids)
+    - [6.1 Auction Nonce](#61-auction-nonce)
+    - [6.2 Negative Targeting](#62-negative-targeting)
+      - [6.2.1 Negative Interest Groups](#621-negative-interest-groups)
+      - [6.2.2 How Additional Bids Specify their Negative Interest Groups](#622-how-additional-bids-specify-their-negative-interest-groups)
+      - [6.2.3 Additional Bid Keys](#623-additional-bid-keys)
+    - [6.3 HTTP Response Headers](#63-http-response-headers)
+    - [6.4 Reporting Additional Bid Wins](#64-reporting-additional-bid-wins)
 
 
 ## Summary
 
-During 2021, Chrome plans to run an Origin Trial for a first experiment which includes:
+The Protected Audience API includes support for:
 
 *   Interest Groups, stored by the browser, and associated with arbitrary metadata that can affect how these groups bid and render ads.
 *   A mechanism for updating these interest groups. The updates are rate limited, fetched from buyers’ servers, performed off the ad serving critical-path, and contain no contextual information.
@@ -49,18 +55,18 @@ During 2021, Chrome plans to run an Origin Trial for a first experiment which in
 *   Microtargeting protection based on the browser ensuring that the same ad or ad component is being shown to at least some minimum number of people.
 *   Ad rendering in a temporarily relaxed version of Fenced Frames that prevents interaction with the surrounding page — but that does allow _normal network access for rendering the ad, and for logging and reporting some event-level outcomes_, as a temporary model until both a trusted-server reporting framework and ad delivery via Web Bundles are settled and in place.
 
-Most of these ideas are drawn from the past year's ongoing discussion of variants on the [original TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/Original-TURTLEDOVE.md) idea.  Interest group metadata, and applying k-anonymity thresholds only to the rendering and reporting of ads, come from [Outcome-based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) and [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md), as well as discussion [here](https://github.com/WICG/turtledove/issues/361#issuecomment-1430069343).  The separation and clarification of the DSP and SSP roles are along the lines described in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md) and [PARRROT](https://github.com/prebid/identity-gatekeeper/blob/master/proposals/PARRROT.md).  The trusted servers to support bidding, rendering, and reporting come from the [SPARROW](https://github.com/WICG/sparrow) Gatekeeper and [Dovekey](https://github.com/google/ads-privacy/tree/master/proposals/dovekey) Key-Value server.
+Most of these ideas are drawn from the previous ongoing discussion of variants on the [original TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/Original-TURTLEDOVE.md) idea.  Interest group metadata, and applying k-anonymity thresholds only to the rendering and reporting of ads, come from [Outcome-based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) and [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md), as well as discussion [here](https://github.com/WICG/turtledove/issues/361#issuecomment-1430069343).  The separation and clarification of the DSP and SSP roles are along the lines described in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md) and [PARRROT](https://github.com/prebid/identity-gatekeeper/blob/master/proposals/PARRROT.md).  The trusted servers to support bidding, rendering, and reporting come from the [SPARROW](https://github.com/WICG/sparrow) Gatekeeper and [Dovekey](https://github.com/google/ads-privacy/tree/master/proposals/dovekey) Key-Value server.
 
-This still lacks some features that are important for web advertising, and lacks some privacy protections that are important for preventing cross-site tracking.  For example, the first experiment does not (yet) have a mechanism for multi-level on-device auctions, an ad ecosystem feature that needs more design work before we can offer on-device support.  And the temporary italicized carve-outs in the above bulleted list all need privacy-safe replacements before our work is done.
+As we approach third-party cookie deprecation in Chrome, you may be wondering about the availability of specific Protected Audience API services and features. You can find a list of the scoped Protected Audience API features and when they'll be supported [here](https://developer.chrome.com/en/docs/privacy-sandbox/protected-audience-api/feature-status/).  The temporary italicized carve-outs in the above bulleted list all need privacy-safe replacements before our work is done.
 
-But while third-party cookies are still available, this simplified opt-in preview of a post-3p-cookies technique offers a way that we can all experiment with the on-device ad selection approach together.
+But while third-party cookies are still available, the Protected Audience API offers a preview of a post-3p-cookies technique so that we can all test out this ad selection approach together.
 
 
 ## Background
 
-In January 2020, Chrome published an explainer for TURTLEDOVE, proposing a new way that advertisers and ad tech companies could target an ad to an audience they had built, without the browser revealing anyone's browsing habits or ad interests.
+In January 2020, Chrome published [an explainer for TURTLEDOVE](https://github.com/WICG/turtledove/blob/main/Original-TURTLEDOVE.md), proposing a new way that advertisers and ad tech companies could target an ad to an audience they had built, without the browser revealing anyone's browsing habits or ad interests.
 
-Over the course of extensive engagement and discussion with many participants in the ad tech ecosystem, we've learned many ways in which the original proposal could better meet their needs.  Discussion took place over the past year, primarily in (1) GitHub issues on the TURTLEDOVE repo, (2) the many counter-proposals that built on the original explainer (most things in [this list](https://github.com/w3c/web-advertising#ideas-and-proposals-links-outside-this-repo) with bird names), and (3) the weekly meetings of the W3C's Improving Web Advertising Business Group.
+Over the course of extensive engagement and discussion with many participants in the ad tech ecosystem, we've learned many ways in which the original proposal could better meet their needs.  Discussion took place over the past few years, primarily in (1) GitHub issues on the TURTLEDOVE repo, (2) the many counter-proposals that built on the original explainer (most things in [this list](https://github.com/w3c/web-advertising#ideas-and-proposals-links-outside-this-repo) with bird names), and (3) the weekly meetings of the W3C's Improving Web Advertising Business Group.
 
 Of the improvements proposed, some can be accommodated through straightforward changes to APIs, some will require deeper gathering of requirements and careful design work, and some will require new server-side infrastructure with novel trust relations with multiple parties.  This update focuses primarily on the first of these types.
 
@@ -203,9 +209,9 @@ All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
 `biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must be
 same-origin with `owner` and must point to URLs whose responses include the HTTP
 response header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
-loading FLEDGE resources.
+loading Protected Audience resources.
 
-The browser will provide protection against microtargeting, by only rendering an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 100 people would have seen the ad, if it were allowed to show).  While in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal this threshold applied only to the rendered creative, FLEDGE has the additional requirement that the tuple of the interest group owner, bidding script URL, and rendered creative must be k-anonymous for an ad to be shown (this is necessary to ensure the current event-level reporting for interest group win reporting is sufficiently private). For interest groups that have component ads, all of the component ads must also separately meet this threshold for the ad to be shown. Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold. This means that a small, specialized ad that is still below the k-anonymity threshold could still choose to participate in auctions, and its interest group has a way to fall back to a more generic ad until the more specialized one has a large enough audience.
+The browser will provide protection against microtargeting, by only rendering an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 50 people would have seen the ad, if it were allowed to show).  While in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal this threshold applied only to the rendered creative, Protected Audience has the additional requirement that the tuple of the interest group owner, bidding script URL, and rendered creative must be k-anonymous for an ad to be shown (this is necessary to ensure the current event-level reporting for interest group win reporting is sufficiently private). For interest groups that have component ads, all of the component ads must also separately meet this threshold for the ad to be shown. Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold. This means that a small, specialized ad that is still below the k-anonymity threshold could still choose to participate in auctions, and its interest group has a way to fall back to a more generic ad until the more specialized one has a large enough audience.
 
 
 #### 1.3 Permission Delegation
@@ -316,13 +322,13 @@ This will cause the browser to execute the appropriate bidding and auction logic
 
 The optional `directFromSellerSignals` field can also be used to pass signals to the auction, similar to `sellerSignals`,  `perBuyerSignals`, and `auctionSignals`. The difference is that `directFromSellerSignals` are trusted to come from the seller because the content loads from a [subresource bundle](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md) loaded from a seller's origin, ensuring the authenticity and integrity of the signals. For more details, see [2.5 directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals).
 
-In some cases, multiple SSPs may want to participate in an auction, with the winners of separate auctions being passed up to another auction, run by another SSP. To facilitate these "component auctions", `componentAuctions` can optionally contain additional auction configurations for each seller's "component auction". The winning bid of each of these "component auctions" will be passed to the "top-level" auction. How bids are scored in this case is further described in [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions). The `AuctionConfig` of component auctions may not have their own `componentAuctions`. When `componentAuctions` is non-empty, `interestGroupBuyers` must be empty.  That is, for any particular FLEDGE auction, either there is a single seller and no component auctions, or else all bids come from component auctions and the top-level auction can only choose among the component auctions' winners.
+In some cases, multiple SSPs may want to participate in an auction, with the winners of separate auctions being passed up to another auction, run by another SSP. To facilitate these "component auctions", `componentAuctions` can optionally contain additional auction configurations for each seller's "component auction". The winning bid of each of these "component auctions" will be passed to the "top-level" auction. How bids are scored in this case is further described in [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions). The `AuctionConfig` of component auctions may not have their own `componentAuctions`. When `componentAuctions` is non-empty, `interestGroupBuyers` must be empty.  That is, for any particular Protected Audience auction, either there is a single seller and no component auctions, or else all bids come from component auctions and the top-level auction can only choose among the component auctions' winners.
 
 The promise returned from `runAdAuction()` is _opaque_. Specifically, it resolves to a [`FencedFrameConfig`](https://github.com/WICG/fenced-frame/blob/master/explainer/fenced_frame_config.md) object or a `urn:uuid` string, depending on the `resolveToConfig` boolean is passed into `runAdAuction()`.  It is not possible for any code on the publisher page to inspect the winning ad or otherwise learn about its contents from this config or `urn:uuid`, but a `FencedFrameConfig` can be passed to a fenced frame element via its `config` attribute for rendering.  The [Fenced Frame Opaque-ads explainer](https://github.com/WICG/fenced-frame/blob/master/explainer/use_cases.md#opaque-ads) describes this in more detail. Similarly, a `urn:uuid` can be passed to an iframe element via its `src` attribute for rendering.  If the auction produces no winning ad, the return value can also be null, although this non-opaque return value leaks one bit of information to the surrounding page.  In this case, for example, the seller might choose to render a contextually-targeted ad.
 
 Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
 
-Optionally, `perBuyerCumulativeTimeouts` is structured like `perBuyerTimeouts`, but the values cover the entirety of the time it takes to generate bids for all interest groups for each buyer, including downloading resources, starting processes, and all generate bid calls. The single limit applies collectively across all interest groups with the same owner. It's measured as wall clock time starting when dedicated tasks needed to generate a bid for a particular buyer start. Timers may be running for multiple bidders simultaneously.  It does not include time taken by the seller to score the buyer's bids. Once the timer expires, the affected buyer's interest groups may no longer generate any bids. Scripts may be unloaded, fetches cancelled, etc. All bids generated before the timeout will continue to participate in the auction. FLEDGE implementations should attempt, on a best-effort basis, to generate bids for each buyer in priority order, so lower priority interest groups are the ones more likely to be timed out. If promises are passed in to the auction config for fields that support them, the timer for a buyer only starts once all promises blocking that buyer's bidding scripts from running have been resolved.
+Optionally, `perBuyerCumulativeTimeouts` is structured like `perBuyerTimeouts`, but the values cover the entirety of the time it takes to generate bids for all interest groups for each buyer, including downloading resources, starting processes, and all generate bid calls. The single limit applies collectively across all interest groups with the same owner. It's measured as wall clock time starting when dedicated tasks needed to generate a bid for a particular buyer start. Timers may be running for multiple bidders simultaneously.  It does not include time taken by the seller to score the buyer's bids. Once the timer expires, the affected buyer's interest groups may no longer generate any bids. Scripts may be unloaded, fetches cancelled, etc. All bids generated before the timeout will continue to participate in the auction. Protected Audience implementations should attempt, on a best-effort basis, to generate bids for each buyer in priority order, so lower priority interest groups are the ones more likely to be timed out. If promises are passed in to the auction config for fields that support them, the timer for a buyer only starts once all promises blocking that buyer's bidding scripts from running have been resolved.
 
 Optionally, the `signal` field can be set to an [`AbortSignal`](https://dom.spec.whatwg.org/#interface-AbortSignal) object (generally from an [`AbortController`](https://dom.spec.whatwg.org/#interface-abortcontroller)'s [`signal`](https://dom.spec.whatwg.org/#dom-abortcontroller-signal) field) to permit aborting the execution of the auction.  When the [`abort()`](https://dom.spec.whatwg.org/#dom-abortcontroller-abort) method on the associated [`AbortController`](https://dom.spec.whatwg.org/#interface-abortcontroller) is called, an attempt to interrupt the auction will be made. Since the auction executes in parallel to the page, it's possible for this call to happen after the auction actually completed (perhaps unsuccessfully) but before this has been noticed by the caller of `runAdAuction`. In that case, the cancellation attempt is ignored. If the cancellation is successful, the promise is rejected, and no side effects of the whole auction (like reporting and bid statistics) occur, though priority adjustments still take place. Calling `abort()` after the promise from `runAdAuction` has resolved has no effect.
 
@@ -343,7 +349,7 @@ All fields that accept arbitrary metadata objects (`auctionSignals`, `sellerSign
 All fields that specify URLs for loading scripts or JSON (`decisionLogicURL` and
 `trustedScoringSignalsURL`) must be same-origin with `seller` and must point to
 URLs whose responses include the HTTP response header `Ad-Auction-Allowed: true` to
-ensure they are allowed to be used for loading FLEDGE resources.
+ensure they are allowed to be used for loading Protected Audience resources.
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
 
@@ -683,7 +689,7 @@ The `NoPolitics` interest group will not get a chance to bid, since the `Auction
 
 The `BidFor240Minutes` interest group will have a positive priority if it was joined during the first 240 minutes, starting with 240 right after being joined, and working its way down to 0 at the 240 minute mark, after which it will have a negative priority and so will not bid.
 
-The `FilterOnDataFromServer` interest group will result in fetching `https://buyer1.com/bidder_signals?publisher=<...>&interest_groups=FilterOnDataFromServer,<...>`, and then if that result has a `perInterestGroupData.FilterOnDataFromServer.priorityVector` object, then that is used just like the `priorityVector` field from the other two examples, except that it's only used for filtering, not to set the priority (unless the group has a true `enableBiddingSignalsPrioritization` field).  A [user defined function](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md#support-for-user-defined-functions-udfs) could be used on the FLEDGE Key-Value server to calculate that `priorityVector` value, and hence to decide if `FilterOnDataFromServer`'s `generateBid()` method is invoked or if it's filtered out.
+The `FilterOnDataFromServer` interest group will result in fetching `https://buyer1.com/bidder_signals?publisher=<...>&interest_groups=FilterOnDataFromServer,<...>`, and then if that result has a `perInterestGroupData.FilterOnDataFromServer.priorityVector` object, then that is used just like the `priorityVector` field from the other two examples, except that it's only used for filtering, not to set the priority (unless the group has a true `enableBiddingSignalsPrioritization` field).  A [user defined function](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md#support-for-user-defined-functions-udfs) could be used on the Protected Audience Key-Value server to calculate that `priorityVector` value, and hence to decide if `FilterOnDataFromServer`'s `generateBid()` method is invoked or if it's filtered out.
 
 ### 4. Browsers Render the Winning Ad
 
@@ -784,9 +790,9 @@ The arguments to this function are:
     *   `perBuyerSignals`: Like `auctionConfig.perBuyerSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
     *   `auctionSignals`: Like `auctionConfig.auctionSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
 
-The `reportWin()` function's reporting happens by calling `sendReportTo()`, same as for `reportResult()`, in the short-term, but will eventually go through the Private Aggregation API once it has been developed. Once the Private Aggregation API has been integrated with FLEDGE the `interestGroup` object passed to `generateBid()` will be available to `reportWin()`.
+The `reportWin()` function's reporting happens by calling `sendReportTo()`, same as for `reportResult()`, in the short-term, but will eventually go through the Private Aggregation API. Once the Private Aggregation API is the only allowed reporting mechanism available in Protected Audience, the `interestGroup` object passed to `generateBid()` will be available to `reportWin()`.
 
-Ads often need to report on events that happen once the ad is rendered.  One common example is reporting on whether an ad became viewable on-screen.  We will need a communications channel to allow the publisher page or the Fenced Frame to pass such information into the worklet responsible for reporting.  Some additional design work is needed here.
+Ads often need to report on events that happen once the ad is rendered.  One common example is reporting on whether an ad became viewable on-screen.  The [Fenced Frame Ads Reporting API](https://github.com/WICG/turtledove/blob/main/Fenced_Frames_Ads_Reporting.md) offers an event-level way to do this, in the short-term, while the [Extended Private Aggregaton reporting API](https://github.com/WICG/turtledove/blob/main/FLEDGE_extended_PA_reporting.md#example-1-correlating-bidding-signals-with-click-information) offers an aggregate method of doing so.
 
 ##### 5.2.1 Noised and Bucketed Signals
 
@@ -805,3 +811,185 @@ These signals were requested in [issue 435](https://github.com/WICG/turtledove/i
 We also need to provide a mechanism for the _losing_ bidders in the auction to learn aggregate outcomes.  Certainly they should be able to count the number of times they bid, and losing ads should also be able to learn (in aggregate) some seller-provided information about e.g. the auction clearing price.  Likewise, a reporting mechanism should be available to buyers who attempted to bid with a creative that had not yet reached the k-anonymity threshold.
 
 This could be handled by a `reportLoss()` function running in the worklet.  Alternatively, the model of [SPURFOWL](https://github.com/AdRoll/privacy/blob/main/SPURFOWL.md) (an append-only datastore and later aggregate log processing) could be a good fit for this use case.  The details here are yet to be determined.
+
+### 6. Additional Bids
+
+In addition to bids generated by interest groups, sellers can enable buyers to introduce bids generated outside of the auction. We refer to these as additional bids. Additional bids are commonly triggered using contextual signals. By having more contextual bids participate in the auction, we're reducing the leakage that's learned by detecting whether or not an auction produced an interest-group-based winning ad.
+
+Buyers compute the additional bids, likely as part of a contextual auction. Buyers need to package up each additional bid using a new data structure that encapsulates all of the information needed for the additional bid to compete against other bids in a Protected Audience auction. Sellers are responsible for passing additional bids to the browser at Protected Audience auction time.
+
+Each additional bid is expressed using the following JSON data structure:
+
+```
+const additionalBid = {
+  "bid": {
+    "ad": 'ad-metadata',
+    "adCost": 2.99,
+    "bid": 1.99,
+    "bidCurrency": "USD",
+    "render": "https://www.example-dsp.com/ad/123.jpg",
+    "adComponents": [adComponent1, adComponent2],
+    "allowComponentAuction": true,
+    "modelingSignals": 123,
+  },
+
+  "interestGroup": {
+    "owner": "https://www.example-dsp.com"
+    "name": "campaign123",
+    "biddingLogicURL": "https://www.example-dsp.com/bid_logic.js"
+  },
+
+  "negativeInterestGroup": "campaign123_negative_interest_group",
+  "negativeInterestGroups": {
+    joiningOrigin: "https://www.example-advertiser.com",
+    interestGroupNames: [
+      "example_advertiser_negative_interest_group_a",
+      "example_advertiser_negative_interest_group_b",
+    ]
+  },
+
+  "auctionNonce": "12345678-90ab-cdef-fedcba09876543210",
+  "seller": "https://www.example-ssp.com",
+  "topLevelSeller": "https://www.another-ssp.com"
+}
+```
+
+The fields in `bid` intentionally mimic those returned by generateBid(), as described in section [3.2 On-Device Bidding](#32-on-device-bidding). These fields in the additional bid have the same semantic meaning as those returned from `generateBid()`, except that `render` and `adComponents` are not limited to values from a corresponding stored interest group because the additional bid is not generated from a stored interest group.
+
+The fields in `interestGroup` facilitate running `reportAdditionalBidWin()` for an additional bid that wins an auction, as described below in section [6.4 Reporting Additional Bid Wins](#64-reporting-additional-bid-wins). `biddingLogicURL` is used for its definition of `reportAdditionalBidWin()`, while `owner` and `name` are passed to the call to that function.
+
+Each additional bid may provide a value for **at most** one of the `negativeInterestGroup` and `negativeInterestGroups` fields. These fields are described below in section [6.2.2 How Additional Bids Specify their Negative Interest Groups](#622-how-additional-bids-specify-their-negative-interest-groups).
+
+The `auctionNonce`, `seller`, and `topLevelSeller` fields are used to prevent replay of this additional bid. The `auctionNonce` is described below in section [6.1 Auction Nonce](#61-auction-nonce). The `seller` and `topLevelSeller` fields echo those present in the `browserSignals` argument to `generateBid()` as described in section [3.2 On-Device Bidding](#32-on-device-bidding). In `generateBid()`, these are meant to ensure that the buyer acknowledges and accepts that their bid can participate in an auction with those parties. Additional bids don't have a corresponding call to `generateBid()`, and so the `seller` and `topLevelSeller` fields in an additional bid are intended to allow for the same acknowledgement as those in `browserSignals`.
+
+Additional bids are not provided through the auction config passed to `runAdAuction()`, but rather through the response headers of a Fetch request, as described below in section [6.3 HTTP Response Headers](#63-http-response-headers). However, the auction config still has an `additionalBids` field, which is a Promise with no value, used only to signal to the auction that the additional bids have arrived and are ready to be accepted in the auction. For each additional bid, its owner must be included in  interestGroupBuyers  for that additional bid to participate in the auction.
+
+```
+navigator.runAdAuction({
+  // ...
+  'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
+  'additionalBids': promiseFulfilledWhenTheFetchRequestCompletes,
+});
+```
+
+#### 6.1 Auction Nonce
+
+To prevent unintended replaying of additional bids, any auction config, whether top-level or component auction config, must include an auction nonce value if it includes additional bids.  The auction nonce is created and provided like so:
+
+```
+const auctionNonce = navigator.createAuctionNonce();
+navigator.runAdAuction({
+  // ...
+  'auctionNonce':  auctionNonce,
+  'additionalBids': ...,
+});
+```
+
+The same nonce value will need to appear in the `auctionNonce` field of each [additional bid](#6-additional-bids) associated with that auction config. Auctions that don't use additional bids don't need to create or provide an auction nonce.
+
+#### 6.2 Negative Targeting
+
+In online ad auctions for ad space, it’s sometimes useful to prevent showing an ad to certain audiences, a concept known as negative targeting. For example, you might not want to show a new customer advertisement to existing customers. New customer acquisition campaigns most often have this as a critical requirement.
+
+To facilitate negative targeting in Protected Audience auctions, each additional bid is allowed to identify one or more negative interest groups. If the user has been joined to any of the identified negative interest groups, the additional bid is dropped; otherwise it participates in the auction, competing alongside bids created by calls to `generateBid()`. An additional bid that specifies no negative interest groups is always accepted into the auction.
+
+##### 6.2.1 Negative Interest Groups
+
+Though negative interest groups are joined using the same `joinAdInterestGroup` API as regular interest groups, they remain distinct from one another. Only negative interest groups can provide an `additionalBidKey`, and only regular interest groups can provide `ads`; no interest group may provide both. The `additionalBidKey` field is described in more detail in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys).
+
+```
+const myGroup = {
+  'owner': 'https://www.example-dsp.com',
+  'name': 'womens-running-shoes',
+  'lifetimeMs': 30 * kSecsPerDay,
+  'updateURL': 'https://www.example-dsp.com/update?id=12345', //optional
+  'additionalBidKey': 'EA/fR/uU8VNqT3w/2ic4P6Azdaj1J8U35vFwPEf5T4Y='
+};
+navigator.joinAdInterestGroup(myGroup);
+```
+
+##### 6.2.2 How Additional Bids Specify their Negative Interest Groups
+
+Additional bids specify the negative interest groups they're negatively targeting against using one of two fields in their JSON data structure - `negativeInterestGroup` or `negativeInterestGroups`.
+
+If an additional bid only needs to specify a single negative interest group, it can do so as follows:
+
+```
+const additionalBid = {
+  // ...
+  "negativeInterestGroup": "example_advertiser_negative_interest_group",
+  // ...
+}
+```
+
+If an additional bid needs to specify two or more negative interest groups, all of those negative interest groups must be joined from the same origin, and that origin must be identified ahead of time in the additional bid using the `joiningOrigin` field:
+
+```
+const additionalBid = {
+  // ...
+  "negativeInterestGroups": {
+    joiningOrigin: "https://example-advertiser.com",
+    interestGroupNames: [
+      "example_advertiser_negative_interest_group_a",
+      "example_advertiser_negative_interest_group_b",
+    ]
+  },
+  // ...
+}
+```
+
+Any negative interest group that wasn't joined from that identified origin won't be considered for negative targeting. This restriction is enforced so that negative targeting can only use targeting data from a single origin.  An additional bid that only specifies one negative interest group is not subject to the same restriction on joining origin.
+
+##### 6.2.3 Additional Bid Keys
+
+We use a cryptographic signature mechanism to ensure that only the owner of a negative interest group can use it with additional bids. Each buyer will need to create a [Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) public/secret key pair to sign their additional bids to prove their authenticity, and to regularly rotate their key pairs.
+
+When a buyer joins a user into a negative interest group, they must provide their 32-byte Ed25519 public key, expressed as a base64-encoded string, via the negative interest group's `additionalBidKey` field. This can be seen in the example above in section [6.2.1 Negative Interest Groups](#621-negative-interest-groups). The additional bid key can then be updated via the negative interest group's `updateURL`, for example, to enable a buyer to rotate their Ed25519 key pair faster than they could with the expiration of their negative interest groups alone. Negative interest groups are updated at the same time and in the same way as regular interest groups, as described in section [1.2 Interest Group Attributes](#12-interest-group-attributes).
+
+When the buyer issues an additional bid, that bid needs to be signed using their Ed25519 secret key. During a key rotation, the buyer may need to provide a signature of the additional bid with both the old and the new additional bid keys while negative interest groups stored on users' devices are updated to the new key. It's for this reason that additional bids may have more than one signature provided alongside the bid.
+
+If the signature doesn't verify successfully, the additional bid proceeds as if the negative interest group is not present.  This "failing open" ensures that only the owner of the negative interest group, who created the additonalBidKey, is allowed to negatively target the interest group, and that nobody else can learn whether the interest group is present on the device.  Because the signature check "fails open", buyers should make sure they're using the right keys; for example it might be prudent to verify a bid signature before submitting the additional bid.
+
+To ensure a consistent binary payload is signed, the buyer first needs to stringify their additional bid - the JSON data structure seen above. The buyer then generates the necessary signatures and then bundles these together in a JSON structure we'll call the _signed additional bid_.
+
+```
+const signedAdditionalBid = {
+  // "bid" is the result of JSON.stringify(additionalBid)
+  "bid": "{\"interestGroup\":{\"name\":\"campaign123\"...},...}"
+  "signatures": {
+    {
+       "key": "9TCI6ZvHsCqMvhGN0+zv67Vx3/l9Z+//mq3hY4atV14=",
+       "signature": "SdEnASmeyDTjEkag+hczHtJ7wGN9f2P2E...=="
+     },
+     {
+       "key": "eTQOmfYCmLL2gqraPJX6YjryU6hW6yHEwmdsXeNL2qA=",
+       "signature": "kSz0go9iax9KNBuMTLjWoUHQvcxnus8I5...=="
+     },
+   }
+}
+```
+
+Note that the key fields are used by the browser both to verify the signature, and then to authorize the use of those negative interest groups whose `additionalBidKey` matched keys associated with valid signatures.
+
+#### 6.3 HTTP Response Headers
+
+The browser ensures, using TLS, the authenticity and integrity of information provided to the auction through calls made directly to an ad tech's servers. This guarantee is not provided for data passed in `runAdAuction()`. To account for this, additional bids use the same HTTP response header interception mechanism that's already in use for the [Bidding & Auction response blob](FLEDGE_browser_bidding_and_auction_API.md#step-3-get-response-blobs-to-browser) and `directFromSellerSignals`.
+
+To use HTTP response headers to convey the additional bids, the request to fetch them will first need to specify the `adAuctionHeaders` fetch flag.
+
+```
+fetch("https://...", {adAuctionHeaders: true});
+```
+
+This signals to the browser that it should look for one or more additional bids encoded as HTTP response headers from this Fetch. Each instance of the `Ad-Auction-Additional-Bid` response header will correspond to a single additional bid. The response may include more than one additional bid by specifying multiple instances of the `Ad-Auction-Additional-Bid` response header. The structure of each instance of the `Ad-Auction-Additional-Bid` header must be as follows:
+
+```
+Ad-Auction-Additional-Bid:
+    <auction nonce>:<base64-encoding of the signed additional bid>
+```
+
+These HTTP response headers are intercepted by the browser and diverted to participate in the auction without passing through the JavaScript context. When all of the additional bids for an auction have been received this way, the seller should resolve the `additionalBids` Promise passed into the auctionConfig that was described in section [6. Additional Bids](#6-additional-bids). The browser will use this as the signal that it's ready to accept the bids provided by the `Ad-Auction-Additional-Bid` response headers into the auction.
+
+#### 6.4 Reporting Additional Bid Wins
+
+For additional bids that win the auction, event-level win reporting is supported, just as it is for bids generated from stored interest groups. However, additional bids have distinct security concerns. The browser can guarantee that bids generated from stored interest groups were, in fact, generated by the buyer's origin, but it cannot provide this same guarantee for additional bids. An additional bid can only win if none of the negative interest groups specified by the additional bid are present on the user's device, and so the signature validation described above in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys) also can't help with this. To ensure that buyers understand that they're being asked to report on an additional bid, which cannot be verified having been generated by the buyer's origin, the reporting for additional bids is done by reporting scripts with different names. Instead of `reportWin()` and `reportResult()`, the browser calls functions named `reportAdditionalBidWin()` and `reportAdditionalBidResult()`, respectively, to report a winning additional bid.
