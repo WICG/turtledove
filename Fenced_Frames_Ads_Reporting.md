@@ -49,7 +49,7 @@ The following new APIs will be added for achieving this.
 
 There are two sets of parameters that can be used to invoke the `reportEvent` API. In the first, fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon with event data to a URL registered by the worklet in `registerAdBeacon` (see below). Depending on the declared `destination`, the beacon is sent to either the buyer's or the seller's registered URL. Examples of such events are mouse hovers, clicks (which may or may not lead to navigation e.g. video player control element clicks), etc.
 
-This API is available from all documents in a fenced frame that are same-origin to the mapped url of the fenced frame config (i.e., the ad creative url that won the Protected Audience auction).
+This API is available from all documents in a fenced frame that are same-origin to the mapped URL of the fenced frame config (i.e., the ad creative URL that won the Protected Audience auction).
 
 The browser processes the beacon by sending an HTTP POST request, like the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
 
