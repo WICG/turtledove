@@ -3386,11 +3386,12 @@ An auction config is a [=struct=] with the following items:
 :: Null or an {{unsigned short}}, initially null.
   Optional identifier for an experiment group to support coordinated experiments with buyers'
   trusted servers for buyers without a specified experiment group.
-: <dfn>pending promise count</dfn>
-:: An integer, initially 0. The number of [=auction config/auction signals=],
+: <dfn>scoring dependency count</dfn>
+:: An integer, initially 0. The number of things that are pending that are needed to score
+  everything. It includes waiting for {{Promise}}s [=auction config/auction signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-  [=auction config/per buyer timeouts=], directFromSellerSignals, [=auction config/seller signals=],
-  or {{AuctionAdConfig/additionalBids}} whose {{Promise}}s are not yet resolved.
+  [=auction config/per buyer timeouts=], directFromSellerSignals, [=auction config/seller signals=]
+  to resolve, waiting for additional bids to parse.
 : <dfn>config idl</dfn>
 :: {{AuctionAdConfig}}.
 : <dfn>resolve to config</dfn>
@@ -3421,7 +3422,7 @@ An auction config is a [=struct=] with the following items:
 
 <div algorithm>
 To <dfn>wait until configuration input promises resolve</dfn> given an [=auction config=] |auctionConfig|:
-1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
+1. Wait until |auctionConfig|'s [=auction config/scoring dependency count=] is 0.
 1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=], and
   [=auction config/per buyer timeouts=] are not {{Promise}}s.
@@ -3443,14 +3444,14 @@ To <dfn>recursively wait until configuration input promises resolve</dfn> given 
 <div algorithm>
 To <dfn>handle an input promise in configuration</dfn> given an [=auction config=] |auctionConfig|,
 a {{Promise}} |p|, and two sequences of steps, covering the parsing of the value and error-handling:
-1. Increment |auctionConfig|'s [=auction config/pending promise count=].
+1. Increment |auctionConfig|'s [=auction config/scoring dependency count=].
 1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps [=upon fulfillment=] of |p| with |result|:
   1. Execute the steps to be run for parsing of the value given |result|.
   1. If no exception was [=exception/thrown=] in the previous step:
-    1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
+    1. Decrement |auctionConfig|'s [=auction config/scoring dependency count=].
 1. [=Upon rejection=] of |resolvedAndTypeChecked|:
   1. Execute the steps for error-handling.
-  1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
+  1. Decrement |auctionConfig|'s [=auction config/scoring dependency count=].
 
 </div>
 
