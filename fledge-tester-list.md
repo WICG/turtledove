@@ -59,7 +59,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Adlook (subsidiary of RTB House) | DSP | Continuous testing ongoing; long term commitment. | | privacysandbox@adlook.com |
 | Microsoft (Xandr, MSAN) | SSP + DSP(s) | Testing | | privacy_sandbox@microsoft.com |
 | Tremor International | SSP & DSP| 2023-2024 | coming soon | subhag.oak@amobee.com |
-| Triplelift | SSP | Testing in progress | | prod-privacysandbox@triplelift.com |
+| Triplelift | SSP | Jan 2024 | | prod-privacysandbox@triplelift.com |
 | Seedtag | SSP & DSP| 2023-2024 | coming soon | privacysandbox@seedtag.com |
 | Index Exchange | SSP | Testing in progress | | privacy-sandbox-support@indexexchange.com |
 | PubMatic | SSP | Jan 2024 | | privacysandbox@pubmatic.com |
