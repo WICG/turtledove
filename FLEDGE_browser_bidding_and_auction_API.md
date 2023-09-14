@@ -189,7 +189,7 @@ The schema for the CBOR encoding of the interest group (specified using [JSON Sc
        "$ref": "#/$defs/adRenderId"
       }
     },
-    "componentAds": {
+    "components": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/adRenderId"
@@ -264,7 +264,7 @@ The JSON equivalent of the interest group would look like the following example:
     "adRenderId",
     "adRenderId2"
   ],
-  "componentAds": [],
+  "components": [],
   "browserSignals": {
     "joinCount": 2,
     "bidCount": 0,
@@ -337,7 +337,7 @@ Prior to compression and encryption, the AuctionResult is encoded as CBOR with t
       "format": "uri",
       "description": "The ad that will be rendered on the end user's device."
     },
-    "componentAds": {
+    "components": {
       "type": "array",
       "description": "List of render URLs for component ads to be displayed as part of this ad",
       "items": {
