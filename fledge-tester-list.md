@@ -60,7 +60,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Microsoft (Xandr, MSAN) | SSP + DSP(s) | Testing | | privacy_sandbox@microsoft.com |
 | Tremor International | SSP & DSP| 2023-2024 | coming soon | subhag.oak@amobee.com |
 | Triplelift | SSP | Jan 2024 | | prod-privacysandbox@triplelift.com |
-| Seedtag | SSP & DSP| 2023-2024 | coming soon | privacysandbox@seedtag.com |
+| Seedtag | SSP | January 2024 | coming soon | privacysandbox@seedtag.com |
 | Index Exchange | SSP | By January 31, 2024 | | privacy-sandbox-support@indexexchange.com |
 | PubMatic | SSP | Jan 2024 | | privacysandbox@pubmatic.com |
 | Adform | DSP | Beginning January 1, 2024 | | privacysandbox@adform.com |
