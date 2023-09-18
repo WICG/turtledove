@@ -51,20 +51,21 @@ The usefulness of this page depends on testers sharing information and updates.
 | RTB House | DSP | Continuous testing ongoing; long term commitment. | https://blog.rtbhouse.com/whitepaper-deep-insights-from-early-fledge-experiments/ | privacysandbox@rtbhouse.com |
 | SMN | DSP | no later than January 31, 2024 | | privacy-sandbox-testing@so-netmedia.jp |
 | Raptive | Testing as DSP & SSP & Ad management service | ongoing | | dmarti@cafemedia.com |
-| CyberAgent(Dynalyst) | DSP | | | privacysandbox@cyberagent.co.jp |
+| CyberAgent(Dynalyst) | DSP | No later than January 31, 2024 | | privacysandbox@cyberagent.co.jp |
 | Google Ad Manager + AdSense (including with Authorized Buyers) | SSP | Testing ongoing | [Publishers (Ad Manager)](https://support.google.com/admanager/answer/12052605?hl=en) <br/> [Publishers (AdSense)](https://support.google.com/adsense/answer/12570693)  <br/> [Authorized Buyers (DSPs)](https://developers.google.com/authorized-buyers/rtb/fledge-origin-trial#onboarding) <br/> [Multi-seller auction support](https://github.com/google/ads-privacy/tree/master/proposals/fledge-multiple-seller-testing) | Publishers with questions should reach out via their account manager directly, or via our [support channels](https://support.google.com/admanager/gethelp).<br/><br/>Authorized Buyers (DSPs) interested in testing should follow the steps listed in the [onboarding guide](https://developers.google.com/authorized-buyers/rtb/fledge-origin-trial#onboarding).<br/><br/>For technical questions on the experimental GPT API for multi-seller auctions, reach out via the “send feedback” button on the [GPT developer site](https://developers.google.com/publisher-tag/reference).| 
 | Google Ads + Display & Video 360 | DSP | Testing in progress | [Help Center Article](https://support.google.com/google-ads/answer/13626996?hl=en&ref_topic=13627218&sjid=16039190573195292133-NA) <br/> [Integration Guide for SSPs](https://developers.google.com/display-video/protected-audience/ssp-guide) <br/>   | Advertisers with questions can reach out via their account manager, or directly via this [form](https://docs.google.com/forms/d/1es8wVNYKD2PStYzE8atqZv4OJr3tuavWNMkmVcWRFQI/viewform?ts=63570235&edit_requested=true).| 
 | MicroAd | SSP & DSP | | | privacysandbox@microad.co.jp |
-| Neodata Group | SSP & DSP | | | privacysandbox@neodatagroup.com |
+| Blendee | SSP & DSP | | | privacysandbox@blendee.com |
 | Adlook (subsidiary of RTB House) | DSP | Continuous testing ongoing; long term commitment. | | privacysandbox@adlook.com |
 | Microsoft (Xandr, MSAN) | SSP + DSP(s) | Testing | | privacy_sandbox@microsoft.com |
-| Tremor International | SSP & DSP| 2023-2024 | coming soon | subhag.oak@amobee.com |
-| Triplelift | SSP | Testing in progress | | prod-privacysandbox@triplelift.com |
-| Seedtag | SSP & DSP| 2023-2024 | coming soon | privacysandbox@seedtag.com |
-| Index Exchange | SSP | Testing in progress | | privacy-sandbox-support@indexexchange.com |
+| Nexxen (Unruly/Tremor/Amobee) | SSP & DSP| 2023-2024 | coming soon | soak@nexxen.com |
+| Triplelift | SSP | Jan 2024 | | prod-privacysandbox@triplelift.com |
+| Seedtag | SSP | January 2024 | coming soon | privacysandbox@seedtag.com |
+| Index Exchange | SSP | By January 31, 2024 | | privacy-sandbox-support@indexexchange.com |
 | PubMatic | SSP | Jan 2024 | | privacysandbox@pubmatic.com |
-| Adform | DSP | H1 2024 | | privacysandbox@adform.com |
+| Adform | DSP | Beginning January 1, 2024 | | privacysandbox@adform.com |
 | Onetag | DSP & SSP | 2023-2024 | | privacysandbox@onetag.com |
+| Yahoo Inc | DSP | beginning 15 Jan 2024 | | googleprivacysandbox@yahooinc.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
