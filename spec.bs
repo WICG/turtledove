@@ -26,6 +26,9 @@ urlPrefix: https://www.ietf.org/rfc/rfc4122.txt
   type: dfn; text: version 4 UUID
 spec: RFC6234; urlPrefix: https://www.ietf.org/rfc/rfc6234.txt
   type: dfn; text: SHA-256
+urlPrefix: https://datatracker.ietf.org/doc/html/rfc8032
+  type: dfn
+    text: verify; url: section-5.1.7
 spec: html; urlPrefix: https://html.spec.whatwg.org/C
   type: dfn
     text: create an agent; url: create-an-agent
@@ -965,8 +968,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     * To handle an error, set |auctionConfig|'s [=auction config/seller signals=] to failure.
 1. If |config|["{{AuctionAdConfig/auctionNonce}}"] [=map/exists=]:
   1. Let |nonce| be an empty [=string=].
-  1. [=list/For each=] |i| in [=the range=] from 1 to the [=string/length=] of
-    |config|["{{AuctionAdConfig/auctionNonce}}"]:
+  1. [=list/For each=] |i| in [=the range=] from 0 to the [=string/length=] of
+    |config|["{{AuctionAdConfig/auctionNonce}}"], exclusive:
     1. Let |c| be the |i|th [=code unit=] of |config|["{{AuctionAdConfig/auctionNonce}}"] if it is
       0x0000 NULL or in the range 0x0020 SPACE to 0x007F DELETE, inclusive, otherwise "`?`".
     1. Append |c| to the end of |nonce|.
@@ -1109,7 +1112,7 @@ To <dfn>parse an origin</dfn> given a [=string=] |input|:
 To <dfn>get uuid from string</dfn> given a [=string=] |input|:
 1. If |input|'s [=string/length=] is not 36, return an empty [=string=].
 1. Let |uuid| be an empty [=string=].
-1. [=list/For each=] |i| in [=the range=] from 1 to 36:
+1. [=list/For each=] |i| in [=the range=] from 1 to 36, inclusive:
   1. Let |unit| be |input|'s |i|th [=code unit=].
   1. If « 8, 13, 18, 23 » [=list/contains=] |i|:
     1. If |unit| is not 0x002d (-):
@@ -1162,9 +1165,20 @@ To <dfn>get uuid from string</dfn> given a [=string=] |input|:
 To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfig|:
 1. Let |bidGenerators| be a new [=ordered map=] whose [=map/keys=] are [=origins=] and whose
   [=map/values=] are [=per buyer bid generators=].
+1. Let |negativeInfo| be a new [=map=] whose [=map/keys=] are [=tuples=] consisting of an [=origin=]
+  and a [=string=], and whose [=map/values=] are [=tuples=] consisting of an [=origin=] and a
+  [=byte sequence=].
 1. [=list/For each=] |buyer| in |auctionConfig|'s [=auction config/interest group buyers=]:
   1. [=list/For each=] |ig| of the user agent's [=interest group set=] whose
     [=interest group/owner=] is |buyer|:
+    1. Let |igName| be |ig|'s [=interest group/name=].
+    1. If |ig|'s [=interest group/additional bid key=] is not null:
+      1. [=map/Set=] |negativeInfo|[(|buyer|, |igName|)] to (|ig|'s
+        [=interest group/joining origin=], |ig|'s [=interest group/additional bid key=])
+      1. [=list/Append=] |ig| to |negativeInfo|.
+    1. [=iteration/Continue=] if any of the following conditions hold:
+      * |ig|'s [=interest group/bidding url=] is null;
+      * |ig|'s [=interest group/ads=] is null, or [=list/is empty=].
     1. Let |signalsUrl| be |ig|'s [=interest group/trusted bidding signals url=].
     1. Let |joiningOrigin| be |ig|'s [=interest group/joining origin=].
     1. If |bidGenerators| does not [=map/contain=] |buyer|:
@@ -1187,7 +1201,7 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
           1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to « |ig| ».
         1. Otherwise:
           1. [=list/Append=] |ig| to |perSignalsUrlGenerator|[|joiningOrigin|].
-1. Return |bidGenerators|.
+1. Return « |bidGenerators|, |negativeInfo| ».
 
 </div>
 
@@ -1245,7 +1259,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
   [=auction config/decision logic url=].
 1. If |decisionLogicScript| is failure, return null.
-1. Let |bidGenerators| be the result of running [=build bid generators map=] with |auctionConfig|.
+1. Let « |bidGenerators|, |negativeInfo| » be the result of running
+  [=build bid generators map=] with |auctionConfig|.
 1. Let |leadingBidInfo| be a new [=leading bid info=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. If |auctionConfig|'s [=auction config/component auctions=] are not [=list/is empty|empty=]:
@@ -1307,7 +1322,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |additionalBids| be null.
 1. If |auctionConfig|'s [=auction config/expects additional bids=] is true:
   1. Set |additionalBids| to the result of running [=validate and convert additional bids=] with
-    |auctionConfig| and |topLevelAuctionConfig|.
+    |auctionConfig|, |topLevelAuctionConfig| and |negativeInfo|.
   1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
     1. Increment |bidsBeingScored| by 1.
     1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
@@ -1453,8 +1468,10 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
 </div>
 
 <div algorithm>
-To <dfn>validate and convert additional bids</dfn> given an [=auction config=] |auctionConfig|, and
-an [=auction config=]-or-null |topLevelAuctionConfig|:
+To <dfn>validate and convert additional bids</dfn> given an [=auction config=] |auctionConfig|, an
+[=auction config=]-or-null |topLevelAuctionConfig|, and a new [=map=] |negativeInfo| whose
+[=map/keys=] are [=tuples=] consisting of an [=origin=] and a [=string=], and whose [=map/values=]
+are [=tuples=] consisting of an [=origin=] and a [=byte sequence=]:
 
   1. Let |auctionNonce| be |auctionConfig|'s [=auction config/auction nonce=].
   1. Let |capturedAdditionalBidsHeaders| be [=this=]'s [=relevant global object=]'s
@@ -1462,32 +1479,77 @@ an [=auction config=]-or-null |topLevelAuctionConfig|:
     [=captured additional bids headers=].
   1. Let |additionalBids| be a new [=list=] of [=additional bids=].
   1. [=list/For each] |encodedAdditionalBid| of |capturedAdditionalBidsHeaders|[|auctionNonce|]:
-    1. Let |additionalBid| be the result of running [=forgiving-base64 decode=] with
+    1. Let |decodedSignedAdditionalBid| be the result of running [=forgiving-base64 decode=] with
       |encodedAdditionalBid|.
-    1. If |additionalBid| is failure, [=iteration/continue=].
+    1. If |decodedSignedAdditionalBid| is failure, [=iteration/continue=].
     1. Increment |auctionConfig|’s [=auction config/scoring dependency count=].
-    1. Let |parsedAdditionalBid| be the result of [=parse a JSON string to an infra value=] with
-      |additionalBid|.
-    1. If |parsedAdditionalBid| is not a [=map=], then decrement |auctionConfig|’s
+    1. Let |parsedSignedAdditionalBid| be the result of [=parse a JSON string to an infra value=]
+      with |decodedSignedAdditionalBid|.
+    1. Decrement |auctionConfig|’s [=auction config/scoring dependency count=], and
+      [=iteration/continue=] if any of the following conditions hold:
+      * |parsedSignedAdditionalBid| is not a [=map=];
+      * |parsedSignedAdditionalBid|["bid"] does not [=map/exist=], or it's not a [=string=];
+      * |parsedSignedAdditionalBid|["signatures"] does not [=map/exist=], or it's not a [=list=].
+    1. Let |signatures| be a new [=list=] of [=signed additional bid signatures=].
+    1. Let |decodeSignatureFailed| be false.
+    1. [=list/For each=] |sig| of |parsedSignedAdditionalBid|["signatures"]:
+      1. Set |decodeSignatureFailed| to true and [=iteration/break=] if any of the following
+        conditions hold:
+        * |sig| is not a [=map=];
+        * |sig|["key"] does not [=map/exist=], or it's not a [=string=];
+        * |sig|["signature"] does not [=map/exist=], or it's not a [=string=].
+      1. Let |maybeKey| be the result of running [=forgiving-base64 decode=] with |sig|["key"].
+      1. Let |maybesignature| be the result of running [=forgiving-base64 decode=] with
+        |sig|["signature"].
+      1. Set |decodeSignatureFailed| to true and [=iteration/break=] if any of the following
+        conditions hold:
+        * |maybeKey| is failure, or its [=byte sequence/length=] is not 32;
+        * |maybesignature| is failure, or its [=byte sequence/length=] is not 64;
+      1. Let |signature| be a [=signed additional bid signatures=], whose
+        [=signed additional bid signature/key=] is |maybeKey|, and
+        [=signed additional bid signature/signature=] is |maybesignature|.
+      1. [=list/Append=] |signature| to |signatures|.
+    1. If |decodeSignatureFailed| is true, then decrement |auctionConfig|’s
       [=auction config/scoring dependency count=], and [=iteration/continue=].
     1. Let |decodedAdditionalBid| be the result of [=decode an additional bid=] with
-      |parsedAdditionalBid|, |auctionConfig| and |topLevelAuctionConfig|.
-    1. If |decodedAdditionalBid| is failure, then decrement |auctionConfig|’s
-      [=auction config/scoring dependency count=], and [=iteration/continue=].
-    1. If |decodedAdditionalBid|'s [=additional bid/bid=]'s [=generated bid/bid=]'s
-      [=bid with currency/currency=] is not the result of running [=look up per-buyer currency=]
-      with |auctionConfig|, then decrement |auctionConfig|’s
-      [=auction config/scoring dependency count=], and [=iteration/continue=].
-    1. TODO: Check whether drop due to negative targeting.
-    1. [=list/Append=] |decodedAdditionalBid| to |additionalBids|.
+      |parsedSignedAdditionalBid|["bid"], |auctionConfig| and |topLevelAuctionConfig|.
+    1. Decrement |auctionConfig|’s [=auction config/scoring dependency count=], and
+      [=iteration/continue=] if any of the following conditions hold:
+      * |decodedAdditionalBid| is failure;
+      * |decodedAdditionalBid|'s [=additional bid/bid=]'s [=generated bid/bid=]'s
+        [=bid with currency/currency=] is not the result of running [=look up per-buyer currency=]
+        with |auctionConfig|.
+    1. Let |validSignatureIndices| be a new [=list=] of integers.
+    1. [=list/For each=] |i| in [=list/get the indices|indices=] of |signatures|:
+      1. If [=verify=] |signatures|[|i|] succeeded:
+        1. [=list/Append=] |i| to |validSignatureIndices|.
+    1. Let |negativeTargeted| be false.
+    1. Let |additionalBidBuyer| be |decodedAdditionalBid|'s [=additional bid/bid=]'s
+      [=generated bid/interest group=]'s [=interest group/owner=]. 
+    1. [=list/For each=] |igName| of |decodedAdditionalBid|'s
+      [=additional bid/negative target interest group names=]:
+      1. If |negativeInfo|[(|additionalBidBuyer|, |igName|)] [=map/exists=]:
+        1. Let (|joiningOrigin|, |additionalBidKey|) be |negativeInfo|[(|additionalBidBuyer|, |igName|)].
+        1. Let |KeyMatchedValidSignature| be false. 
+        1. [=list/For each=] |i| of |validSignatureIndices|:
+          1. If |signatures|[|i|]'s [=signed additional bid signature/key=] is |additionalBidKey|:
+            1. Set |KeyMatchedValidSignature| to true, and [=iteration/break=].
+        1. If |KeyMatchedValidSignature| is false, then [=iteration/continue=].
+        1. If |joiningOrigin| is not null:
+          1. If |joiningOrigin| is not [=same origin=] with |decodedAdditionalBid|'s
+            [=additional bid/negative target joining origin=], then [=iteration/continue=].
+        1. Set |negativeTargeted| to true.
+    1. If |negativeTargeted| is false:
+      1. [=list/Append=] |decodedAdditionalBid| to |additionalBids|.
+    1. Decrement |auctionConfig|’s [=auction config/scoring dependency count=].
   1. Return |additionalBids|.
 </div>
 
 <div algorithm>
 To <dfn>decode an additional bid</dfn> given a [=map=] |parsedAdditionalBid|, an [=auction config=]
 |auctionConfig|, and an [=auction config=]-or-null |topLevelAuctionConfig|:
-
-   1. Return faliure if any of the following conditions hold:
+    1. Let |result| be a new [=additional bid=].
+    1. Return faliure if any of the following conditions hold:
       * |parsedAdditionalBid|["auctionNonce"] does not [=map/exist=];
       * |parsedAdditionalBid|["auctionNonce"] is not |auctionConfig|'s [=auction config/auction nonce=];
       * |parsedAdditionalBid|["seller"] does not [=map/exist=];
@@ -1512,6 +1574,7 @@ To <dfn>decode an additional bid</dfn> given a [=map=] |parsedAdditionalBid|, an
     1. Return failure if any of the following conditions hold:
       * |igOwner| is failure;
       * |igOwner|'s [=origin/scheme=] is not "`https`";
+      * |auctionConfig|'s [=auction config/interest group buyers=] does not [=list/contain=] |igOwner|;
       * |igBiddingUrl| is failure;
       * |igOwner| is not [=same origin=] with |igBiddingUrl|.
     1. Let |ig| be a new [=interest group=] with the following properties:
@@ -1559,7 +1622,6 @@ To <dfn>decode an additional bid</dfn> given a [=map=] |parsedAdditionalBid|, an
           |componentUrl|.
         1. [=list/Append=] |componentDescriptor| to |adComponents|.
       1. Set |ig|'s [=interest group/ad components=] to |adComponents|.
-    1. Let |result| be a new [=additional bid=].
     1. If |parsedAdditionalBid|["negativeInterestGroup"] [=map/exists=]:
       1. If |parsedAdditionalBid|["negativeInterestGroups"] [=map/exists=], or
         |parsedAdditionalBid|["negativeInterestGroup"] is not a [=string=], then return failure.
@@ -1799,7 +1861,7 @@ The <dfn http-header><code>Ad-Auction-Allowed</code></dfn> HTTP response header 
 
 <div algorithm>
 To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, failure, or a
-[=byte sequence=]|responseBody|, and a [=string=] |mimeType|:
+[=byte sequence=] |responseBody|, and a [=string=] |mimeType|:
 
   1. If |responseBody| is null or failure, return false.
   1. If [=header list/getting a structured field value|getting=] [:Ad-Auction-Allowed:] and
@@ -2562,15 +2624,15 @@ of the following global objects:
       |functionName|, |argumentsJS|, and 50 milliseconds.
     1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null ».
     1. Let |resultJSON| be "null".
-    1. If |functionName| is "`reportResult`" or "`reportAdditionalBidResult`", then set |resultJSON|
-      to the result of [=serializing a JavaScript value to a JSON string=] given |result|.
+    1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
+      [=serializing a JavaScript value to a JSON string=] given |result|.
 
       Note: Consider a return value that can't be converted to JSON a valid result, so if an
       exception was [=exception/thrown=] in the previous step, keep |resultJSON| as "null".
     1. Let |reportURL| be |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=]
     1. If |reportURL| is failure, set |reportURL| to null.
     1. Let |macroMap| be |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting macro map=]
-      if |functionName| is "`reportWin`", null otherwise.
+      if |functionName| is "`reportWin`" or "`reportContextualWin`", null otherwise.
     1. Return « |resultJSON|, |reportURL|,
        |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap| ».
 </div>
@@ -3397,7 +3459,7 @@ An interest group is a [=struct=] with the following [=struct/items=]:
   can be used to construct ads composed of multiple pieces — a top-level ad template "container"
   which includes some slots that can be filled in with specific "products".
 : <dfn>additional bid key</dfn>
-:: Null or a [=byte sequence=]. Must be null if [=interest group/ads=] is not null. The
+:: Null or a [=byte sequence=] of length 32. Must be null if [=interest group/ads=] is not null. The
   Ed25519 public key (a 256-bit EdDSA public key) used to guarantee that this [=interest group=],
   if used by an additional bid for a negative targeting, can only be used by its
   [=interest group/owner=].
@@ -3605,6 +3667,17 @@ An auction config is a [=struct=] with the following items:
 
 </dl>
 
+A <dfn>signed additional bid signature</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="signed additional bid signature">
+: <dfn>key</dfn>
+:: A [=byte sequence=] of length 32.
+: <dfn>signature</dfn>
+:: A [=byte sequence=] of length 64.
+
+</dl>
+SignedAdditionalBidSignature 
+
 An <dfn>additional bid</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="additional bid">
@@ -3727,7 +3800,7 @@ response headers.
 :: An [=ad descriptor=]. Render URL and size of the bid's ad.
 : <dfn>ad component descriptors</dfn>
 :: Null or a [=list=] of [=ad descriptors=]. Ad components associated with bid, if any. May have at
-  most 20 elements. Must be null if the interest group making this bid has a null
+  most 20 [=list/items=]. Must be null if the interest group making this bid has a null
   [=interest group/ad components=] field.
 : <dfn>ad cost</dfn>
 :: Null or a {{double}}. Advertiser click or conversion cost passed from `generateBid()` to
