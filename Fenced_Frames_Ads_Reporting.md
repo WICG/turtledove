@@ -47,7 +47,7 @@ The following new APIs will be added for achieving this.
 
 ## reportEvent (preregistered destination URL)
 
-There are two variants of the `reportEvent` API that are invoked with different sets of parameters. In the first variant, fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon with event data to a URL registered by the worklet in `registerAdBeacon` (see below). Depending on the declared `destination`, the beacon is sent to either the buyer's or the seller's registered URL. Examples of such events are mouse hovers, clicks (which may or may not lead to navigation e.g. video player control element clicks), etc.
+There are two variants of the `reportEvent` API for event-level reporting that are invoked with different sets of parameters. In the first variant, fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon with event data to a URL registered by the worklet in `registerAdBeacon` (see below). Depending on the declared `destination`, the beacon is sent to either the buyer's or the seller's registered URL. Examples of such events are mouse hovers, clicks (which may or may not lead to navigation e.g. video player control element clicks), etc.
 
 This API is available from all documents in a fenced frame that are same-origin to the mapped URL of the fenced frame config (i.e., the ad creative URL that won the Protected Audience auction).
 
