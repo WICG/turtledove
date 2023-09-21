@@ -112,6 +112,7 @@ const myGroup = {
   'userBiddingSignals': {...},
   'ads': [shoesAd1, shoesAd2, shoesAd3],
   'adComponents': [runningShoes1, runningShoes2, gymShoes, gymTrainers1, gymTrainers2],
+  'auctionServerRequestFlags': ['omit-ads'],
 };
 const joinPromise = navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
 ```
