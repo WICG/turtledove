@@ -195,7 +195,14 @@ The `ads` list contains the various ads that the interest group might show.  Eac
 
 The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similar to the `ads` field, each entry is an object that includes a `renderURL` and optional `adRenderId`, and `metadata` fields. Thanks to `ads` and `adComponents` being separate fields, the buyer is able to update the `ads` field via the `updateURL` without losing `adComponents` stored in the interest group.
 
-The `auctionServerRequestFlags` field is only used for auctions run on an auction server. This field contains a list of enumerated values that change what data is sent in the auction blob. The `omit-ads` enumeration causes the request to omit the `ads` and `adComponents` fields for this interest group from the auction blob. The `include-full-ads` enumeration causes the request to include the full ad object in place of anywhere in the request where a plain `adRenderId` would have been sent (such as in the `ads` and `adComponents` fields as well as `prevWins`). Note that `include-full-ads` is not compatible with the auction server, so this mode is only for debugging.
+The `auctionServerRequestFlags` field is optional and is only used for auctions [run on an auction server](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
+This field contains a list of enumerated values that change what data is sent in the auction blob:
+ * The `omit-ads` enumeration causes the request to omit the `ads` and `adComponents` fields for
+his interest group from the auction blob.
+  * The `include-full-ads` enumeration causes the request to include the full ad object in place of
+anywhere in the request where a plain `adRenderId` would have been sent (such as in the `ads`
+and `adComponents` fields as well as `prevWins`). Note that `include-full-ads` is not compatible
+with the auction server, so this mode is only for debugging.
 
 All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
