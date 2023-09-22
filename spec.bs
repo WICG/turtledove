@@ -1158,17 +1158,14 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |bidGenerators| be the result of running [=build bid generators map=] with |auctionConfig|.
 1. Let |leadingBidInfo| be a new [=leading bid info=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
-1. Let |capturedAuctionHeaders| be [=this=]'s [=relevant global object=]'s [=associated Document's=]
-  [=node navigable's=] [=traversable navigable's=] [=captured ad auction headers=].
+1. Let |capturedAuctionHeaders| be |global|'s [=associated Document's=] [=node navigable's=]
+  [=traversable navigable's=] [=captured ad auction headers=].
 1. If |auctionConfig|'s [=auction config/component auctions=] are not [=list/is empty|empty=]:
   1. [=Assert=] |topLevelAuctionConfig| is null.
-  1. Let « ignored, |topLevelDirectFromSellerSignalsForSeller| » be the
-    result of running [=get direct from seller signals=] with |auctionConfig|'s
-    [=auction config/expects direct from seller signals header ad slot=], |auctionConfig|'s
-    [=auction config/seller=], |auctionConfig|'s
-    [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
   1. Let |pendingComponentAuctions| be the [=list/size=] of |auctionConfig|'s
     [=auction config/component auctions=].
+  1. Let |topLevelDirectFromSellerSignalsForSeller| be null.
+  1. Let |topLevelDirectFromSellerSignalsRetrieved| be false.
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinner| be the result of running [=generate and score bids=] with |component|,
@@ -1176,6 +1173,13 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. If |compWinner| is failure, return failure.
     1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns
       failure, return failure.
+    1. If |topLevelDirectFromSellerSignalsRetrieved| if false:
+      1. Let « ignored, |topLevelDirectFromSellerSignalsForSeller| » be the
+        result of running [=get direct from seller signals=] with |auctionConfig|'s
+        [=auction config/expects direct from seller signals header ad slot=], |auctionConfig|'s
+        [=auction config/seller=], |auctionConfig|'s
+        [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
+      1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
         |decisionLogicScript|, |topLevelDirectFromSellerSignalsForSeller|, null, "top-level-auction",
@@ -1853,7 +1857,7 @@ To <dfn>round a value</dfn> given a {{double}} |value|:
 <div algorithm>
 To <dfn>get direct from seller signals</dfn> given a [=boolean=] |expectHeaderAdSlot|, an [=origin=]
 |seller|, a [=string=] |adSlot|, and a [=map=] |capturedAuctionHeaders|:
-  1. If |expectHeaderAdSlot| is false, return null.
+  1. If |expectHeaderAdSlot| is false, return « null, null ».
   1. Let |directFromSellerSignals| be null.
   1. Let |directFromSellerSignalsKey| be a new [=direct from seller signals key=] with its
     [=direct from seller signals key/seller=] set to |seller|, and
