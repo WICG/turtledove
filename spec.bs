@@ -979,13 +979,13 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. If |config|["{{AuctionAdConfig/componentAuctions}}"]'s [=list/size=] is greater than 0, or
     |config|["{{AuctionAdConfig/auctionNonce}}"] does not [=map/exist=], [=exception/throw=] a
     {{TypeError}}.
-  1. Set |auctionConfig|'s [=auction config/expects additional bids=] to true.
+  1. Set |auctionConfig|'s [=auction config/expects additional bids=] to null.
   1. [=Handle an input promise in configuration=] given |auctionConfig| and
     |config|["{{AuctionAdConfig/additionalBids}}"]:
     * To parse the value |result|:
-      1. Nothing to do.
-    * To handle an error: (TODO: check if this is correct when the promise is rejected.)
-      1. Set |auctionConfig|'s [=auction config/expects additional bids=] to false.
+      1. Set |auctionConfig|'s [=auction config/expects additional bids=] to true.
+    * To handle an error:
+      1. Set |auctionConfig|'s [=auction config/expects additional bids=] to failure.
 1. If |config|["{{AuctionAdConfig/directFromSellerSignals}}"] [=map/exists=]:
   1. TODO: The receiving end of this isn't specified yet, so there is no place to put the computed value.
   1. [=Handle an input promise in configuration=] given |auctionConfig| and
@@ -1303,7 +1303,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. If |auctionConfig|'s [=auction config/expects additional bids=] is true:
   1. Set |additionalBids| to the result of running [=validate and convert additional bids=] with
     |auctionConfig|, |topLevelAuctionConfig| and |negativeTargetInfo|.
-  1. Set |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
+  1. Set |pendingAdditionalBids| to the [=list/size=] of |additionalBids|.
   1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
     1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
       |decisionLogicScript|, null, |auctionLevel|, |componentAuctionExpectedCurrency|, and
@@ -1457,7 +1457,7 @@ are [=tuples=] consisting of an [=origin=] and a [=byte sequence=]:
     [=associated Document's=] [=node navigable's=] [=traversable navigable's=]
     [=captured additional bids headers=].
   1. Let |additionalBids| be a new [=list=] of [=additional bids=].
-  1. [=list/For each] |encodedSignedAdditionalBid| of |capturedAdditionalBidsHeaders|[|auctionNonce|]:
+  1. [=list/For each=] |encodedSignedAdditionalBid| of |capturedAdditionalBidsHeaders|[|auctionNonce|]:
     1. Let |signedAdditionalBid| be the result of running [=forgiving-base64 decode=] with
       |encodedSignedAdditionalBid|.
     1. If |signedAdditionalBid| is failure, then [=iteration/continue=].
@@ -3650,7 +3650,7 @@ An auction config is a [=struct=] with the following items:
   everything. It includes waiting for {{Promise}}s [=auction config/auction signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
   [=auction config/per buyer timeouts=], directFromSellerSignals, [=auction config/seller signals=]
-  to resolve, waiting for additional bids to parse.
+  to resolve, and waiting for additional bids to parse.
 : <dfn>config idl</dfn>
 :: {{AuctionAdConfig}}.
 : <dfn>resolve to config</dfn>
@@ -3675,7 +3675,13 @@ An auction config is a [=struct=] with the following items:
   provide additional bids, and each of those additional bids must use the same auction nonce to
   ensure that each of those additional bids was intended for this and only this auction.
 : <dfn>expects additional bids</dfn>
-:: A [=boolean=], initially false. Specifies that some bids will be provided as signed exchanges.
+:: Null, a [=boolean=] or failure, initially false.
+  Specifies whether some bids will be provided as signed exchanges, and whether additional bid
+  headers are available now.
+  False if {{AuctionAdConfig/additionalBids}} does not [=map/exists=].
+  Null if {{AuctionAdConfig/additionalBids}} [=map/exists=] but has not been [=resolved=] yet.
+  True if {{AuctionAdConfig/additionalBids}} is [=resolved=].
+  Failure if {{AuctionAdConfig/additionalBids}} is [=rejected=].
 
 </dl>
 
@@ -3688,7 +3694,6 @@ A <dfn>signed additional bid signature</dfn> is a [=struct=] with the following 
 :: A [=byte sequence=] of length 64.
 
 </dl>
-SignedAdditionalBidSignature 
 
 An <dfn>additional bid</dfn> is a [=struct=] with the following [=struct/items=]:
 
@@ -3713,9 +3718,11 @@ To <dfn>wait until scoring dependency done</dfn> given an [=auction config=] |au
 1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=], and
   [=auction config/per buyer timeouts=] are not {{Promise}}s.
+1. [=Assert=] |auctionConfig|'s [=auction config/expects additional bids=] is not null.
 1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
-  [=auction config/per buyer signals=], [=auction config/per buyer currencies=] or
-  [=auction config/per buyer timeouts=] is failure, return failure.
+  [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
+  [=auction config/per buyer timeouts=], or [=auction config/expects additional bids=] is failure,
+  return failure.
 1. TODO: the above two steps should also check directFromSellerSignals once something handles it.
 
 </div>
