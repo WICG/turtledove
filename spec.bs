@@ -26,6 +26,10 @@ urlPrefix: https://fetch.spec.whatwg.org/; spec: Fetch
     text: task destination; for: fetch params; url: fetch-params-task-destination
 urlPrefix: https://www.ietf.org/rfc/rfc4122.txt
   type: dfn; text: urn uuid
+urlPrefix: https://github.com/WICG/turtledove/blob/main/FLEDGE_k_anonymity_server.md
+  type: dfn; text: k-anonymity; url: what-is-k-anonymity
+urlPrefix: https://developer.chrome.com/en/docs/privacy-sandbox/glossary/
+  type: dfn; text: ad creative; url: ad-creative
 spec: RFC6234; urlPrefix: https://www.ietf.org/rfc/rfc6234.txt
   type: dfn; text: SHA-256
 spec: html; urlPrefix: https://html.spec.whatwg.org/C
@@ -67,6 +71,22 @@ spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
 </pre>
 
 <style>
+/* Put nice boxes around each algorithm. */
+[data-algorithm]:not(.heading) {
+  padding: .5em;
+  border: thin solid #ddd; border-radius: .5em;
+  margin: .5em calc(-0.5em - 1px);
+}
+[data-algorithm]:not(.heading) > :first-child {
+  margin-top: 0;
+}
+[data-algorithm]:not(.heading) > :last-child {
+  margin-bottom: 0;
+}
+[data-algorithm] [data-algorithm] {
+  margin: 1em 0;
+}
+
 /* domintro from https://resources.whatwg.org/standard.css */
 .domintro {
   position: relative;
@@ -1992,17 +2012,17 @@ and a {{ReportingBrowserSignals}} |browserSignals|:
 
 # K-anonymity # {#k-anonymity}
 
-Two goals of this specification rely on applying k-anonymity thresholds:
+Two goals of this specification rely on applying [=k-anonymity=] thresholds:
 
   * To prevent cross-site leaks:  Inputs to event-level reporting functions, `reportWin()` and
     `reportResult()`, only contain limited cross-site information. As described in
     [[#privacy-considerations]], part of this limiting is done by
-    applying k-anonymity requirements to the ad URLs.
-  * To prevent microtargeting:  The browser applies k-anonymity requirements on the ad URLs to
+    applying [=k-anonymity=] requirements to the ad URLs.
+  * To prevent microtargeting:  The browser applies [=k-anonymity=] requirements on the ad URLs to
     ensure that the same ad or ad component is being shown to at least some minimum number of
     people.
 
-The browser enforces these k-anonymity requirements by maintaining counts of how many times each
+The browser enforces these [=k-anonymity=] requirements by maintaining counts of how many times each
 ad and ad component has been shown to users. These counts are maintained across users, so the counting must
 be done on a central <dfn>k-anonymity server</dfn>. This specification relies on two operations to query and
 increment the counts: [=query k-anonymity count=] and [=increment k-anonymity count=].
@@ -2015,8 +2035,8 @@ through an HTTP proxy that prevents the server from seeing the browsers' IP addr
 The browser should choose a <dfn>k-anonymity threshold</dfn>, otherwise known as the value for "k",
 and a <dfn>k-anonymity duration</dfn> depending
 on the projected sizes of interest groups and the browser's privacy goals. For example an implementation
-might choose to require a k-anonymity threshold of fifty users over a seven day period. The server
-will maintain the count over the chosen duration and compare the count to the chosen k-anonymity
+might choose to require a [=k-anonymity=] threshold of fifty users over a seven day period. The server
+will maintain the count over the chosen duration and compare the count to the chosen [=k-anonymity=]
 threshold when responding to [=query k-anonymity count=].
 
 <div algorithm>
@@ -3189,7 +3209,7 @@ dictionary ReportingBrowserSignals {
   <dt>{{ReportingBrowserSignals/componentSeller}}
   <dd>Copied from [=leading bid info/component seller=]
   <dt>{{ReportingBrowserSignals/buyerAndSellerReportingId}}
-  <dd>Set if the winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its listing in the interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with interest group owner, bidding script URL, and ad creative URL.
+  <dd>Set if the winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its listing in the interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with interest group owner, bidding script URL, and [=ad creative=] URL.
 </dl>
 
 <xmp class="idl">
@@ -3240,10 +3260,10 @@ dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
   <dd>Set if the winning ad had a [=interest group ad/buyer reporting ID=] but not a
     [=interest group ad/buyer and seller reporting ID=] set in its listing in the interest group,
     and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
-    interest group owner, bidding script URL, and ad creative URL.
+    interest group owner, bidding script URL, and [=ad creative=] URL.
 
   <dt>{{ReportWinBrowserSignals/interestGroupName}}
-  <dd>Only set if the tuple of interest group owner, name, bidding script URL and ad creative URL
+  <dd>Only set if the tuple of interest group owner, name, bidding script URL and [=ad creative=] URL
 
     were [=query reporting ID k-anonymity count|jointly k-anonymous=], and the
     winning ad had neither [=interest group ad/buyer and seller reporting ID=]
@@ -3360,12 +3380,12 @@ An interest group ad is a [=struct=] with the following [=struct/items=]:
 :: Null or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
 : <dfn>buyer reporting ID</dfn>
 :: Null or a [=string=]. Will be passed in place of interest group name to [=report win=], subject
-  to k-anonymity checks. Only meaningful in [=interest group/ads=], but ignored in
+  to [=k-anonymity=] checks. Only meaningful in [=interest group/ads=], but ignored in
   [=interest group/ad components=].
 : <dfn>buyer and seller reporting ID</dfn>
 :: Null or a [=string=]. Will be passed in place of interest group name or
   [=interest group ad/buyer reporting ID=] to [=report win=] and [=report result=], subject to
-  k-anonymity checks. Only meaningful in [=interest group/ads=], but ignored in
+  [=k-anonymity=] checks. Only meaningful in [=interest group/ads=], but ignored in
   [=interest group/ad components=].
 : <dfn>allowed reporting origins</dfn>
 :: Null or a [=list=] of [=origins=]. A list of up to 10 reporting origins that can receive reports
@@ -3420,7 +3440,7 @@ An auction config is a [=struct=] with the following items:
   </p>
 : <dfn>trusted scoring signals url</dfn>
 :: Null or a [=URL=].
-  Provide a mechanism for making real-time data (information about a specific creative) available
+  Provide a mechanism for making real-time data (information about a specific [=ad creative=]) available
   for use at scoring time, e.g. the results of some ad scanning system.
   <p class="note">
     When non-null, the [=auction config/trusted scoring signals url=]'s [=origin=] will always be
@@ -3650,7 +3670,7 @@ The render URL and size of an ad.
 
 <dl dfn-for="ad descriptor">
 : <dfn>url</dfn>
-:: A [=URL=], which will be rendered to display the creative if this bid wins the auction.
+:: A [=URL=], which will be rendered to display the [=ad creative=] if this bid wins the auction.
 : <dfn>size</dfn>
 :: Null or an [=ad size=], initially null.
 
