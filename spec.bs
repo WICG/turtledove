@@ -999,13 +999,16 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. If |config|["{{AuctionAdConfig/componentAuctions}}"]'s [=list/size=] is greater than 0, or
     |config|["{{AuctionAdConfig/auctionNonce}}"] does not [=map/exist=], [=exception/throw=] a
     {{TypeError}}.
-  1. Set |auctionConfig|'s [=auction config/expects additional bids=] to null.
   1. [=Handle an input promise in configuration=] given |auctionConfig| and
     |config|["{{AuctionAdConfig/additionalBids}}"]:
     * To parse the value |result|:
       1. Set |auctionConfig|'s [=auction config/expects additional bids=] to true.
+      1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/additionalBids}}"]
+        to {{undefined}}.
     * To handle an error:
       1. Set |auctionConfig|'s [=auction config/expects additional bids=] to failure.
+      1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/additionalBids}}"]
+        to {{undefined}}.
 1. If |config|["{{AuctionAdConfig/directFromSellerSignals}}"] [=map/exists=]:
   1. TODO: The receiving end of this isn't specified yet, so there is no place to put the computed value.
   1. [=Handle an input promise in configuration=] given |auctionConfig| and
@@ -3695,13 +3698,9 @@ An auction config is a [=struct=] with the following items:
   provide additional bids, and each of those additional bids must use the same auction nonce to
   ensure that each of those additional bids was intended for this and only this auction.
 : <dfn>expects additional bids</dfn>
-:: Null, a [=boolean=] or failure, initially false.
-  Specifies whether some bids will be provided as signed exchanges, and whether additional bid
-  headers are available now.
-  False if {{AuctionAdConfig/additionalBids}} does not [=map/exists=].
-  Null if {{AuctionAdConfig/additionalBids}} [=map/exists=] but has not been [=resolved=] yet.
-  True if {{AuctionAdConfig/additionalBids}} is [=resolved=].
-  Failure if {{AuctionAdConfig/additionalBids}} is [=rejected=].
+:: A [=boolean=] or failure, initially false.
+  Specifies whether some bids will be provided as signed exchanges. Sets to failure if the
+  {{AuctionAdConfig/additionalBids}} {{Promise}} is [=rejected=].
 
 </dl>
 
@@ -3736,9 +3735,9 @@ for encoded additional bids.
 To <dfn>wait until scoring dependency done</dfn> given an [=auction config=] |auctionConfig|:
 1. Wait until |auctionConfig|'s [=auction config/scoring dependency count=] is 0.
 1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
-  [=auction config/per buyer signals=], [=auction config/per buyer currencies=], and
-  [=auction config/per buyer timeouts=] are not {{Promise}}s.
-1. [=Assert=] |auctionConfig|'s [=auction config/expects additional bids=] is not null.
+  [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
+  [=auction config/per buyer timeouts=], and
+  [=auction config/config idl=]["{{AuctionAdConfig/additionalBids}}"] are not {{Promise}}s.
 1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
   [=auction config/per buyer timeouts=], or [=auction config/expects additional bids=] is failure,
