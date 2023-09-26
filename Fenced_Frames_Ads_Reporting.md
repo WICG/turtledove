@@ -229,7 +229,7 @@ For fenced frames rendering the ad components under the top-level ad fenced fram
 * Invocation of the `reportEvent` API from an ad component fenced frame is disallowed.
 * The only supported beacon to be sent from an ad component fenced frame is the `reserved.top_navigation` automatic beacon. Note this beacon is gated on a user activation (e.g. click).
 * To ensure that there is no arbitrary data that can be received at the server from the component ad, the `eventData` field via `window.fence.setReportEventDataForAutomaticBeacons`, if specified, will be ignored. This ensures that information from the component ad URL is not revealed in the event report, or else it could lead to the join of two independently k-anonymous URLs (parent and component ad) at the receiving server.
-* To send the beacon from a component fenced frame, `window.fence.setReportEventDataForAutomaticBeacons` must be invoked within the ad component fenced frame with `eventType` set to `'reserved.top_navigation'`. The beacon will be sent when there is a user activation (e.g. click) on the ad component fenced frame, which results in a top-level navigation.
+* `reserved.top_navigation` beacons will be sent from a component fenced frame (with no event data) when there is a user activation (e.g. click) on the ad component fenced frame, which results in a top-level navigation. Invoking `setReportEventDataForAutomaticBeacons` from a component fenced frame will have no effect.
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
