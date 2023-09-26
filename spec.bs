@@ -215,8 +215,7 @@ This is detectable because it can change the set of fields that are read from th
 1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s [=environment settings object/origin=].
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
 1. Let |interestGroup| be a new [=interest group=].
-1. Validate the given |group| and set |interestGroup|'s fields accordingly. If an [=exception=] is
-  [=exception/thrown=], return [=a new promise=].
+1. Validate the given |group| and set |interestGroup|'s fields accordingly.
   1. Set |interestGroup|'s [=interest group/expiry=] to the [=current wall time=] plus
     |group|["{{GenerateBidInterestGroup/lifetimeMs}}"] milliseconds.
   1. Set |interestGroup|'s [=interest group/next update after=] to the [=current wall time=] plus 24
@@ -542,8 +541,9 @@ bid in the auction for the chance to display their advertisement.
 <h3 id="createauctionnonce">createAuctionNonce()</h3>
 
 {{Window/navigator}}.{{Navigator/createAuctionNonce()}} creates an auction nonce, a one-time ID
-uniquely associated with a single call to {{Window/navigator}}.{{Navigator/runAdAuction()}}. This
-nonce will need to be passed back in via a subsequent call to
+uniquely associated with a single call to {{Window/navigator}}.{{Navigator/runAdAuction()}}. For
+multi-seller auctions, this ID is uniquely associated with all {{AuctionAdConfig/componentAuctions}}.
+This nonce will need to be passed back in via a subsequent call to
 {{Window/navigator}}.{{Navigator/runAdAuction()}} via the {{AuctionAdConfig}}. This is currently
 only needed for auctions that use additional bids, for which the auction nonce will be included in
 each additional bid as a way of ensuring that those bids are only used in the auctions for which
@@ -1275,7 +1275,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. Let |compWinner| be the result of running [=generate and score bids=] with |component|,
       |auctionConfig|, |global|, and |settings|.
     1. If |compWinner| is failure, return failure.
-    1. If [=recursively wait until scoring dependency done=] given |auctionConfig| returns failure,
+    1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns failure,
       return failure.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
@@ -1300,7 +1300,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, and |reportResultBrowserSignals|.
   1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 
-1. If [=waiting until scoring dependency done=] given |auctionConfig| returns failure, return failure.
+1. If [=waiting until configuration input promises resolve=] given |auctionConfig| returns failure, return failure.
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
 1. Let |allBuyersGroupLimit| be |auctionConfig|'s
@@ -1487,11 +1487,8 @@ are [=tuples=] consisting of an [=origin=] and a [=byte sequence=]:
     1. If |signedAdditionalBid| is failure, then [=iteration/continue=].
     1. Let |additionalBid| be the result of running [=parse a signed additional bid=] given
       |signedAdditionalBid|, |auctionConfig|, |topLevelAuctionConfig|, and |negativeTargetInfo|. 
-    1. If |additionalBid| is null:
-      1. Decrement |auctionConfig|’s [=auction config/scoring dependency count=], and
-        [=iteration/continue=].
-    1. [=list/Append=] |additionalBid| to |additionalBids|.
-    1. Decrement |auctionConfig|’s [=auction config/scoring dependency count=].
+    1. If |additionalBid| is not null:
+      1. [=list/Append=] |additionalBid| to |additionalBids|.
   1. Return |additionalBids|.
 </div>
 
@@ -1501,7 +1498,6 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
 [=map=] |negativeTargetInfo| whose [=map/keys=] are [=tuples=] consisting of an [=origin=] and a
 [=string=], and whose [=map/values=] are [=tuples=] consisting of an [=origin=] and a [=byte sequence=]:
 
-  1. Increment |auctionConfig|’s [=auction config/scoring dependency count=].
   1. Let |parsedSignedAdditionalBid| be the result of [=parse a JSON string to an infra value=]
     with |signedAdditionalBid|.
   1. Return null if any of the following conditions hold:
@@ -1553,6 +1549,12 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
             1. If |joiningOrigin| is not [=same origin=] with |additionalBid|'s
               [=additional bid/negative target joining origin=], then [=iteration/continue=].
           1. Set |negativeTargeted| to true, and [=iteration/break=].
+
+     Note: If the signature doesn't verify successfully, the additional bid proceeds as if the
+        negative interest group is not present. This ensures that only the owner of the negative
+        interest group, who created the additonalBidKey, is allowed to negatively target the
+        interest group, and that nobody else can learn whether the interest group is present on
+        the device.
   1. If |negativeTargeted| is true:
     1. Return null.
   1. Return |decodedAdditionalBid|.
@@ -3232,9 +3234,9 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
         1. Let |decodedKey| be the result of running [=forgiving-base64 decode=] with |value|.
         1. Jump to the step labeled <i><a href=#abort-update>Abort update</a></i> if any of the
           following conditions hold:
-            * |decodedKey| is a failure
-            * |decodedKey|'s [=byte sequence/length=] is not 32
-            * |parsedUpdate|["`ads`"] [=map/exists=]
+            * |decodedKey| is a failure;
+            * |decodedKey|'s [=byte sequence/length=] is not 32;
+            * |parsedUpdate|["`ads`"] [=map/exists=].
         1. Set |ig|'s [=interest group/additional bid key=] to |decodedKey|.
 
         </dl>
@@ -3669,12 +3671,12 @@ An auction config is a [=struct=] with the following items:
 :: Null or an {{unsigned short}}, initially null.
   Optional identifier for an experiment group to support coordinated experiments with buyers'
   trusted servers for buyers without a specified experiment group.
-: <dfn>scoring dependency count</dfn>
+: <dfn>pending promise count</dfn>
 :: An integer, initially 0. The number of things that are pending that are needed to score
   everything. It includes waiting for {{Promise}}s [=auction config/auction signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-  [=auction config/per buyer timeouts=], directFromSellerSignals, [=auction config/seller signals=]
-  to resolve, and waiting for additional bids to parse.
+  [=auction config/per buyer timeouts=], directFromSellerSignals, [=auction config/seller signals=],
+  and [=auction config/config idl=]["{{AuctionAdConfig/additionalBids}}"] to resolve.
 : <dfn>config idl</dfn>
 :: {{AuctionAdConfig}}.
 : <dfn>resolve to config</dfn>
@@ -3694,10 +3696,12 @@ An auction config is a [=struct=] with the following items:
 : <dfn>auction nonce</dfn>
 :: Null or a [=string=], initially null.
   A unique identifier associated with this and only this invocation of
-  {{Window/navigator}}.{{Navigator/runAdAuction()}}. This must come from a prior call to
-  {{Window/navigator}}.{{Navigator/createAuctionNonce()}}. This is only required for auctions that
-  provide additional bids, and each of those additional bids must use the same auction nonce to
-  ensure that each of those additional bids was intended for this and only this auction.
+  {{Window/navigator}}.{{Navigator/runAdAuction()}}. For
+  multi-seller auctions, this ID is uniquely associated with all {{AuctionAdConfig/componentAuctions}}.
+  This must come from a prior call to {{Window/navigator}}.{{Navigator/createAuctionNonce()}}. This
+  is only required for auctions that provide additional bids, and each of those additional bids must
+  use the same auction nonce to ensure that each of those additional bids was intended for this and
+  only this auction.
 : <dfn>expects additional bids</dfn>
 :: A [=boolean=] or failure, initially false.
   Specifies whether some bids will be provided as signed exchanges. Sets to failure if the
@@ -3733,8 +3737,8 @@ whose [=map/keys=] are [=strings=] for auction nonces, and whose values are [=li
 for encoded additional bids.
 
 <div algorithm>
-To <dfn>wait until scoring dependency done</dfn> given an [=auction config=] |auctionConfig|:
-1. Wait until |auctionConfig|'s [=auction config/scoring dependency count=] is 0.
+To <dfn>wait until configuration input promises resolve</dfn> given an [=auction config=] |auctionConfig|:
+1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
 1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
   [=auction config/per buyer timeouts=], and
@@ -3748,26 +3752,27 @@ To <dfn>wait until scoring dependency done</dfn> given an [=auction config=] |au
 </div>
 
 <div algorithm>
-To <dfn>recursively wait until scoring dependency done</dfn> given an [=auction config=] |auctionConfig|:
+To <dfn>recursively wait until configuration input promises resolve</dfn> given an [=auction config=]
+|auctionConfig|:
 1. [=list/For each=] |componentAuctionConfig| in |auctionConfig|'s [=auction config/component auctions=]:
-  1. If the result of [=waiting until scoring dependency done=] given |componentAuctionConfig| is
+  1. If the result of [=waiting until configuration input promises resolve=] given |componentAuctionConfig| is
     failure, return failure.
-1. Return the result of [=waiting until scoring dependency done=] given |auctionConfig|.
+1. Return the result of [=waiting until configuration input promises resolve=] given |auctionConfig|.
 
 </div>
 
 <div algorithm>
 To <dfn>handle an input promise in configuration</dfn> given an [=auction config=] |auctionConfig|,
 a {{Promise}} |p|, and two sequences of steps, covering the parsing of the value and error-handling:
-1. Increment |auctionConfig|'s [=auction config/scoring dependency count=].
+1. Increment |auctionConfig|'s [=auction config/pending promise count=].
 1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps
   [=upon fulfillment=] of |p| with |result|:
   1. Execute the steps to be run for parsing of the value given |result|.
   1. If no exception was [=exception/thrown=] in the previous step:
-    1. Decrement |auctionConfig|'s [=auction config/scoring dependency count=].
+    1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
 1. [=Upon rejection=] of |resolvedAndTypeChecked|:
   1. Execute the steps for error-handling.
-  1. Decrement |auctionConfig|'s [=auction config/scoring dependency count=].
+  1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
 
 </div>
 
