@@ -1194,11 +1194,13 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns
       failure, return failure.
     1. If |topLevelDirectFromSellerSignalsRetrieved| if false:
-      1. Let « ignored, |topLevelDirectFromSellerSignalsForSeller| » be the
-        result of running [=get direct from seller signals=] with |auctionConfig|'s
+      1. Let |topLevelDirectFromSellerSignals| be the result of running
+        [=get direct from seller signals=] given |auctionConfig|'s
         [=auction config/expects direct from seller signals header ad slot=], |auctionConfig|'s
         [=auction config/seller=], |auctionConfig|'s
         [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
+      1. Let |topLevelDirectFromSellerSignalsForSeller| be the return of running
+        [=get direct from seller signals for a seller=] given |topLevelDirectFromSellerSignals|.
       1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
     1. If |compWinner| is not null:
       1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
@@ -1220,11 +1222,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     [=auction config/seller=].
   1. Set |leadingBidInfo|'s [=leading bid info/top level seller signals=] to
     |topLevelSellerSignals|.
-  1. Let « |directFromSellerSignals|, |directFromSellerSignalsForSeller| »  be the result of running
-    [=get direct from seller signals=] with |winningComponentConfig|'s
-    [=auction config/expects direct from seller signals header ad slot=], |winningComponentConfig|'s
-    [=auction config/seller=], |winningComponentConfig|'s
+  1. Let |directFromSellerSignals| be the result of running [=get direct from seller signals=] given
+    |winningComponentConfig|'s [=auction config/expects direct from seller signals header ad slot=],
+    |winningComponentConfig|'s [=auction config/seller=], |winningComponentConfig|'s
     [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
+  1. Let |directFromSellerSignalsForSeller| be the result of running
+    [=get direct from seller signals for a seller=] given |directFromSellerSignals|.
   1. Let |directFromSellerSignalsForBuyer| be the result of running
     [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and
     |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/interest group=]'s
@@ -1240,11 +1243,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   [=auction config/all buyer experiment group id=].
 1. Let |allBuyersGroupLimit| be |auctionConfig|'s [=auction config/all buyers group limit=].
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
-1. Let « |directFromSellerSignals|, |directFromSellerSignalsForSeller| » be the result of running
-  [=get direct from seller signals=] with |auctionConfig|'s
-  [=auction config/expects direct from seller signals header ad slot=], |auctionConfig|'s
-  [=auction config/seller=], |auctionConfig|'s
+1. Let |directFromSellerSignals| be the result of running [=get direct from seller signals=] given
+  |auctionConfig|'s [=auction config/expects direct from seller signals header ad slot=],
+  |auctionConfig|'s [=auction config/seller=], |auctionConfig|'s
   [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
+1. Let |directFromSellerSignalsForSeller| be the result of running
+  [=get direct from seller signals for a seller=] given |directFromSellerSignals|.
 1. Let |browserSignals| be a {{BiddingBrowserSignals}}.
 1. Let |topLevelHost| be the result of running the <a spec=url>host serializer</a> on [=this=]'s
   [=relevant settings object=]'s [=environment/top-level origin=]'s [=origin/host=].
@@ -1877,28 +1881,35 @@ To <dfn>round a value</dfn> given a {{double}} |value|:
 <div algorithm>
 To <dfn>get direct from seller signals</dfn> given a [=boolean=] |expectHeaderAdSlot|, an [=origin=]
 |seller|, a [=string=] |adSlot|, and a [=map=] |capturedAuctionHeaders|:
-  1. If |expectHeaderAdSlot| is false, return « null, null ».
+
+  1. If |expectHeaderAdSlot| is false, return null.
   1. Let |directFromSellerSignals| be null.
   1. Let |directFromSellerSignalsKey| be a new [=direct from seller signals key=] with its
     [=direct from seller signals key/seller=] set to |seller|, and
     [=direct from seller signals key/ad slot=] set to |adSlot|.
   1. If |capturedAuctionHeaders|[|directFromSellerSignalsKey|] [=map/exists=]:
     1. Set |directFromSellerSignals| to |capturedAuctionHeaders|[|directFromSellerSignalsKey|].
-  1. Let |directFromSellerSignalsForSeller| be null.
-  1. If |directFromSellerSignals| is not null:
-    1. Set |directFromSellerSignalsForSeller| to a new [=direct from seller signals=] with the
-      following [=struct/items=]:
-      : [=direct from seller signals/auction signals=]
-      :: |directFromSellerSignals|'s [=direct from seller signals/auction signals=]
-      : [=direct from seller signals/seller signals=]
-      :: |directFromSellerSignals|'s [=direct from seller signals/seller signals=]
-  1. Return « |directFromSellerSignals|, |directFromSellerSignalsForSeller| ».
-
+  1. Return |directFromSellerSignals|.
 </div>
 
 <div algorithm>
-To <dfn>get direct from seller signals for a buyer</dfn> given a [=direct from seller signals=]
-|directFromSellerSignals|, and an [=origin=] |owner|:
+To <dfn>get direct from seller signals for a seller</dfn> given a
+[=direct from seller signals=]-or-null |directFromSellerSignals|:
+
+  1. If |directFromSellerSignals| is null, then return null.
+  1. Let |directFromSellerSignalsForSeller| be a new [=direct from seller signals=] with the
+    following [=struct/items=]:
+    : [=direct from seller signals/auction signals=]
+    :: |directFromSellerSignals|'s [=direct from seller signals/auction signals=]
+    : [=direct from seller signals/seller signals=]
+    :: |directFromSellerSignals|'s [=direct from seller signals/seller signals=]
+  1. Return |directFromSellerSignalsForSeller|.
+</div>
+
+<div algorithm>
+To <dfn>get direct from seller signals for a buyer</dfn> given a
+[=direct from seller signals=]-or-null |directFromSellerSignals|, and an [=origin=] |owner|:
+
   1. If |directFromSellerSignals| is null, then return null.
   1. Let |directFromSellerSignalsForBuyer| be a new [=direct from seller signals=] with the
     following [=struct/items=]:
@@ -1908,7 +1919,6 @@ To <dfn>get direct from seller signals for a buyer</dfn> given a [=direct from s
       :: |directFromSellerSignals|'s [=direct from seller signals/per buyer signals=][|owner|] if it
         [=map/exists=], null otherwise
   1. Return |directFromSellerSignalsForBuyer|.
-
 </div>
 
 <div algorithm>
