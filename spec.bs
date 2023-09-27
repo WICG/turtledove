@@ -1499,7 +1499,7 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
 [=string=], and whose [=map/values=] are [=tuples=] consisting of an [=origin=] and a [=byte sequence=]:
 
   1. Let |parsedSignedAdditionalBid| be the result of [=parse a JSON string to an infra value=]
-    with |signedAdditionalBid|.
+    given |signedAdditionalBid|.
   1. Return null if any of the following conditions hold:
     * |parsedSignedAdditionalBid| is not a [=map=];
     * |parsedSignedAdditionalBid|["bid"] does not [=map/exist=], or it's not a [=string=];
@@ -1524,7 +1524,7 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
       [=signed additional bid signature/signature=] is |maybeSignature|.
     1. [=list/Append=] |signature| to |signatures|.
   1. If |decodeSignatureFailed| is true, then return null.
-  1. Let |decodedAdditionalBid| be the result of [=decode an additional bid=] with
+  1. Let |decodedAdditionalBid| be the result of [=decode an additional bid=] given
     |parsedSignedAdditionalBid|["bid"], |auctionConfig| and |topLevelAuctionConfig|.
   1. Return null if any of the following conditions hold:
     * |decodedAdditionalBid| is failure;
@@ -1532,10 +1532,14 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
       [=additional bid/bid=]'s [=generated bid/bid=]'s [=bid with currency/currency=] and the
       result of running [=look up per-buyer currency=] with |auctionConfig|.
   1. Check whether the additional bid is negative targeted:
-    1. Let |verifiedSignatures| be a new [=ordered set=] of [=signed additional bid signatures=].
+    1. Let |verifiedSignatureKeys| be a new [=set=] of [=byte sequences=].
     1. [=list/For each=] |signature| of |signatures|:
-      1. If [=verify=] |signature| succeeded:
-        1. [=set/Append=] |signature| to |verifiedSignatures|.
+      1. Let |isSignatureValid| be the result of running [=verify=] |signature|'s
+        [=signed additional bid signature/signature=] on message |parsedSignedAdditionalBid|["bid"]
+        using |signature|'s [=signed additional bid signature/key=], with 0 for Ed25519ctx.
+      1. If |isSignatureValid| is true:
+        1. [=set/Append=] |signature|'s [=signed additional bid signature/key=] to
+          |verifiedSignatureKeys|.
     1. Let |negativeTargeted| be false.
     1. Let |additionalBidBuyer| be |additionalBid|'s [=additional bid/bid=]'s
       [=generated bid/interest group=]'s [=interest group/owner=].
@@ -1544,7 +1548,7 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
       1. If |negativeTargetInfo|[(|additionalBidBuyer|, |igName|)] [=map/exists=]:
         1. Let (|joiningOrigin|, |additionalBidKey|) be
           |negativeTargetInfo|[(|additionalBidBuyer|, |igName|)].
-        1. If |verifiedSignatures| [=list/contains=] |additionalBidKey|:
+        1. If |verifiedSignatureKeys| [=list/contains=] |additionalBidKey|:
           1. If |joiningOrigin| is not null:
             1. If |joiningOrigin| is not [=same origin=] with |additionalBid|'s
               [=additional bid/negative target joining origin=], then [=iteration/continue=].
@@ -1561,9 +1565,12 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
 </div>
 
 <div algorithm>
-To <dfn>decode an additional bid</dfn> given a [=map=] |parsedAdditionalBid|, an [=auction config=]
+To <dfn>decode an additional bid</dfn> given a [=string=] |additionalBidJson|, an [=auction config=]
 |auctionConfig|, and an [=auction config=]-or-null |topLevelAuctionConfig|:
 
+  1. Let |parsedAdditionalBid| be the result of [=parse a JSON string to an infra value=] given
+    |additionalBidJson|.
+  1. If |parsedAdditionalBid| is not a [=map=], then return failure.
   1. Let |result| be a new [=additional bid=].
   1. Return failure if any of the following conditions hold:
     * |parsedAdditionalBid|["auctionNonce"] does not [=map/exist=];
@@ -1574,13 +1581,14 @@ To <dfn>decode an additional bid</dfn> given a [=map=] |parsedAdditionalBid|, an
   1. If |topLevelAuctionConfig| is null:
     1. If |parsedAdditionalBid|["topLevelSeller"] [=map/exists=], then return failure.
   1. Otherwise:
+    1. If |parsedAdditionalBid|["topLevelSeller"] does not [=map/exist=], then return failure.
     1. Let |bidTopLevelSeller| be the result of running the [=parse an origin=] with
       |parsedAdditionalBid|["topLevelSeller"].
-    1. If |parsedAdditionalBid|["topLevelSeller"] does not [=map/exist=], or |bidTopLevelSeller|
-      is failure, or |bidTopLevelSeller| is not [=same origin=] with |topLevelAuctionConfig|'s
-      [=auction config/seller=], then return failure.
+    1. If |bidTopLevelSeller| is failure, or |bidTopLevelSeller| is not [=same origin=] with
+      |topLevelAuctionConfig|'s [=auction config/seller=], then return failure.
   1. If |parsedAdditionalBid|["interestGroup"] does not [=map/exist=], then return failure.
   1. Let |igMap| be |parsedAdditionalBid|["interestGroup"].
+  1. If |igMap| is not a [=map=], then return failure.
   1. Let |igName| be |igMap|["name"] if it [=map/exists=], otherwise return failure.
   1. Let |igBiddingUrlStr| be |igMap|["biddingLogicURL"] if it [=map/exists=], otherwise return
     failure.
@@ -1605,7 +1613,8 @@ To <dfn>decode an additional bid</dfn> given a [=map=] |parsedAdditionalBid|, an
   1. Let |renderUrlStr| be |bidMap|["render"] if it [=map/exists=], otherwise return failure.
   1. Let |renderUrl| be the result of running [=url parser=] on |renderUrlStr|.
   1. If |renderUrl| is failure, then return failure.
-  1. Set |ig|'s [=interest group/ads=] to « |renderUrl| ».
+  1. Let |ad| be a new [=interest group ad=] whose [=interest group ad/render url=] is |renderUrl|.
+  1. Set |ig|'s [=interest group/ads=] to « |ad| ».
   1. Let |bidVal| be |bidMap|["bid"] if it [=map/exists=], otherwise return failure.
   1. If |bidVal| is not a {{double}}, or it's less than or equal to 0, return failure.
   1. Let |adMetadata| be "null".
