@@ -997,10 +997,11 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     * |config|["{{AuctionAdConfig/auctionNonce}}"] does not [=map/exist=];
     * |config|["{{AuctionAdConfig/interestGroupBuyers}}"] does not [=map/exist=], or it's [=list/empty=];
     * |config|["{{AuctionAdConfig/componentAuctions}}"] is not [=list/empty=].
+  1. Set |auctionConfig|'s [=auction config/expects additional bids=] to true.
   1. [=Handle an input promise in configuration=] given |auctionConfig| and
     |config|["{{AuctionAdConfig/additionalBids}}"]:
     * To parse the value |result|:
-      1. Set |auctionConfig|'s [=auction config/expects additional bids=] to true.
+      1. Set |auctionConfig|'s [=auction config/expects additional bids=] to false.
       1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/additionalBids}}"]
         to {{undefined}}.
     * To handle an error:
@@ -1333,17 +1334,14 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Set |componentAuctionExpectedCurrency| to the result of [=looking up per-buyer currency=] with
     |topLevelAuctionConfig| and |auctionConfig|'s [=auction config/seller=].
 1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
-1. Let |pendingAdditionalBids| be 0.
-1. Let |additionalBids| be null.
-1. If |auctionConfig|'s [=auction config/expects additional bids=] is true:
-  1. Set |additionalBids| to the result of running [=validate and convert additional bids=] with
-    |auctionConfig|, |topLevelAuctionConfig| and |negativeTargetInfo|.
-  1. Set |pendingAdditionalBids| to the [=list/size=] of |additionalBids|.
-  1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
-    1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
-      |decisionLogicScript|, null, |auctionLevel|, |componentAuctionExpectedCurrency|, and
-      |settings|'s [=environment/top-level origin=].
-    1. Decrement |pendingAdditionalBids| by 1.
+1. Set |additionalBids| to the result of running [=validate and convert additional bids=] with
+  |auctionConfig|, |topLevelAuctionConfig| and |negativeTargetInfo|.
+1. Set |pendingAdditionalBids| to the [=list/size=] of |additionalBids|.
+1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
+  1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
+    |decisionLogicScript|, null, |auctionLevel|, |componentAuctionExpectedCurrency|, and
+    |settings|'s [=environment/top-level origin=].
+  1. Decrement |pendingAdditionalBids| by 1.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
   1. Let |buyerExperimentGroupId| be |allBuyersExperimentGroupId|.
@@ -1507,7 +1505,8 @@ are [=tuples=] consisting of an [=origin=] and a [=byte sequence=]:
 To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdditionalBid|, an
 [=auction config=] |auctionConfig|, an [=auction config=]-or-null |topLevelAuctionConfig|, and a
 [=map=] |negativeTargetInfo| whose [=map/keys=] are [=tuples=] consisting of an [=origin=] and a
-[=string=], and whose [=map/values=] are [=tuples=] consisting of an [=origin=] and a [=byte sequence=]:
+[=string=], and whose [=map/values=] are [=tuples=] consisting of an [=origin=] and a
+[=byte sequence=]:
 
   1. Let |parsedSignedAdditionalBid| be the result of [=parse a JSON string to an infra value=]
     given |signedAdditionalBid|.
@@ -1587,13 +1586,13 @@ To <dfn>decode an additional bid</dfn> given a [=string=] |additionalBidJson|, a
     * |parsedAdditionalBid|["auctionNonce"] does not [=map/exist=];
     * |parsedAdditionalBid|["auctionNonce"] is not |auctionConfig|'s [=auction config/auction nonce=];
     * |parsedAdditionalBid|["seller"] does not [=map/exist=];
-    * The result of running the [=parse an origin=] with |parsedAdditionalBid|["seller"] is failure,
-      or not [=same origin=] with |auctionConfig|'s [=auction config/seller=].
+    * The result of running the [=parse an https origin=] with |parsedAdditionalBid|["seller"] is
+      failure, or not [=same origin=] with |auctionConfig|'s [=auction config/seller=].
   1. If |topLevelAuctionConfig| is null:
     1. If |parsedAdditionalBid|["topLevelSeller"] [=map/exists=], then return failure.
   1. Otherwise:
     1. If |parsedAdditionalBid|["topLevelSeller"] does not [=map/exist=], then return failure.
-    1. Let |bidTopLevelSeller| be the result of running the [=parse an origin=] with
+    1. Let |bidTopLevelSeller| be the result of running the [=parse an https origin=] with
       |parsedAdditionalBid|["topLevelSeller"].
     1. If |bidTopLevelSeller| is failure, or |bidTopLevelSeller| is not [=same origin=] with
       |topLevelAuctionConfig|'s [=auction config/seller=], then return failure.
@@ -1605,10 +1604,9 @@ To <dfn>decode an additional bid</dfn> given a [=string=] |additionalBidJson|, a
     failure.
   1. Let |igOwnerStr| be |igMap|["owner"] if it [=map/exists=], otherwise return failure.
   1. Let |igBiddingUrl| be the result of running [=url parser=] on |igBiddingUrlStr|.
-  1. Let |igOwner| be the result of running [=parse an origin=] with |igOwnerStr|.
+  1. Let |igOwner| be the result of running [=parse an https origin=] with |igOwnerStr|.
   1. Return failure if any of the following conditions hold:
     * |igOwner| is failure;
-    * |igOwner|'s [=origin/scheme=] is not "`https`";
     * |auctionConfig|'s [=auction config/interest group buyers=] does not [=list/contain=] |igOwner|;
     * |igBiddingUrl| is failure;
     * |igOwner| is not [=same origin=] with |igBiddingUrl|.
@@ -1669,9 +1667,9 @@ To <dfn>decode an additional bid</dfn> given a [=string=] |additionalBidJson|, a
       * |multipleNegativeIg| is not a [=map=];
       * |multipleNegativeIg|["joiningOrigin"] does not [=map/exist=], or it's not a [=string=];
       * |multipleNegativeIg|["interestGroupNames"] does not [=map/exist=], or it's not a [=list=].
-    1. Let |joiningOrigin| be the result of running [=parse an origin=] with
+    1. Let |joiningOrigin| be the result of running [=parse an https origin=] with
       |multipleNegativeIg|["joiningOrigin"].
-    1. If |joiningOrigin| is failure, or its [=origin/scheme=] is not "`https`", then return failure.
+    1. If |joiningOrigin| is failure, then return failure.
     1. Set |result|'s [=additional bid/negative target joining origin=] to |joiningOrigin|.
     1. [=list/For each=] |igName| of |multipleNegativeIg|["interestGroupNames"]:
       1. If |igName| is not a [=string=], then return failure.
@@ -3760,9 +3758,9 @@ for encoded additional bids.
 To <dfn>wait until configuration input promises resolve</dfn> given an [=auction config=] |auctionConfig|:
 1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
 1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
-  [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-  [=auction config/per buyer timeouts=], and
-  [=auction config/config idl=]["{{AuctionAdConfig/additionalBids}}"] are not {{Promise}}s.
+  [=auction config/per buyer signals=], [=auction config/per buyer currencies=], and
+  [=auction config/per buyer timeouts=] are not {{Promise}}s, and
+  [=auction config/expects additional bids=] is false.
 1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
   [=auction config/per buyer timeouts=], or [=auction config/expects additional bids=] is failure,
