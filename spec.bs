@@ -984,14 +984,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
         [=serializing a JavaScript value to a JSON string=], given |result|.
     * To handle an error, set |auctionConfig|'s [=auction config/seller signals=] to failure.
 1. If |config|["{{AuctionAdConfig/auctionNonce}}"] [=map/exists=]:
-  1. Let |nonce| be an empty [=string=].
-  1. [=list/For each=] |i| in [=the range=] from 0 to the [=string/length=] of
-    |config|["{{AuctionAdConfig/auctionNonce}}"], exclusive:
-    1. Let |c| be the |i|th [=code unit=] of |config|["{{AuctionAdConfig/auctionNonce}}"] if it is
-      0x0000 NULL or in the range 0x0020 SPACE to 0x007F DELETE, inclusive, otherwise "`?`".
-    1. Append |c| to the end of |nonce|.
   1. Set |auctionConfig|'s [=auction config/auction nonce=] to the result of running
-    [=get uuid from string=] with |nonce|.
+    [=get uuid from string=] with |config|["{{AuctionAdConfig/auctionNonce}}"].
 1. If |config|["{{AuctionAdConfig/additionalBids}}"] [=map/exists=]:
   1. [=exception/Throw=] a {{TypeError}} if any of the following conditions hold:
     * |config|["{{AuctionAdConfig/auctionNonce}}"] does not [=map/exist=];
@@ -1013,8 +1007,6 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
         to {{undefined}}.
     * To handle an error:
       1. Set |auctionConfig|'s [=auction config/expects additional bids=] to failure.
-      1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/additionalBids}}"]
-        to {{undefined}}.
 1. If |config|["{{AuctionAdConfig/directFromSellerSignals}}"] [=map/exists=]:
   1. TODO: The receiving end of this isn't specified yet, so there is no place to put the computed value.
   1. [=Handle an input promise in configuration=] given |auctionConfig| and
@@ -1605,13 +1597,14 @@ To <dfn>decode an additional bid</dfn> given a [=string=] |additionalBidJson|, a
       |topLevelAuctionConfig|'s [=auction config/seller=], then return failure.
   1. If |parsedAdditionalBid|["interestGroup"] does not [=map/exist=], then return failure.
   1. Let |igMap| be |parsedAdditionalBid|["interestGroup"].
-  1. If |igMap| is not a [=map=], then return failure.
-  1. Let |igName| be |igMap|["name"] if it [=map/exists=], otherwise return failure.
-  1. Let |igBiddingUrlStr| be |igMap|["biddingLogicURL"] if it [=map/exists=], otherwise return
-    failure.
-  1. Let |igOwnerStr| be |igMap|["owner"] if it [=map/exists=], otherwise return failure.
-  1. Let |igBiddingUrl| be the result of running [=url parser=] on |igBiddingUrlStr|.
-  1. Let |igOwner| be the result of running [=parse an https origin=] with |igOwnerStr|.
+  1. Return failure if any the following conditions hold:
+    * |igMap| is not a [=map=];
+    * |igMap|["name"] does not [=map/exist=], or it's not a [=string=];
+    * |igMap|["biddingLogicURL"] does not [=map/exist=], or it's not a [=string=];
+    * |igMap|["owner"] does not [=map/exist=], or it's not a [=string=];
+  1. Let |igOwner| be the result of running [=parse an https origin=] given |igMap|["owner"].
+  1. Let |igName| be |igMap|["name"].
+  1. Let |igBiddingUrl| be the result of running [=url parser=] on |igMap|["biddingLogicURL"].
   1. Return failure if any of the following conditions hold:
     * |igOwner| is failure;
     * |auctionConfig|'s [=auction config/interest group buyers=] does not [=list/contain=] |igOwner|;
@@ -1626,13 +1619,13 @@ To <dfn>decode an additional bid</dfn> given a [=string=] |additionalBidJson|, a
     ::  |igBiddingUrl|
   1. If |parsedAdditionalBid|["bid"] does not [=map/exist=], or it's not a [=map=], return failure.
   1. Let |bidMap| be |parsedAdditionalBid|["bid"].
-  1. Let |renderUrlStr| be |bidMap|["render"] if it [=map/exists=], otherwise return failure.
-  1. Let |renderUrl| be the result of running [=url parser=] on |renderUrlStr|.
+  1. If |bidMap|["render"] does not [=map/exist=] or it's not a [=string=], then return failure.
+  1. Let |renderUrl| be the result of running [=url parser=] on |bidMap|["render"].
   1. If |renderUrl| is failure, then return failure.
   1. Let |ad| be a new [=interest group ad=] whose [=interest group ad/render url=] is |renderUrl|.
   1. Set |ig|'s [=interest group/ads=] to « |ad| ».
   1. Let |bidVal| be |bidMap|["bid"] if it [=map/exists=], otherwise return failure.
-  1. If |bidVal| is not a {{double}}, or it's less than or equal to 0, return failure.
+  1. If |bidVal| is not a {{double}}, or it's less than or equal to 0, then return failure.
   1. Let |adMetadata| be "null".
   1. If |bidMap|["ad"] [=map/exists=]:
     1. Set |adMetadata| to the result of running [=serialize an Infra value to a JSON string=] with
