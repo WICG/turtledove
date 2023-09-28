@@ -938,14 +938,24 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
         [=serializing a JavaScript value to a JSON string=], given |result|.
     * To handle an error, set |auctionConfig|'s [=auction config/seller signals=] to failure.
 1. If |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] [=map/exists=]:
-  1. Set |auctionConfig|'s [=auction config/expects direct from seller signals header ad slot=] to true.
   1. [=Handle an input promise in configuration=] given |auctionConfig| and
     |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"]:
+    
+    Note: The JavaScript code calling {{Navigator/runAdAuction()}} is responsible for not resolving
+      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] until a
+      {{WindowOrWorkerGlobalScope/fetch()}} call with the `{adAuctionHeaders: true}` option returns
+      a response, or alternatively, not calling {{Navigator/runAdAuction()}} until the
+      {{WindowOrWorkerGlobalScope/fetch()}} call returns a response.
+
     * To parse the value |result|:
-      1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to |result|.
+      1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
+        |result|.
+      1. Set |auctionConfig|'s
+        [=auction config/config idl=]["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] to
+        |result|.
     * To handle an error:
-      1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to failure.
-      1. Set |auctionConfig|'s [=auction config/expects direct from seller signals header ad slot=] to false.
+      1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
+        failure.
 1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
   [=auction config/seller timeout=] to |config|["{{AuctionAdConfig/sellerTimeout}}"] in milliseconds
   or 500 milliseconds, whichever is smaller.
@@ -1195,10 +1205,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       failure, return failure.
     1. If |topLevelDirectFromSellerSignalsRetrieved| if false:
       1. Let |topLevelDirectFromSellerSignals| be the result of running
-        [=get direct from seller signals=] given |auctionConfig|'s
-        [=auction config/expects direct from seller signals header ad slot=], |auctionConfig|'s
-        [=auction config/seller=], |auctionConfig|'s
-        [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
+        [=get direct from seller signals=] given |auctionConfig|'s [=auction config/seller=],
+        |auctionConfig|'s [=auction config/direct from seller signals header ad slot=], and
+        |capturedAuctionHeaders|.
       1. Let |topLevelDirectFromSellerSignalsForSeller| be the return of running
         [=get direct from seller signals for a seller=] given |topLevelDirectFromSellerSignals|.
       1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
@@ -1223,7 +1232,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Set |leadingBidInfo|'s [=leading bid info/top level seller signals=] to
     |topLevelSellerSignals|.
   1. Let |directFromSellerSignals| be the result of running [=get direct from seller signals=] given
-    |winningComponentConfig|'s [=auction config/expects direct from seller signals header ad slot=],
     |winningComponentConfig|'s [=auction config/seller=], |winningComponentConfig|'s
     [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
   1. Let |directFromSellerSignalsForSeller| be the result of running
@@ -1244,7 +1252,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |allBuyersGroupLimit| be |auctionConfig|'s [=auction config/all buyers group limit=].
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
 1. Let |directFromSellerSignals| be the result of running [=get direct from seller signals=] given
-  |auctionConfig|'s [=auction config/expects direct from seller signals header ad slot=],
   |auctionConfig|'s [=auction config/seller=], |auctionConfig|'s
   [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
 1. Let |directFromSellerSignalsForSeller| be the result of running
@@ -1439,7 +1446,7 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
 |generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
-[=direct from seller signals=]-or-null |directFromSellerSignalsForSeller|, a {{unsigned long}}-or-null
+{{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, a {{unsigned long}}-or-null
 |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
 or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, and an [=origin=]
 |topWindowOrigin|:
@@ -1879,10 +1886,9 @@ To <dfn>round a value</dfn> given a {{double}} |value|:
 </div>
 
 <div algorithm>
-To <dfn>get direct from seller signals</dfn> given a [=boolean=] |expectHeaderAdSlot|, an [=origin=]
-|seller|, a [=string=] |adSlot|, and a [=map=] |capturedAuctionHeaders|:
+To <dfn>get direct from seller signals</dfn> given an [=origin=] |seller|, a [=string=] |adSlot|,
+and a [=map=] |capturedAuctionHeaders|:
 
-  1. If |expectHeaderAdSlot| is false, return null.
   1. Let |directFromSellerSignals| be null.
   1. Let |directFromSellerSignalsKey| be a new [=direct from seller signals key=] with its
     [=direct from seller signals key/seller=] set to |seller|, and
@@ -1896,13 +1902,12 @@ To <dfn>get direct from seller signals</dfn> given a [=boolean=] |expectHeaderAd
 To <dfn>get direct from seller signals for a seller</dfn> given a
 [=direct from seller signals=]-or-null |directFromSellerSignals|:
 
-  1. If |directFromSellerSignals| is null, then return null.
-  1. Let |directFromSellerSignalsForSeller| be a new [=direct from seller signals=] with the
-    following [=struct/items=]:
-    : [=direct from seller signals/auction signals=]
-    :: |directFromSellerSignals|'s [=direct from seller signals/auction signals=]
-    : [=direct from seller signals/seller signals=]
-    :: |directFromSellerSignals|'s [=direct from seller signals/seller signals=]
+  1. Let |directFromSellerSignalsForSeller| be a new {{DirectFromSellerSignalsForSeller}}.
+  1. If |directFromSellerSignals| is null, then return |directFromSellerSignalsForSeller|.
+  1. [=map/Set=] |directFromSellerSignalsForSeller|["auctionSignals"] to |directFromSellerSignals|'s
+    [=direct from seller signals/auction signals=].
+  1. [=map/Set=] |directFromSellerSignalsForSeller|["sellerSignals"] to |directFromSellerSignals|'s
+    [=direct from seller signals/seller signals=].
   1. Return |directFromSellerSignalsForSeller|.
 </div>
 
@@ -1910,14 +1915,14 @@ To <dfn>get direct from seller signals for a seller</dfn> given a
 To <dfn>get direct from seller signals for a buyer</dfn> given a
 [=direct from seller signals=]-or-null |directFromSellerSignals|, and an [=origin=] |owner|:
 
-  1. If |directFromSellerSignals| is null, then return null.
-  1. Let |directFromSellerSignalsForBuyer| be a new [=direct from seller signals=] with the
-    following [=struct/items=]:
-      : [=direct from seller signals/auction signals=]
-      :: |directFromSellerSignals|'s [=direct from seller signals/auction signals=]
-      : [=direct from seller signals/per buyer signals=]
-      :: |directFromSellerSignals|'s [=direct from seller signals/per buyer signals=][|owner|] if it
-        [=map/exists=], null otherwise
+  1. Let |directFromSellerSignalsForBuyer| be a new {{DirectFromSellerSignalsForBuyer}}.
+  1. If |directFromSellerSignals| is null, then return |directFromSellerSignalsForBuyer|.
+  1. [=map/Set=] |directFromSellerSignalsForBuyer|["auctionSignals"] to |directFromSellerSignals|'s
+    [=direct from seller signals/auction signals=].
+  1. If |directFromSellerSignals|'s [=direct from seller signals/per buyer signals=][|owner|]
+    [=map/exists=]:
+    1. [=map/Set=] |directFromSellerSignalsForBuyer|["perBuyerSignals"] to
+      |directFromSellerSignals|'s [=direct from seller signals/per buyer signals=][|owner|].
   1. Return |directFromSellerSignalsForBuyer|.
 </div>
 
@@ -2327,7 +2332,7 @@ of the following global objects:
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig|, a
   [=currency tag=] |expectedCurrency|, a {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null
   |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=] |trustedBiddingSignals|,
-  a {{BiddingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]-or-null
+  a {{BiddingBrowserSignals}} |browserSignals|, a {{DirectFromSellerSignalsForBuyer}}
   |directFromSellerSignalsForBuyer| and an integer millisecond [=duration=] |timeout|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
@@ -2350,12 +2355,8 @@ of the following global objects:
       given |perBuyerSignals| if |perBuyerSignals| is not null, otherwise {{undefined}}.
     1. Let |trustedBiddingSignalsJS| be |trustedBiddingSignals| [=converted to ECMAScript values=].
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
-    1. Let |directFromSellerSignalsJs| be {{undefined}}.
-    1. If |directFromSellerSignalsForBuyer| is not null:
-      1. Let |directFromSellerSignalsString| be the result of
-        [=serializing an Infra value to a JSON string=] given |directFromSellerSignalsForBuyer|.
-      1. Set |directFromSellerSignalsJs| to the result of [=parsing a JSON string to a JavaScript
-        value=] given |directFromSellerSignalsString|.
+    1. Let |directFromSellerSignalsJs| be |directFromSellerSignalsForBuyer|
+      [=converted to ECMAScript values=].
     1. Let |startTime| be the [=current wall time=].
     1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
       « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignalsJS|, |browserSignalsJS|,
@@ -2394,20 +2395,16 @@ of the following global objects:
   To <dfn>evaluate a scoring script</dfn> given a [=string=] |script|, a [=string=] |adMetadata|,
   a {{double}} |bidValue|, an {{AuctionAdConfig}} |auctionConfigIDL|, an [=ordered map=]
   |trustedScoringSignals|, a {{ScoringBrowserSignals}} |browserSignals|, a
-  [=direct from seller signals=]-or-null |directFromSellerSignalsForSeller|, and an
-  integer millisecond [=duration=] |timeout|:
+  {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, and an integer
+  millisecond [=duration=] |timeout|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupScoringScriptRunnerGlobalScope}}.
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
     1. Let |auctionConfigJS| be |auctionConfigIDL| [=converted to ECMAScript values=].
     1. Let |trustedScoringSignalsJS| be |trustedScoringSignals| [=converted to ECMAScript values=].
-    1. Let |directFromSellerSignalsJs| be {{undefined}}.
-    1. If |directFromSellerSignalsForSeller| is not null:
-      1. Let |directFromSellerSignalsString| be the result of
-        [=serializing an Infra value to a JSON string=] given |directFromSellerSignalsForSeller|.
-      1. Set |directFromSellerSignalsJs| to the result of [=parsing a JSON string to a JavaScript
-        value=] given |directFromSellerSignalsString|.
+    1. Let |directFromSellerSignalsJs| be |directFromSellerSignalsForSeller|
+      [=converted to ECMAScript values=].
     1. Return the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
       «|adMetadata|, |bidValue|, |auctionConfigJS|, |trustedScoringSignalsJS|, |browserSignalsJS|,
       |directFromSellerSignalsJs|», and |timeout|.
@@ -2420,23 +2417,12 @@ of the following global objects:
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupReportingScriptRunnerGlobalScope}}.
     1. Let |global| be |realm|'s [=realm/global object=].
-    1. Let |argumentsJS| be an empty [=list=].
-    1. Let |i| be 0.
-    1. [=iteration/While=] |i| < |arguments|’s [=list/size=]:
-      1. If |arguments|[|i|] is a [=direct from seller signals=]:
-        1. Let |directFromSellerSignalsString| be the result of
-          [=serializing an Infra value to a JSON string=] given |arguments|[|i|].
-        1. Let |directFromSellerSignalsJs| be the result of [=parsing a JSON string to a JavaScript value=]
-          given |directFromSellerSignalsString|.
-        1. [=list/Append=] |directFromSellerSignalsJs| to |argumentsJS|.
-      1. Otherwise, |arguments|[|i|] is an IDL value:
-        1. Let |convertResult| be |arguments|[|i|] [=converted to ECMAScript value=].
-        1. If an exception is [=exception/thrown=],  return « "null", null, null ».
-        1. [=list/Append=] |convertResult| to |argumentsJS|.
-      1. Set |i| to |i| + 1.
+    1. Let |argumentsJS| be the result of [=converting a Web IDL arguments list to an ECMAScript
+      arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
+      [=exception/throws=] an exception, return « "null", null, null, null ».
     1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|,
       |functionName|, |argumentsJS|, and 50 milliseconds.
-    1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null ».
+    1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null, null ».
     1. Let |resultJSON| be "null".
     1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
       [=serializing a JavaScript value to a JSON string=] given |result|.
@@ -3193,6 +3179,20 @@ dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
     bidding signals server
 </dl>
 
+<xmp class="idl">
+dictionary DirectFromSellerSignalsForBuyer {
+  DOMString? auctionSignals = null;
+  DOMString? perBuyerSignals = null;
+};
+</xmp>
+
+<xmp class="idl">
+dictionary DirectFromSellerSignalsForSeller {
+  DOMString? auctionSignals = null;
+  DOMString? sellerSignals = null;
+};
+</xmp>
+
 <h3 dfn-type=dfn>Interest group</h3>
 
 An interest group is a [=struct=] with the following [=struct/items=]:
@@ -3458,9 +3458,7 @@ An auction config is a [=struct=] with the following items:
   a particular value.
 
 : <dfn>direct from seller signals header ad slot</dfn>
-:: Null, a [=string=], a {{Promise}}, or failure.
-: <dfn>expects direct from seller signals header ad slot</dfn>
-:: A [=boolean=], initially false.
+:: Null, a [=string=], a {{Promise}}, or failure. Initially null.
 
 </dl>
 
