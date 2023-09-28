@@ -220,10 +220,9 @@ This is detectable because it can change the set of fields that are read from th
     |group|["{{GenerateBidInterestGroup/lifetimeMs}}"] milliseconds.
   1. Set |interestGroup|'s [=interest group/next update after=] to the [=current wall time=] plus 24
     hours.
-  1. Set |interestGroup|'s [=interest group/owner=] to the result of [=parsing an origin=] on
+  1. Set |interestGroup|'s [=interest group/owner=] to the result of [=parsing an https origin=] on
     |group|["{{GenerateBidInterestGroup/owner}}"].
-  1. If |interestGroup|'s [=interest group/owner=] is failure, or its [=url/scheme=] is not
-    "`https`", [=exception/throw=] a {{TypeError}}.
+  1. If |interestGroup|'s [=interest group/owner=] is failure, then [=exception/throw=] a {{TypeError}}.
   1. Optionally, [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
 
     Note: This [=implementation-defined=] condition is intended to allow user
@@ -313,9 +312,8 @@ This is detectable because it can change the set of fields that are read from th
         1. If |ad|["{{AuctionAd/allowedReportingOrigins}}"] [=map/exists=]:
           1. Let |allowedReportingOrigins| be a new [=list=] of [=origins=].
           1. [=list/For each=] |originStr| in |ad|["{{AuctionAd/allowedReportingOrigins}}"]:
-            1. Let |origin| be the result of [=parsing an origin=] on |originStr|.
-            1. If |origin| is failure, or its [=url/scheme=] is not "`https`", [=exception/throw=] a
-              {{TypeError}}.
+            1. Let |origin| be the result of [=parsing an https origin=] on |originStr|.
+            1. If |origin| is failure, then [=exception/throw=] a {{TypeError}}.
             1. [=list/Append=] |origin| to |allowedReportingOrigins|.
             1. If [=list/size=] of |allowedReportingOrigins| is greater than 10, [=exception/throw=]
               a {{TypeError}}.
@@ -514,7 +512,7 @@ are:
     "{{NotAllowedError}}" {{DOMException}}.
 
     Note: both joining and leaving interest groups use the "join-ad-interest-group" feature.
-  1. Let |owner| be the result of [=parsing an origin=] with
+  1. Let |owner| be the result of [=parsing an https origin=] with
     |group|["{{AuctionAdInterestGroupKey/owner}}"].
   1. If |owner| is failure, [=exception/throw=] a {{TypeError}}.
   1. Let |name| be |group|["{{AuctionAdInterestGroupKey/name}}"].
@@ -610,6 +608,11 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |auctionConfig| be the result of running [=validate and convert auction ad config=] with
   |config| and true.
 1. If |auctionConfig| is failure, then [=exception/throw=] a {{TypeError}}.
+1. Optionally, [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
+
+    Note: This [=implementation-defined=] condition is intended to allow user
+        agents to decline for a number of reasons, for example the [=auction config/seller=]'s
+        [=site=] not being <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
 1. Let |p| be [=a new promise=].
 1. Let |configMapping| be |global|'s [=associated Document=]'s [=node navigable=]'s
   [=navigable/traversable navigable=]'s [=traversable navigable/fenced frame config mapping=].
@@ -933,35 +936,27 @@ To <dfn>create nested configs</dfn> given [=generated bid/ad component descripto
 To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}} |config| and a
 [=boolean=] |isTopLevel|:
 1. Let |auctionConfig| be a new [=auction config=].
-1. Let |seller| be the result of [=parsing an origin=] with |config|["{{AuctionAdConfig/seller}}"].
-1. If |seller| is failure, or its [=url/scheme=] is not "`https`", then [=exception/throw=] a
-  {{TypeError}}.
-1. Optionally, [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
-
-    Note: This [=implementation-defined=] condition is intended to allow user
-        agents to decline for a number of reasons, for example the [=auctionConfig]'s seller's [=site=]
-        not being <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
+1. Let |seller| be the result of [=parsing an https origin=] with |config|["{{AuctionAdConfig/seller}}"].
+1. If |seller| is failure, then return failure.
 1. Set |auctionConfig|'s [=auction config/seller=] to |seller|.
 1. Let |decisionLogicURL| be the result of running the [=URL parser=] on
   |config|["{{AuctionAdConfig/decisionLogicURL}}"].
 1. If |decisionLogicURL| is failure, or it is not [=same origin=] with |auctionConfig|'s
-  [=auction config/seller=], then [=exception/throw=] a {{TypeError}}.
-1. [=Assert=]: |decisionLogicURL|'s [=url/scheme=] is "`https`".
+  [=auction config/seller=], then return failure.
 1. Set |auctionConfig|'s [=auction config/decision logic url=] to |decisionLogicURL|.
 1. If |config|["{{AuctionAdConfig/trustedScoringSignalsURL}}"] [=map/exists=]:
   1. Let |trustedScoringSignalsURL| be the result of running the [=URL parser=] on
     |config|["{{AuctionAdConfig/trustedScoringSignalsURL}}"].
   1. If |trustedScoringSignalsURL| is failure, or it is not [=same origin=] with |auctionConfig|'s
-    [=auction config/seller=], then [=exception/throw=] a {{TypeError}}.
+    [=auction config/seller=], then return failure.
   1. [=Assert=]: |trustedScoringSignalsURL|'s [=url/scheme=] is "`https`".
   1. Set |auctionConfig|'s [=auction config/trusted scoring signals url=] to
     |trustedScoringSignalsURL|.
 1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=]:
   1. Let |buyers| be a new empty [=list=].
   1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
-    1. Let |buyer| be the result of [=parsing an origin=] with |buyerString|.
-    1. If |buyer| is failure, or |buyer|'s [=url/scheme=] is not "`https`", then [=exception/throw=]
-      a {{TypeError}}.
+    1. Let |buyer| be the result of [=parsing an https origin=] with |buyerString|.
+    1. If |buyer| is failure, then return failure.
     1. [=list/Append=] |buyer| to |buyers|.
   1. Set |auctionConfig|'s [=auction config/interest group buyers=] to |buyers|.
 1. If |config|["{{AuctionAdConfig/auctionSignals}}"] [=map/exists=]:
@@ -973,10 +968,12 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       1. Let |auctionSignalsJSON| be the result of
         [=serializing a JavaScript value to a JSON string=], given |result|.
       1. Set |auctionConfig|'s [=auction config/auction signals=] to |auctionSignalsJSON|.
-      1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"] to |result|.
+      1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"]
+        to |result|.
     * To handle an error:
       1. Set |auctionConfig|'s [=auction config/auction signals=] to failure.
-      1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"] to {{undefined}}.
+      1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/auctionSignals}}"]
+        to {{undefined}}.
 1. If |config|["{{AuctionAdConfig/sellerSignals}}"] [=map/exists=]:
   1. Set |auctionConfig|'s [=auction config/seller signals=] to
     |config|["{{AuctionAdConfig/sellerSignals}}"].
@@ -1032,49 +1029,56 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"].
 1. If |config|["{{AuctionAdConfig/sellerCurrency}}"]  [=map/exists=]:
   1. If the result of [=checking whether a string is a valid currency tag=] on
-    |config|["{{AuctionAdConfig/sellerCurrency}}"] is false, [=exception/throw=] a {{TypeError}}.
-  1. Set |auctionConfig|'s [=auction config/seller currency=] to |config|["{{AuctionAdConfig/sellerCurrency}}"]
+    |config|["{{AuctionAdConfig/sellerCurrency}}"] is false, then return failure.
+  1. Set |auctionConfig|'s [=auction config/seller currency=] to
+    |config|["{{AuctionAdConfig/sellerCurrency}}"].
 1. If |config|["{{AuctionAdConfig/perBuyerSignals}}"] [=map/exists=]:
   1. Set |auctionConfig|'s [=auction config/per buyer signals=] to
     |config|["{{AuctionAdConfig/perBuyerSignals}}"].
-  1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s [=auction config/per buyer signals=]:
+  1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
+    [=auction config/per buyer signals=]:
     * To parse the value |result|:
       1. Set |auctionConfig|'s [=auction config/per buyer signals=] to a new [=ordered map=] whose
         [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
       1. [=map/For each=] |key| → |value| of |result|:
-        1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is failure, throw a {{TypeError}}.
-        1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=], given |value|.
-        1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to |signalsString|.
+        1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
+           failure, throw a {{TypeError}}.
+        1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=],
+          given |value|.
+        1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to
+          |signalsString|.
     * To handle an error, set |auctionConfig|'s [=auction config/per buyer signals=] to failure.
 1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] [=map/exists=]:
   1. Set |auctionConfig|'s [=auction config/per buyer timeouts=] to
       |config|["{{AuctionAdConfig/perBuyerTimeouts}}"].
-  1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s [=auction config/per buyer timeouts=]:
+  1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
+    [=auction config/per buyer timeouts=]:
     * To parse the value |result|:
       1. Set |auctionConfig|'s [=auction config/per buyer timeouts=] to a new [=ordered map=] whose
         [=map/keys=] are [=origins=] and whose [=map/values=] are [=durations=] in milliseconds.
       1. [=map/For each=] |key| → |value| of |result|:
         1. If |key| is "*", then set |auctionConfig|'s [=auction config/all buyers timeout=]
-          to |value| in milliseconds or 500 milliseconds, whichever is smaller, and [=iteration/continue=].
-        1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is failure,
-          [=exception/throw=] a {{TypeError}}.
+          to |value| in milliseconds or 500 milliseconds, whichever is smaller, and
+          [=iteration/continue=].
+        1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
+          failure, [=exception/throw=] a {{TypeError}}.
         1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|] to
           |value| in milliseconds or 500 milliseconds, whichever is smaller.
     * To handle an error, set |auctionConfig|'s [=auction config/per buyer timeouts=] to failure.
 1. If |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"] [=map/exists=], [=map/for each=]
   |key| → |value| of |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"]:
-  1. If |value| is 0, [=exception/throw=] a {{TypeError}}.
+  1. If |value| is 0, then return failure.
   1. If |key| is "*", then set |auctionConfig|'s [=auction config/all buyers group limit=]
     to |value|, and [=iteration/continue=].
-  1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is failure,
-    [=exception/throw=] a {{TypeError}}.
+  1. Let |buyer| be the result of [=parsing an https origin=] with |key|.
+  1. If |buyer| is failure, then return failure.
   1. Set |auctionConfig|'s [=auction config/per buyer group limits=][|buyer|] to |value|.
 1. If |config|["{{AuctionAdConfig/perBuyerExperimentGroupIds}}"] [=map/exists=], [=map/for each=]
   |key| → |value| of |config|["{{AuctionAdConfig/perBuyerExperimentGroupIds}}"]:
   1. If |key| is "*", then set |auctionConfig|'s
     [=auction config/all buyer experiment group id=] to |value|, and [=iteration/continue=].
-  1. Let |buyer| the result of [=parsing an origin=] with |key|. If |buyer| is failure,
-    [=exception/throw=] a {{TypeError}}.
+  1. Let |buyer| the result of [=parsing an https origin=] with |key|.
+  1. If |buyer| is failure, then return failure.
   1. Set |auctionConfig|'s [=auction config/per buyer experiment group ids=][|buyer|] to |value|.
 1. If |config|["{{AuctionAdConfig/perBuyerPrioritySignals}}"] [=map/exists=], [=map/for each=]
   |key| → |value| of |config|["{{AuctionAdConfig/perBuyerPrioritySignals}}"]:
@@ -1085,28 +1089,35 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     1. [=map/Set=] |signals|[|k|] to |v|.
   1. If |key| is "*", then set |auctionConfig|'s
     [=auction config/all buyers priority signals=] to |value|, and [=iteration/continue=].
-  1. Let |buyer| be the result of [=parsing an origin=] with |key|. If it fails, [=exception/throw=]
-    a {{TypeError}}.
+  1. Let |buyer| be the result of [=parsing an https origin=] with |key|.
+  1. If |buyer| is failure, then return failure.
   1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer priority signals=][|buyer|] to
     |signals|.
 1. If |config|["{{AuctionAdConfig/perBuyerCurrencies}}"] [=map/exists=]:
-  1. Set |auctionConfig|'s [=auction config/per buyer currencies=] to |config|["{{AuctionAdConfig/perBuyerCurrencies}}"]
-  1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s [=auction config/per buyer currencies=]:
+  1. Set |auctionConfig|'s [=auction config/per buyer currencies=] to
+    |config|["{{AuctionAdConfig/perBuyerCurrencies}}"]
+  1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
+    [=auction config/per buyer currencies=]:
     * To parse the value |result|:
-      1. Set |auctionConfig|'s [=auction config/per buyer currencies=] to a new [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=currency tags=].
+      1. Set |auctionConfig|'s [=auction config/per buyer currencies=] to a new [=ordered map=]
+        whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=currency tags=].
       1. [=map/for each=] |key| → |value| of |result|:
-        1. If the result of [=checking whether a string is a valid currency tag=] given |value| is false,
-          [=exception/throw=] a {{TypeError}}.
+        1. If the result of [=checking whether a string is a valid currency tag=] given |value| is
+          false, [=exception/throw=] a {{TypeError}}.
         1. If |key| is "*", then set |auctionConfig|'s
           [=auction config/all buyers currency=] to |value|, and [=iteration/continue=].
-        1. Let |buyer| be the result of [=parsing an origin=] with |key|. If |buyer| is failure,
-          [=exception/throw=] a {{TypeError}}.
+        1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
+          failure, [=exception/throw=] a {{TypeError}}.
         1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer currencies=][|buyer|] to |value|.
     * To handle an error, set |auctionConfig|'s [=auction config/per buyer currencies=] to failure.
+1. If |config|["{{AuctionAdConfig/componentAuctions}}"]'s is not [=list/empty=]:
+  1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=] and is not [=list/empty=],
+    then return failure.
 1. [=list/For each=] |component| in |config|["{{AuctionAdConfig/componentAuctions}}"]:
-  1. If |isTopLevel| is false, [=exception/throw=] a {{TypeError}}.
+  1. If |isTopLevel| is false, then return failure. 
   1. Let |componentAuction| be the result of running [=validate and convert auction ad config=] with
     |component| and false.
+  1. If |componentAuction| is failure, then return failure.
   1. [=list/Append=] |componentAuction| to |auctionConfig|'s [=auction config/component auctions=].
 1. Set |auctionConfig|'s [=auction config/config idl=] to |config|.
 1. If |config|["{{AuctionAdConfig/resolveToConfig}}"] [=map/exists=]:
@@ -1122,9 +1133,9 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 
 <div algorithm>
 
-To <dfn>parse an origin</dfn> given a [=string=] |input|:
+To <dfn>parse an https origin</dfn> given a [=string=] |input|:
 1. Let |url| be the result of running the [=URL parser=] on |input|.
-1. If |url| is failure, then return failure.
+1. If |url| is failure, or its [=origin/scheme=] is not "`https`", then return failure.
 1. Return |url|'s [=url/origin=].
 
 </div>
