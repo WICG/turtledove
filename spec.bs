@@ -943,6 +943,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       {{WindowOrWorkerGlobalScope/fetch()}} call with the `{adAuctionHeaders: true}` option returns
       a response, or alternatively, not calling {{Navigator/runAdAuction()}} until the
       {{WindowOrWorkerGlobalScope/fetch()}} call returns a response.
+      TODO: Link to {{WindowOrWorkerGlobalScope/fetch()}} once the fetch patch PR is merged.
 
     * To parse the value |result|:
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
@@ -1457,7 +1458,7 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
 |generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
-{{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, a {{unsigned long}}-or-null
+{{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
 |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
 or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, and an [=origin=]
 |topWindowOrigin|:
@@ -1915,9 +1916,11 @@ To <dfn>get direct from seller signals for a seller</dfn> given a
 
   1. Let |directFromSellerSignalsForSeller| be a new {{DirectFromSellerSignalsForSeller}}.
   1. If |directFromSellerSignals| is null, then return |directFromSellerSignalsForSeller|.
-  1. [=map/Set=] |directFromSellerSignalsForSeller|["auctionSignals"] to |directFromSellerSignals|'s
+  1. [=map/Set=] |directFromSellerSignalsForSeller|["auctionSignals"] to the result of running
+    [=parse a JSON string to an Infra value=] given |directFromSellerSignals|'s
     [=direct from seller signals/auction signals=].
-  1. [=map/Set=] |directFromSellerSignalsForSeller|["sellerSignals"] to |directFromSellerSignals|'s
+  1. [=map/Set=] |directFromSellerSignalsForSeller|["sellerSignals"] to the result of running
+    [=parse a JSON string to an Infra value=] given |directFromSellerSignals|'s
     [=direct from seller signals/seller signals=].
   1. Return |directFromSellerSignalsForSeller|.
 </div>
@@ -1928,12 +1931,14 @@ To <dfn>get direct from seller signals for a buyer</dfn> given a
 
   1. Let |directFromSellerSignalsForBuyer| be a new {{DirectFromSellerSignalsForBuyer}}.
   1. If |directFromSellerSignals| is null, then return |directFromSellerSignalsForBuyer|.
-  1. [=map/Set=] |directFromSellerSignalsForBuyer|["auctionSignals"] to |directFromSellerSignals|'s
+  1. [=map/Set=] |directFromSellerSignalsForBuyer|["auctionSignals"] to the result of running
+    [=parse a JSON string to an Infra value=] given |directFromSellerSignals|'s
     [=direct from seller signals/auction signals=].
   1. If |directFromSellerSignals|'s [=direct from seller signals/per buyer signals=][|owner|]
     [=map/exists=]:
-    1. [=map/Set=] |directFromSellerSignalsForBuyer|["perBuyerSignals"] to
-      |directFromSellerSignals|'s [=direct from seller signals/per buyer signals=][|owner|].
+    1. [=map/Set=] |directFromSellerSignalsForBuyer|["perBuyerSignals"] to the result of running
+      [=parse a JSON string to an Infra value=] given |directFromSellerSignals|'s
+      [=direct from seller signals/per buyer signals=][|owner|].
   1. Return |directFromSellerSignalsForBuyer|.
 </div>
 
@@ -2835,7 +2840,7 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
 
 # Interest Group Updates # {#interest-group-updates}
 
-[=Interest groups=] have a [=interest group/update url=] field that allows updating the
+[=Interest groups=] have an [=interest group/update url=] field that allows updating the
 interest group definition stored on disk with information periodically retrieved from the
 [=interest group/update url=].  The [=interest group update=] steps are triggered during
 {{Navigator/runAdAuction()}} and by calls to {{Navigator/updateAdInterestGroups()}} API:
@@ -3192,15 +3197,15 @@ dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
 
 <xmp class="idl">
 dictionary DirectFromSellerSignalsForBuyer {
-  DOMString? auctionSignals = null;
-  DOMString? perBuyerSignals = null;
+  any auctionSignals = null;
+  any perBuyerSignals = null;
 };
 </xmp>
 
 <xmp class="idl">
 dictionary DirectFromSellerSignalsForSeller {
-  DOMString? auctionSignals = null;
-  DOMString? sellerSignals = null;
+  any auctionSignals = null;
+  any sellerSignals = null;
 };
 </xmp>
 
