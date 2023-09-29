@@ -3224,6 +3224,7 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
           1. If |key| is not |groupMember|, [=iteration/continue=].
           1. If |value| is not a [=list=] of {{AuctionAd}}, jump to the step
             labeled <i><a href=#abort-update>Abort update</a></i>.
+          1. Let |igAds| be a new [=list=] of [=interest group ads=].
           1. [=list/For each=] |ad| of |value|:
             1. Let |igAd| be a new [=interest group ad=].
             1. Let |renderURL| be the result of running the [=URL parser=] on
@@ -3243,9 +3244,10 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
               1. If |ad|["{{AuctionAd/buyerReportingId}}"] [=map/exists=] then set
                   |igAd|'s [=interest group ad/buyer reporting ID=] to it.
               1. If |ad|["{{AuctionAd/buyerAndSellerReportingId}}"] [=map/exists=]
-                  then set |igAd|'s [=interest group ad/buyer and seller
-                  reporting ID=] to it.
-            1. [=list/Append=] |igAd| to |ig|'s |interestGroupField|.
+                  then set |igAd|'s [=interest group ad/buyer and seller reporting ID=] to it.
+            1. [=list/Append=] |igAd| to |igAds|.
+          1. If |igAds| is not [=list/is empty=]:
+            1. Set |ig|'s |interestGroupField| to |igAds|.
 
         <dt>"`additionalBidKey`"
         <dd>
@@ -3254,15 +3256,17 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
           following conditions hold:
             * |decodedKey| is a failure;
             * |decodedKey|'s [=byte sequence/length=] is not 32;
-            * |parsedUpdate|["`ads`"] [=map/exists=].
+            * |ig|'s [=interest group/ads=] is not null.
         1. Set |ig|'s [=interest group/additional bid key=] to |decodedKey|.
 
         </dl>
+    1. If |ig|'s [=interest group/estimated size=] is greater than 50 KB, then jump to the step
+      labeled <i><a href=#abort-update>Abort update</a></i>.
     1. Set |ig|'s [=interest group/next update after=] to the [=current wall time=] plus 24 hours.
     1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
       [=interest group/name=] in the browser’s [=interest group set=] with |ig|.
     1. <i id=abort-update>Abort update</i>: We jump here if some part of the
-      [=interest group=] update failed.  [=iteration/Continue=] to the next [=interest group=] update.
+      [=interest group=] update failed. [=iteration/Continue=] to the next [=interest group=] update.
 
 </div>
 
