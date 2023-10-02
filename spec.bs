@@ -538,6 +538,7 @@ dictionary AuctionAdConfig {
   USVString sellerCurrency;
   Promise<record<USVString, any>> perBuyerSignals;
   Promise<record<USVString, unsigned long long>> perBuyerTimeouts;
+  Promise<record<USVString, unsigned long long>> perBuyerCumulativeTimeouts;
   record<USVString, unsigned short> perBuyerGroupLimits;
   record<USVString, unsigned short> perBuyerExperimentGroupIds;
   record<USVString, record<USVString, double>> perBuyerPrioritySignals;
@@ -975,23 +976,36 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
         1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to
           |signalsString|.
     * To handle an error, set |auctionConfig|'s [=auction config/per buyer signals=] to failure.
-1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] [=map/exists=]:
-  1. Set |auctionConfig|'s [=auction config/per buyer timeouts=] to
-      |config|["{{AuctionAdConfig/perBuyerTimeouts}}"].
-  1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
-    [=auction config/per buyer timeouts=]:
-    * To parse the value |result|:
-      1. Set |auctionConfig|'s [=auction config/per buyer timeouts=] to a new [=ordered map=] whose
-        [=map/keys=] are [=origins=] and whose [=map/values=] are [=durations=] in milliseconds.
-      1. [=map/For each=] |key| → |value| of |result|:
-        1. If |key| is "*", then set |auctionConfig|'s [=auction config/all buyers timeout=]
-          to |value| in milliseconds or 500 milliseconds, whichever is smaller, and
-          [=iteration/continue=].
-        1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
-          failure, [=exception/throw=] a {{TypeError}}.
-        1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|] to
-          |value| in milliseconds or 500 milliseconds, whichever is smaller.
-    * To handle an error, set |auctionConfig|'s [=auction config/per buyer timeouts=] to failure.
+1. For each |configMember|, |auctionConfigField|, |auctionConfigFieldAll| in the following table
+  <table class="data">
+    <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
+    <tr>
+      <td>"{{AuctionAdConfig/perBuyerTimeouts}}"</td>
+      <td>[=auction config/per buyer timeouts=]</td>
+      <td>[=auction config/all buyers timeout=]</td>
+    </tr>
+    <tr>
+      <td>"{{AuctionAdConfig/perBuyerCumulativeTimeouts}}"</td>
+      <td>[=auction config/per buyer cumulative timeouts=]</td>
+      <td>[=auction config/all buyers cumulative timeout=]</td>
+    </tr>
+  </table>
+  1. If |config| [=map/contains=] |configMember|:
+    1. Set |auctionConfig|'s |auctionConfigField| to |config|[|configMember|].
+    1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
+      |auctionConfigField|:
+      * To parse the value |result|:
+        1. Set |auctionConfig|'s |auctionConfigField| to a new [=ordered map=] whose
+          [=map/keys=] are [=origins=] and whose [=map/values=] are [=durations=] in milliseconds.
+        1. [=map/For each=] |key| → |value| of |result|:
+          1. If |key| is "*", then set |auctionConfig|'s |auctionConfigFieldAll|
+            to |value| in milliseconds or 500 milliseconds, whichever is smaller, and
+            [=iteration/continue=].
+          1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
+            failure, [=exception/throw=] a {{TypeError}}.
+          1. [=map/Set=] |auctionConfig|'s |auctionConfigField|[|buyer|] to |value| in milliseconds
+            or 500 milliseconds, whichever is smaller.
+      * To handle an error, set |auctionConfig|'s |auctionConfigField| to failure.
 1. If |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"] [=map/exists=], [=map/for each=]
   |key| → |value| of |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"]:
   1. If |value| is 0, then return failure.
@@ -1251,6 +1265,13 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
+  1. Let |perBuyerCumulativeTimeout| be |auctionConfig|'s
+    [=auction config/all buyers cumulative timeout=].
+  1. If |auctionConfig|'s [=auction config/per buyer cumulative timeouts=] is not null and
+    [=auction config/per buyer cumulative timeouts=][|buyer|] [=map/exists=]:
+    1. Set |perBuyerCumulativeTimeout| to |auctionConfig|'s
+      [=auction config/per buyer cumulative timeouts=][|buyer|].
+    1. Start a timer |timer| of |perBuyerCumulativeTimeout| milliseconds. Stop the timer ...TODO
   1. Let |buyerExperimentGroupId| be |allBuyersExperimentGroupId|.
   1. Let |perBuyerExperimentGroupIds| be |auctionConfig|'s
     [=auction config/per buyer experiment group ids=].
@@ -1281,7 +1302,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. If |auctionConfig|'s [=auction config/per buyer timeouts=] is not null and
     [=auction config/per buyer timeouts=][|buyer|] [=map/exists=]:
     1. Set |perBuyerTimeout| to |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|].
-  1. Let |expectedCurrency| be the result of [=looking up per-buyer currency=] with |auctionConfig| and |buyer|.
+  1. Let |expectedCurrency| be the result of [=looking up per-buyer currency=] with |auctionConfig|
+    and |buyer|.
   1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perBuyerGenerator|:
     1. Let |keys| be a new [=ordered set=].
     1. Let |igNames| be a new [=ordered set=].
@@ -1331,16 +1353,18 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Set |generatedBid| to the result of [=generate a bid=] given
             |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
             |perBuyerSignals|, |perBuyerTimeout|, |expectedCurrency|, and |ig|.
-
           1. Set |ig|'s [=interest group/ads=] to |originalAds|.
           1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
           1. If |generatedBid| is failure, [=iteration/continue=].
         1. [=list/Insert=] |generatedBid|'s [=generated bid/interest group=] in |bidIgs|.
+        1. TODO: how can we let the timer only time until this place? The timer |timer| times until
+          this step.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
-          |decisionLogicScript|, |dataVersion|, |auctionLevel|, |componentAuctionExpectedCurrency|, and |settings|'s
-          [=environment/top-level origin=].
+          |decisionLogicScript|, |dataVersion|, |auctionLevel|, |componentAuctionExpectedCurrency|,
+          and |settings|'s [=environment/top-level origin=].
 
-  1. Decrement |pendingBuyers| by 1.
+  1. Decrement |pendingBuyers| by 1. TODO: add a bookmark for this step, and jump to this step when
+    timed out.
 1. Wait until |pendingBuyers| is 0.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
 1. If |topLevelAuctionConfig| is null:
@@ -2537,7 +2561,7 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
       |generateBidOutput|["{{GenerateBidOutput/adCost}}"].
   1. If |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"] [=map/exists=]:
     1. Let |modelingSignals| be |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"].
-    1. If |modelingSignals| &ge; 0 and |modelingSignals| < 4096:
+    1. If |modelingSignals| &ge; 0 and |modelingSignals| &lt; 4096:
       1. Set |bid|'s [=generated bid/modeling signals=] to the result of [=converted to an IDL value|converting=] the ECMAScript value represented by |modelingSignals| to an {{unsigned short}}.
   1. Return |bid|.
 
@@ -3298,6 +3322,17 @@ An auction config is a [=struct=] with the following items:
   Restricts the `generateBid()` script's runtime for all buyers without a timeout specified in
   [=auction config/per buyer timeouts=]. If the timeout expires, only the bid submitted via
   `setBid()` is considered.
+: <dfn>per buyer cumulative timeouts</dfn>
+:: Null, a {{Promise}}, failure, or an [=ordered map=] whose [=map/keys=] are [=origins=] and
+  whose [=map/values=] are [=durations=] in milliseconds.
+  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the runtime of
+  corresponding buyer's `generateBid()` script. If the timeout expires, only the bid submitted
+  via `setBid()` is considered. TODO: update the comments of the two new fields.
+: <dfn>all buyers cumulative timeout</dfn>
+:: A [=duration=] in milliseconds, initially 50 milliseconds.
+  Restricts the `generateBid()` script's runtime for all buyers without a timeout specified in
+  [=auction config/per buyer cumulative timeouts=]. If the timeout expires, only the bid submitted
+  via `setBid()` is considered.
 : <dfn>per buyer group limits</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   {{unsigned short}}s.
@@ -3368,11 +3403,13 @@ An auction config is a [=struct=] with the following items:
 To <dfn>wait until configuration input promises resolve</dfn> given an [=auction config=] |auctionConfig|:
 1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
 1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
-  [=auction config/per buyer signals=], [=auction config/per buyer currencies=], and
-  [=auction config/per buyer timeouts=] are not {{Promise}}s.
+  [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
+  [=auction config/per buyer timeouts=], and [=auction config/per buyer cumulative timeouts=] are
+  not {{Promise}}s.
 1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
-  [=auction config/per buyer signals=], [=auction config/per buyer currencies=] or
-  [=auction config/per buyer timeouts=] is failure, return failure.
+  [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
+  [=auction config/per buyer timeouts=] or [=auction config/per buyer cumulative timeouts=] is
+  failure, return failure.
 1. TODO: the above two steps should also check directFromSellerSignals once something handles it.
 
 </div>
