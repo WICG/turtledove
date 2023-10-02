@@ -1146,7 +1146,7 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
 
 To <dfn>generate a bid</dfn> given an [=ordered map=] |allTrustedBiddingSignals|, a [=string=]
 |auctionSignals|, a {{BiddingBrowserSignals}} |browserSignals|, a [=string=]-or-null |perBuyerSignals|,
-a [=direct from seller signals=]-or-null |directFromSellerSignalsForBuyer|, a [=duration=]
+a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=duration=]
 |perBuyerTimeout| in milliseconds, a [=currency tag=] |expectedCurrency|, an [=interest group=] |ig|,
 and a [=moment=] |auctionStartTime|:
   1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=]
@@ -1215,12 +1215,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. If |compWinner| is failure, return failure.
     1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns
       failure, return failure.
-    1. If |topLevelDirectFromSellerSignalsRetrieved| if false:
+    1. If |topLevelDirectFromSellerSignalsRetrieved| is false:
       1. Let |topLevelDirectFromSellerSignals| be the result of running
         [=get direct from seller signals=] given |auctionConfig|'s [=auction config/seller=],
         |auctionConfig|'s [=auction config/direct from seller signals header ad slot=], and
         |capturedAuctionHeaders|.
-      1. Let |topLevelDirectFromSellerSignalsForSeller| be the return of running
+      1. Let |topLevelDirectFromSellerSignalsForSeller| be the result of running
         [=get direct from seller signals for a seller=] given |topLevelDirectFromSellerSignals|.
       1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
     1. If |compWinner| is not null:
@@ -1898,9 +1898,10 @@ To <dfn>round a value</dfn> given a {{double}} |value|:
 </div>
 
 <div algorithm>
-To <dfn>get direct from seller signals</dfn> given an [=origin=] |seller|, a [=string=] |adSlot|,
-and a [=map=] |capturedAuctionHeaders|:
+To <dfn>get direct from seller signals</dfn> given an [=origin=] |seller|, a [=string=]-or-null
+|adSlot|, and a [=map=] |capturedAuctionHeaders|:
 
+  1. If |adSlot| is not a [=string=], then return null.
   1. Let |directFromSellerSignals| be null.
   1. Let |directFromSellerSignalsKey| be a new [=direct from seller signals key=] with its
     [=direct from seller signals key/seller=] set to |seller|, and
@@ -3196,15 +3197,15 @@ dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
 
 <xmp class="idl">
 dictionary DirectFromSellerSignalsForBuyer {
-  any auctionSignals = null;
-  any perBuyerSignals = null;
+  any auctionSignals;
+  any perBuyerSignals;
 };
 </xmp>
 
 <xmp class="idl">
 dictionary DirectFromSellerSignalsForSeller {
-  any auctionSignals = null;
-  any sellerSignals = null;
+  any auctionSignals;
+  any sellerSignals;
 };
 </xmp>
 
@@ -3488,11 +3489,13 @@ To <dfn>wait until configuration input promises resolve</dfn> given an [=auction
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
   [=auction config/per buyer timeouts=], or [=auction config/direct from seller signals header ad slot=]
   is failure, return failure.
+1. Return.
 
 </div>
 
 <div algorithm>
-To <dfn>recursively wait until configuration input promises resolve</dfn> given an [=auction config=] |auctionConfig|:
+To <dfn>recursively wait until configuration input promises resolve</dfn> given an [=auction config=]
+|auctionConfig|:
 1. [=list/For each=] |componentAuctionConfig| in |auctionConfig|'s [=auction config/component auctions=]:
   1. If the result of [=waiting until configuration input promises resolve=] given
     |componentAuctionConfig| is failure, return failure.
