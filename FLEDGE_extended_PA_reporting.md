@@ -73,7 +73,7 @@ We consider the scenario where a buyer wants to learn the click through rate of 
 been in an interest group for a given time.
 
 The buyer may implement `getImpressionReportBucket()` and `getClickReportBucket()` which map an
-interest group and the time the user has spent in that interest group to a 128-bit integer.
+interest group and the time the user has spent in that interest group, calculated using [interest group recency](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#:~:text=The%20recency%20field%20is%20duration%20of%20time%20(in%20minutes)%20from%20when%20this%20device%20joined%20this%20interest%20group%20until%20now%2C%20using%20the%20noising%20and%20bucketing%20scheme), to a 128-bit integer.
 
 The buyer can then do the following during generateBid (when the above information is available)
 
