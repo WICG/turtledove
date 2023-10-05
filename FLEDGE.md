@@ -228,7 +228,7 @@ When a frame navigated to one domain calls joinAdInterestGroup(), leaveAdInteres
 }
 ```
 
-Indicating whether the origin in the path has permissions to join and/or leave interest groups owned by the domain the request is sent to. Missing permissions are assumed to be false. Note that both leaveAdInterestGroup() and clearOriginJoinedAdInterestGroups() check the "leaveAdInterestGroup" permission.
+Indicating whether the origin in the path has permissions to join and/or leave interest groups owned by the domain the request is sent to. Missing permissions are assumed to be false. Note that both `leaveAdInterestGroup()` and `clearOriginJoinedAdInterestGroups()` check the "leaveAdInterestGroup" permission.
 
 Since joining or leaving a group may depend on a network request, browsers may delay these requests, or run them out of order. Each frame must, however, run all pending joins and leaves for a single owner in the order in which they were made. Same-origin operations should be applied immediately. When a page or frame is navigated, the browser should make a best-effort attempt to complete pending join and leave operations that are blocked on a network fetch, but may choose to drop them if there are more than 20 for a single top-level frame. This is intended to allow joining or leaving a cross-origin interest group at the same time as starting a navigation in response to a user gesture, though previous join/leave calls may still cause such an operation to be dropped.
 
