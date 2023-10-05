@@ -3014,8 +3014,9 @@ Structures", with the following content:
 <h3 id=direct-from-sellers-signals-key-struct>Direct from seller signals key</h3>
 A <dfn>direct from seller signals key</dfn> is a [=struct=] with the following [=struct/items=]:
 
-NOTE: This is only captured during a {{WindowOrWorkerGlobalScope/fetch()}} call with the
-`{adAuctionHeaders: true}` option, as described in the [:Ad-Auction-Signals:] header description.
+NOTE: This is only captured during a [=request=] whose [=request/initiator type=] is `"fetch"`, made
+with the {{RequestInit/adAuctionHeaders}} option set to `true`, as described in the
+[:Ad-Auction-Signals:] header description.
 
 <dl dfn-for="direct from seller signals key">
 : <dfn>seller</dfn>
@@ -3029,8 +3030,9 @@ NOTE: This is only captured during a {{WindowOrWorkerGlobalScope/fetch()}} call 
 <h3 id=direct-from-sellers-signals-struct>Direct from seller signals</h3>
 A <dfn>direct from seller signals</dfn> is a [=struct=] with the following [=struct/items=]:
 
-NOTE: This is only captured during a {{WindowOrWorkerGlobalScope/fetch()}} call with the
-`{adAuctionHeaders: true}` option, as described in the [:Ad-Auction-Signals:] header description.
+NOTE: This is only captured during a [=request=] whose [=request/initiator type=] is `"fetch"`, made
+with the {{RequestInit/adAuctionHeaders}} option set to `true`, as described in the
+[:Ad-Auction-Signals:] header description.
 
 <dl dfn-for="direct from seller signals">
 : <dfn>auction signals</dfn>
@@ -3058,11 +3060,11 @@ The following will be added to [[Fetch#http-extensions]]:
 request header</h3>
 
 The \`<dfn http-header><code>Sec-Ad-Auction-Fetch</code></dfn>\` request header is an optional
-[=structured header=] with of type [=structured header/boolean=]. If equal to `?1`, the user agent
-will remove any [:Ad-Auction-Signals:] from the response returned to
-{{WindowOrWorkerGlobalScope/fetch()}} -- the [:Ad-Auction-Signals:] value will instead only be used
-in Protected Audiences auctions. [:Sec-Ad-Auction-Fetch:] will only be set if the
-{{WindowOrWorkerGlobalScope/fetch()}} call was made with the `{adAuctionHeaders: true}` option.
+[=structured header=] with of type [=structured header/boolean=]. [:Sec-Ad-Auction-Fetch:] will only
+be set on a [=request=] whose [=request/initiator type=] is `"fetch"`, made with the
+{{RequestInit/adAuctionHeaders}} option set to `true`. If [:Sec-Ad-Auction-Fetch:] is equal to `?1`,
+the user agent will remove any [:Ad-Auction-Signals:] from the returned [=response=] -- the
+[:Ad-Auction-Signals:] value will instead only be used in Protected Audiences auctions. 
 
 <h3 id=ad-auction-signals-header>The \`<a http-header><code>Ad-Auction-Signals</code></a>\` HTTP
 response header</h3>
@@ -3077,10 +3079,11 @@ The following step will be added to the [=HTTP-network-or-cache fetch=] algorith
 "Return |response|.":
 
 1. If |response| is not null, and |fetchParams|'s [=fetch params/task destination=] is a [=global
-  object=], then run [=update captured headers=] with |fetchParams|'s [=fetch params/task
-  destination=]'s [=associated Document's=] [=node navigable's=] [=traversable navigable's=]
-  [=traversable navigable/captured ad auction headers=], |response|'s [=response/header list=], and
-  <var ignore>request</var>'s [=request/URL=]'s [=url/origin=].
+  object=], and |request|'s [=request/capture-ad-auction-headers=] is `true`, then run [=update
+  captured headers=] with |fetchParams|'s [=fetch params/task destination=]'s [=associated
+  Document's=] [=node navigable's=] [=traversable navigable's=] [=traversable navigable/captured ad
+  auction headers=], |response|'s [=response/header list=], and |request|'s [=request/URL=]'s
+  [=url/origin=].
 
 </div>
 
@@ -3092,7 +3095,7 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
   To <dfn id=concept-update-captured-headers>update captured headers</dfn> with a [=traversable
   navigable/captured ad auction headers=] |storedHeaders|, [=header list=] |responseHeaders|, and
   [=origin=] |requestOrigin|:
-  1. Let |adAuctionSignals| be the result of [=header list/get=] with [:Ad-Auction-Signals:],
+  1. Let |adAuctionSignals| be the result of [=header list/getting=] [:Ad-Auction-Signals:] from
     |responseHeaders|.
   1. If |adAuctionSignals| is null, return.
   1. [=header list/Delete=] "[:Ad-Auction-Signals:]" from |responseHeaders|.
