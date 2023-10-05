@@ -449,6 +449,7 @@ To <dfn>build an interest group permissions url</dfn> given a [=origin=] |ownerO
 
 <h2 id="leaving-interest-groups">Leaving Interest Groups</h2>
 
+<h3 id="leaveadinterestgroup">leaveAdInterestGroup</h3>
 {{Window/navigator}}.{{Navigator/leaveAdInterestGroup()}} removes a user from a particular interest
 group.
 
@@ -505,6 +506,49 @@ are:
     1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
     1. [=list/Remove=] [=interest groups=] from the user agent's [=interest group set=] whose
       [=interest group/owner=] is |owner| and [=interest group/name=] is |name|.
+1. Return |p|.
+
+</div>
+
+<h3 id="clearoriginjoinedAdInterestGroups">clearOriginJoinedAdInterestGroups</h3>
+{{Window/navigator}}.{{Navigator/clearOriginJoinedAdInterestGroups()}} removes a user from
+[=interest groups=] with the current page's [=interest group/joining origin=].
+
+
+<xmp class="idl">
+[SecureContext]
+partial interface Navigator {
+  Promise<undefined> clearOriginJoinedAdInterestGroups(
+      USVString owner, optional sequence<USVString> interestGroupsToKeep = []);
+};
+</xmp>
+
+<div algorithm>
+
+The <dfn for=Navigator method>clearOriginJoinedAdInterestGroups(group)</dfn> method steps
+are:
+
+1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s
+  [=environment settings object/origin=].
+1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
+1. Let |p| be [=a new promise=].
+1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
+  "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
+  "{{NotAllowedError}}" {{DOMException}}.
+
+  Note: both joining and leaving interest groups use the "join-ad-interest-group" feature.
+1. Let |owner| be the result of [=parsing an https origin=] with |owner|.
+1. If |owner| is failure, [=exception/throw=] a {{TypeError}}.
+1. Run these steps [=in parallel=]:
+  1. Let |permission| be the result of [=checking interest group permissions=] with
+    |owner|, |frameOrigin|, and "`leave`".
+  1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
+     "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
+  1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
+  1. [=list/Remove=] [=interest groups=] from the user agent's [=interest group set=] whose
+    [=interest group/owner=] is |owner|,  [=interest group/joining origin=] is [=this=]'s
+    [=relevant settings object=]'s [=environment/top-level origin=], and
+    [=interest group/name=] is not in |interestGroupsToKeep|.
 1. Return |p|.
 
 </div>
