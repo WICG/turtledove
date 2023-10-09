@@ -121,6 +121,7 @@ const myGroup = {
   'userBiddingSignals': {...},
   'ads': [shoesAd1, shoesAd2, shoesAd3],
   'adComponents': [runningShoes1, runningShoes2, gymShoes, gymTrainers1, gymTrainers2],
+  'auctionServerRequestFlags': ['omit-ads'],
 };
 const joinPromise = navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
 ```
@@ -132,7 +133,7 @@ The returned `joinPromise` is resolved if the group is successfully joined, and 
 
 There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which looks only at `myGroup.name` and `myGroup.owner`. As with join calls, `leaveAdInterestGroup()` also returns a promise. As a special case to support in-ad UIs, invoking `navigator.leaveAdInterestGroup()` from inside an ad that is being targeted at a particular interest group will cause the browser to leave that group, irrespective of permission policies. Note that calling `navigator.leaveAdInterestGroup()` without arguments isn't supported inside a component ad frame.
 
-The browser will remain in an interest group for only a limited amount of time.  The duration is specified in the call to `joinAdInterestGroup()`, and will be capped at 30 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's `userBiddingSignal` or list of ads.
+The browser will remain in an interest group for only a limited amount of time.  The duration, in seconds, is specified in the call to `joinAdInterestGroup()`, and will be capped at 30 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's `userBiddingSignal` or list of ads.  A duration <= 0 will leave the interest group.
 
 
 #### 1.2 Interest Group Attributes
@@ -208,6 +209,15 @@ The `ads` list contains the various ads that the interest group might show.  Eac
 
 The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similar to the `ads` field, each entry is an object that includes a `renderURL` and optional `adRenderId`, and `metadata` fields. Thanks to `ads` and `adComponents` being separate fields, the buyer is able to update the `ads` field via the `updateURL` without losing `adComponents` stored in the interest group.
 
+The `auctionServerRequestFlags` field is optional and is only used for auctions [run on an auction server](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
+This field contains a list of enumerated values that change what data is sent in the auction blob:
+ * The `omit-ads` enumeration causes the request to omit the `ads` and `adComponents` fields for
+this interest group from the auction blob.
+  * The `include-full-ads` enumeration causes the request to include the full ad object in place of
+anywhere in the request where a plain `adRenderId` would have been sent (such as in the `ads`
+and `adComponents` fields as well as `prevWins`). Note that `include-full-ads` is not compatible
+with the auction server, so this mode is only for debugging.
+
 All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
 `biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must be
@@ -228,7 +238,7 @@ When a frame navigated to one domain calls joinAdInterestGroup() or leaveAdInter
 }
 ```
 
-Indicating whether the origin in the path has permissions to join and/or leave interest groups owned by the domain the request is sent to. Missing permissions are assumed to be false.
+Indicating whether the origin in the path has permissions to join and/or leave interest groups owned by the domain the request is sent to. Missing permissions are assumed to be false.  Since calling `navigator.joinAdInterestGroup()` with a duration of 0 effectively leaves an interest group, `joinAdInterestGroup: true` also allows an origin to call navigator.leaveAdInterestGroup(), even if `leaveadInterestGroup` is missing or is set to false.
 
 Since joining or leaving a group may depend on a network request, browsers may delay these requests, or run them out of order. Each frame must, however, run all pending joins and leaves for a single owner in the order in which they were made. Same-origin operations should be applied immediately. When a page or frame is navigated, the browser should make a best-effort attempt to complete pending join and leave operations that are blocked on a network fetch, but may choose to drop them if there are more than 20 for a single top-level frame. This is intended to allow joining or leaving a cross-origin interest group at the same time as starting a navigation in response to a user gesture, though previous join/leave calls may still cause such an operation to be dropped.
 
@@ -945,14 +955,13 @@ To facilitate negative targeting in Protected Audience auctions, each additional
 
 ##### 6.2.1 Negative Interest Groups
 
-Though negative interest groups are joined using the same `joinAdInterestGroup` API as regular interest groups, they remain distinct from one another. Only negative interest groups can provide an `additionalBidKey`, and only regular interest groups can provide `ads`; no interest group may provide both. The `additionalBidKey` field is described in more detail in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys).
+Though negative interest groups are joined using the same `joinAdInterestGroup` API as regular interest groups, they remain distinct from one another. Only negative interest groups can provide an `additionalBidKey`, and only regular interest groups can provide `ads`; no interest group may provide both. Relatedly, because the subset of fields used by a negative interest group cannot be meaningfully updated, any interest group that provides an `additionalBidKey` - a negative interest group - may not provide an `updateURL`. The `additionalBidKey` field is described in more detail in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys).
 
 ```
 const myGroup = {
   'owner': 'https://www.example-dsp.com',
   'name': 'womens-running-shoes',
   'lifetimeMs': 30 * kSecsPerDay,
-  'updateURL': 'https://www.example-dsp.com/update?id=12345', //optional
   'additionalBidKey': 'EA/fR/uU8VNqT3w/2ic4P6Azdaj1J8U35vFwPEf5T4Y='
 };
 navigator.joinAdInterestGroup(myGroup);
@@ -988,17 +997,17 @@ const additionalBid = {
 }
 ```
 
-Any negative interest group that wasn't joined from that identified origin won't be considered for negative targeting. This restriction is enforced so that negative targeting can only use targeting data from a single origin.  An additional bid that only specifies one negative interest group is not subject to the same restriction on joining origin.
+If a negative targeting group was joined from a different origin than that specified, the additional bid proceeds as if the negative interest group is not present. This "failing open" ensures that negative targeting can only use targeting data from a single origin. Because this origin check "fails open", buyers should make sure that negative interest groups used this way are joined from a consistent origin. An additional bid that only specifies one negative interest group is not subject to any restriction on joining origin.
 
 ##### 6.2.3 Additional Bid Keys
 
-We use a cryptographic signature mechanism to ensure that only the owner of a negative interest group can use it with additional bids. Each buyer will need to create a [Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) public/secret key pair to sign their additional bids to prove their authenticity, and to regularly rotate their key pairs.
+We use a cryptographic signature mechanism to ensure that only the owner of a negative interest group can use it with additional bids. Each buyer will need to create a [Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) public/secret key pair to sign their additional bids to prove their authenticity, and to rotate their key pairs every 30 days for security.
 
-When a buyer joins a user into a negative interest group, they must provide their 32-byte Ed25519 public key, expressed as a base64-encoded string, via the negative interest group's `additionalBidKey` field. This can be seen in the example above in section [6.2.1 Negative Interest Groups](#621-negative-interest-groups). The additional bid key can then be updated via the negative interest group's `updateURL`, for example, to enable a buyer to rotate their Ed25519 key pair faster than they could with the expiration of their negative interest groups alone. Negative interest groups are updated at the same time and in the same way as regular interest groups, as described in section [1.2 Interest Group Attributes](#12-interest-group-attributes).
+When a buyer joins a user into a negative interest group, they must provide their current 32-byte Ed25519 public key, expressed as a base64-encoded string, via the negative interest group's `additionalBidKey` field. This can be seen in the example above in section [6.2.1 Negative Interest Groups](#621-negative-interest-groups).
 
-When the buyer issues an additional bid, that bid needs to be signed using their Ed25519 secret key. During a key rotation, the buyer may need to provide a signature of the additional bid with both the old and the new additional bid keys while negative interest groups stored on users' devices are updated to the new key. It's for this reason that additional bids may have more than one signature provided alongside the bid.
+When the buyer issues an additional bid, that bid needs to be signed using their current and previous Ed25519 secret keys. It's for this reason that additional bids may have more than one signature provided alongside the bid. The use of these two keys here supports the 30-day key rotation: the previous key is used to verify negative interest groups stored on the user's device _prior_ to most recent key rotation, the current key is used to verify negative interest groups stored on the user's device _since_ the most recent key rotation. Only these two keys are needed, because all previous keys will only have been used to join negative interest groups more than 30 days prior, and all of those negative interest groups are guaranteed to have expired.
 
-If the signature doesn't verify successfully, the additional bid proceeds as if the negative interest group is not present.  This "failing open" ensures that only the owner of the negative interest group, who created the additonalBidKey, is allowed to negatively target the interest group, and that nobody else can learn whether the interest group is present on the device.  Because the signature check "fails open", buyers should make sure they're using the right keys; for example it might be prudent to verify a bid signature before submitting the additional bid.
+If the signature doesn't verify successfully, the additional bid proceeds as if the negative interest group is not present. This "failing open" ensures that only the owner of the negative interest group, who created the additonalBidKey, is allowed to negatively target the interest group, and that nobody else can learn whether the interest group is present on the device. Because the signature check "fails open", buyers should make sure they're using the right keys; for example it might be prudent to verify a bid signature before submitting the additional bid.
 
 To ensure a consistent binary payload is signed, the buyer first needs to stringify their additional bid - the JSON data structure seen above. The buyer then generates the necessary signatures and then bundles these together in a JSON structure we'll call the _signed additional bid_.
 
@@ -1042,4 +1051,4 @@ These HTTP response headers are intercepted by the browser and diverted to parti
 
 #### 6.4 Reporting Additional Bid Wins
 
-For additional bids that win the auction, event-level win reporting is supported, just as it is for bids generated from stored interest groups. However, additional bids have distinct security concerns. The browser can guarantee that bids generated from stored interest groups were, in fact, generated by the buyer's origin, but it cannot provide this same guarantee for additional bids. An additional bid can only win if none of the negative interest groups specified by the additional bid are present on the user's device, and so the signature validation described above in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys) also can't help with this. To ensure that buyers understand that they're being asked to report on an additional bid, which cannot be verified having been generated by the buyer's origin, the reporting for additional bids is done by reporting scripts with different names. Instead of `reportWin()` and `reportResult()`, the browser calls functions named `reportAdditionalBidWin()` and `reportAdditionalBidResult()`, respectively, to report a winning additional bid.
+For additional bids that win the auction, event-level win reporting is supported, just as it is for bids generated from stored interest groups. However, additional bids have distinct security concerns. The browser can guarantee that bids generated from stored interest groups were, in fact, generated by the buyer's origin, but it cannot provide this same guarantee for additional bids. An additional bid can only win if none of the negative interest groups specified by the additional bid are present on the user's device, and so the signature validation described above in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys) also can't help with this. To ensure that buyers understand that they're being asked to report on an additional bid, which cannot be verified having been generated by the buyer's origin, the reporting for additional bids is done by calling reporting functions with a slightly different name. Instead of `reportWin()`, the browser instead calls a function named `reportAdditionalBidWin()`to report a winning additional bid.
