@@ -955,14 +955,13 @@ To facilitate negative targeting in Protected Audience auctions, each additional
 
 ##### 6.2.1 Negative Interest Groups
 
-Though negative interest groups are joined using the same `joinAdInterestGroup` API as regular interest groups, they remain distinct from one another. Only negative interest groups can provide an `additionalBidKey`, and only regular interest groups can provide `ads`; no interest group may provide both. The `additionalBidKey` field is described in more detail in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys).
+Though negative interest groups are joined using the same `joinAdInterestGroup` API as regular interest groups, they remain distinct from one another. Only negative interest groups can provide an `additionalBidKey`, and only regular interest groups can provide `ads`; no interest group may provide both. Relatedly, because the subset of fields used by a negative interest group cannot be meaningfully updated, any interest group that provides an `additionalBidKey` - a negative interest group - may not provide an `updateURL`. The `additionalBidKey` field is described in more detail in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys).
 
 ```
 const myGroup = {
   'owner': 'https://www.example-dsp.com',
   'name': 'womens-running-shoes',
   'lifetimeMs': 30 * kSecsPerDay,
-  'updateURL': 'https://www.example-dsp.com/update?id=12345', //optional
   'additionalBidKey': 'EA/fR/uU8VNqT3w/2ic4P6Azdaj1J8U35vFwPEf5T4Y='
 };
 navigator.joinAdInterestGroup(myGroup);
@@ -1002,11 +1001,11 @@ Any negative interest group that wasn't joined from that identified origin won't
 
 ##### 6.2.3 Additional Bid Keys
 
-We use a cryptographic signature mechanism to ensure that only the owner of a negative interest group can use it with additional bids. Each buyer will need to create a [Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) public/secret key pair to sign their additional bids to prove their authenticity, and to regularly rotate their key pairs.
+We use a cryptographic signature mechanism to ensure that only the owner of a negative interest group can use it with additional bids. Each buyer will need to create a [Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) public/secret key pair to sign their additional bids to prove their authenticity, and to rotate their key pairs every 30 days for security.
 
-When a buyer joins a user into a negative interest group, they must provide their 32-byte Ed25519 public key, expressed as a base64-encoded string, via the negative interest group's `additionalBidKey` field. This can be seen in the example above in section [6.2.1 Negative Interest Groups](#621-negative-interest-groups). The additional bid key can then be updated via the negative interest group's `updateURL`, for example, to enable a buyer to rotate their Ed25519 key pair faster than they could with the expiration of their negative interest groups alone. Negative interest groups are updated at the same time and in the same way as regular interest groups, as described in section [1.2 Interest Group Attributes](#12-interest-group-attributes).
+When a buyer joins a user into a negative interest group, they must provide their current 32-byte Ed25519 public key, expressed as a base64-encoded string, via the negative interest group's `additionalBidKey` field. This can be seen in the example above in section [6.2.1 Negative Interest Groups](#621-negative-interest-groups).
 
-When the buyer issues an additional bid, that bid needs to be signed using their Ed25519 secret key. During a key rotation, the buyer may need to provide a signature of the additional bid with both the old and the new additional bid keys while negative interest groups stored on users' devices are updated to the new key. It's for this reason that additional bids may have more than one signature provided alongside the bid.
+When the buyer issues an additional bid, that bid needs to be signed using their current and previous Ed25519 secret keys. It's for this reason that additional bids may have more than one signature provided alongside the bid. The use of these two keys here supports the 30-day key rotation: the previous key is used to verify negative interest groups stored on the user's device _prior_ to most recent key rotation, the current key is used to verify negative interest groups stored on the user's device _since_ the most recent key rotation. Only these two keys are needed, because all previous keys will only have been used to join negative interest groups more than 30 days prior, and all of those negative interest groups are guaranteed to have expired.
 
 If the signature doesn't verify successfully, the additional bid proceeds as if the negative interest group is not present.  This "failing open" ensures that only the owner of the negative interest group, who created the additonalBidKey, is allowed to negatively target the interest group, and that nobody else can learn whether the interest group is present on the device.  Because the signature check "fails open", buyers should make sure they're using the right keys; for example it might be prudent to verify a bid signature before submitting the additional bid.
 
