@@ -997,7 +997,7 @@ const additionalBid = {
 }
 ```
 
-Any negative interest group that wasn't joined from that identified origin won't be considered for negative targeting. This restriction is enforced so that negative targeting can only use targeting data from a single origin.  An additional bid that only specifies one negative interest group is not subject to the same restriction on joining origin.
+If a negative targeting group was joined from a different origin than that specified, the additional bid proceeds as if the negative interest group is not present. This "failing open" ensures that negative targeting can only use targeting data from a single origin. Because this origin check "fails open", buyers should make sure that negative interest groups used this way are joined from a consistent origin. An additional bid that only specifies one negative interest group is not subject to any restriction on joining origin.
 
 ##### 6.2.3 Additional Bid Keys
 
@@ -1007,7 +1007,7 @@ When a buyer joins a user into a negative interest group, they must provide thei
 
 When the buyer issues an additional bid, that bid needs to be signed using their current and previous Ed25519 secret keys. It's for this reason that additional bids may have more than one signature provided alongside the bid. The use of these two keys here supports the 30-day key rotation: the previous key is used to verify negative interest groups stored on the user's device _prior_ to most recent key rotation, the current key is used to verify negative interest groups stored on the user's device _since_ the most recent key rotation. Only these two keys are needed, because all previous keys will only have been used to join negative interest groups more than 30 days prior, and all of those negative interest groups are guaranteed to have expired.
 
-If the signature doesn't verify successfully, the additional bid proceeds as if the negative interest group is not present.  This "failing open" ensures that only the owner of the negative interest group, who created the additonalBidKey, is allowed to negatively target the interest group, and that nobody else can learn whether the interest group is present on the device.  Because the signature check "fails open", buyers should make sure they're using the right keys; for example it might be prudent to verify a bid signature before submitting the additional bid.
+If the signature doesn't verify successfully, the additional bid proceeds as if the negative interest group is not present. This "failing open" ensures that only the owner of the negative interest group, who created the additonalBidKey, is allowed to negatively target the interest group, and that nobody else can learn whether the interest group is present on the device. Because the signature check "fails open", buyers should make sure they're using the right keys; for example it might be prudent to verify a bid signature before submitting the additional bid.
 
 To ensure a consistent binary payload is signed, the buyer first needs to stringify their additional bid - the JSON data structure seen above. The buyer then generates the necessary signatures and then bundles these together in a JSON structure we'll call the _signed additional bid_.
 
