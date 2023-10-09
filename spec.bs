@@ -182,12 +182,9 @@ dictionary GenerateBidInterestGroup {
 dictionary AuctionAdInterestGroup : GenerateBidInterestGroup {
   double priority = 0.0;
   record<DOMString, double> prioritySignalsOverrides;
-  DOMString? additionalBidKey;
+  DOMString additionalBidKey;
 };
 </xmp>
-
-Note: An {{AuctionAdInterestGroup}} that includes {{AuctionAdInterestGroup/additionalBidKey}} cannot
-include either of {{GenerateBidInterestGroup/ads}} or {{GenerateBidInterestGroup/updateURL}}.
 
 {{AuctionAdInterestGroup}} is used by {{Window/navigator}}.{{Navigator/joinAdInterestGroup()}}, and
 when an interest group is stored to [=interest group set=].
@@ -326,6 +323,7 @@ This is detectable because it can change the set of fields that are read from th
       * |decodedKey| is a failure;
       * |decodedKey|'s [=byte sequence/length=] is not 32;
       * |group|["{{GenerateBidInterestGroup/ads}}"] [=map/exists=].
+      * |group|["{{GenerateBidInterestGroup/updateURL}}"] [=map/exists=].
     1. Set |interestGroup|'s [=interest group/additional bid key=] to |decodedKey|.
 1. If |interestGroup|'s [=interest group/estimated size=] is greater than 50 KB, then
   [=exception/throw=] a {{TypeError}}.
@@ -359,17 +357,17 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 1. The [=string/length=] of the [=serialization of an origin|serialization=] of |ig|'s
   [=interest group/owner=].
 1. The [=string/length=] of |ig|'s [=interest group/name=].
-1. 8 bytes, which is the size of |ig|'s [=interest group/priority=].
+1. 8, which is the size of |ig|'s [=interest group/priority=].
 1. The [=string/length=] of |ig|'s [=interest group/execution mode=].
-1. 2 bytes, which is the size of |ig|'s [=interest group/enable bidding signals prioritization=].
+1. 2, which is the size of |ig|'s [=interest group/enable bidding signals prioritization=].
 1. If |ig|'s [=interest group/priority vector=] is not null, [=map/for each=] |key| → |value| of
   [=interest group/priority vector=]:
   1. The [=string/length=] of |key|.
-  1. 8 bytes, which is the size of |value|.
+  1. 8, which is the size of |value|.
 1. If |ig|'s [=interest group/priority signals overrides=] is not null, [=map/for each=] |key| → |value| of
   [=interest group/priority signals overrides=]:
   1. The [=string/length=] of |key|.
-  1. 8 bytes, which is the size of |value|.
+  1. 8, which is the size of |value|.
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
   [=interest group/bidding url=], if the field is not null.
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
@@ -396,7 +394,7 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
     [=interest group ad/render url=].
   1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
 1. If |ig|'s [=interest group/additional bid key=] is not null:
-  1. 32 bytes.
+  1. 32, which is its size (number of bytes). 
 
 </div>
 
@@ -535,34 +533,6 @@ to conduct an auction to select an advertisement to display to the user, they ca
 {{Window/navigator}}.{{Navigator/runAdAuction()}} function, providing an auction configuration that
 tells the browser how to conduct the auction and which on-device recorded interests are allowed to
 bid in the auction for the chance to display their advertisement.
-
-<h3 id="createauctionnonce">createAuctionNonce()</h3>
-
-{{Window/navigator}}.{{Navigator/createAuctionNonce()}} creates an auction nonce, a one-time ID
-uniquely associated with a single call to {{Window/navigator}}.{{Navigator/runAdAuction()}}. For
-multi-seller auctions, this ID is uniquely associated with all {{AuctionAdConfig/componentAuctions}}.
-This nonce will need to be passed back in via a subsequent call to
-{{Window/navigator}}.{{Navigator/runAdAuction()}} via the {{AuctionAdConfig}}. This is currently
-only needed for auctions that use additional bids, for which the auction nonce will be included in
-each additional bid as a way of ensuring that those bids are only used in the auctions for which
-they were intended.
-
-<xmp class="idl">
-[SecureContext]
-partial interface Navigator {
-  Promise<DOMString> createAuctionNonce();
-};
-</xmp>
-
-<div algorithm="createAuctionNonce()">
-The <dfn for=Navigator method>createAuctionNonce()</dfn> method steps are:
-
-  1. Let |p| be [=a new promise=].
-  1. Run the following steps [=in parallel=]:
-    1. Let |nonce| be the [=string representation=] of [=version 4 UUID=].
-    1. [=Queue a task=] to [=resolve=] |p| with |nonce|.
-  1. Return |p|.
-</div>
 
 <h3 id="runadauction">runAdAuction()</h3>
 
@@ -983,13 +953,13 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       1. Set |auctionConfig|'s [=auction config/seller signals=] to the result of
         [=serializing a JavaScript value to a JSON string=], given |result|.
     * To handle an error, set |auctionConfig|'s [=auction config/seller signals=] to failure.
-1. If |config|["{{AuctionAdConfig/auctionNonce}}"] [=map/exists=]:
-  1. Set |auctionConfig|'s [=auction config/auction nonce=] to the result of running
-    [=get uuid from string=] with |config|["{{AuctionAdConfig/auctionNonce}}"].
+1. If |config|["{{AuctionAdConfig/auctionNonce}}"] [=map/exists=], then set |auctionConfig|'s
+  [=auction config/auction nonce=] to the result of running [=get uuid from string=] with
+  |config|["{{AuctionAdConfig/auctionNonce}}"].
 1. If |config|["{{AuctionAdConfig/additionalBids}}"] [=map/exists=]:
   1. [=exception/Throw=] a {{TypeError}} if any of the following conditions hold:
     * |config|["{{AuctionAdConfig/auctionNonce}}"] does not [=map/exist=];
-    * |config|["{{AuctionAdConfig/interestGroupBuyers}}"] does not [=map/exist=], or it's [=list/empty=];
+    * |config|["{{AuctionAdConfig/interestGroupBuyers}}"] does not [=map/exist=], or is [=list/empty=];
     * |config|["{{AuctionAdConfig/componentAuctions}}"] is not [=list/empty=].
   1. Set |auctionConfig|'s [=auction config/expects additional bids=] to true.
   1. [=Handle an input promise in configuration=] given |auctionConfig| and
@@ -1180,9 +1150,7 @@ To <dfn>parse an https origin</dfn> given a [=string=] |input|:
 To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfig|:
 1. Let |bidGenerators| be a new [=ordered map=] whose [=map/keys=] are [=origins=] and whose
   [=map/values=] are [=per buyer bid generators=].
-1. Let |negativeTargetInfo| be a new [=map=] whose [=map/keys=] are [=tuples=] consisting of an
-  [=origin=] and a [=string=], and whose [=map/values=] are [=tuples=] consisting of an [=origin=]
-  and a [=byte sequence=].
+1. Let |negativeTargetInfo| be a new [=negative target info=].
 1. [=list/For each=] |buyer| in |auctionConfig|'s [=auction config/interest group buyers=]:
   1. [=list/For each=] |ig| of the user agent's [=interest group set=] whose
     [=interest group/owner=] is |buyer|:
@@ -1333,9 +1301,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Set |componentAuctionExpectedCurrency| to the result of [=looking up per-buyer currency=] with
     |topLevelAuctionConfig| and |auctionConfig|'s [=auction config/seller=].
 1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
-1. Set |additionalBids| to the result of running [=validate and convert additional bids=] with
+1. Let |additionalBids| be the result of running [=validate and convert additional bids=] with
   |auctionConfig|, |topLevelAuctionConfig| and |negativeTargetInfo|.
-1. Set |pendingAdditionalBids| to the [=list/size=] of |additionalBids|.
+1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
   1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
     |decisionLogicScript|, null, |auctionLevel|, |componentAuctionExpectedCurrency|, and
@@ -1476,227 +1444,6 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dd>|ig|'s [=interest group/ad components=] [=converted to an AuctionAd sequence=]
     </dl>
   1. Return |igGenerateBid|.
-</div>
-
-<div algorithm>
-To <dfn>validate and convert additional bids</dfn> given an [=auction config=] |auctionConfig|, an
-[=auction config=]-or-null |topLevelAuctionConfig|, and a [=map=] |negativeTargetInfo| whose
-[=map/keys=] are [=tuples=] consisting of an [=origin=] and a [=string=], and whose [=map/values=]
-are [=tuples=] consisting of an [=origin=] and a [=byte sequence=]:
-
-  1. Let |auctionNonce| be |auctionConfig|'s [=auction config/auction nonce=].
-  1. Let |capturedAdditionalBidsHeaders| be [=this=]'s [=relevant global object=]'s
-    [=associated Document's=] [=node navigable's=] [=traversable navigable's=]
-    [=captured additional bids headers=].
-  1. Let |additionalBids| be a new [=list=] of [=additional bids=].
-  1. [=list/For each=] |encodedSignedAdditionalBid| of |capturedAdditionalBidsHeaders|[|auctionNonce|]:
-    1. Let |signedAdditionalBid| be the result of running [=forgiving-base64 decode=] with
-      |encodedSignedAdditionalBid|.
-    1. If |signedAdditionalBid| is failure, then [=iteration/continue=].
-    1. Let |additionalBid| be the result of running [=parse a signed additional bid=] given
-      |signedAdditionalBid|, |auctionConfig|, |topLevelAuctionConfig|, and |negativeTargetInfo|. 
-    1. If |additionalBid| is not null:
-      1. [=list/Append=] |additionalBid| to |additionalBids|.
-  1. Return |additionalBids|.
-</div>
-
-<div algorithm>
-To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdditionalBid|, an
-[=auction config=] |auctionConfig|, an [=auction config=]-or-null |topLevelAuctionConfig|, and a
-[=map=] |negativeTargetInfo| whose [=map/keys=] are [=tuples=] consisting of an [=origin=] and a
-[=string=], and whose [=map/values=] are [=tuples=] consisting of an [=origin=] and a
-[=byte sequence=]:
-
-  1. Let |parsedSignedAdditionalBid| be the result of [=parse a JSON string to an infra value=]
-    given |signedAdditionalBid|.
-  1. Return null if any of the following conditions hold:
-    * |parsedSignedAdditionalBid| is not a [=map=];
-    * |parsedSignedAdditionalBid|["bid"] does not [=map/exist=], or it's not a [=string=];
-    * |parsedSignedAdditionalBid|["signatures"] does not [=map/exist=], or it's not a [=list=].
-  1. Let |signatures| be a new [=list=] of [=signed additional bid signatures=].
-  1. Let |decodeSignatureFailed| be false.
-  1. [=list/For each=] |sig| of |parsedSignedAdditionalBid|["signatures"]:
-    1. Set |decodeSignatureFailed| to true and [=iteration/break=] if any of the following
-      conditions hold:
-      * |sig| is not a [=map=];
-      * |sig|["key"] does not [=map/exist=], or it's not a [=string=];
-      * |sig|["signature"] does not [=map/exist=], or it's not a [=string=].
-    1. Let |maybeKey| be the result of running [=forgiving-base64 decode=] with |sig|["key"].
-    1. Let |maybeSignature| be the result of running [=forgiving-base64 decode=] with
-      |sig|["signature"].
-    1. Set |decodeSignatureFailed| to true and [=iteration/break=] if any of the following
-      conditions hold:
-      * |maybeKey| is failure, or its [=byte sequence/length=] is not 32;
-      * |maybeSignature| is failure, or its [=byte sequence/length=] is not 64;
-    1. Let |signature| be a [=signed additional bid signatures=], whose
-      [=signed additional bid signature/key=] is |maybeKey|, and
-      [=signed additional bid signature/signature=] is |maybeSignature|.
-    1. [=list/Append=] |signature| to |signatures|.
-  1. If |decodeSignatureFailed| is true, then return null.
-  1. Let |decodedAdditionalBid| be the result of [=decode an additional bid=] given
-    |parsedSignedAdditionalBid|["bid"], |auctionConfig| and |topLevelAuctionConfig|.
-  1. Return null if any of the following conditions hold:
-    * |decodedAdditionalBid| is failure;
-    * The result of [=checking a currency tag=] with |decodedAdditionalBid|'s
-      [=additional bid/bid=]'s [=generated bid/bid=]'s [=bid with currency/currency=] and the
-      result of running [=look up per-buyer currency=] with |auctionConfig|.
-  1. Check whether the additional bid is negative targeted:
-    1. Let |verifiedSignatureKeys| be a new [=set=] of [=byte sequences=].
-    1. [=list/For each=] |signature| of |signatures|:
-      1. Let |isSignatureValid| be the result of running [=verify=] |signature|'s
-        [=signed additional bid signature/signature=] on message |parsedSignedAdditionalBid|["bid"]
-        using |signature|'s [=signed additional bid signature/key=], with 0 for Ed25519ctx.
-      1. If |isSignatureValid| is true:
-        1. [=set/Append=] |signature|'s [=signed additional bid signature/key=] to
-          |verifiedSignatureKeys|.
-    1. Let |negativeTargeted| be false.
-    1. Let |additionalBidBuyer| be |additionalBid|'s [=additional bid/bid=]'s
-      [=generated bid/interest group=]'s [=interest group/owner=].
-    1. [=list/For each=] |igName| of |additionalBid|'s
-      [=additional bid/negative target interest group names=]:
-      1. If |negativeTargetInfo|[(|additionalBidBuyer|, |igName|)] [=map/exists=]:
-        1. Let (|joiningOrigin|, |additionalBidKey|) be
-          |negativeTargetInfo|[(|additionalBidBuyer|, |igName|)].
-        1. If |verifiedSignatureKeys| [=list/contains=] |additionalBidKey|:
-          1. If |joiningOrigin| is not null:
-            1. If |joiningOrigin| is not [=same origin=] with |additionalBid|'s
-              [=additional bid/negative target joining origin=], then [=iteration/continue=].
-          1. Set |negativeTargeted| to true, and [=iteration/break=].
-
-     Note: If the signature doesn't verify successfully, the additional bid proceeds as if the
-        negative interest group is not present. This ensures that only the owner of the negative
-        interest group, who created the additonalBidKey, is allowed to negatively target the
-        interest group, and that nobody else can learn whether the interest group is present on
-        the device.
-  1. If |negativeTargeted| is true:
-    1. Return null.
-  1. Return |decodedAdditionalBid|.
-</div>
-
-<div algorithm>
-To <dfn>decode an additional bid</dfn> given a [=string=] |additionalBidJson|, an [=auction config=]
-|auctionConfig|, and an [=auction config=]-or-null |topLevelAuctionConfig|:
-
-  1. Let |parsedAdditionalBid| be the result of [=parse a JSON string to an infra value=] given
-    |additionalBidJson|.
-  1. If |parsedAdditionalBid| is not a [=map=], then return failure.
-  1. Let |result| be a new [=additional bid=].
-  1. Return failure if any of the following conditions hold:
-    * |parsedAdditionalBid|["auctionNonce"] does not [=map/exist=];
-    * |parsedAdditionalBid|["auctionNonce"] is not |auctionConfig|'s [=auction config/auction nonce=];
-    * |parsedAdditionalBid|["seller"] does not [=map/exist=];
-    * The result of running the [=parse an https origin=] with |parsedAdditionalBid|["seller"] is
-      failure, or not [=same origin=] with |auctionConfig|'s [=auction config/seller=].
-  1. If |topLevelAuctionConfig| is null:
-    1. If |parsedAdditionalBid|["topLevelSeller"] [=map/exists=], then return failure.
-  1. Otherwise:
-    1. If |parsedAdditionalBid|["topLevelSeller"] does not [=map/exist=], then return failure.
-    1. Let |bidTopLevelSeller| be the result of running the [=parse an https origin=] with
-      |parsedAdditionalBid|["topLevelSeller"].
-    1. If |bidTopLevelSeller| is failure, or |bidTopLevelSeller| is not [=same origin=] with
-      |topLevelAuctionConfig|'s [=auction config/seller=], then return failure.
-  1. If |parsedAdditionalBid|["interestGroup"] does not [=map/exist=], then return failure.
-  1. Let |igMap| be |parsedAdditionalBid|["interestGroup"].
-  1. Return failure if any the following conditions hold:
-    * |igMap| is not a [=map=];
-    * |igMap|["name"] does not [=map/exist=], or it's not a [=string=];
-    * |igMap|["biddingLogicURL"] does not [=map/exist=], or it's not a [=string=];
-    * |igMap|["owner"] does not [=map/exist=], or it's not a [=string=];
-  1. Let |igOwner| be the result of running [=parse an https origin=] given |igMap|["owner"].
-  1. Let |igName| be |igMap|["name"].
-  1. Let |igBiddingUrl| be the result of running [=url parser=] on |igMap|["biddingLogicURL"].
-  1. Return failure if any of the following conditions hold:
-    * |igOwner| is failure;
-    * |auctionConfig|'s [=auction config/interest group buyers=] does not [=list/contain=] |igOwner|;
-    * |igBiddingUrl| is failure;
-    * |igOwner| is not [=same origin=] with |igBiddingUrl|.
-  1. Let |ig| be a new [=interest group=] with the following properties:
-    :   [=interest group/owner=]
-    ::  |igOwner|
-    :   [=interest group/name=]
-    ::  |igName|
-    :   [=interest group/bidding url=]
-    ::  |igBiddingUrl|
-  1. If |parsedAdditionalBid|["bid"] does not [=map/exist=], or it's not a [=map=], return failure.
-  1. Let |bidMap| be |parsedAdditionalBid|["bid"].
-  1. If |bidMap|["render"] does not [=map/exist=] or it's not a [=string=], then return failure.
-  1. Let |renderUrl| be the result of running [=url parser=] on |bidMap|["render"].
-  1. If |renderUrl| is failure, then return failure.
-  1. Let |ad| be a new [=interest group ad=] whose [=interest group ad/render url=] is |renderUrl|.
-  1. Set |ig|'s [=interest group/ads=] to « |ad| ».
-  1. Let |bidVal| be |bidMap|["bid"] if it [=map/exists=], otherwise return failure.
-  1. If |bidVal| is not a {{double}}, or it's less than or equal to 0, then return failure.
-  1. Let |adMetadata| be "null".
-  1. If |bidMap|["ad"] [=map/exists=]:
-    1. Set |adMetadata| to the result of running [=serialize an Infra value to a JSON string=] with
-      |bidMap|["ad"].
-  1. Let |bidCurrency| be null.
-  1. If |bidMap|["bidCurrency"] [=map/exists=]:
-    1. If |bidMap|["bidCurrency"] is not a [=string=], or the result of [=checking whether a string
-      is a valid currency tag=] is failure:
-      1. Return failure.
-    1. Set |bidCurrency| to |bidMap|["bidCurrency"].
-  1. Let |adCost| be null.
-  1. If |bidMap|["adCost"] [=map/exists=]:
-    1. If |bidMap|["adCost"] is not a {{double}}, then return failure.
-    1. Set |adCost| to |bidMap|["adCost"].
-  1. Let |modelingSignals| be null.
-  1. If |bidMap|["modelingSignals"] [=map/exists=]:
-    1. If |bidMap|["modelingSignals"] is not a {{double}}, then return failure.
-    1. If |bidMap|["modelingSignals"] is greater than or equal to 0, and less than 4096:
-      1. Set |modelingSignals| to |bidMap|["modelingSignals"].
-  1. Let |adComponents| be a new [=list=] of [=ad descriptors=].
-  1. If |bidMap|["adComponents"] [=map/exists=]:
-    1. If |bidMap|["adComponents"] is not a [=list=], then return failure.
-    1. [=list/For each=] |component| of |bidMap|["adComponents"]:
-      1. If |component| is not a [=string=], then return failure.
-      1. Let |componentUrl| be the result of running [=url parser=] on |component|.
-      1. If |componentUrl| is failure, then return failure.
-      1. Let |componentDescriptor| be a new [=ad descriptor=] whose [=ad descriptor/url=] is
-        |componentUrl|.
-      1. [=list/Append=] |componentDescriptor| to |adComponents|.
-    1. Set |ig|'s [=interest group/ad components=] to |adComponents|.
-  1. If |parsedAdditionalBid|["negativeInterestGroup"] [=map/exists=]:
-    1. If |parsedAdditionalBid|["negativeInterestGroups"] [=map/exists=], or
-      |parsedAdditionalBid|["negativeInterestGroup"] is not a [=string=], then return failure.
-    1. [=list/Append=] |parsedAdditionalBid|["negativeInterestGroup"] to |result|'s
-      [=additional bid/negative target interest group names=].
-  1. If |parsedAdditionalBid|["negativeInterestGroups"] [=map/exists=]:
-    1. Let |multipleNegativeIg| be |parsedAdditionalBid|["negativeInterestGroups"].
-    1. Return failure if any of the following conditions hold:
-      * |multipleNegativeIg| is not a [=map=];
-      * |multipleNegativeIg|["joiningOrigin"] does not [=map/exist=], or it's not a [=string=];
-      * |multipleNegativeIg|["interestGroupNames"] does not [=map/exist=], or it's not a [=list=].
-    1. Let |joiningOrigin| be the result of running [=parse an https origin=] with
-      |multipleNegativeIg|["joiningOrigin"].
-    1. If |joiningOrigin| is failure, then return failure.
-    1. Set |result|'s [=additional bid/negative target joining origin=] to |joiningOrigin|.
-    1. [=list/For each=] |igName| of |multipleNegativeIg|["interestGroupNames"]:
-      1. If |igName| is not a [=string=], then return failure.
-      1. [=list/Append=] |igName| to |result|'s
-        [=additional bid/negative target interest group names=].
-  1. Set |result|'s [=additional bid/bid=] to a new [=generated bid=] with the following properties:
-    :   [=generated bid/bid=]
-    ::  A [=bid with currency=] whose [=bid with currency/value=] is |bidVal|, and
-      [=bid with currency/currency=] is |bidCurrency|
-    :   [=generated bid/ad=]
-    ::  |adMetadata|
-    :   [=generated bid/ad descriptor=]
-    ::  An [=ad descriptor=] whose [=ad descriptor/url=] is |renderUrl|
-    :   [=generated bid/ad component descriptors=]
-    ::  |adComponents|
-    :   [=generated bid/ad cost=]
-    ::  |adCost|
-    :   [=generated bid/modeling signals=]
-    ::  |modelingSignals|
-    :   [=generated bid/interest group=]
-    ::  |ig|
-    :   [=generated bid/bid ad=]
-    ::  A [=interest group ad=] whose [=interest group ad/render url=] is |renderUrl|, and
-      [=interest group ad/metadata=] is |adMetadata|
-    :   [=generated bid/provided as additional bid=]
-    ::  true
-  1. Return |result|.
 </div>
 
 <div algorithm>
@@ -2327,6 +2074,398 @@ and a {{ReportingBrowserSignals}} |browserSignals|:
 
      : [=reporting result/reporting macro map=]
      :: |reportingMacroMap|
+</div>
+
+# Additional Bids and Negative Targeting # {#additional-bids-and-negative-targeting}
+
+## createAuctionNonce() ## {#create-auction-nonce}
+
+{{Window/navigator}}.{{Navigator/createAuctionNonce()}} creates an auction nonce, a one-time
+[=version 4 UUID=] uniquely associated with a single call to
+{{Window/navigator}}.{{Navigator/runAdAuction()}}. For multi-seller auctions, this ID is uniquely
+associated with all {{AuctionAdConfig/componentAuctions}}.
+This nonce will need to be passed back in via a subsequent call to
+{{Window/navigator}}.{{Navigator/runAdAuction()}} via the {{AuctionAdConfig}}. This is currently
+only needed for auctions that use additional bids, for which the auction nonce will be included in
+each additional bid as a way of ensuring that those bids are only used in the auctions for which
+they were intended.
+
+<xmp class="idl">
+[SecureContext]
+partial interface Navigator {
+  Promise<DOMString> createAuctionNonce();
+};
+</xmp>
+
+<div algorithm="createAuctionNonce()">
+The <dfn for=Navigator method>createAuctionNonce()</dfn> method steps are:
+
+  1. Let |p| be [=a new promise=].
+  1. Run the following steps [=in parallel=]:
+    1. Let |nonce| be the [=string representation=] of a [=version 4 UUID=].
+
+    <div class=note>
+    Because we're going in parallel:
+      * There is no guarantee that the promise will be resolved before other tasks get queued on the
+        main thread;
+      * ...which gives browsers the freedom to generate this UUID in another process, and
+        asynchronously send it back to the main thread at an arbitrary future time.
+    </div>
+    1. [=Queue a task=] to [=resolve=] |p| with |nonce|.
+  1. Return |p|.
+</div>
+
+## Additional Bids ## {#additional-bids}
+
+In addition to [=generate a bid|bids generated by interest groups=], sellers can enable buyers to
+introduce bids generated outside of the auction, which are called additional bids. Additional bids
+are commonly triggered using contextual signals. Buyers compute the additional bids, likely as part
+of a contextual auction. Buyers need to package up each additional bid using a new data structure
+that encapsulates all of the information needed for the additional bid to compete against other bids
+in a [[#running-ad-auctions|Protected Audience auction]].
+
+<div id="additional-bid-example" class=example>
+  <p> Each additional bid is expressed using the following JSON data structure:</p>
+  <pre class="highlight">
+  const additionalBid = {
+    "bid": {
+      "ad": 'ad-metadata',
+      "adCost": 2.99,
+      "bid": 1.99,
+      "bidCurrency": "USD",
+      "render": "https://www.example-dsp.com/ad/123.jpg",
+      "adComponents": [adComponent1, adComponent2],
+      "allowComponentAuction": true,
+      "modelingSignals": 123,
+    },
+    "interestGroup": {
+      "owner": "https://www.example-dsp.com"
+      "name": "campaign123",
+      "biddingLogicURL": "https://www.example-dsp.com/bid_logic.js"
+    },
+    "negativeInterestGroups": {
+      joiningOrigin: "https://www.example-advertiser.com",
+      interestGroupNames: [
+        "example_advertiser_negative_interest_group_a",
+        "example_advertiser_negative_interest_group_b",
+      ]
+    },
+    "auctionNonce": "12345678-90ab-cdef-fedcba09876543210",
+    "seller": "https://www.example-ssp.com",
+    "topLevelSeller": "https://www.another-ssp.com"
+  }
+  </pre>
+</div>
+
+<div algorithm>
+To <dfn>validate and convert additional bids</dfn> given an [=auction config=] |auctionConfig|, an
+[=auction config=]-or-null |topLevelAuctionConfig|, and a [=negative target info=]
+|negativeTargetInfo|:
+
+  1. [=Assert=] that these steps are running [=in parallel=].
+  1. Let |auctionNonce| be the [=string representation=] of |auctionConfig|'s
+    [=auction config/auction nonce=].
+  1. Let |capturedAdditionalBidsHeaders| be [=this=]'s [=relevant global object=]'s
+    [=associated Document's=] [=node navigable's=] [=traversable navigable's=]
+    [=captured additional bids headers=].
+  1. Let |additionalBids| be a new [=list=] of [=additional bids=].
+  1. [=list/For each=] |encodedSignedAdditionalBid| of |capturedAdditionalBidsHeaders|[|auctionNonce|]:
+    1. Let |signedAdditionalBid| be the result of running [=forgiving-base64 decode=] with
+      |encodedSignedAdditionalBid|.
+    1. If |signedAdditionalBid| is failure, then [=iteration/continue=].
+    1. Let |additionalBid| be the result of running [=parse a signed additional bid=] given
+      |signedAdditionalBid|, |auctionConfig|, |topLevelAuctionConfig|, and |negativeTargetInfo|. 
+    1. If |additionalBid| is not null:
+      1. [=list/Append=] |additionalBid| to |additionalBids|.
+  1. Return |additionalBids|.
+</div>
+
+<div algorithm>
+To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdditionalBid|, an
+[=auction config=] |auctionConfig|, an [=auction config=]-or-null |topLevelAuctionConfig|, and a
+[=negative target info=] |negativeTargetInfo|:
+
+  1. [=Assert=] that these steps are running [=in parallel=].
+  1. Let |parsedSignedAdditionalBid| be the result of [=parse a JSON string to an infra value=]
+    given |signedAdditionalBid|.
+  1. Return null if any of the following conditions hold:
+    * |parsedSignedAdditionalBid| is not a [=map=];
+    * |parsedSignedAdditionalBid|["bid"] does not [=map/exist=], or is not a [=string=];
+    * |parsedSignedAdditionalBid|["signatures"] does not [=map/exist=], or is not a [=list=].
+  1. Let |signatures| be a new [=list=] of [=signed additional bid signatures=].
+  1. Let |decodeSignatureFailed| be false.
+  1. [=list/For each=] |sig| of |parsedSignedAdditionalBid|["signatures"]:
+    1. Set |decodeSignatureFailed| to true and [=iteration/break=] if any of the following
+      conditions hold:
+      * |sig| is not a [=map=];
+      * |sig|["key"] does not [=map/exist=], or is not a [=string=];
+      * |sig|["signature"] does not [=map/exist=], or is not a [=string=].
+    1. Let |maybeKey| be the result of running [=forgiving-base64 decode=] with |sig|["key"].
+    1. Let |maybeSignature| be the result of running [=forgiving-base64 decode=] with
+      |sig|["signature"].
+    1. Set |decodeSignatureFailed| to true and [=iteration/break=] if any of the following
+      conditions hold:
+      * |maybeKey| is failure, or its [=byte sequence/length=] is not 32;
+      * |maybeSignature| is failure, or its [=byte sequence/length=] is not 64;
+    1. Let |signature| be a [=signed additional bid signatures=], whose
+      [=signed additional bid signature/key=] is |maybeKey|, and
+      [=signed additional bid signature/signature=] is |maybeSignature|.
+    1. [=list/Append=] |signature| to |signatures|.
+  1. If |decodeSignatureFailed| is true, then return null.
+  1. Let |decodedAdditionalBid| be the result of [=decode an additional bid json=] given
+    |parsedSignedAdditionalBid|["bid"], |auctionConfig| and |topLevelAuctionConfig|.
+  1. Return null if any of the following conditions hold:
+    * |decodedAdditionalBid| is failure;
+    * The result of [=checking a currency tag=] with |decodedAdditionalBid|'s
+      [=additional bid/bid=]'s [=generated bid/bid=]'s [=bid with currency/currency=] and the
+      result of running [=look up per-buyer currency=] with |auctionConfig|.
+  1. Let |verifiedSignatureKeys| be a new [=set=] of [=byte sequences=].
+  1. [=list/For each=] |signature| of |signatures|:
+    1. Let |isSignatureValid| be the result of running [=verify=] |signature|'s
+      [=signed additional bid signature/signature=] on message |parsedSignedAdditionalBid|["bid"]
+      using |signature|'s [=signed additional bid signature/key=], with 0 for Ed25519ctx.
+    1. If |isSignatureValid| is true, then [=set/append=] |signature|'s
+      [=signed additional bid signature/key=] to |verifiedSignatureKeys|.
+  1. If the result of [=checking whether negative targeted=] given |decodedAdditionalBid|,
+    |verifiedSignatureKeys| and |negativeTargetInfo| is true, then return null.
+  1. Return |decodedAdditionalBid|.
+</div>
+
+<div algorithm>
+To <dfn>decode an additional bid json</dfn> given a [=string=] |additionalBidJson|, an
+[=auction config=] |auctionConfig|, and an [=auction config=]-or-null |topLevelAuctionConfig|:
+
+  1. [=Assert=] that these steps are running [=in parallel=].
+  1. Let |parsedAdditionalBid| be the result of [=parse a JSON string to an infra value=] given
+    |additionalBidJson|.
+  1. If |parsedAdditionalBid| is not a [=map=], then return failure.
+  1. Let |result| be a new [=additional bid=].
+  1. Return failure if any of the following conditions hold:
+    * |parsedAdditionalBid|["auctionNonce"] does not [=map/exist=];
+    * |parsedAdditionalBid|["auctionNonce"] is not the [=string representation=] of
+      |auctionConfig|'s [=auction config/auction nonce=];
+    * |parsedAdditionalBid|["seller"] does not [=map/exist=];
+    * The result of running the [=parse an https origin=] with |parsedAdditionalBid|["seller"] is
+      failure, or not [=same origin=] with |auctionConfig|'s [=auction config/seller=].
+  1. If |topLevelAuctionConfig| is null:
+    1. If |parsedAdditionalBid|["topLevelSeller"] [=map/exists=], then return failure.
+  1. Otherwise:
+    1. If |parsedAdditionalBid|["topLevelSeller"] does not [=map/exist=], then return failure.
+    1. Let |bidTopLevelSeller| be the result of running the [=parse an https origin=] with
+      |parsedAdditionalBid|["topLevelSeller"].
+    1. If |bidTopLevelSeller| is failure, or |bidTopLevelSeller| is not [=same origin=] with
+      |topLevelAuctionConfig|'s [=auction config/seller=], then return failure.
+  1. If |parsedAdditionalBid|["interestGroup"] does not [=map/exist=], then return failure.
+  1. Let |igMap| be |parsedAdditionalBid|["interestGroup"].
+  1. Return failure if any the following conditions hold:
+    * |igMap| is not a [=map=];
+    * |igMap|["name"] does not [=map/exist=], or is not a [=string=];
+    * |igMap|["biddingLogicURL"] does not [=map/exist=], or is not a [=string=];
+    * |igMap|["owner"] does not [=map/exist=], or is not a [=string=];
+  1. Let |igOwner| be the result of running [=parse an https origin=] given |igMap|["owner"].
+  1. Let |igName| be |igMap|["name"].
+  1. Let |igBiddingUrl| be the result of running [=url parser=] on |igMap|["biddingLogicURL"].
+  1. Return failure if any of the following conditions hold:
+    * |igOwner| is failure;
+    * |auctionConfig|'s [=auction config/interest group buyers=] does not [=list/contain=] |igOwner|;
+    * |igBiddingUrl| is failure;
+    * |igOwner| is not [=same origin=] with |igBiddingUrl|.
+  1. Let |ig| be a new [=interest group=] with the following properties:
+    :   [=interest group/owner=]
+    ::  |igOwner|
+    :   [=interest group/name=]
+    ::  |igName|
+    :   [=interest group/bidding url=]
+    ::  |igBiddingUrl|
+  1. If |parsedAdditionalBid|["bid"] does not [=map/exist=], or is not a [=map=], return failure.
+  1. Let |bidMap| be |parsedAdditionalBid|["bid"].
+  1. If |bidMap|["render"] does not [=map/exist=] or is not a [=string=], then return failure.
+  1. Let |renderUrl| be the result of running [=url parser=] on |bidMap|["render"].
+  1. If |renderUrl| is failure, then return failure.
+  1. Let |ad| be a new [=interest group ad=] whose [=interest group ad/render url=] is |renderUrl|.
+  1. Set |ig|'s [=interest group/ads=] to « |ad| ».
+  1. Let |bidVal| be |bidMap|["bid"] if it [=map/exists=], otherwise return failure.
+  1. If |bidVal| is not a {{double}}, or is less than or equal to 0, then return failure.
+  1. Let |adMetadata| be "null".
+  1. If |bidMap|["ad"] [=map/exists=]:
+    1. Set |adMetadata| to the result of running [=serialize an Infra value to a JSON string=] with
+      |bidMap|["ad"].
+  1. Let |bidCurrency| be null.
+  1. If |bidMap|["bidCurrency"] [=map/exists=]:
+    1. If |bidMap|["bidCurrency"] is not a [=string=], or the result of [=checking whether a string
+      is a valid currency tag=] is failure:
+      1. Return failure.
+    1. Set |bidCurrency| to |bidMap|["bidCurrency"].
+  1. Let |adCost| be null.
+  1. If |bidMap|["adCost"] [=map/exists=]:
+    1. If |bidMap|["adCost"] is not a {{double}}, then return failure.
+    1. Set |adCost| to |bidMap|["adCost"].
+  1. Let |modelingSignals| be null.
+  1. If |bidMap|["modelingSignals"] [=map/exists=]:
+    1. If |bidMap|["modelingSignals"] is not a {{double}}, then return failure.
+    1. If |bidMap|["modelingSignals"] is greater than or equal to 0, and less than 4096:
+      1. Set |modelingSignals| to |bidMap|["modelingSignals"].
+  1. Let |adComponents| be a new [=list=] of [=ad descriptors=].
+  1. If |bidMap|["adComponents"] [=map/exists=]:
+    1. If |bidMap|["adComponents"] is not a [=list=], then return failure.
+    1. [=list/For each=] |component| of |bidMap|["adComponents"]:
+      1. If |component| is not a [=string=], then return failure.
+      1. Let |componentUrl| be the result of running [=url parser=] on |component|.
+      1. If |componentUrl| is failure, then return failure.
+      1. Let |componentDescriptor| be a new [=ad descriptor=] whose [=ad descriptor/url=] is
+        |componentUrl|.
+      1. [=list/Append=] |componentDescriptor| to |adComponents|.
+    1. Set |ig|'s [=interest group/ad components=] to |adComponents|.
+  1. If |parsedAdditionalBid|["negativeInterestGroup"] [=map/exists=]:
+    1. If |parsedAdditionalBid|["negativeInterestGroups"] [=map/exists=], or
+      |parsedAdditionalBid|["negativeInterestGroup"] is not a [=string=], then return failure.
+    1. [=list/Append=] |parsedAdditionalBid|["negativeInterestGroup"] to |result|'s
+      [=additional bid/negative target interest group names=].
+  1. If |parsedAdditionalBid|["negativeInterestGroups"] [=map/exists=]:
+    1. Let |multipleNegativeIg| be |parsedAdditionalBid|["negativeInterestGroups"].
+    1. Return failure if any of the following conditions hold:
+      * |multipleNegativeIg| is not a [=map=];
+      * |multipleNegativeIg|["joiningOrigin"] does not [=map/exist=], or is not a [=string=];
+      * |multipleNegativeIg|["interestGroupNames"] does not [=map/exist=], or is not a [=list=].
+    1. Let |joiningOrigin| be the result of running [=parse an https origin=] with
+      |multipleNegativeIg|["joiningOrigin"].
+    1. If |joiningOrigin| is failure, then return failure.
+    1. Set |result|'s [=additional bid/negative target joining origin=] to |joiningOrigin|.
+    1. [=list/For each=] |igName| of |multipleNegativeIg|["interestGroupNames"]:
+      1. If |igName| is not a [=string=], then return failure.
+      1. [=list/Append=] |igName| to |result|'s
+        [=additional bid/negative target interest group names=].
+  1. Set |result|'s [=additional bid/bid=] to a new [=generated bid=] with the following properties:
+    :   [=generated bid/bid=]
+    ::  A [=bid with currency=] whose [=bid with currency/value=] is |bidVal|, and
+      [=bid with currency/currency=] is |bidCurrency|
+    :   [=generated bid/ad=]
+    ::  |adMetadata|
+    :   [=generated bid/ad descriptor=]
+    ::  An [=ad descriptor=] whose [=ad descriptor/url=] is |renderUrl|
+    :   [=generated bid/ad component descriptors=]
+    ::  |adComponents|
+    :   [=generated bid/ad cost=]
+    ::  |adCost|
+    :   [=generated bid/modeling signals=]
+    ::  |modelingSignals|
+    :   [=generated bid/interest group=]
+    ::  |ig|
+    :   [=generated bid/bid ad=]
+    ::  A [=interest group ad=] whose [=interest group ad/render url=] is |renderUrl|, and
+      [=interest group ad/metadata=] is |adMetadata|
+    :   [=generated bid/provided as additional bid=]
+    ::  true
+  1. Return |result|.
+</div>
+
+A <dfn>signed additional bid signature</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="signed additional bid signature">
+  : <dfn>key</dfn>
+  :: A [=byte sequence=] of length 32.
+  : <dfn>signature</dfn>
+  :: A [=byte sequence=] of length 64.
+</dl>
+
+An <dfn>additional bid</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="additional bid">
+  : <dfn>bid</dfn>
+  :: A [=generated bid=]. Fields analogous to those returned by `generateBid()`.
+  : <dfn>negative target interest group names</dfn>
+  :: A [=list=] of [=strings=].
+  : <dfn>negative target joining origin</dfn>
+  :: Null or an [=origin=]. Required if there is more than one entry in
+    [=additional bid/negative target interest group names=].
+</dl>
+
+Each [=traversable navigable=] has a <dfn>captured additional bids headers</dfn>, which is a [=map=]
+whose [=map/keys=] are [=strings=] for auction nonces, and whose values are [=list=] of [=strings=]
+for encoded additional bids.
+
+## Negative Targeting ## {#negative-targeting}
+
+In online ad auctions for ad space, it’s sometimes useful to prevent showing an ad to certain
+audiences, a concept known as negative targeting. To facilitate negative targeting in Protected
+Audience auctions, each additional bid is allowed to identify one or more negative interest groups.
+If the user has been joined to any of the identified negative interest groups, the additional bid is
+dropped; otherwise it participates in the auction, competing alongside bids created by calls to
+`generateBid()`. An additional bid that specifies no negative interest groups is always accepted
+into the auction.
+
+<div algorithm>
+To <dfn>check whether negative targeted</dfn> given an [=additional bid=] |additionalBid|, a [=set=]
+of [=byte sequences=] |verifiedSignatureKeys|, and a [=negative target info=] |negativeTargetInfo|:
+
+  1. [=Assert=] that these steps are running [=in parallel=].
+  1. Let |negativeTargeted| be false.
+  1. Let |additionalBidBuyer| be |additionalBid|'s [=additional bid/bid=]'s
+    [=generated bid/interest group=]'s [=interest group/owner=].
+  1. [=list/For each=] |igName| of |additionalBid|'s
+    [=additional bid/negative target interest group names=]:
+    1. If |negativeTargetInfo|[(|additionalBidBuyer|, |igName|)] [=map/exists=]:
+      1. Let (|joiningOrigin|, |additionalBidKey|) be
+        |negativeTargetInfo|[(|additionalBidBuyer|, |igName|)].
+      1. If |verifiedSignatureKeys| [=list/contains=] |additionalBidKey|:
+        1. If |joiningOrigin| is not null:
+          1. If |joiningOrigin| is not [=same origin=] with |additionalBid|'s
+            [=additional bid/negative target joining origin=], then [=iteration/continue=].
+        1. Set |negativeTargeted| to true, and [=iteration/break=].
+
+   Note: If the signature doesn't verify successfully, the additional bid proceeds as if the
+      [[#negative interest group]] is not present. This ensures that only the owner of the negative
+      interest group, who created the {{AuctionAdInterestGroup/additionalBidKey}}, is allowed to
+      negatively target the interest group, and that nobody else can learn whether the
+      [=interest group set=] [=list/contains=] the interest group.
+  1. Return |negativeTargeted|.
+</div>
+
+A <dfn>negative target info</dfn> is a [=map=]. Its [=map/keys=] are [=tuples=] consisting of an
+[=origin=] for [=interest group/owner=] and a [=string=] for [=interest group/name=].
+Its [=map/values=] are [=tuples=] consisting of an [=origin=] for [=interest group/joining origin=]
+and a [=byte sequence=] for [=interest group/additional bid key=].
+
+### Negative Interest Groups ### {#negative-interest-groups}
+
+Though negative interest groups are joined using the same {{Navigator/joinAdInterestGroup()}} API as
+regular interest groups, they remain distinct from one another. Only negative interest groups can
+provide an {{AuctionAdInterestGroup/additionalBidKey}}, while only regular interest groups can
+provide {{GenerateBidInterestGroup/ads}}. No interest group may provide both. Because the subset of
+fields used by a negative interest group cannot be meaningfully updated, a negative interest group
+can not provide an {{GenerateBidInterestGroup/updateURL}}.
+
+[[#additional-bids]] specify the negative interest groups they're negatively targeting against
+using at most one of the following two fields in their JSON data structure:
+  * negativeInterestGroup, for a single negative interest group;
+  * negativeInterestGroups, for more than one negative interest group.
+
+If an additional bid needs to specify more than one negative interest groups, all of those negative
+interest groups must be joined from the same origin, and that origin must be identified ahead of
+time in the additional bid's `joiningOrigin` field. Any negative interest group that wasn't joined
+from that identified origin is ignored for negative targeting.
+
+<div id="negative-igs-example" class=example>
+  <p>Use `negativeInterestGroup` in additional bid's JSON:</p>
+  <pre class="highlight">
+  const additionalBid = {
+    ...
+    "negativeInterestGroup": "example_advertiser_negative_interest_group",
+    ...
+  }
+  </pre>
+  <p>Use `negativeInterestGroups` in additional bid's JSON:</p>
+  <pre class="highlight">
+  const additionalBid = {
+    ...
+    "negativeInterestGroups": {
+      joiningOrigin: "https://example-advertiser.com",
+      interestGroupNames: [
+        "example_advertiser_negative_interest_group_a",
+        "example_advertiser_negative_interest_group_b",
+      ]
+    },
+    ...
+  }
+  </pre>
 </div>
 
 # K-anonymity # {#k-anonymity}
@@ -3281,7 +3420,7 @@ The following algorithms are some helper methods used in this document.
   To <dfn>get uuid from string</dfn> given a [=string=] |input|:
 
     1. If |input|'s [=string/length=] is not 36, return an empty [=string=].
-    1. Let |uuid| be an empty [=string=].
+    1. Let |uuidStr| be an empty [=string=].
     1. [=list/For each=] |i| in [=the range=] from 1 to 36, inclusive:
       1. Let |unit| be |input|'s |i|th [=code unit=].
       1. If « 8, 13, 18, 23 » [=list/contains=] |i|:
@@ -3290,8 +3429,8 @@ The following algorithms are some helper methods used in this document.
       1. Otherwise:
         1. If |unit| is not an [=ASCII lower hex digit=]:
           1. Return an empty [=string=].
-      1. Append |unit| to the end of |uuid|.
-    1. Return |uuid|.
+        1. Append |unit| to the end of |uuidStr|.
+    1. Return [=ASCII encoded=] |uuidStr|.
 </div>
 
 
@@ -3719,7 +3858,7 @@ An auction config is a [=struct=] with the following items:
   component auctions are expected to use if [=auction config/per buyer currencies=] does not specify
   a particular value.
 : <dfn>auction nonce</dfn>
-:: Null or a [=string=], initially null.
+:: Null or a [=version 4 UUID=], initially null.
   A unique identifier associated with this and only this invocation of
   {{Window/navigator}}.{{Navigator/runAdAuction()}}. For
   multi-seller auctions, this ID is uniquely associated with all {{AuctionAdConfig/componentAuctions}}.
@@ -3733,33 +3872,6 @@ An auction config is a [=struct=] with the following items:
   {{AuctionAdConfig/additionalBids}} {{Promise}} is [=rejected=].
 
 </dl>
-
-A <dfn>signed additional bid signature</dfn> is a [=struct=] with the following [=struct/items=]:
-
-<dl dfn-for="signed additional bid signature">
-: <dfn>key</dfn>
-:: A [=byte sequence=] of length 32.
-: <dfn>signature</dfn>
-:: A [=byte sequence=] of length 64.
-
-</dl>
-
-An <dfn>additional bid</dfn> is a [=struct=] with the following [=struct/items=]:
-
-<dl dfn-for="additional bid">
-: <dfn>bid</dfn>
-:: A [=generated bid=]. Fields analogous to those returned by `generateBid()`.
-: <dfn>negative target interest group names</dfn>
-:: A [=list=] of [=strings=].
-: <dfn>negative target joining origin</dfn>
-:: Null or an [=origin=]. Required if there is more than one entry in
-  [=additional bid/negative target interest group names=].
-
-</dl>
-
-Each [=traversable navigable=] has a <dfn>captured additional bids headers</dfn>, which is a [=map=]
-whose [=map/keys=] are [=strings=] for auction nonces, and whose values are [=list=] of [=strings=]
-for encoded additional bids.
 
 <div algorithm>
 To <dfn>wait until configuration input promises resolve</dfn> given an [=auction config=] |auctionConfig|:
@@ -3852,7 +3964,7 @@ Numeric value of a bid and the currency it is in.
 
 A bid that needs to be scored by the seller. The bid is either the output of running a Protected
 Audience `generateBid()` script, or the additional bid provided by the "`Ad-Auction-Additional-Bid`"
-response headers.
+response headers. TODO: define the header and link to it correctly.
 
 <dl dfn-for="generated bid">
 : <dfn>bid</dfn>
@@ -3863,7 +3975,8 @@ response headers.
   original bid if the currency already matched, or a conversion provided by `scoreAd()`.
 : <dfn>ad</dfn>
 :: A [=string=]. JSON string to be passed to the scoring function.
-  TODO: It seems this and the [=generated bid/ad descriptor=] can be moved to
+
+  Issue: TODO: It seems this and the [=generated bid/ad descriptor=] can be moved to
   [=generated bid/bid ad=] to avoid duplication.
 : <dfn>ad descriptor</dfn>
 :: An [=ad descriptor=]. Render URL and size of the bid's ad.
