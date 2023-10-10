@@ -938,18 +938,15 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. [=Handle an input promise in configuration=] given |auctionConfig| and
     |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"]:
     
-    Note: The JavaScript code calling {{Navigator/runAdAuction()}} is responsible for not resolving
-      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] until a
-      {{WindowOrWorkerGlobalScope/fetch()}} call with the `{adAuctionHeaders: true}` option returns
-      a response, or alternatively, not calling {{Navigator/runAdAuction()}} until the
-      {{WindowOrWorkerGlobalScope/fetch()}} call returns a response.
+    Note: The JavaScript code calling {{Navigator/runAdAuction()}} is responsible for resolving
+      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] only when the {{Promise}}
+      returned from an associated {{WindowOrWorkerGlobalScope/fetch()}} that was made with the
+      `{adAuctionHeaders: true}` option resolves or rejects. Otherwise, there will be a race
+      condition that the worklet can run without direct from seller signals that it needs.
       TODO: Link to {{WindowOrWorkerGlobalScope/fetch()}} once the fetch patch PR is merged.
 
     * To parse the value |result|:
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
-        |result|.
-      1. Set |auctionConfig|'s
-        [=auction config/config idl=]["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] to
         |result|.
     * To handle an error:
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
