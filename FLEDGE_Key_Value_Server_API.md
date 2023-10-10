@@ -75,7 +75,7 @@ GET `https://www.kv-server.example/v1/getvalues`
 ### Examples
 
 ```
-https://www.dsp-kv-server.example/v1/getvalues?subkey=publisher.com&keys=key1,key2&interestGroups=name1,name2
+https://www.dsp-kv-server.example/v1/getvalues?subkey=publisher.com&keys=key1,key2&interestGroupNames=name1,name2
 https://www.ssp-kv-server.example/v1/getvalues?renderUrls=url1,url2&adComponentRenderUrls=url3,url4
 ```
 
