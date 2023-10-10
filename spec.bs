@@ -1268,9 +1268,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Let |perBuyerCumulativeTimeout| be |auctionConfig|'s
     [=auction config/all buyers cumulative timeout=].
   1. If |auctionConfig|'s [=auction config/per buyer cumulative timeouts=] is not null and
-    [=auction config/per buyer cumulative timeouts=][|buyer|] [=map/exists=]:
-    1. Set |perBuyerCumulativeTimeout| to |auctionConfig|'s
-      [=auction config/per buyer cumulative timeouts=][|buyer|].
+    [=auction config/per buyer cumulative timeouts=][|buyer|] [=map/exists=], then set
+    |perBuyerCumulativeTimeout| to |auctionConfig|'s
+    [=auction config/per buyer cumulative timeouts=][|buyer|].
   1. Let |buyerExperimentGroupId| be |allBuyersExperimentGroupId|.
   1. Let |perBuyerExperimentGroupIds| be |auctionConfig|'s
     [=auction config/per buyer experiment group ids=].
@@ -1319,13 +1319,13 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
     1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to
       [=current wall time=], in milliseconds.
-    1. If |perBuyerCumulativeTimeout| is less than |fetchSignalDuration|, then [=iteration/break=];
     1. Decrement |perBuyerCumulativeTimeout| by |fetchSignalDuration|.
+    1. If |perBuyerCumulativeTimeout| is negative, then [=iteration/break=];
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
-        1. If |perBuyerCumulativeTimeout| is less than |perBuyerTimeout|:
-          1. Set |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
+        1. If |perBuyerCumulativeTimeout| is less than |perBuyerTimeout|, then set |perBuyerTimeout|
+          to |perBuyerCumulativeTimeout|.
         1. Let |generateBidStartTime| be the [=current wall time=].
         1. Let |generatedBid| be the result of [=generate a bid=] given |allTrustedBiddingSignals|,
           |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
@@ -1360,8 +1360,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               1. If [=query component ad k-anonymity count=] given |adComponent|'s
                 [=interest group ad/render url=] returns true, [=list/append=] |adComponent| to |ig|'s
                 [=interest group/ad components=].
-          1. If |perBuyerCumulativeTimeout| is less than |perBuyerTimeout|:
-            1. Set |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
+          1. If |perBuyerCumulativeTimeout| is less than |perBuyerTimeout|, then set
+            |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
           1. Let |generateBidStartTime| be the [=current wall time=].
           1. Set |generatedBid| to the result of [=generate a bid=] given
             |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
