@@ -201,7 +201,7 @@ The `adComponents` field contains the various ad components (or "products") that
 All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of `ads`) must be JSON-serializable.
 
 All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
-`biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must: be valid HTTPs URLs, contain no credentials, and have no [fragment](https://url.spec.whatwg.org/#concept-url-fragment); be
+`biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must: be valid HTTPS URLs, contain no credentials, and have no [fragment](https://url.spec.whatwg.org/#concept-url-fragment); be
 same-origin with `owner`; and must point to URLs whose responses include the HTTP
 response header `X-Allow-FLEDGE: true` to ensure they are allowed to be used for
 loading FLEDGE resources. The `trustedBiddingSignalsURL` must also not have a [query](https://url.spec.whatwg.org/#concept-url-query). (See 5.11 and 5.12 [here](https://wicg.github.io/turtledove/#joining-interest-groups)).
