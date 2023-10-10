@@ -167,7 +167,7 @@ window.fence.setReportEventDataForAutomaticBeacons({
 });
 ```
 
-If `setReportEventDataForAutomaticBeacons` is invoked at least once in a frame's lifetime, the browser will send an automatic beacon to all registered URLs, but will only send an event data body (the information in `eventData`) with the HTTP request to destinations specified in the `destination` field.
+If `setReportEventDataForAutomaticBeacons` is invoked, the browser will send an automatic beacon to all registered URLs, but will only send an event data body (the information in `eventData`) with the HTTP request to destinations specified in the `destination` field.
 
 If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon to any registered URLs.
 
@@ -202,9 +202,9 @@ function addBeaconData(element) {
 
 The beacon data will be in place by the time that the navigation starts. When the navigation commits, the automatic beacon will be sent out with event data set to "link1 was clicked.".
 
-The dictionary passed into `setReportEventDataForAutomaticBeacons` also takes an optional `once` boolean that defaults to false. If `once` is set to true, the automatic beacon will only include data for the next `reserved.top_navigation` event. Beacons will not include data for subsequent `reserved.top_navigation` events until `setReportEventDataForAutomaticBeacons` is invoked again. When used with a click handler, this can be used to send beacon data only for specific top-level navigations, rather than for every top-level navigation.
+The dictionary passed into `setReportEventDataForAutomaticBeacons` also takes an optional `once` boolean that defaults to false. If `once` is set to true, the automatic beacon will only be sent for the next `reserved.top_navigation` event. Beacons will not be sent for subsequent `reserved.top_navigation` events until `setReportEventDataForAutomaticBeacons` is invoked again. When used with a click handler, this can be used to send beacon data only for specific top-level navigations, rather than for every top-level navigation.
 
-For example, if a frame has multiple links that can perform top-level navigations, but only one of the links is of interest for analytics purposes, `setReportEventDataForAutomaticBeacons()` can be called in that link's click handler with `once` set to true. This will ensure that, if another link is clicked after the link with the associated automatic beacon, that other link will result in an empty automatic beacon being sent out, which can be discarded by the server.
+For example, if a frame has multiple links that can perform top-level navigations, but only one of the links is of interest for analytics purposes, `setReportEventDataForAutomaticBeacons()` can be called in that link's click handler with `once` set to true. This will ensure that, if another link is clicked after the link with the associated automatic beacon, that other link will not result in an automatic beacon being sent out.
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
