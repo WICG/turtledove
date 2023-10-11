@@ -484,9 +484,9 @@ are:
     1. If |interestGroup| is not null:
       1. Let |owner| be |interestGroup|'s [=interest group descriptor/owner=].
       1. Let |name| be |interestGroup|'s [=interest group descriptor/name=].
-      1. If |owner| is [=same origin=] with |frameOrigin|:
-        1. [=list/Remove=] [=interest groups=] from the user agent's [=interest group set=] whose
-          [=interest group/owner=] is |owner| and [=interest group/name=] is |name|.
+      1. If |owner| is [=same origin=] with |frameOrigin|, then [=list/remove=] [=interest groups=]
+        from the user agent's [=interest group set=] whose [=interest group/owner=] is |owner| and
+        [=interest group/name=] is |name|.
 1. Otherwise:
   1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
     "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
@@ -586,9 +586,8 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
      null, |global|, |settings|, and |bidIgs|.
-  1. If |winnerInfo| is failure:
-    1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=reject=]
-      |p| with a "{{TypeError}}".
+  1. If |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
+    given |global|, to [=reject=] |p| with a "{{TypeError}}".
   1. If |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
       with null.
@@ -600,8 +599,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
        |fencedFrameConfig|.
     1. Wait until |auctionConfig|'s [=auction config/resolve to config=] is a boolean.
     1. Let |result| be |fencedFrameConfig|.
-    1. If |auctionConfig|'s [=auction config/resolve to config=] is false:
-      1. Set |result| to |urn|.
+    1. If |auctionConfig|'s [=auction config/resolve to config=] is false, then set |result| to |urn|.
     1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
        resolve |p| with |result|.
     1. [=Increment ad k-anonymity count=] given |winner|'s [=generated bid/interest group=] and
@@ -944,9 +942,9 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
   [=auction config/seller timeout=] to |config|["{{AuctionAdConfig/sellerTimeout}}"] in milliseconds
   or 500 milliseconds, whichever is smaller.
-1. If |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"] [=map/exists=]:
-  1. Set |auctionConfig|'s [=auction config/seller experiment group id=] to
-    |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"].
+1. If |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"] [=map/exists=], then set
+  |auctionConfig|'s [=auction config/seller experiment group id=] to
+  |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"].
 1. If |config|["{{AuctionAdConfig/sellerCurrency}}"]  [=map/exists=]:
   1. If the result of [=checking whether a string is a valid currency tag=] on
     |config|["{{AuctionAdConfig/sellerCurrency}}"] is false, then return failure.
@@ -1030,7 +1028,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
           failure, [=exception/throw=] a {{TypeError}}.
         1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer currencies=][|buyer|] to |value|.
     * To handle an error, set |auctionConfig|'s [=auction config/per buyer currencies=] to failure.
-1. If |config|["{{AuctionAdConfig/componentAuctions}}"]'s is not [=list/empty=]:
+1. If |config|["{{AuctionAdConfig/componentAuctions}}"] is not [=list/empty=]:
   1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=] and is not [=list/empty=],
     then return failure.
 1. [=list/For each=] |component| in |config|["{{AuctionAdConfig/componentAuctions}}"]:
@@ -1121,10 +1119,9 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
         1. [=map/Set=] |perBuyerGenerator|[|signalsUrl|] to |perSignalsUrlGenerator|.
       1. Otherwise:
         1. Let |perSignalsUrlGenerator| be |perBuyerGenerator|[|signalsUrl|].
-        1. If |perSignalsUrlGenerator| does not [=map/contain=] |joiningOrigin|:
-          1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to « |ig| ».
-        1. Otherwise:
-          1. [=list/Append=] |ig| to |perSignalsUrlGenerator|[|joiningOrigin|].
+        1. If |perSignalsUrlGenerator| does not [=map/contain=] |joiningOrigin|, then [=map/set=]
+          |perSignalsUrlGenerator|[|joiningOrigin|] to « |ig| ».
+        1. Otherwise, [=list/append=] |ig| to |perSignalsUrlGenerator|[|joiningOrigin|].
 1. Return |bidGenerators|.
 
 </div>
@@ -1160,8 +1157,8 @@ an [=interest group=] |ig|, and a [=moment=] |auctionStartTime|:
   1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
     1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
       [=interest group/bidding wasm helper url=].
-    1. If |wasmModuleObject| is not failure:
-      1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/wasmHelper}}"] to |wasmModuleObject|.
+    1. If |wasmModuleObject| is not failure, then [=map/set=]
+      |browserSignals|["{{BiddingBrowserSignals/wasmHelper}}"] to |wasmModuleObject|.
   1. Let |trustedBiddingSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and
     whose [=map/values=] are {{any}}.
   1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
@@ -1195,10 +1192,11 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. Let |compWinner| be the result of running [=generate and score bids=] with |component|,
       |auctionConfig|, |global|, and |settings|.
     1. If |compWinner| is failure, return failure.
-    1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns failure, return failure.
-    1. If |compWinner| is not null:
-      1. Run [=score and rank a bid=] with |auctionConfig|, |compWinner|, |leadingBidInfo|,
-        |decisionLogicScript|, null, "top-level-auction", null, and |settings|'s [=environment/top-level origin=].
+    1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig|
+      returns failure, return failure.
+    1. If |compWinner| is not null, then run [=score and rank a bid=] with |auctionConfig|,
+      |compWinner|, |leadingBidInfo|, |decisionLogicScript|, null, "top-level-auction", null, and
+      |settings|'s [=environment/top-level origin=].
 
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
@@ -1248,14 +1246,13 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Let |perBuyerExperimentGroupIds| be |auctionConfig|'s
     [=auction config/per buyer experiment group ids=].
   1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|]
-    [=map/exists=]:
-    1. Set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
+    [=map/exists=], then set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
   1. <dfn>Apply interest groups limits to prioritized list</dfn>:
     1. Let |buyerGroupLimit| be |allBuyersGroupLimit|.
     1. Let |perBuyerGroupLimits| be |auctionConfig|'s
       [=auction config/per buyer group limits=].
-    1. If |perBuyerGroupLimits| is not null and |perBuyerGroupLimits|[|buyer|] exists:
-      1. Set |buyerGroupLimit| to |perBuyerGroupLimits|[|buyer|].
+    1. If |perBuyerGroupLimits| is not null and |perBuyerGroupLimits|[|buyer|] [=map/exists=], then
+      set |buyerGroupLimit| to |perBuyerGroupLimits|[|buyer|].
     1. Let |igs| be a new [=list=] of [=interest groups=].
     1. [=map/For each=] signalsUrl → |perSignalsUrlGenerator| of |perBuyerGenerator|:
       1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
@@ -1268,12 +1265,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. [=list/Remove=] from |groups| any [=interest group=] [=list/contained=] in |igs|.
   1. Let |perBuyerSignals| be null.
   1. If |auctionConfig|'s [=auction config/per buyer signals=] is not null and
-    [=auction config/per buyer signals=][|buyer|] [=map/exists=]:
-    1. Set |perBuyerSignals| to |auctionConfig|'s [=auction config/per buyer signals=][|buyer|].
+    [=auction config/per buyer signals=][|buyer|] [=map/exists=], then set |perBuyerSignals| to
+    |auctionConfig|'s [=auction config/per buyer signals=][|buyer|].
   1. Let |perBuyerTimeout| be |auctionConfig|'s [=auction config/all buyers timeout=].
   1. If |auctionConfig|'s [=auction config/per buyer timeouts=] is not null and
-    [=auction config/per buyer timeouts=][|buyer|] [=map/exists=]:
-    1. Set |perBuyerTimeout| to |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|].
+    [=auction config/per buyer timeouts=][|buyer|] [=map/exists=], then set |perBuyerTimeout| to
+    |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|].
   1. Let |expectedCurrency| be the result of [=looking up per-buyer currency=] with |auctionConfig| and |buyer|.
   1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perBuyerGenerator|:
     1. Let |keys| be a new [=ordered set=].
@@ -1286,8 +1283,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|.
     1. Let « |allTrustedBiddingSignals|, |dataVersion| » be the result of [=fetching trusted signals=]
       with |biddingSignalsUrl| and true.
-    1. If |dataVersion| is not null:
-      1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
+    1. If |dataVersion| is not null, then [=map/set=]
+      |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
@@ -1396,9 +1393,9 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
     1. Let |adIDL| be a new {{AuctionAd}}.
     1. [=map/Set=] |adIDL|["{{AuctionAd/renderURL}}"] to the [=URL serializer|serialization=] of
       |ad|'s [=interest group ad/render url=].
-    1. If |ad|'s [=interest group ad/metadata=] is not null, then:
-      1. [=map/Set=] |adIDL|["{{AuctionAd/metadata}}"] to the result of
-        [=parsing a JSON string to a JavaScript value=] given |ad|'s [=interest group ad/metadata=].
+    1. If |ad|'s [=interest group ad/metadata=] is not null, then [=map/set=]
+      |adIDL|["{{AuctionAd/metadata}}"] to the result of
+      [=parsing a JSON string to a JavaScript value=] given |ad|'s [=interest group ad/metadata=].
     1. [=list/Append=] |adIDL| to |adsIDL|.
   1. Return |adsIDL|.
 </div>
@@ -1434,21 +1431,20 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
   1. Set |trustedScoringSignals| to a new empty [=map=].
   1. [=map/Set=] |trustedScoringSignals|["`renderURL`"] to a new empty [=map=].
   1. If |allTrustedScoringSignals|["`renderURLs`"] [=map/exists=] and
-    |allTrustedScoringSignals|["`renderURLs`"][|renderURL|] [=map/exists=]:
-    1. [=map/Set=] |trustedScoringSignals|["`renderURL`"][|renderURL|] to
-      |allTrustedScoringSignals|["`renderURLs`"][|renderURL|].
+    |allTrustedScoringSignals|["`renderURLs`"][|renderURL|] [=map/exists=], then [=map/set=] |trustedScoringSignals|["`renderURL`"][|renderURL|] to
+    |allTrustedScoringSignals|["`renderURLs`"][|renderURL|].
   1. If |adComponentRenderURLs| is not [=list/empty=]:
     1. Let |adComponentRenderURLsValue| be a new empty [=map=].
     1. If |allTrustedScoringSignals|["`adComponentRenderURLs`"] [=map/exists=], [=set/for each=]
       |adComponentRenderURL| in |adComponentRenderURLs|:
-      1. If |allTrustedScoringSignals|["`adComponentRenderURLs`"][|adComponentRenderURL|] [=map/exists=]:
-        1. [=map/Set=] |adComponentRenderURLsValue|[|adComponentRenderURL|] to
-          |allTrustedScoringSignals|["`adComponentRenderURLs`"][|adComponentRenderURL|].
+      1. If |allTrustedScoringSignals|["`adComponentRenderURLs`"][|adComponentRenderURL|]
+        [=map/exists=], then [=map/set=] |adComponentRenderURLsValue|[|adComponentRenderURL|] to
+        |allTrustedScoringSignals|["`adComponentRenderURLs`"][|adComponentRenderURL|].
     1. [=map/Set=] |trustedScoringSignals|["`adComponentRenderURLs`"] to |adComponentRenderURLsValue|.
 1. Let |adMetadata| be |generatedBid|'s [=generated bid/ad=].
 1. Let |bidValue| be |generatedBid|'s [=generated bid/bid=].
-1. If |generatedBid|'s [=generated bid/modified bid=] is not null:
-  1. Set |bidValue| to |generatedBid|'s [=generated bid/modified bid=].
+1. If |generatedBid|'s [=generated bid/modified bid=] is not null, then set |bidValue| to
+  |generatedBid|'s [=generated bid/modified bid=].
 1. Let |owner| be |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=].
 1. Let |browserSignals| be a {{ScoringBrowserSignals}} with the following fields:
   <dl>
@@ -1485,8 +1481,8 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
     1. Let |modifiedBidValue| be |scoreAdOutput|["{{ScoreAdOutput/bid}}"].
     1. If |modifiedBidValue| is negative or 0, return.
     1. Let |modifiedBidCurrency| be null.
-    1. If |scoreAdOutput|["{{ScoreAdOutput/bidCurrency}}] [=map/exists=]:
-      1. Set |modifiedBidCurrency| to |scoreAdOutput|["{{ScoreAdOutput/bidCurrency}}].
+    1. If |scoreAdOutput|["{{ScoreAdOutput/bidCurrency}}] [=map/exists=], then set
+      |modifiedBidCurrency| to |scoreAdOutput|["{{ScoreAdOutput/bidCurrency}}].
     1. Set |generatedBid|'s [=generated bid/modified bid=] to a [=bid with currency=] with
       [=bid with currency/value=] |modifiedBidValue| and [=bid with currency/currency=]
       |modifiedBidCurrency|.
@@ -1503,9 +1499,9 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
       [=generated bid/bid=]'s [=bid with currency/value=].
     1. If |scoreAdOutput|["{{ScoreAdOutput/incomingBidInSellerCurrency}}"] [=map/ exists=] and does
       not equal |generatedBid|'s [=generated bid/bid in seller currency=], return.
-  1. Otherwise if |scoreAdOutput|["{{ScoreAdOutput/incomingBidInSellerCurrency}}"] [=map/ exists=]:
-    1. Set |generatedBid|'s [=generated bid/bid in seller currency=] to
-      |scoreAdOutput|["{{ScoreAdOutput/incomingBidInSellerCurrency}}"]
+  1. Otherwise if |scoreAdOutput|["{{ScoreAdOutput/incomingBidInSellerCurrency}}"] [=map/ exists=],
+    then set |generatedBid|'s [=generated bid/bid in seller currency=] to
+    |scoreAdOutput|["{{ScoreAdOutput/incomingBidInSellerCurrency}}"]
 1. Let |updateLeadingBid| be false.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, or |score| is greater than
   |leadingBidInfo|'s [=leading bid info/top score=]:
@@ -1516,19 +1512,18 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
   1. Increment |leadingBidInfo|'s [=leading bid info/top bids count=] by 1.
   1. Set |updateLeadingBid| to true with 1 in |leadingBidInfo|'s [=leading bid info/top bids count=]
     chance.
-  1. If |updateLeadingBid| is false:
-    1. [=Update highest scoring other bid=] with |score|, |leadingBidInfo|'s
-      [=leading bid info/leading bid=], and |leadingBidInfo|.
+  1. If |updateLeadingBid| is false, then [=update highest scoring other bid=] with |score|,
+    |leadingBidInfo|'s [=leading bid info/leading bid=], and |leadingBidInfo|.
   1. If |owner| is not [=same origin=] with |leadingBidInfo|'s [=leading bid info/leading bid=]'s
-    [=generated bid/interest group=]'s [=interest group/owner=]:
-    1. Set |leadingBidInfo|'s [=leading bid info/at most one top bid owner=] to false.
+    [=generated bid/interest group=]'s [=interest group/owner=], then set |leadingBidInfo|'s
+    [=leading bid info/at most one top bid owner=] to false.
 1. Otherwise if |score| is greater than or equal to |leadingBidInfo|'s
-  [=leading bid info/second highest score=]:
-  1. [=Update highest scoring other bid=] with |score|, |bidValue|, and |leadingBidInfo|.
+  [=leading bid info/second highest score=], then [=update highest scoring other bid=] with |score|,
+  |bidValue|, and |leadingBidInfo|.
 1. If |updateLeadingBid| is true:
-  1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is not null:
-    1. [=Update highest scoring other bid=] with |leadingBidInfo|'s [=leading bid info/top score=],
-      |leadingBidInfo|'s [=leading bid info/leading bid=], and |leadingBidInfo|.
+  1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is not null, then
+    [=update highest scoring other bid=] with |leadingBidInfo|'s [=leading bid info/top score=],
+    |leadingBidInfo|'s [=leading bid info/leading bid=], and |leadingBidInfo|.
   1. Set |leadingBidInfo|'s [=leading bid info/top score=] to |score|.
   1. Set |leadingBidInfo|'s [=leading bid info/leading bid=] to |generatedBid|.
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |auctionConfig|.
@@ -1557,18 +1552,16 @@ To <dfn>update highest scoring other bid</dfn> given a {{double}} |score|, a
     1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] to |bid|.
     1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bids count=] to 1.
     1. Set |leadingBidInfo|'s [=leading bid info/second highest score=] to |score|.
-    1. If |leadingBidInfo|'s [=leading bid info/at most one top bid owner=] is true:
-      1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid owner=] to |owner|.
-    1. Otherwise,
-      1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid owner=] to null.
+    1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid owner=] to |owner| if
+      |leadingBidInfo|'s [=leading bid info/at most one top bid owner=] is true, null otherwise.
   1. Otherwise if |score| is equal to |leadingBidInfo|'s [=leading bid info/second highest score=]:
     1. Increment |leadingBidInfo|'s [=leading bid info/highest scoring other bids count=] by 1.
     1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] to |bid| with 1 in
       |leadingBidInfo|'s [=leading bid info/highest scoring other bids count=] chance.
-    1. If |leadingBidInfo|'s [=leading bid info/highest scoring other bid owner=] is not null:
-      1. If |owner| is not [=same origin=] with |leadingBidInfo|'s
-        [=leading bid info/highest scoring other bid owner=]:
-        1. Set |leadingBidInfo|'s [=leading bid info/highest scoring other bid owner=] to null.
+    1. If |leadingBidInfo|'s [=leading bid info/highest scoring other bid owner=] is not null and
+      |owner| is not [=same origin=] with |leadingBidInfo|'s
+      [=leading bid info/highest scoring other bid owner=], then set |leadingBidInfo|'s
+      [=leading bid info/highest scoring other bid owner=] to null.
 </div>
 
 The <dfn http-header><code>Ad-Auction-Allowed</code></dfn> HTTP response header is a
@@ -1710,9 +1703,9 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
     1. If |dataVersion| is not null:
       1. If |dataVersion| is not an integer, or is less than 0 or more than 2<sup>32</sup>&minus;1,
         set |signals| to failure and return.
-    1. If |isBiddingSignal| is true:
-      1. Set |formatVersion| to the result of [=header list/getting a structured field value=]
-        given [:X-fledge-bidding-signals-format-version:] and "`item`" from |headers|.
+    1. If |isBiddingSignal| is true, then set |formatVersion| to the result of
+      [=header list/getting a structured field value=] given
+      [:X-fledge-bidding-signals-format-version:] and "`item`" from |headers|.
     1. Set |signals| to the result of [=parsing JSON bytes to an Infra value=] |responseBody|.
   1. Wait for |signals| to be set.
   1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return « null,
@@ -1853,30 +1846,27 @@ null |winningComponentConfig|:
   1. If |winningComponentConfig| is not null:
     1. [=Assert=] that |leadingBidInfo|'s [=leading bid info/component seller=] is not null.
     1. Set |bidCurrency| to |winningComponentConfig|'s [=auction config/seller currency=].
-    1. If |bidCurrency| is null:
-      1. Set |bidCurrency| to the result of [=looking up per-buyer currency=] with |config| and
-        |leadingBidInfo|'s [=leading bid info/component seller=].
-  1. Otherwise:
-    1. Set |bidCurrency| to the result of [=looking up per-buyer currency=] with |config| and
-      |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/interest group=]'s
-      [=interest group/owner=].
+    1. If |bidCurrency| is null, then set |bidCurrency| to the result of
+      [=looking up per-buyer currency=] with |config| and |leadingBidInfo|'s
+      [=leading bid info/component seller=].
+  1. Otherwise, set |bidCurrency| to the result of [=looking up per-buyer currency=] with |config|
+    and |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/interest group=]'s
+    [=interest group/owner=].
   1. Let |winner| be |leadingBidInfo|'s [=leading bid info/leading bid=].
   1. Let |sellerCurrency| be |leadingBidInfo|'s [=leading bid info/auction config=]'s
     [=auction config/seller currency=].
   1. Let |highestScoringOtherBid| be |leadingBidInfo|'s
     [=leading bid info/highest scoring other bid=]'s [=generated bid/bid in seller currency=] (or
     0 if encountered a null).
-  1. If |sellerCurrency| is null:
-    1. Set |highestScoringOtherBid| to |leadingBidInfo|'s
+  1. If |sellerCurrency| is null, then set |highestScoringOtherBid| to |leadingBidInfo|'s
       [=leading bid info/highest scoring other bid=]'s [=generated bid/bid=]'s
       [=bid with currency/value=] (or 0 if encountered a null).
   1. Let |bid| be |winner|'s [=generated bid/bid=]'s [=bid with currency/value=].
   1. Let |modifiedBid| be null.
   1. If |winner|'s [=generated bid/modified bid=] is not null:
-    1. If |leadingBidInfo|'s [=leading bid info/component seller=] is not null:
-      1. Set |bid| to |winner|'s [=generated bid/modified bid=].
-    1. Otherwise:
-      1. Set |modifiedBid| to |winner|'s [=generated bid/modified bid=].
+    1. If |leadingBidInfo|'s [=leading bid info/component seller=] is not null, then set |bid| to
+      |winner|'s [=generated bid/modified bid=].
+    1. Otherwise, set |modifiedBid| to |winner|'s [=generated bid/modified bid=].
   1. Let |browserSignals| be a {{ReportResultBrowserSignals}} with the following fields:
     <dl link-for-hint="ReportingBrowserSignals">
       <dt>{{topWindowHostname}}
@@ -1907,7 +1897,8 @@ null |winningComponentConfig|:
       <dd>|leadingBidInfo|'s [=leading bid info/top level seller signals=] if it is not null,
         {{undefined}} otherwise
       <dt>{{ReportResultBrowserSignals/modifiedBid}}
-      <dd>[=round a value|Stochastically rounded=] |modifiedBid| if it is not null, {{undefined}} otherwise
+      <dd>[=round a value|Stochastically rounded=] |modifiedBid| if it is not null, {{undefined}}
+        otherwise
       <dt>{{ReportResultBrowserSignals/dataVersion}}
       <dd>|leadingBidInfo|'s [=leading bid info/scoring data version=] if it is not null,
         {{undefined}} otherwise
@@ -1917,8 +1908,8 @@ null |winningComponentConfig|:
     [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
   1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
      [=map/exists=] and the result of [=query reporting ID k-anonymity count=]
-     given |winner|'s [=generated bid/interest group=] and |igAd| is true:
-    1. [=map/Set=] |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s [=interest group ad/buyer and seller reporting ID=].
+     given |winner|'s [=generated bid/interest group=] and |igAd| is true, then [=map/set=] |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s
+     [=interest group ad/buyer and seller reporting ID=].
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored » be the result of
@@ -2293,8 +2284,10 @@ of the following global objects:
     1. If |result| is a [=ECMAScript/normal completion=]:
       1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
         |result|'s \[[Value]] to a {{GenerateBidOutput}}.
-      1. If no exception was [=exception/thrown=] in the previous step:
-        1. Set |generatedBid| to the result of [=converting GenerateBidOutput to generated bid=] with |generatedBidIDL|, |ig|, |expectedCurrency|, |isComponentAuction|, and |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=].
+      1. If no exception was [=exception/thrown=] in the previous step, then set |generatedBid| to
+        the result of [=converting GenerateBidOutput to generated bid=] with |generatedBidIDL|,
+        |ig|, |expectedCurrency|, |isComponentAuction|, and |global|'s
+        [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=].
       1. Otherwise, set |generatedBid| to failure.
     1. If |generatedBid| is a [=generated bid=] and |generatedBid|'s [=generated bid/bid=]'s
       [=bid with currency/value=] &le; 0, set |generatedBid| to failure.
@@ -2476,13 +2469,11 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
     1. Return |bid|.
   1. If |generateBidOutput|["{{GenerateBidOutput/render}}"] does not [=map/exist=], return failure.
   1. If |isComponentAuction| is true, and
-    |generateBidOutput|["{{GenerateBidOutput/allowComponentAuction}}"] is false:
-    1. Return failure.
+    |generateBidOutput|["{{GenerateBidOutput/allowComponentAuction}}"] is false, then return failure.
   1. Let |bidCurrency| be null.
   1. If |generateBidOutput|["{{GenerateBidOutput/bidCurrency}}"] is specified:
      1. If the result of [=checking whether a string is a valid currency tag=] on
-      |generateBidOutput|["{{GenerateBidOutput/bidCurrency}}"] is true:
-       1. Set |bidCurrency| to |generateBidOutput|["{{GenerateBidOutput/bidCurrency}}"]
+      |generateBidOutput|["{{GenerateBidOutput/bidCurrency}}"] is true, then set |bidCurrency| to |generateBidOutput|["{{GenerateBidOutput/bidCurrency}}"]
      1. Otherwise return failure.
   1. If the result of [=checking a currency tag=] with |expectedCurrency| and |bidCurrency| is
     false, return failure.
@@ -2525,13 +2516,13 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
       1. If [=finding matching ad=] given |componentUrl|, |ig|, and true returns null, return failure.
       1. [=list/Append=] |componentDescriptor| to |adComponentDescriptors|.
     1. Set |bid|'s [=generated bid/ad component descriptors=] to |adComponentDescriptors|.
-  1. If |generateBidOutput|["{{GenerateBidOutput/adCost}}"] [=map/exists=]:
-    1. Set |bid|'s [=generated bid/ad cost=] to
-      |generateBidOutput|["{{GenerateBidOutput/adCost}}"].
+  1. If |generateBidOutput|["{{GenerateBidOutput/adCost}}"] [=map/exists=], then set |bid|'s
+    [=generated bid/ad cost=] to |generateBidOutput|["{{GenerateBidOutput/adCost}}"].
   1. If |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"] [=map/exists=]:
     1. Let |modelingSignals| be |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"].
-    1. If |modelingSignals| &ge; 0 and |modelingSignals| < 4096:
-      1. Set |bid|'s [=generated bid/modeling signals=] to the result of [=converted to an IDL value|converting=] the ECMAScript value represented by |modelingSignals| to an {{unsigned short}}.
+    1. If |modelingSignals| &ge; 0 and |modelingSignals| < 4096, then set |bid|'s
+      [=generated bid/modeling signals=] to the result of [=converted to an IDL value|converting=]
+      the ECMAScript value represented by |modelingSignals| to an {{unsigned short}}.
   1. Return |bid|.
 
 </div>
@@ -2590,12 +2581,10 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   1. Let |adUrl| be |adDescriptor|'s [=ad descriptor/url=].
   1. If |adUrl|'s [=url/scheme=] is not "`https`", return null.
   1. TODO: Need to check [=ad descriptor/size=] as well.
-  1. If |isComponent|:
-    1. [=list/For each=] |ad| in |ig|'s [=interest group/ad components=]:
-      1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return |ad|.
-  1. Otherwise:
-    1. [=list/For each=] |ad| in |ig|'s [=interest group/ads=]:
-      1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return |ad|.
+  1. If |isComponent|, [=list/for each=] |ad| in |ig|'s [=interest group/ad components=]:
+    1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return |ad|.
+  1. Otherwise, [=list/for each=] |ad| in |ig|'s [=interest group/ads=]:
+    1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return |ad|.
   1. Return null.
 </div>
 
@@ -2688,15 +2677,13 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
   method steps are:
 
   1. If [=this=]'s [=relevant global object=]'s
-    [=InterestGroupReportingScriptRunnerGlobalScope/report url=] is not null:
-    1. Set [=this=]'s [=relevant global object=]'s
-      [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to failure.
-    1. [=exception/Throw=] a {{TypeError}}.
+    [=InterestGroupReportingScriptRunnerGlobalScope/report url=] is not null, then Set [=this=]'s
+    [=relevant global object=]'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to
+    failure, and [=exception/Throw=] a {{TypeError}}.
   1. Let |parsedUrl| be the result of running the [=URL parser=] on |url|.
-  1. If |parsedUrl| is failure, or |parsedUrl|'s [=url/scheme=] is not "`https`",
-    set  [=this=]'s [=relevant global object=]'s
-      [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to failure
-      and [=exception/Throw=] a {{TypeError}}.
+  1. If |parsedUrl| is failure, or |parsedUrl|'s [=url/scheme=] is not "`https`", set [=this=]'s
+    [=relevant global object=]'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to
+    failure, and [=exception/Throw=] a {{TypeError}}.
   1. Optionally, return.
 
     Note: This [=implementation-defined=] condition is intended to allow user
@@ -3386,8 +3373,8 @@ a {{Promise}} |p|, and two sequences of steps, covering the parsing of the value
 1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps
   [=upon fulfillment=] of |p| with |result|:
   1. Execute the steps to be run for parsing of the value given |result|.
-  1. If no exception was [=exception/thrown=] in the previous step:
-    1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
+  1. If no exception was [=exception/thrown=] in the previous step, then decrement |auctionConfig|'s
+    [=auction config/pending promise count=].
 1. [=Upon rejection=] of |resolvedAndTypeChecked|:
   1. Execute the steps for error-handling.
   1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
@@ -3399,8 +3386,8 @@ a {{Promise}} |p|, and two sequences of steps, covering the parsing of the value
 
   1. Let |perBuyerCurrency| be |auctionConfig|'s [=auction config/all buyers currency=]
   1. Assert: |auctionConfig|'s [=auction config/per buyer currencies=] is an [=ordered map=].
-  1. If |auctionConfig|'s [=auction config/per buyer currencies=][|buyer|] [=map/exists=]:
-      1. Set |perBuyerCurrency| to |auctionConfig|'s [=auction config/per buyer currencies=][|buyer|].
+  1. If |auctionConfig|'s [=auction config/per buyer currencies=][|buyer|] [=map/exists=], then set
+    |perBuyerCurrency| to |auctionConfig|'s [=auction config/per buyer currencies=][|buyer|].
   1. Return |perBuyerCurrency|
 </div>
 
@@ -3561,8 +3548,7 @@ To <dfn>process scoreAd output</dfn> given an [=ECMAScript/Completion Record=] |
   1. If an exception was [=exception/thrown=] in the previous step, return failure.
   1. If |resultIDL|["{{ScoreAdOutput/bidCurrency}}"] [=map/exists=] and result of
     [=checking whether a string is a valid currency tag=] applied to
-    |resultIDL|["{{ScoreAdOutput/bidCurrency}}"] is false:
-    1. Return failure.
+    |resultIDL|["{{ScoreAdOutput/bidCurrency}}"] is false, then return failure.
   1. Return |resultIDL|.
 </div>
 
