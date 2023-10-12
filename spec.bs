@@ -139,6 +139,7 @@ advertisement relevant to this interest to this user in the future. The user age
 <dfn>interest group set</dfn>, a [=list=] of [=interest groups=] in which
 [=interest group/owner=] / [=interest group/name=] pairs are unique.
 
+<h3 id="join-ad-interest-groups">navigator.joinAdInterestGroup()</h3>
 
 <xmp class="idl">
 [SecureContext]
@@ -310,7 +311,7 @@ This is detectable because it can change the set of fields that are read from th
               a {{TypeError}}.
           1. Set |igAd|'s [=interest group ad/allowed reporting origins=] to |allowedReportingOrigins|.
       1. [=list/Append=] |igAd| to |interestGroup|'s |interestGroupField|.
-1. If |interestGroup|'s [=interest group/estimated size=] is greater than 50 KB, then
+1. If |interestGroup|'s [=interest group/estimated size=] is greater than 1048576, then
   [=exception/throw=] a {{TypeError}}.
 1. Let |p| be [=a new promise=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
@@ -331,7 +332,7 @@ This is detectable because it can change the set of fields that are read from th
   1. If the most recent entry in |interestGroup|'s [=interest group/join counts=] corresponds to
     the current day in UTC, increment its count. If not, [=list/insert=] a new [=tuple=]
     the time set to the current UTC day and a count of 1.
-  1. Store |interestGroup| in the browser’s [=interest group set=].
+  1. Store |interestGroup| in the user agent's [=interest group set=].
 1. Return |p|.
 
 </div>
@@ -447,6 +448,82 @@ To <dfn>build an interest group permissions url</dfn> given a [=origin=] |ownerO
 
 </div>
 
+<h3 id="interest-group-storage-maintenance">Interest Group Storage Maintenance</h3>
+
+There is a job that periodically performs maintenance on the user agent's [=interest group set=],
+such as [=list/removing=] expired, or more than allowed [=interest groups=] which include the
+following limitations:
+  * no more than 2000 owners;
+  * no more than 1000 [=regular interest groups=] per owner;
+  * no more than 20000 [=negative interest groups=] per owner;
+  * no more than <code>10\*1024\*1024</code> total size of interest groups per owner.
+
+<div algorithm='maintenance'>
+To perform storage maintenance:
+
+1. Let |ownersAndExpiry| be a new [=ordered map=] whose [=map/keys=] are [=origins=]
+  [=interest group/owner=] and [=map/values=] are [=moments=] [=interest group/expiry=].
+1. [=list/For each=] |ig| of the user agent's [=interest group set=]:
+  1. Let |owner| be |ig|'s [=interest group/owner=].
+  1. If |ownersAndExpiry|[|owner|] [=map/exists=], then [=map/set=] |ownersAndExpiry|[|owner|] to
+    |ig|'s [=interest group/expiry=] if it comes after |ownersAndExpiry|[|owner|].
+  1. Otherwise, [=map/set=] |ownersAndExpiry|[|owner|] to |ig|'s [=interest group/expiry=].
+1. If [=map/size=] of |ownersAndExpiry| |i| &gt; 2000, then set |ownersAndExpiry| to
+  |ownersAndExpiry| [=map/sorted in descending order=] with |a| being less than |b| if |a|'s
+  [=map/value=] comes before |b|'s [=map/value=].
+
+  Note: Sorting owners based on their expiry in descending order so that if interest groups of some
+    owners need to be removed, the interest groups of owners expiring soonest are the ones to be
+    removed first.
+
+1. Let |owners| be the [=map/get the keys|keys=] of |ownersAndExpiry|.
+1. [=list/For each=] |i| in [=the range=] from 0 to the [=set/size=] of |owners|, exclusive:
+  1. If |i| &ge; 2000, then [=list/remove=] [=interest groups=] from the user agent's
+    [=interest group set=] whose [=interest group/owner=] is |owners|[|i|], and [=iteration/continue=].
+  1. Let |regularIgs| be a [=list=] of [=regular interest groups=] in the user agent's
+    [=interest group set=] whose [=interest group/owner=] is |owners|[|i|].
+  1. If [=list/size=] of |regularIgs| &gt; 1000, then [=clear excess interest groups=] with
+    |regularIgs|, |owners|[|i|], and 1000.
+  1. Let |negativeIgs| be a [=list=] of [=negative interest groups=] in the user agent's
+    [=interest group set=] whose [=interest group/owner=] is |owners|[|i|].
+  1. If [=list/size=] of |regularIgs| &gt; 20000, then [=Clear excess interest groups=] with
+    |negativeIgs|, |owners|[|i|], and 20000.
+1. TODO: remove expired IGs.
+1. [=list/For each=] |owner| of |owners|:
+  1. Let |igs| be a [=list=] of [=interest groups=] in the user agent's [=interest group set=] whose
+    [=interest group/owner=] is |owner|, [=list/sorted in descending order=] with |a| being less
+    than |b| if |a|[=interest group/expiry=] comes before |b|[=interest group/expiry=].
+  1. Let |cumulativeSize| be 0.
+  1. [=list/For each=] |ig| of |igs|:
+    1. If the sum of |cumulativeSize| and |ig|'s [=interest group/estimated size=]
+      &gt; <code>10\*1024\*1024</code>, then [=list/remove=] |ig| from the user
+      agent's [=interest group set=].
+    1. Otherwise, increment |cumulativeSize| by |ig|'s [=interest group/estimated size=].
+
+</div>
+
+<div algorithm>
+To <dfn>clear excess interest groups</dfn> with a [=list=] of [=interest groups=] |igs|,
+an [=origin=] |owner|, and an integer |maxIgs|:
+
+1. Let |namesAndExpiry| be a new [=ordered map=] whose [=map/keys=] are [=strings=]
+  [=interest group/name=] and [=map/values=] are [=moments=] [=interest group/expiry=].
+1. [=list/For each=] |ig| of |igs|:
+  1. Let |name| be |ig|'s [=interest group/name=].
+  1. [=map/Set=] |namesAndExpiry|[|name|] to |ig|'s [=interest group/expiry=].
+1. Set |namesAndExpiry| to |namesAndExpiry| [=map/sorted in descending order=] with |a| being less
+  than |b| if |a|'s [=map/value=] comes before |b|'s [=map/value=].
+
+  Note: Sorting interest groups based on their expiry in descending order so that if interest groups
+    need to be removed, the interest groups expiring soonest are the ones to be removed first.
+
+1. Let |names| be the [=map/get the keys|keys=] of |namesAndExpiry|.
+1. [=list/For each=] |i| in [=the range=] from |maxIgs| to the [=set/size=] of |names|, exclusive:
+  1. [=list/Remove=] the [=interest group=] from the user agent's [=interest group set=] whose
+    [=interest group/owner=] is |owner| and [=interest group/name=] is |names|[|i|].
+
+</div>
+
 <h2 id="leaving-interest-groups">Leaving Interest Groups</h2>
 
 {{Window/navigator}}.{{Navigator/leaveAdInterestGroup()}} removes a user from a particular interest
@@ -467,8 +544,7 @@ dictionary AuctionAdInterestGroupKey {
 
 <div algorithm>
 
-The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps
-are:
+The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps are:
 
 1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s
   [=environment settings object/origin=].
@@ -1071,7 +1147,7 @@ To <dfn>parse an https origin</dfn> given a [=string=] |input|:
       the current day in UTC, increment its count. If not, [=list/insert=] a new [=tuple=] of
       the time set to the current UTC day and a count of 1.
     1. [=list/Replace=] the [=interest group=] that has |loadedIg|'s [=interest group/owner=] and
-      [=interest group/name=] in the browser’s [=interest group set=] with |loadedIg|.
+      [=interest group/name=] in the user agent's [=interest group set=] with |loadedIg|.
 
 </div>
 
@@ -1091,7 +1167,7 @@ To <dfn>parse an https origin</dfn> given a [=string=] |input|:
     [=serializing an Infra value to a JSON string=] given |ad|.
   1. [=list/Append=] |win| to |loadedIg|'s [=interest group/previous wins=].
   1. [=list/Replace=] the [=interest group=] that has |loadedIg|'s [=interest group/owner=] and
-    [=interest group/name=] in the browser’s [=interest group set=] with |loadedIg|.
+    [=interest group/name=] in the user agent's [=interest group set=] with |loadedIg|.
 
 </div>
 
@@ -1940,8 +2016,8 @@ null |winningComponentConfig|:
   1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
 
-  Note: Remove fields specific to {{ReportResultBrowserSignals}} which only sellers can learn about,
-  so that they are not passed to "`reportWin()`".
+    Note: Remove fields specific to {{ReportResultBrowserSignals}} which only sellers can learn about,
+    so that they are not passed to "`reportWin()`".
 
   1. Return « |sellerSignals|, |browserSignals| ».
 </div>
@@ -2280,7 +2356,7 @@ of the following global objects:
       1. Set |ig|'s [=interest group/priority=] to |global|'s
         [=InterestGroupBiddingScriptRunnerGlobalScope/priority=].
       1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
-        [=interest group/name=] in the browser’s [=interest group set=] with |ig|.
+        [=interest group/name=] in the user agent's [=interest group set=] with |ig|.
     1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority signals=]
       [=map/is not empty=]:
       1. [=map/For each=] |k| → |v| of |global|'s
@@ -2288,7 +2364,7 @@ of the following global objects:
         1. If |v| is null, [=map/remove=] |ig|'s [=interest group/priority signals overrides=][|k|].
         1. Otherwise, [=map/set=] |ig|'s [=interest group/priority signals overrides=][|k|] to |v|.
       1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
-        [=interest group/name=] in the browser’s [=interest group set=] with |ig|.
+        [=interest group/name=] in the user agent's [=interest group set=] with |ig|.
     1. Let |generatedBid| be |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=].
     1. If |result| is a [=ECMAScript/normal completion=]:
       1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
@@ -2928,7 +3004,7 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
 
     1. Set |ig|'s [=interest group/next update after=] to the [=current wall time=] plus 24 hours.
     1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
-      [=interest group/name=] in the browser’s [=interest group set=] with |ig|.
+      [=interest group/name=] in the user agent's [=interest group set=] with |ig|.
     1. <i id=abort-update>Abort update</i>: We jump here if some part of the
       [=interest group=] update failed.  [=iteration/Continue=] to the next [=interest group=] update.
 
@@ -3181,6 +3257,12 @@ An interest group is a [=struct=] with the following [=struct/items=]:
   [interest group updates](#interest-group-updates).
 
 </dl>
+
+A <dfn>regular interest group</dfn> is an [=interest group=] whose
+additional bid key (TODO: add link once the PR defines it is merged) is null.
+
+A <dfn>negative interest group</dfn> is an [=interest group=] whose
+additional bid key (TODO: add link once the PR defines it is merged) is not null.
 
 <h3 dfn-type=dfn>Interest group ad</h3>
 
