@@ -218,6 +218,9 @@ window.fence.setReportEventDataForAutomaticBeacons({
 ```
 
 # Support for Ad Components
+For ad components [rendered in fenced frames](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#4-browsers-render-the-winning-ad), the support for event-level reporting described below is available in Chrome starting M114. 
+For ad components rendered in iframes, the support will be available in Chrome starting M115. The support works for all combinations of the top-level ad and ad component being rendered in iframes and/or Fenced Frames.
+
 ## Goal
 When a rendered ad is composed of [multiple pieces](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces), it is useful to detect user clicks that happened on ad components.
 
