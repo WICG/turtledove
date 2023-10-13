@@ -20,6 +20,10 @@ Assume Explicit For: yes
 </pre>
 
 <pre class="anchors">
+urlPrefix: https://fetch.spec.whatwg.org/; spec: Fetch
+  type: dfn
+    text: HTTP-network-or-cache fetch; url: #concept-http-network-or-cache-fetch
+    text: task destination; for: fetch params; url: fetch-params-task-destination
 urlPrefix: https://www.ietf.org/rfc/rfc4122.txt
   type: dfn; text: urn uuid
 urlPrefix: https://github.com/WICG/turtledove/blob/main/FLEDGE_k_anonymity_server.md
@@ -42,6 +46,7 @@ spec: RFC8941; urlPrefix: https://httpwg.org/specs/rfc8941.html
     for: structured header
       text: boolean; url: boolean
       text: integer; url: integer
+      text: boolean; url: boolean
 spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
   type: dfn
     urlPrefix: appendix/embedding.html
@@ -519,6 +524,8 @@ bid in the auction for the chance to display their advertisement.
 
 <h3 id="runadauction">runAdAuction()</h3>
 
+TODO: Promise wiring, pass results to worklets. This is being done in
+https://github.com/WICG/turtledove/pull/774.
 <xmp class="idl">
 [SecureContext]
 partial interface Navigator {
@@ -3024,6 +3031,202 @@ This specification defines two [=policy-controlled features=] identified by the 
 [=policy-controlled feature/default allowlists=] are "`*`".
 
 Issue(WICG/turtledove#522): Move from "`*`" to "`self`".
+
+
+# Handling Direct from Seller Signals # {#handling-direct-from-seller-signals}
+
+This section specifies a manner by which signals may be provided to auctions such that the signals
+are only used within their intended auction.
+
+Any {{Document}} in a [=traversable navigable=] may run a Protected Audience auction (with
+{{Window/navigator}}.{{Navigator/runAdAuction()}}) whose worklet functions receive signal objects
+derived from JSON from an [:Ad-Auction-Signals:] header captured by a
+{{WindowOrWorkerGlobalScope/fetch()}} call (using the {{RequestInit/adAuctionHeaders}} option)
+initiated by any *other* {{Document}} in the *same* [=traversable navigable=].
+
+<div algorithm="fetch capture adAuctionHeaders boolean patch">
+Modify the definition of a [=request=]: 
+
+A [=request=] has an associated boolean <dfn for=request>capture-ad-auction-headers</dfn>.
+Unless stated otherwise it is false.
+</div>
+
+<div algorithm="fetch capture adAuctionHeaders RequestInit patch">
+Modify [[FETCH]]'s {{RequestInit}} dictionary to add an adAuctionHeaders attribute:
+
+<pre class=idl>
+partial dictionary RequestInit {
+  boolean adAuctionHeaders;
+};
+</pre>
+</div>
+
+<div algorithm="fetch new request patch">
+The following step will be added to the <code><a constructor for="Request" lt="Request()">
+new Request (<var ignore>input</var>, <var ignore>init</var>)</a></code> constructor steps, before
+step "Set [=this=]'s [=Request/request=] to |request|":
+
+1. If <var ignore>init</var>["{{RequestInit/adAuctionHeaders}}"] [=map/exists=], then set
+  |request|'s [=request/capture-ad-auction-headers=] to it.
+
+</div>
+
+<div algorithm="fetch Sec-Ad-Auction-Fetch patch">
+The following step will be added to the [=HTTP-network-or-cache fetch=] algorithm, before step
+"Modify |httpRequest|'s [=request/header list=] per HTTP. ...":
+
+1. If [=request=]'s [=request/capture-ad-auction-headers=] is true, then [=header list/set a
+  structured field value=] given «[:Sec-Ad-Auction-Fetch:], the [=structured header/boolean=] `?1`»
+  in |httpRequest|'s [=header list=].
+
+</div>
+
+<div algorithm="fetch per traversable navigable structures patch">
+Modify [[FETCH]]'s [[FETCH#infrastructure]] to add a new section called "Per Traversable Navigable
+Structures", with the following content:
+
+<h3 id=direct-from-sellers-signals-key-struct>Direct from seller signals key</h3>
+A <dfn>direct from seller signals key</dfn> is a [=struct=] with the following [=struct/items=]:
+
+NOTE: This is only captured during a [=request=] whose [=request/initiator type=] is `"fetch"`, made
+with the {{RequestInit/adAuctionHeaders}} option set to `true`, as described in the
+[:Ad-Auction-Signals:] header description.
+
+<dl dfn-for="direct from seller signals key">
+: <dfn>seller</dfn>
+:: An [=origin=]. Matches the origin that served the captured [:Ad-Auction-Signals:] header.
+: <dfn>ad slot</dfn>
+:: A [=string=]. Matches the `adSlot` key of the JSON dictionaries in the top-level array of the
+  [:Ad-Auction-Signals:] value.
+
+</dl>
+
+<h3 id=direct-from-sellers-signals-struct>Direct from seller signals</h3>
+A <dfn>direct from seller signals</dfn> is a [=struct=] with the following [=struct/items=]:
+
+NOTE: This is only captured during a [=request=] whose [=request/initiator type=] is `"fetch"`, made
+with the {{RequestInit/adAuctionHeaders}} option set to `true`, as described in the
+[:Ad-Auction-Signals:] header description.
+
+<dl dfn-for="direct from seller signals">
+: <dfn>auction signals</dfn>
+:: Null or a [=string=].
+  Opaque JSON data passed to both buyers' and the seller's [=script runners=].
+: <dfn>seller signals</dfn>
+:: Null or a [=string=].
+  Opaque JSON data passed to the seller's [=script runner=].
+: <dfn>per buyer signals</dfn>
+:: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
+  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
+  passed to corresponding buyer's [=script runner=].
+
+</dl>
+
+Each [=traversable navigable=] has a <dfn for="traversable navigable">captured ad auction headers
+</dfn>, which is a [=map=] whose [=map/keys=] are [=direct from seller signals keys=] and whose
+[=map/values=] are [=direct from seller signals=].
+</div>
+
+<div algorithm="fetch auction headers patch">
+The following will be added to [[Fetch#http-extensions]]:
+
+<h3 id=sec-ad-auction-fetch-header>The \`<a http-header><code>Sec-Ad-Auction-Fetch</code></a>\` HTTP
+request header</h3>
+
+The \`<dfn http-header><code>Sec-Ad-Auction-Fetch</code></dfn>\` request header is an optional
+[=structured header=] with of type [=structured header/boolean=]. [:Sec-Ad-Auction-Fetch:] will only
+be set on a [=request=] whose [=request/initiator type=] is `"fetch"`, made with the
+{{RequestInit/adAuctionHeaders}} option set to `true`. If [:Sec-Ad-Auction-Fetch:] is equal to `?1`,
+the user agent will remove any [:Ad-Auction-Signals:] from the returned [=response=] -- the
+[:Ad-Auction-Signals:] value will instead only be used in Protected Audiences auctions. 
+
+<h3 id=ad-auction-signals-header>The \`<a http-header><code>Ad-Auction-Signals</code></a>\` HTTP
+response header</h3>
+
+The \`<dfn http-header><code>Ad-Auction-Signals</code></dfn>\` response header provides value
+of a JSON array of dictionaries, each with an `adSlot` key. Protected Audience non-component,
+component, and top-level auctions may specify which signals to load by the `adSlot` key.
+</div>
+
+<div algorithm="fetch auction signals redirect patch">
+The following step will be added to the [=HTTP fetch=] algorithm, immediately under the step "If
+<var ignore>internalResponse</var>’s [=status=] is a [=redirect status=]:"
+
+1. [=header list/Delete=] "[:Ad-Auction-Signals:]" from <var ignore>response</var>'s
+  [=response/header list=].
+
+</div>
+
+<div algorithm="fetch auction signals response patch">
+The following step will be added to the [=HTTP fetch=] algorithm, before step
+"Return |response|.":
+
+1. If |response| is not null, |response|'s [=status=] is not a [=redirect status=], |fetchParams|'s
+  [=fetch params/task destination=] is a [=global object=] that's a {{Window}} object, and
+  |request|'s [=request/capture-ad-auction-headers=] is `true`, then run [=update captured headers=]
+  with |fetchParams|'s [=fetch params/task destination=]'s [=associated Document's=] [=node
+  navigable's=] [=traversable navigable's=] [=traversable navigable/captured ad auction headers=],
+  |response|'s [=response/header list=], and |request|'s [=request/URL=]'s [=url/origin=].
+
+</div>
+
+<div algorithm="fetch update captured headers patch">
+The following algorithm will be added to the [[FETCH#fetching]] section:
+
+<h3 id=update-captured-headers>Update captured headers</h3>
+
+  To <dfn id=concept-update-captured-headers>update captured headers</dfn> with a [=traversable
+  navigable/captured ad auction headers=] |storedHeaders|, [=header list=] |responseHeaders|, and
+  [=origin=] |requestOrigin|:
+  1. Let |adAuctionSignals| be the result of [=header list/getting=] [:Ad-Auction-Signals:] from
+    |responseHeaders|.
+  1. If |adAuctionSignals| is null, return.
+  1. [=header list/Delete=] "[:Ad-Auction-Signals:]" from |responseHeaders|.
+
+    NOTE: This step prevents the header value from being used outside the intended auctions --
+    that is, scripts making the {{WindowOrWorkerGlobalScope/fetch()}} request aren't able to load
+    the header value.
+  1. Let |parsedSignals| be the result of [=parsing JSON bytes to an Infra value=], given
+    |adAuctionSignals|.
+  1. If |parsedSignals| is failure, return.
+  1. If |parsedSignals| is not a [=list=], return.
+  1. [=list/For each=] |signal| in |parsedSignals|:
+    1. If |signal| is not an [=ordered map=], [=iteration/continue=].
+    1. If |signal|["`adSlot`"] doesn't exist, [=iteration/continue=].
+    1. Create a new [=direct from seller signals key=] |signalsKey|, with its
+      [=direct from seller signals key/seller=] set to |requestOrigin| and its
+      [=direct from seller signals key/ad slot=] set to |signal|["`adSlot`"].
+    1. Create a new [=direct from seller signals=] |processedSignals|.
+    1. [=map/Remove=] |signal|["`adSlot`"].
+    1. [=map/For each=] |key| → |value| of |signal|:
+      1. Switch on |key|:
+        <dl class=switch>
+          <dt>"`sellerSignals`"
+          <dd>
+          1. Set |processedSignals|'s [=direct from seller signals/seller signals=] to the result
+            of [=serializing an Infra value to a JSON string=], given |value|.
+
+          <dt>"`auctionSignals`"
+          <dd>
+          1. Set |processedSignals|'s [=direct from seller signals/auction signals=] to the result
+            of [=serializing an Infra value to a JSON string=], given |value|.
+
+          <dt>"`perBuyerSignals`"
+          <dd>
+          1. If |value| is not an [=ordered map=], [=iteration/continue=].
+          1. For each |buyer| → |buyerSignals| of |value|:
+            1. Let |buyerOrigin| be the result of [=parsing an https origin=] on |buyer|. If this
+              [=exception/throws=], [=iteration/continue=].
+            1. Let |buyerSignalsString| be the result of
+              [=serializing an Infra value to a JSON string=], given |buyerSignals|.
+            1. Set |processedSignals|'s
+              [=direct from seller signals/per buyer signals=][|buyerOrigin|] to |buyerSignalsString|.
+        
+        </dl>
+
+    1. Set |storedHeaders|[|signalsKey|] to |processedSignals|.
+
+</div>
 
 
 # Structures # {#structures}
