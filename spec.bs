@@ -1330,7 +1330,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perBuyerGenerator|:
     1. Let |keys| be a new [=ordered set=].
     1. Let |igNames| be a new [=ordered set=].
-    1. Let |fetchSignalStartTime| be the [=current wall time=].
+    1. Let |fetchSignalStartTime| be the [=environment settings object/current monotonic time=].
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
@@ -1342,7 +1342,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. If |dataVersion| is not null, then [=map/set=]
       |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
     1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to
-      [=current wall time=], in milliseconds.
+      [=environment settings object/current monotonic time=], in milliseconds.
     1. Decrement |perBuyerCumulativeTimeout| by |fetchSignalDuration|.
     1. If |perBuyerCumulativeTimeout| is negative, then [=iteration/break=];
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
@@ -1350,12 +1350,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
         1. If |perBuyerCumulativeTimeout| is less than |perBuyerTimeout|, then set |perBuyerTimeout|
           to |perBuyerCumulativeTimeout|.
-        1. Let |generateBidStartTime| be the [=current wall time=].
+        1. Let |generateBidStartTime| be the [=environment settings object/current monotonic time=].
         1. Let |generatedBid| be the result of [=generate a bid=] given |allTrustedBiddingSignals|,
           |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
           |perBuyerTimeout|, |expectedCurrency|, |ig|, and |auctionStartTime|.
         1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
-          [=current wall time=], in milliseconds.
+          [=environment settings object/current monotonic time=], in milliseconds.
         1. Decrement |perBuyerCumulativeTimeout| by |generateBidDuration|.
         1. If |generatedBid| is failure, [=iteration/continue=].
         1. If [=query generated bid k-anonymity count=] given |generatedBid| returns false:
@@ -1386,7 +1386,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
                 [=interest group/ad components=].
           1. If |perBuyerCumulativeTimeout| is less than |perBuyerTimeout|, then set
             |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
-          1. Let |generateBidStartTime| be the [=current wall time=].
+          1. Let |generateBidStartTime| be the [=environment settings object/current monotonic time=].
           1. Set |generatedBid| to the result of [=generate a bid=] given
             |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
             |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
@@ -1394,7 +1394,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Set |ig|'s [=interest group/ads=] to |originalAds|.
           1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
-            [=current wall time=], in milliseconds.
+            [=environment settings object/current monotonic time=], in milliseconds.
           1. Decrement |perBuyerCumulativeTimeout| by |generateBidDuration|.
           1. If |generatedBid| is failure, [=iteration/continue=].
         1. [=list/Insert=] |generatedBid|'s [=generated bid/interest group=] in |bidIgs|.
@@ -2390,11 +2390,11 @@ of the following global objects:
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
     1. Let |directFromSellerSignalsJs| be |directFromSellerSignalsForBuyer|
       [=converted to ECMAScript values=].
-    1. Let |startTime| be the [=current wall time=].
+    1. Let |startTime| be the [=environment settings object/current monotonic time=].
     1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
       « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignalsJS|, |browserSignalsJS|,
       |directFromSellerSignalsJs| », and |timeout|.
-    1. Let |duration| be the [=current wall time=] minus |startTime| in milliseconds.
+    1. Let |duration| be the [=environment settings object/current monotonic time=] minus |startTime| in milliseconds.
     1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null and not failure:
       1. Set |ig|'s [=interest group/priority=] to |global|'s
         [=InterestGroupBiddingScriptRunnerGlobalScope/priority=].
@@ -2474,12 +2474,15 @@ of the following global objects:
 
 <div algorithm>
   To <dfn>evaluate a script</dfn> with a [=ECMAScript/realm=] |realm|, [=string=] |script|, [=string=]
-  |functionName|, a [=list=] |arguments|, and an integer millisecond duration |timeout|, run these steps.
+  |functionName|, a [=list=] |arguments|, and an integer millisecond [=duration=] |timeout|, run these steps.
   They return a [=ECMAScript/Completion Record=], which is either an [=ECMAScript/abrupt completion=] (in
   the case of a parse failure or execution error), or a [=ECMAScript/normal completion=] populated with the
   [=ECMAScript/ECMAScript language value=] result of invoking |functionName|.
 
     1. [=Assert=] that these steps are running [=in parallel=].
+
+    1. If |timeout| &le; 0, [=immediately=] interrupt the execution and set |finalCompletion| to a
+      new [=ECMAScript/throw completion=] given null.
 
     1. Let |global| be |realm|'s [=realm/global object=], and run these steps in |realm|'s [=realm/agent=]:
 
@@ -2879,8 +2882,8 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
 
 1. [=list/For each=] |owner| of |owners|:
   1. [=list/For each=] |originalInterestGroup| of the user agent's [=interest group set=] whose
-    [=interest group/owner=] is |owner| and [=interest group/next update after=] is before
-    the [=current wall time=]:
+    [=interest group/owner=] is |owner| and [=interest group/next update after=] is before the
+    [=current wall time=]:
 
     Note: Implementations can consider loading only a portion of these interest groups
     at a time to avoid issuing too many requests at once.
