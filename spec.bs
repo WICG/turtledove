@@ -998,13 +998,13 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
         1. Set |auctionConfig|'s |auctionConfigField| to a new [=ordered map=] whose
           [=map/keys=] are [=origins=] and whose [=map/values=] are [=durations=] in milliseconds.
         1. [=map/For each=] |key| → |value| of |result|:
-          1. If |key| is "*", then set |auctionConfig|'s |auctionConfigFieldAll|
-            to |value| in milliseconds or 500 milliseconds, whichever is smaller, and
-            [=iteration/continue=].
+          1. If |configMember| is "{{AuctionAdConfig/perBuyerTimeouts}}", and |value| &gt; 500, then
+            set |value| to 500.
+          1. If |key| is "*", then set |auctionConfig|'s |auctionConfigFieldAll| to |value| in
+            milliseconds, and [=iteration/continue=].
           1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
             failure, [=exception/throw=] a {{TypeError}}.
-          1. [=map/Set=] |auctionConfig|'s |auctionConfigField|[|buyer|] to |value| in milliseconds
-            or 500 milliseconds, whichever is smaller.
+          1. [=map/Set=] |auctionConfig|'s |auctionConfigField|[|buyer|] to |value| in milliseconds.
       * To handle an error, set |auctionConfig|'s |auctionConfigField| to failure.
 1. If |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"] [=map/exists=], [=map/for each=]
   |key| → |value| of |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"]:
@@ -1344,20 +1344,22 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
     1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to
       [=environment settings object/current monotonic time=], in milliseconds.
-    1. Decrement |perBuyerCumulativeTimeout| by |fetchSignalDuration|.
-    1. If |perBuyerCumulativeTimeout| is negative, then [=iteration/break=];
+    1. If |perBuyerCumulativeTimeout| is not null:
+      1. Decrement |perBuyerCumulativeTimeout| by |fetchSignalDuration|.
+      1. If |perBuyerCumulativeTimeout| is negative, then [=iteration/break=];
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
-        1. If |perBuyerCumulativeTimeout| is less than |perBuyerTimeout|, then set |perBuyerTimeout|
-          to |perBuyerCumulativeTimeout|.
+        1. If |perBuyerCumulativeTimeout| is not null and is less than |perBuyerTimeout|, then set
+          |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
         1. Let |generateBidStartTime| be the [=environment settings object/current monotonic time=].
         1. Let |generatedBid| be the result of [=generate a bid=] given |allTrustedBiddingSignals|,
           |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
           |perBuyerTimeout|, |expectedCurrency|, |ig|, and |auctionStartTime|.
         1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
           [=environment settings object/current monotonic time=], in milliseconds.
-        1. Decrement |perBuyerCumulativeTimeout| by |generateBidDuration|.
+        1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
+          |generateBidDuration|.
         1. If |generatedBid| is failure, [=iteration/continue=].
         1. If [=query generated bid k-anonymity count=] given |generatedBid| returns false:
 
@@ -1385,7 +1387,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               1. If [=query component ad k-anonymity count=] given |adComponent|'s
                 [=interest group ad/render url=] returns true, [=list/append=] |adComponent| to |ig|'s
                 [=interest group/ad components=].
-          1. If |perBuyerCumulativeTimeout| is less than |perBuyerTimeout|, then set
+          1. If |perBuyerCumulativeTimeout| is not null and is less than |perBuyerTimeout|, then set
             |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
           1. Let |generateBidStartTime| be the [=environment settings object/current monotonic time=].
           1. Set |generatedBid| to the result of [=generate a bid=] given
@@ -1396,7 +1398,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
             [=environment settings object/current monotonic time=], in milliseconds.
-          1. Decrement |perBuyerCumulativeTimeout| by |generateBidDuration|.
+          1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
+            by |generateBidDuration|.
           1. If |generatedBid| is failure, [=iteration/continue=].
         1. [=list/Insert=] |generatedBid|'s [=generated bid/interest group=] in |bidIgs|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
@@ -3638,7 +3641,7 @@ An auction config is a [=struct=] with the following items:
   promises blocking that buyer's bidding scripts from running have been resolved.
 
 : <dfn>all buyers cumulative timeout</dfn>
-:: A [=duration=] in milliseconds, initially 50 milliseconds.
+:: Null or a [=duration=] in milliseconds, initially null.
   Restricts a buyer's cumulative timeout for all buyers without one specified in
   [=auction config/per buyer cumulative timeouts=].
 : <dfn>per buyer group limits</dfn>
