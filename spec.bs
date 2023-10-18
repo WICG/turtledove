@@ -461,12 +461,19 @@ To <dfn>build an interest group permissions url</dfn> given a [=origin=] |ownerO
 
 There is a job that periodically [=performs storage maintenance=] on the [=user agent=]'s
 [=interest group set=]. It performs operations such as [=list/removing=] expired or excess
-[=interest groups=]. An [=interest group set=] must have no more than:
-  * 2000 [=interest group/owners=];
-  * 1000 [=regular interest groups=] per [=interest group/owner=];
-  * 20000 [=negative interest groups=] per [=interest group/owner=];
-  * <code>10\*1024\*1024</code> total [=interest group/estimated size=] of [=interest groups=] per
+[=interest groups=]. An [=interest group set=] must respect the following limits:
+  * <dfn>Interest group set max owners</dfn> is 1000, which defines the max number of
+    [=interest group/owners=] in the [=user agent=]'s [=interest group set=].
+  * <dfn>Max regular interest groups per owner</dfn> is 2000, which defines the max number of
+    [=regular interest groups=] in the [=user agent=]'s [=interest group set=] for an
     [=interest group/owner=].
+  * <dfn>Max negative interest groups per owner</dfn> is 20000, which defines the max number of
+    [=negative interest groups=] in the [=user agent=]'s [=interest group set=] for an
+    [=interest group/owner=].
+  * <dfn>Max interest groups total size per owner</dfn> is <code>10\*1024\*1024</code>, which
+    defines the max total [=interest group/estimated size|sizes=] of [=interest groups=] in the
+    [=user agent=]'s [=interest group set=] for an [=interest group/owner=]. It includs both
+    [=regular interest groups=] and [=negative interest groups=].
 
 <div algorithm>
 To <dfn>perform storage maintenance</dfn>:
@@ -475,7 +482,11 @@ To <dfn>perform storage maintenance</dfn>:
   [=map/values=] are [=moments=].
 
   Note: The [=map/key=] is from [=interest group/owner=], and [=map/value=] is from
-    [=interest group/expiry=].
+    [=interest group/expiry=]. It's used to determine a set of [=interest group/owners=] whose
+    [=interest groups=] will be removed from the [=user agent=]'s [=interest group set=] because the
+    number of distinct [=interest group/owners=] exceeds the [=Interest group set max owners=] limit.
+    It's sorted based on their [=map/values=] ([=interest group/expiry=]) in descending order, in
+    order to remove [=interest groups=] of [=interest group/owners=] expiring soonest first.
 
 1. Let |now| be the [=current wall time=].
 1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
@@ -485,25 +496,23 @@ To <dfn>perform storage maintenance</dfn>:
   1. If |ownersAndExpiry|[|owner|] [=map/exists=], then [=map/set=] |ownersAndExpiry|[|owner|] to
     |ig|'s [=interest group/expiry=] if it comes after |ownersAndExpiry|[|owner|].
   1. Otherwise, [=map/set=] |ownersAndExpiry|[|owner|] to |ig|'s [=interest group/expiry=].
-1. If |ownersAndExpiry|'s [=map/size=] &gt; 2000, then [=map/set=] |ownersAndExpiry| to
-  |ownersAndExpiry| [=map/sorted in descending order=] with |a| being less than |b| if |a|'s
-  [=map/value=] comes before |b|'s [=map/value=], where [=map/values=] are [=interest group/expiry=].
-
-  Note: In order to remove interest groups of owners expiring soonest first, sort owners based on
-    their expiry in descending order, 
-
+1. If |ownersAndExpiry|'s [=map/size=] &gt; [=interest group set max owners=], then [=map/set=]
+  |ownersAndExpiry| to |ownersAndExpiry| [=map/sorted in descending order=] with |a| being less than
+  |b| if |a|'s [=map/value=] comes before |b|'s [=map/value=], where [=map/values=] are
+  [=interest group/expiry=].
 1. Let |owners| be the [=map/get the keys|keys=] of |ownersAndExpiry|.
 1. [=list/For each=] |i| in [=the range=] from 0 to |owners|'s [=set/size=], exclusive:
-  1. If |i| &ge; 2000, then [=list/remove=] [=interest groups=] from the [=user agent=]'s
-    [=interest group set=] whose [=interest group/owner=] is |owners|[|i|], and [=iteration/continue=].
+  1. If |i| &ge; [=interest group set max owners=], then [=list/remove=] [=interest groups=] from
+    the [=user agent=]'s [=interest group set=] whose [=interest group/owner=] is |owners|[|i|], and
+    [=iteration/continue=].
   1. Let |regularIgs| be a [=list=] of [=regular interest groups=] in the [=user agent=]'s
     [=interest group set=] whose [=interest group/owner=] is |owners|[|i|].
-  1. If |regularIgs|'s [=list/size=] &gt; 1000, then [=clear excess interest groups=] with
-    |regularIgs|, |owners|[|i|], and 1000.
+  1. If |regularIgs|'s [=list/size=] &gt; [=max regular interest groups per owner=], then
+    [=clear excess interest groups=] with |regularIgs| and [=max regular interest groups per owner=].
   1. Let |negativeIgs| be a [=list=] of [=negative interest groups=] in the [=user agent=]'s
     [=interest group set=] whose [=interest group/owner=] is |owners|[|i|].
-  1. If |negativeIgs|'s [=list/size=] &gt; 20000, then [=Clear excess interest groups=] with
-    |negativeIgs|, |owners|[|i|], and 20000.
+  1. If |negativeIgs|'s [=list/size=] &gt; [=max negative interest groups per owner=], then
+    [=clear excess interest groups=] with |negativeIgs| and [=max negative interest groups per owner=].
 1. [=list/For each=] |owner| of |owners|:
   1. Let |igs| be a [=list=] of [=interest groups=] in the [=user agent=]'s [=interest group set=]
     whose [=interest group/owner=] is |owner|, [=list/sorted in descending order=] with |a| being
@@ -511,36 +520,24 @@ To <dfn>perform storage maintenance</dfn>:
   1. Let |cumulativeSize| be 0.
   1. [=list/For each=] |ig| of |igs|:
     1. If the sum of |cumulativeSize| and |ig|'s [=interest group/estimated size=]
-      &gt; <code>10\*1024\*1024</code>, then [=list/remove=] |ig| from the [=user agent=]'s
-      [=interest group set=].
+      &gt; [=max interest groups total size per owner=], then [=list/remove=] |ig| from the
+      [=user agent=]'s [=interest group set=].
     1. Otherwise, increment |cumulativeSize| by |ig|'s [=interest group/estimated size=].
 
 </div>
 
 <div algorithm>
-To <dfn>clear excess interest groups</dfn> with a [=list=] of [=interest groups=] |igs|,
-an [=origin=] |owner|, and an integer |maxIgs|:
+To <dfn>clear excess interest groups</dfn> with a [=list=] of [=interest groups=] |igs|, and an
+integer |maxIgs|:
 
-1. Let |namesAndExpiry| be a new [=ordered map=] whose [=map/keys=] are [=strings=] and
-  [=map/values=] are [=moments=].
-
-  Note: The [=map/key=] is from [=interest group/name=], and [=map/value=] is from
-    [=interest group/expiry=].
-
-1. [=list/For each=] |ig| of |igs|:
-  1. Let |name| be |ig|'s [=interest group/name=].
-  1. [=map/Set=] |namesAndExpiry|[|name|] to |ig|'s [=interest group/expiry=].
-1. Set |namesAndExpiry| to |namesAndExpiry| [=map/sorted in descending order=] with |a| being less
-  than |b| if |a|'s [=map/value=] comes before |b|'s [=map/value=], where [=map/values=] are
-  [=interest group/expiry=].
+1. Let |sortedIgs| be |igs| [=list/sorted in descending order=] with |a| being less
+  than |b| if |a|'s [=interest group/expiry=] comes before |b|'s [=interest group/expiry=].
 
   Note: In order to remove interest groups expiring soonest first, sort interest groups based on
     their expiry in descending order.
 
-1. Let |names| be the [=map/get the keys|keys=] of |namesAndExpiry|.
-1. [=list/For each=] |i| in [=the range=] from |maxIgs| to |names|'s [=set/size=], exclusive:
-  1. [=list/Remove=] the [=interest group=] from the [=user agent=]'s [=interest group set=] whose
-    [=interest group/owner=] is |owner| and [=interest group/name=] is |names|[|i|].
+1. [=list/For each=] |i| in [=the range=] from |maxIgs| to |igs|'s [=list/size=], exclusive:
+  1. [=list/Remove=] |sortedIgs|[|i|] from the [=user agent=]'s [=interest group set=].
 
 </div>
 
