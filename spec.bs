@@ -977,8 +977,6 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 
     * To parse the value |result|:
       1. Set |auctionConfig|'s [=auction config/expects additional bids=] to false.
-      1. Set |auctionConfig|'s [=auction config/config idl=]["{{AuctionAdConfig/additionalBids}}"]
-        to {{undefined}}.
     * To handle an error:
       1. Set |auctionConfig|'s [=auction config/expects additional bids=] to failure.
 1. If |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] [=map/exists=]:
@@ -1337,7 +1335,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     |topLevelAuctionConfig| and |auctionConfig|'s [=auction config/seller=].
 1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
 1. Let |additionalBids| be the result of running [=validate and convert additional bids=] with
-  |auctionConfig|, |topLevelAuctionConfig| and |negativeTargetInfo|.
+  |auctionConfig|, |topLevelAuctionConfig|, |negativeTargetInfo| and |global|.
 1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
   1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
@@ -2199,7 +2197,9 @@ The <dfn for=Navigator method>createAuctionNonce()</dfn> method steps are:
       * ...which gives browsers the freedom to generate this UUID in another process, and
         asynchronously send it back to the main thread at an arbitrary future time.
     </div>
-    1. [=Queue a task=] to [=resolve=] |p| with |nonce|.
+    1. Let |global| be [=this=]'s [=relevant global object=].
+    1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=resolve=]
+      |p| with |nonce|.
   1. Return |p|.
 </div>
 
@@ -2249,15 +2249,15 @@ in a [[#running-ad-auctions|Protected Audience auction]].
 
 <div algorithm>
 To <dfn>validate and convert additional bids</dfn> given an [=auction config=] |auctionConfig|, an
-[=auction config=]-or-null |topLevelAuctionConfig|, and a [=negative target info=]
-|negativeTargetInfo|:
+[=auction config=]-or-null |topLevelAuctionConfig|, a [=negative target info=] |negativeTargetInfo|,
+and a [=global object=] |global|:
 
   1. [=Assert=] that these steps are running [=in parallel=].
+  1. [=Assert=] that |auctionConfig|'s [=auction config/auction nonce=] is not null.
   1. Let |auctionNonce| be the [=string representation=] of |auctionConfig|'s
     [=auction config/auction nonce=].
-  1. Let |capturedAdditionalBidsHeaders| be [=this=]'s [=relevant global object=]'s
-    [=associated Document's=] [=node navigable's=] [=traversable navigable's=]
-    [=captured additional bids headers=].
+  1. Let |capturedAdditionalBidsHeaders| be |global|'s [=associated Document's=]
+    [=node navigable's=] [=traversable navigable's=] [=captured additional bids headers=].
   1. Let |additionalBids| be a new [=list=] of [=additional bids=].
   1. [=list/For each=] |encodedSignedAdditionalBid| of |capturedAdditionalBidsHeaders|[|auctionNonce|]:
     1. Let |signedAdditionalBid| be the result of running [=forgiving-base64 decode=] with
@@ -2265,8 +2265,7 @@ To <dfn>validate and convert additional bids</dfn> given an [=auction config=] |
     1. If |signedAdditionalBid| is failure, then [=iteration/continue=].
     1. Let |additionalBid| be the result of running [=parse a signed additional bid=] given
       |signedAdditionalBid|, |auctionConfig|, |topLevelAuctionConfig|, and |negativeTargetInfo|. 
-    1. If |additionalBid| is not null:
-      1. [=list/Append=] |additionalBid| to |additionalBids|.
+    1. If |additionalBid| is not null, then [=list/append=] |additionalBid| to |additionalBids|.
   1. Return |additionalBids|.
 </div>
 
@@ -2384,8 +2383,7 @@ To <dfn>decode an additional bid json</dfn> given a [=string=] |additionalBidJso
   1. Let |bidCurrency| be null.
   1. If |bidMap|["bidCurrency"] [=map/exists=]:
     1. If |bidMap|["bidCurrency"] is not a [=string=], or the result of [=checking whether a string
-      is a valid currency tag=] is failure:
-      1. Return failure.
+      is a valid currency tag=] is failure, then return failure.
     1. Set |bidCurrency| to |bidMap|["bidCurrency"].
   1. Let |adCost| be null.
   1. If |bidMap|["adCost"] [=map/exists=]:
@@ -2394,15 +2392,14 @@ To <dfn>decode an additional bid json</dfn> given a [=string=] |additionalBidJso
   1. Let |modelingSignals| be null.
   1. If |bidMap|["modelingSignals"] [=map/exists=]:
     1. If |bidMap|["modelingSignals"] is not a {{double}}, then return failure.
-    1. If |bidMap|["modelingSignals"] is greater than or equal to 0, and less than 4096:
-      1. Set |modelingSignals| to |bidMap|["modelingSignals"].
+    1. If |bidMap|["modelingSignals"] &ge; 0, and &lt; 4096, then set |modelingSignals| to
+      |bidMap|["modelingSignals"].
   1. Let |adComponents| be a new [=list=] of [=ad descriptors=].
   1. If |bidMap|["adComponents"] [=map/exists=]:
     1. If |bidMap|["adComponents"] is not a [=list=], then return failure.
     1. [=list/For each=] |component| of |bidMap|["adComponents"]:
       1. If |component| is not a [=string=], then return failure.
       1. Let |componentUrl| be the result of running [=URL parser=] on |component|.
-
       1. If |componentUrl| is failure, then return failure.
       1. Let |componentDescriptor| be a new [=ad descriptor=] whose [=ad descriptor/url=] is
         |componentUrl|.
@@ -2474,15 +2471,17 @@ Each [=traversable navigable=] has a <dfn>captured additional bids headers</dfn>
 whose [=map/keys=] are [=strings=] for auction nonces, and whose values are [=list=] of [=strings=]
 for encoded additional bids.
 
-## Negative Targeting ## {#negative-targeting}
+## Negative Targeting ## {#negative-targeting-section}
+
+*This first introductory paragraph is non-normative.*
 
 In online ad auctions for ad space, it’s sometimes useful to prevent showing an ad to certain
-audiences, a concept known as negative targeting. To facilitate negative targeting in Protected
-Audience auctions, each additional bid is allowed to identify one or more negative interest groups.
-If the user has been joined to any of the identified negative interest groups, the additional bid is
-dropped; otherwise it participates in the auction, competing alongside bids created by calls to
-`generateBid()`. An additional bid that specifies no negative interest groups is always accepted
-into the auction.
+audiences, a concept known as <dfn>negative targeting</dfn>. To facilitate [=negative targeting=] in
+Protected Audience auctions, each additional bid is allowed to identify one or more [=negative
+interest groups=]. If the user has been joined to any of the identified [=negative interest groups=],
+the additional bid is dropped; otherwise it participates in the auction, competing alongside bids
+created by calls to `generateBid()`. An additional bid that specifies no [=negative interest groups=]
+is always accepted into the auction.
 
 <div algorithm>
 To <dfn>check whether negative targeted</dfn> given an [=additional bid=] |additionalBid|, a [=set=]
@@ -2518,22 +2517,27 @@ and a [=byte sequence=] for [=interest group/additional bid key=].
 
 ### Negative Interest Groups ### {#negative-interest-groups}
 
-Though negative interest groups are joined using the same {{Navigator/joinAdInterestGroup()}} API as
-regular interest groups, they remain distinct from one another. Only negative interest groups can
-provide an {{AuctionAdInterestGroup/additionalBidKey}}, while only regular interest groups can
-provide {{GenerateBidInterestGroup/ads}}. No interest group may provide both. Because the subset of
-fields used by a negative interest group cannot be meaningfully updated, a negative interest group
-can not provide an {{GenerateBidInterestGroup/updateURL}}.
+*This section is non-normative.*
 
-[[#additional-bids]] specify the negative interest groups they're negatively targeting against
+Though [=negative interest groups=] are joined using the same {{Navigator/joinAdInterestGroup()}}
+API as [=regular interest groups=], they remain distinct from one another. Only
+[=negative interest groups=] can provide an {{AuctionAdInterestGroup/additionalBidKey}}, while only
+[=regular interest groups=] can provide {{GenerateBidInterestGroup/ads}}. No interest group may
+provide both. Because the subset of fields used by a [=negative interest group=] cannot be
+meaningfully updated, a [=negative interest group=] can not provide an
+{{GenerateBidInterestGroup/updateURL}}, otherwise a {{TypeError}} will be [=exception/thrown=] by
+{{Navigator/joinAdInterestGroup()}} API.
+
+[[#additional-bids]] specify the [=negative interest groups=] they're negatively targeting against
 using at most one of the following two fields in their JSON data structure:
   * negativeInterestGroup, for a single negative interest group;
-  * negativeInterestGroups, for more than one negative interest group.
+  * negativeInterestGroups, for more than one negative interest groups.
 
-If an additional bid needs to specify more than one negative interest groups, all of those negative
-interest groups must be joined from the same origin, and that origin must be identified ahead of
-time in the additional bid's `joiningOrigin` field. Any negative interest group that wasn't joined
-from that identified origin is ignored for negative targeting.
+If an additional bid needs to specify more than one [=negative interest groups=], all of those
+[=negative interest groups=] must be joined from the [=same origin=], and that [=origin=] must be
+identified ahead of time in the additional bid's `joiningOrigin` field. Any
+[=negative interest group=] that wasn't joined from that identified [=origin=] is ignored for
+[=negative targeting=].
 
 <div id="negative-igs-example" class=example>
   <p>Use `negativeInterestGroup` in additional bid's JSON:</p>
@@ -3975,10 +3979,10 @@ An interest group is a [=struct=] with the following [=struct/items=]:
   can be used to construct ads composed of multiple pieces — a top-level ad template "container"
   which includes some slots that can be filled in with specific "products".
 : <dfn>additional bid key</dfn>
-:: Null or a [=byte sequence=] of length 32. Must be null if [=interest group/ads=] is not null. The
-  Ed25519 public key (a 256-bit EdDSA public key) used to guarantee that this [=interest group=],
-  if used by an additional bid for a negative targeting, can only be used by its
-  [=interest group/owner=].
+:: Null or a [=byte sequence=] of length 32. Must be null if [=interest group/ads=] or
+  [=interest group/update url=] is not null. The Ed25519 public key (a 256-bit EdDSA public key)
+  used to guarantee that this [=interest group=], if used by an additional bid for a negative
+  targeting, can only be used by its [=interest group/owner=].
 : <dfn>joining origin</dfn>
 :: An [=origin=]. The top level page origin from where the interest group was joined.
 : <dfn>join counts</dfn>
@@ -4000,6 +4004,12 @@ An interest group is a [=struct=] with the following [=struct/items=]:
   [interest group updates](#interest-group-updates).
 
 </dl>
+
+A <dfn>regular interest group</dfn> is an [=interest group=] whose
+[=interest group/additional bid key=] is null.
+
+A <dfn>negative interest group</dfn> is an [=interest group=] whose
+[=interest group/additional bid key=] is not null.
 
 <h3 dfn-type=dfn>Interest group ad</h3>
 
