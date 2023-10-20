@@ -537,7 +537,8 @@ method steps are:
   [=environment settings object/origin=].
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
 1. Let |p| be [=a new promise=].
-1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
+1. Let |global| be [=this=]'s [=relevant global object=].
+1. If |global|'s [=associated Document=] is not [=allowed to use=] the
   "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
   "{{NotAllowedError}}" {{DOMException}}.
 
@@ -547,9 +548,10 @@ method steps are:
 1. Run these steps [=in parallel=]:
   1. Let |permission| be the result of [=checking interest group permissions=] with
     |ownerOrigin|, |frameOrigin|, and "`leave`".
-  1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
-     "{{NotAllowedError}}" {{DOMException}} and abort these steps.
-  1. [=Queue a task=] to [=resolve=] |p| with {{undefined}}.
+  1. If |permission| is false, then [=queue a global task=] on [=DOM manipulation task source=],
+    given |global|, [=reject=] |p| with a "{{NotAllowedError}}" {{DOMException}} and abort these steps.
+  1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=resolve=] |p|
+    with {{undefined}}.
   1. [=list/Remove=] [=interest groups=] from the [=user agent=]'s [=interest group set=]
     whose [=interest group/owner=] is |ownerOrigin|, whose [=interest group/joining origin=] is
     |frameOrigin|, and whose [=interest group/name=] is not in |interestGroupsToKeep|.
