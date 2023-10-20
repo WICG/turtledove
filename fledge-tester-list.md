@@ -58,7 +58,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Blendee | SSP & DSP | | | privacysandbox@blendee.com |
 | Adlook (subsidiary of RTB House) | DSP | Continuous testing ongoing; long term commitment. | | privacysandbox@adlook.com |
 | Microsoft (Xandr, MSAN) | SSP + DSP(s) | Testing | | privacy_sandbox@microsoft.com |
-| Nexxen (Unruly/Tremor/Amobee) | SSP & DSP| 2023-2024 | coming soon | soak@nexxen.com |
+| Nexxen (Unruly/Tremor/Amobee) | SSP & DSP| 2023-2024 | coming soon | privacysandbox@nexxen.com |
 | Triplelift | SSP | Jan 2024 | | prod-privacysandbox@triplelift.com |
 | Seedtag | SSP | January 2024 | coming soon | privacysandbox@seedtag.com |
 | Index Exchange | SSP | By January 31, 2024 | | privacy-sandbox-support@indexexchange.com |
@@ -66,6 +66,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Adform | DSP | Beginning January 1, 2024 | | privacysandbox@adform.com |
 | Onetag | DSP & SSP | 2023-2024 | | privacysandbox@onetag.com |
 | Yahoo Inc | DSP | beginning 15 Jan 2024 | | googleprivacysandbox@yahooinc.com |
+| Magnite | SSP | January 2024 | | privacysandbox@magnite.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
