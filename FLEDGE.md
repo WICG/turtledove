@@ -100,6 +100,7 @@ Browsers keep track of the set of interest groups that they have joined.  For ea
 const myGroup = {
   'owner': 'https://www.example-dsp.com',
   'name': 'womens-running-shoes',
+  'lifetimeMs': 30 * kMillisecsPerDay,
   'priority': 0.0,
   'priorityVector': {
     'signal1': 2,
@@ -123,7 +124,7 @@ const myGroup = {
   'adComponents': [runningShoes1, runningShoes2, gymShoes, gymTrainers1, gymTrainers2],
   'auctionServerRequestFlags': ['omit-ads'],
 };
-const joinPromise = navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
+const joinPromise = navigator.joinAdInterestGroup(myGroup);
 ```
 
 
@@ -135,7 +136,7 @@ There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which loo
 
 There is a related API `navigator.clearOriginJoinedAdInterestGroups(owner, [<groupNamesToKeep>])` that leaves all interest groups owned by `owner` that were joined on the current top-level frame's origin, and also returns a Promise. The `[<groupNamesToKeep>]` argument is an optional list of interest group names that will not be left, and if not present, it will act as if an empty array was passed. This method has no effect on joined interest groups owned by `owner` that were most recently joined on different top-level origins.
 
-The browser will remain in an interest group for only a limited amount of time.  The duration, in seconds, is specified in the call to `joinAdInterestGroup()`, and will be capped at 30 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's `userBiddingSignal` or list of ads.  A duration <= 0 will leave the interest group.
+The browser will remain in an interest group for only a limited amount of time.  The duration, in milliseconds, is specified in the `lifetimeMs` attribute of the interest group, and will be capped at 30 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's `userBiddingSignal` or list of ads.  A duration <= 0 will leave the interest group.
 
 #### 1.2 Interest Group Attributes
 
