@@ -213,9 +213,9 @@ This is detectable because it can change the set of fields that are read from th
 {{TypeError}} is eventually thrown, but it will never change whether the call succeeds or fails.
 
 </div>
-1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
-  "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
-  "{{NotAllowedError}}" {{DOMException}}.
+1. Let |global| be [=this=]'s [=relevant global object=].
+1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=join-ad-interest-group=]"
+  [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
 1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s [=environment settings object/origin=].
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
 1. Let |interestGroup| be a new [=interest group=].
@@ -340,9 +340,11 @@ This is detectable because it can change the set of fields that are read from th
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |permission| be the result of [=checking interest group permissions=] with
     |interestGroup|'s [=interest group/owner=], |frameOrigin|, and "`join`".
-  1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
-     "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
-  1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
+  1. If |permission| is false, then [=queue a global task=] on [=DOM manipulation task source=],
+    given |global|, to [=reject=] |p| with a "{{NotAllowedError}}" {{DOMException}} and do not run
+    the remaining steps.
+  1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=resolve=] |p|
+    with `undefined`.
   1. If the browser is currently storing an interest group with `owner` and `name` that matches
     |interestGroup|, then set the [=interest group/bid counts=],
     [=interest group/join counts=], and [=interest group/previous wins=] of
@@ -497,17 +499,18 @@ dictionary AuctionAdInterestGroupKey {
 The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps
 are:
 
-1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s
-  [=environment settings object/origin=].
+1. Let |global| be [=this=]'s [=relevant global object=].
+1. Let |frameOrigin| be |global|'s [=environment settings object/origin=].
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
 1. Let |p| be [=a new promise=].
 1. If |group| [=map/is empty=]:
-  1. Let |instance| be [=this=]'s [=relevant global object=]'s [=Window/browsing context=]'s
+  1. Let |instance| be |global|'s [=Window/browsing context=]'s
     [=browsing context/fenced frame config instance=].
   1. If |instance| is null, [=exception/throw=] a {{TypeError}}.
   1. Let |interestGroup| be |instance|'s [=fenced frame config instance/interest group descriptor=].
   1. Run these steps [=in parallel=]:
-    1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
+    1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=resolve=]
+      |p| with `undefined`.
     1. If |interestGroup| is not null:
       1. Let |owner| be |interestGroup|'s [=interest group descriptor/owner=].
       1. Let |name| be |interestGroup|'s [=interest group descriptor/name=].
@@ -515,7 +518,7 @@ are:
         from the user agent's [=interest group set=] whose [=interest group/owner=] is |owner| and
         [=interest group/name=] is |name|.
 1. Otherwise:
-  1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
+  1. If |global|'s [=associated Document=] is not [=allowed to use=] the
     "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
     "{{NotAllowedError}}" {{DOMException}}.
 
@@ -527,9 +530,11 @@ are:
   1. Run these steps [=in parallel=]:
     1. Let |permission| be the result of [=checking interest group permissions=] with
       |owner|, |frameOrigin|, and "`leave`".
-    1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
-       "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
-    1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
+    1. If |permission| is false, then [=queue a global task=] on [=DOM manipulation task source=],
+      given |global|, to [=reject=] |p| with a "{{NotAllowedError}}" {{DOMException}} and do not run
+      the remaining steps.
+    1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=resolve=]
+      |p| with `undefined`.
     1. [=list/Remove=] [=interest groups=] from the user agent's [=interest group set=] whose
       [=interest group/owner=] is |owner| and [=interest group/name=] is |name|.
 1. Return |p|.
@@ -616,12 +621,12 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
-     null, |global|, |settings|, and |bidIgs|.
+     null, |global|, |settings|'s [=environment/top-level origin=], and |bidIgs|.
   1. If |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
     given |global|, to [=reject=] |p| with a "{{TypeError}}".
-  1. If |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null:
-    1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
-      with null.
+  1. If |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null, then
+    [=queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p| with
+    null.
   1. Otherwise:
     1. Let |winner| be |winnerInfo|'s [=leading bid info/leading bid=].
     1. Let |fencedFrameConfig| be the result of [=filling in a pending fenced frame config=] with
@@ -988,8 +993,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       returned from an associated [=request=], whose [=request/initiator type=] is `"fetch"` and the
       {{RequestInit/adAuctionHeaders}} option set to `true`, resolves or rejects. Otherwise, there
       will be a race condition that the worklet can run without the direct from seller signals that
-      it needs. See [handling direct from seller signals](#handling-direct-from-seller-signals) for
-      details.
+      it needs. See [[#handling-direct-from-seller-signals]] for details.
 
     * To parse the value |result|:
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
@@ -1240,8 +1244,8 @@ and a [=moment=] |auctionStartTime|:
 <div algorithm="generate and score bids">
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
-[=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, an
-[=environment settings object=] |settings|, and a [=list=] of [=interest groups=] |bidIgs|:
+[=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, an [=origin=]
+|topLevelOrigin|, and a [=list=] of [=interest groups=] |bidIgs|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
@@ -1262,7 +1266,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinner| be the result of running [=generate and score bids=] with |component|,
-      |auctionConfig|, |global|, and |settings|.
+      |auctionConfig|, |global|, and |topLevelOrigin|.
     1. If |compWinner| is failure, return failure.
     1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns
       failure, return failure.
@@ -1276,7 +1280,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
     1. If |compWinner| is not null, then run [=score and rank a bid=] with |auctionConfig|,
       |compWinner|, |leadingBidInfo|, |decisionLogicScript|, null, "top-level-auction", null, and
-      |settings|'s [=environment/top-level origin=].
+      |topLevelOrigin|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
   1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1308,7 +1312,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     |directFromSellerSignalsForBuyer|.
   1. Return |leadingBidInfo|'s [=leading bid info/leading bid=].
 
-1. If [=waiting until configuration input promises resolve=] given |auctionConfig| returns failure, return failure.
+1. If [=waiting until configuration input promises resolve=] given |auctionConfig| returns failure,
+  then return failure.
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
 1. Let |allBuyersGroupLimit| be |auctionConfig|'s [=auction config/all buyers group limit=].
@@ -1319,8 +1324,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |directFromSellerSignalsForSeller| be the result of running
   [=get direct from seller signals for a seller=] given |directFromSellerSignals|.
 1. Let |browserSignals| be a {{BiddingBrowserSignals}}.
-1. Let |topLevelHost| be the result of running the <a spec=url>host serializer</a> on [=this=]'s
-  [=relevant settings object=]'s [=environment/top-level origin=]'s [=origin/host=].
+1. Let |topLevelHost| be the result of running the <a spec=url>host serializer</a> on
+  |topLevelOrigin|'s [=origin/host=].
 1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/topWindowHostname}}"] to |topLevelHost|.
 1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/seller}}"] to the [=serialization of an
   origin|serialization=] of |auctionConfig|'s [=auction config/seller=].
@@ -1340,7 +1345,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
   1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
     |decisionLogicScript|, null, |auctionLevel|, |componentAuctionExpectedCurrency|, and
-    |settings|'s [=environment/top-level origin=].
+    |topLevelOrigin|.
   1. Decrement |pendingAdditionalBids| by 1.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -1382,7 +1387,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
         1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
     1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
-      |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|.
+      |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|, and |topLevelOrigin|.
     1. Let « |allTrustedBiddingSignals|, |dataVersion| » be the result of [=fetching trusted signals=]
       with |biddingSignalsUrl| and true.
     1. If |dataVersion| is not null, then [=map/set=]
@@ -1435,7 +1440,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. [=list/Insert=] |generatedBid|'s [=generated bid/interest group=] in |bidIgs|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
           |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
-          |componentAuctionExpectedCurrency|, and |settings|'s [=environment/top-level origin=].
+          |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1518,7 +1523,7 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
 |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
 or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, and an [=origin=]
-|topWindowOrigin|:
+|topLevelOrigin|:
 
 1. Let |renderURL| be [=URL serializer|serialized=] |generatedBid|'s
   [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
@@ -1530,7 +1535,7 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
       to |adComponentRenderURLs|.
 1. Let |fullSignalsUrl| be the result of [=building trusted scoring signals url=] with |auctionConfig|'s
   [=auction config/trusted scoring signals url=], «|renderURL|», |adComponentRenderURLs|,
-  |auctionConfig|'s [=auction config/seller experiment group id=], and |topWindowOrigin|.
+  |auctionConfig|'s [=auction config/seller experiment group id=], and |topLevelOrigin|.
 
   Implementations may batch requests by collecting render URLs and ad component render URLs
   from multiple invocations of [=score and rank a bid=] and passing them all to a single invocation
@@ -1561,7 +1566,7 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
 1. Let |browserSignals| be a {{ScoringBrowserSignals}} with the following fields:
   <dl>
     <dt>{{ScoringBrowserSignals/topWindowHostname}}
-    <dd>The result of running the <a spec=url>host serializer</a> on |topWindowOrigin|'s [=origin/host=]
+    <dd>The result of running the <a spec=url>host serializer</a> on |topLevelOrigin|'s [=origin/host=]
     <dt>{{ScoringBrowserSignals/interestGroupOwner}}
     <dd>[=serialization of an origin|Serialized=] |owner|
     <dt>{{ScoringBrowserSignals/renderURL}}
@@ -1847,12 +1852,11 @@ To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=
 <div algorithm>
 
 To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
-[=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, and an {{unsigned short}}-or-null
-|experimentGroupId|:
+[=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, an {{unsigned short}}-or-null
+|experimentGroupId|, and an [=origin=] |topLevelOrigin|:
 1. Let |queryParamsList| be a new empty [=list=].
 1. [=list/Append=] "hostname=" to |queryParamsList|.
-1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] [=this=]'s
-  [=relevant settings object=]'s [=environment/top-level origin=] using
+1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
   [=component percent-encode set=] to |queryParamsList|.
 1. If |keys| is not [=set/is empty|empty=]:
   1. [=list/Append=] "&keys=" to |queryParamsList|.
@@ -1875,13 +1879,13 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
 
 To <dfn>build trusted scoring signals url</dfn> given a [=URL=] |signalsUrl|, a [=list=] of
 [=strings=] |renderURLs|, an [=ordered set=] of [=strings=] |adComponentRenderURLs|, an
-{{unsigned short}} |experimentGroupId|, and an [=origin=] |topWindowOrigin|:
+{{unsigned short}} |experimentGroupId|, and an [=origin=] |topLevelOrigin|:
 
 Note: When trusted scoring signals fetches are not batched, |renderURLs|'s [=list/size=] is 1.
 
 1. Let |queryParamsList| be a new empty [=list=].
 1. [=list/Append=] "hostname=" to |queryParamsList|.
-1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topWindowOrigin| using
+1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
   [=component percent-encode set=] to |queryParamsList|.
 1. If |renderURLs| is not [=set/is empty|empty=]:
   1. [=list/Append=] "&renderURLs=" to |queryParamsList|.
@@ -2196,9 +2200,8 @@ The <dfn for=Navigator method>createAuctionNonce()</dfn> method steps are:
       * ...which gives browsers the freedom to generate this UUID in another process, and
         asynchronously send it back to the main thread at an arbitrary future time.
     </div>
-    1. Let |global| be [=this=]'s [=relevant global object=].
-    1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=resolve=]
-      |p| with |nonce|.
+    1. [=Queue a global task=] on [=DOM manipulation task source=], given [=this=]'s
+      [=relevant global object=], to [=resolve=] |p| with |nonce|.
   1. Return |p|.
 </div>
 
@@ -3166,33 +3169,28 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid(|generateBidOutput|)</dfn>
   method steps are:
 
-  1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=]
-    to null.
-  1. Let |ig| be [=this=]'s [=relevant global object=]'s
-    [=InterestGroupBiddingScriptRunnerGlobalScope/interest group=].
-  1. Let |expectedCurrency| be [=this=]'s [=relevant global object=]'s
+  1. Let |global| be [=this=]'s [=relevant global object=].
+  1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=] to null.
+  1. Let |ig| be |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/interest group=].
+  1. Let |expectedCurrency| be |global|'s
     [=InterestGroupBiddingScriptRunnerGlobalScope/expected currency=].
   1. Let |bidToSet| be the result of [=converting GenerateBidOutput to generated bid=] with
-    |generateBidOutput|, |ig|, |expectedCurrency|, [=this=]'s [=relevant global object=]'s
-    [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=], and [=this=]'s
-    [=relevant global object=]'s
+    |generateBidOutput|, |ig|, |expectedCurrency|, |global|'s
+    [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=], and |global|'s
     [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=].
   1. If |bidToSet| is failure, [=exception/throw=] a {{TypeError}}.
-  1. Set [=this=]'s [=relevant global object=]'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=]
-    to |bidToSet|.
+  1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=] to |bidToSet|.
 </div>
 
 <div algorithm>
   The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setPriority(|priority|)</dfn>
   method steps are:
 
-  1. If [=this=]'s [=relevant global object=]'s
-    [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null:
-    1. Set [=this=]'s [=relevant global object=]'s
-      [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] to failure.
-    1. [=exception/Throw=] a {{TypeError}}.
-  1. Set [=this=]'s [=relevant global object=]'s
-    [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] to |priority|.
+  1. Let |global| be [=this=]'s [=relevant global object=].
+  1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null, then set
+    |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] to failure, and
+    [=exception/throw=] a {{TypeError}}.
+  1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] to |priority|.
 </div>
 
 <div algorithm>
@@ -3250,21 +3248,20 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
   The <dfn method for="InterestGroupReportingScriptRunnerGlobalScope">sendReportTo(|url|)</dfn>
   method steps are:
 
-  1. If [=this=]'s [=relevant global object=]'s
-    [=InterestGroupReportingScriptRunnerGlobalScope/report url=] is not null, then Set [=this=]'s
-    [=relevant global object=]'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to
-    failure, and [=exception/Throw=] a {{TypeError}}.
+  1. Let |global| be [=this=]'s [=relevant global object=].
+  1. If |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=] is not null, then
+    set |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to failure, and
+    [=exception/Throw=] a {{TypeError}}.
   1. Let |parsedUrl| be the result of running the [=URL parser=] on |url|.
-  1. If |parsedUrl| is failure, or |parsedUrl|'s [=url/scheme=] is not "`https`", set [=this=]'s
-    [=relevant global object=]'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to
-    failure, and [=exception/Throw=] a {{TypeError}}.
+  1. If |parsedUrl| is failure, or |parsedUrl|'s [=url/scheme=] is not "`https`", set |global|'s
+    [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to failure, and [=exception/Throw=]
+    a {{TypeError}}.
   1. Optionally, return.
 
     Note: This [=implementation-defined=] condition is intended to allow user
         agents to decline for a number of reasons, for example the |parsedUrl|'s [=site=]
         not being <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
-  1. Set [=this=]'s [=relevant global object=]'s
-    [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to |parsedUrl|.
+  1. Set |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to |parsedUrl|.
 </div>
 
 <div algorithm>
@@ -4002,7 +3999,7 @@ An interest group is a [=struct=] with the following [=struct/items=]:
 :: A [=list=] of [=previous wins=].
 : <dfn>next update after</dfn>
 :: A [=moment=] at which the browser will permit updating this interest group. See
-  [interest group updates](#interest-group-updates).
+  [[#interest-group-updates]].
 
 </dl>
 
