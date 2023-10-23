@@ -818,13 +818,13 @@ In auctions that involve multiple currencies, there may be values with different
 
 To help deal with this scenario, an optional mode is available that converts all bid-related information to seller's preferred currency (in component auctions, reporting for it is for that component's seller). This is configured via the `sellerCurrency` setting in each auction configuration.
 
-Regardless of configuration, the bid passed to `reportWin()` and `reportResult()` is always the bid that participated in that particular level of the auction (which, for top-level auction `reportResult()`, may be the bid altered by the component auction seller's `scoreAd()`), subject to the usual rounding rules. Since passing the returned currency tags around could leak an unacceptable amount of information, the values provided for `browserSignals.bidCurrency` to those methods are the currencies required by the auction configuration (i.e. `sellerCurrency` and `perBuyerCurrencies`), or `'???'` if unspecified.
+Regardless of configuration, the bid price passed to `reportWin()` and `reportResult()` is always the bid price that participated in that particular level of the auction (which, for top-level auction `reportResult()`, may be the bid price altered by the component auction seller's `scoreAd()`), subject to the usual rounding rules. Since passing the returned currency tags around could leak an unacceptable amount of information, the values provided for `browserSignals.bidCurrency` to those methods are the currencies required by the auction configuration (i.e. `sellerCurrency` and `perBuyerCurrencies`), or `'???'` if unspecified.
 
 (Warning: `reportResult` did not follow this rule in Chrome earlier than M116)
 
 All other values, including `highestScoringOtherBid` and winning bids provided to private aggregation and debug event-level loss reporting depend on the `sellerCurrency` setting. We refer to those usages as "potentially mixed currency" contexts, as they can involve information from multiple bids, and hence potentially multiple currencies.
 
-If `sellerCurrency` is not set, all bids in potentially mixed currency contexts are passed as-is, and all the corresponding currency tags (`bidCurrency`, `highestScoringOtherBidCurrency`) are redacted to `'???'`.
+If `sellerCurrency` is not set, all bid prices in potentially mixed currency contexts are passed as-is, and all the corresponding currency tags (`bidCurrency`, `highestScoringOtherBidCurrency`) are redacted to `'???'`.
 
 If `sellerCurrency` is set, `scoreAd()` for an auction is responsible for converting bids not already in that currency to `sellerCurrency`, via the `incomingBidInSellerCurrency` field of its return value. A bid already explicitly in the seller's currency cannot be changed by `incomingBidInSellerCurrency`.  If neither the original bid is explicitly in `sellerCurrency` nor an `incomingBidInSellerCurrency` is specified, a value of 0 is used for reporting in potentially mixed currency contexts. All currency tags for reporting in those potentially mixed currency contexts will be set to `sellerCurrency`.
 
