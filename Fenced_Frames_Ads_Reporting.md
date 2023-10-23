@@ -15,7 +15,7 @@ From a privacy perspective, it is also important to note that the additional inf
 
 # Design
 
-The following summarizes the sequence of events for the buyer and seller. Distinguishing these flows here, since in principle, one should be able to report without the help of the other.
+The following summarizes the sequence of events for the buyer and seller. Distinguishing these flows here, since in principle, one should be able to report without the help of the other but with an opt-in from the ad's origin for mainitaining web's security principles for origins.
 
 ![high level diagram](assets/fenced_frames_reporting.png)
 
@@ -167,7 +167,7 @@ window.fence.setReportEventDataForAutomaticBeacons({
 });
 ```
 
-If `setReportEventDataForAutomaticBeacons` is invoked, the browser will send an automatic beacon to all registered URLs, but will only send an event data body (the information in `eventData`) with the HTTP request to destinations specified in the `destination` field.
+If `setReportEventDataForAutomaticBeacons` is invoked, the browser will send an automatic beacon to all URLs registered via registerAdBeacon for the given event, but it will only send an event data body (the information in eventData) with the HTTP request to destinations specified in the destination field. This means that invoking setReportEventDataForAutomaticBeacons acts as an opt-in by the fenced frame document to allow sending the beacon to all registered URLs, aligning with cross-origin security principles.
 
 If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon to any registered URLs.
 
@@ -227,7 +227,7 @@ For fenced frames rendering the ad components under the top-level ad fenced fram
 * Invocation of the `reportEvent` API from an ad component fenced frame is disallowed.
 * The only supported beacon to be sent from an ad component fenced frame is the `reserved.top_navigation` automatic beacon. Note this beacon is gated on a user activation (e.g. click).
 * To ensure that there is no arbitrary data that can be received at the server from the component ad, the `eventData` field via `window.fence.setReportEventDataForAutomaticBeacons`, if specified, will be ignored. This ensures that information from the component ad URL is not revealed in the event report, or else it could lead to the join of two independently k-anonymous URLs (parent and component ad) at the receiving server.
-* `reserved.top_navigation` beacons will be sent from a component fenced frame (with no event data) when there is a user activation (e.g. click) on the ad component fenced frame, which results in a top-level navigation. Invoking `setReportEventDataForAutomaticBeacons` from a component fenced frame will have no effect.
+* `reserved.top_navigation` beacons will be sent from a component fenced frame (with no event data) when there is a user activation (e.g. click) on the ad component fenced frame, which results in a top-level navigation. The ad component must still opt in using `setReportEventDataForAutomaticBeacons` before the beacon can send.
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
