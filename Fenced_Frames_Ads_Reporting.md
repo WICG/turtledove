@@ -152,7 +152,7 @@ Bidder worklets are able to register macros with the browser in their `reportWin
 Two strings.
 **macro name** It’s case sensitive, e.g., `“PUBLISHER_ID”`. 
 
-**macro value”” The value of the macro that is used to substitute the macro (e.g., ${PUBLISHER_ID}) in `reportEvent()` API’s destination URL parameter.
+**macro value** The value of the macro that is used to substitute the macro (e.g., ${PUBLISHER_ID}) in `reportEvent()` API’s destination URL parameter.
 
 ### Example
 ```
