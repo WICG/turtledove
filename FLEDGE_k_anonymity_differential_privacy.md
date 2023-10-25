@@ -91,20 +91,20 @@ a set.
 | Parameter          | Value     |
 |--------------------|-----------|
 |Update period $p$   | $p=1$ hour. The k-anonymity server will re-evaluate the _k_-anonymity status of each set once every hour. |
-|Lookback window $w$ | $w=7$ days (168 units of $p$). Join events from the past 7 days will count towards measuring the current set size. |
+|Lookback window $w$ | $w=30$ days (720 units of $p$). Join events from the past 30 days will count towards measuring the current set size. |
 |Set size $k$        | $k=50$. A set must contain at least 50 users (in a noisy sense) to earn positive k-anonymity status. |
 
 
 The differential privacy algorithm needs the $\varepsilon$ (epsilon) and
 $\delta$ (delta) parameters to control the amount of noise added to the true
 set size and the set size threshold. We choose the lowest round value of
-$\varepsilon$ that permits $\delta < 10^{-5}$ given the choice of parameters
+$\varepsilon$ that permits $\delta \sim 10^{-5}$ given the choice of parameters
 $p$, $w$, and $k$ above.
 
 
 | Parameter            | Value     |
 |----------------------|-----------|
-|$\varepsilon, \delta$ | $\varepsilon=3$,  $\delta<10^{-5}$ |
+|$\varepsilon, \delta$ | $\varepsilon=3$,  $\delta\sim 10^{-5}$ |
 
 
 We verified that these parameters resulted in a limited amount of noise (as
