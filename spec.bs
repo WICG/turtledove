@@ -1409,7 +1409,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       with |biddingSignalsUrl| and true.
     1. If |dataVersion| is not null, then [=map/set=]
       |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
-    1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to
+    1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to |settings|'s
       [=environment settings object/current monotonic time=], in milliseconds.
     1. If |perBuyerCumulativeTimeout| is not null:
       1. Decrement |perBuyerCumulativeTimeout| by |fetchSignalDuration|.
@@ -1419,11 +1419,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
         1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
         1. If |perBuyerCumulativeTimeout| is not null and is less than |perBuyerTimeout|, then set
           |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
-        1. Let |generateBidStartTime| be the [=environment settings object/current monotonic time=].
+        1. Let |generateBidStartTime| be |settings|'s
+          [=environment settings object/current monotonic time=].
         1. Let |generatedBid| be the result of [=generate a bid=] given |allTrustedBiddingSignals|,
           |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
           |perBuyerTimeout|, |expectedCurrency|, |ig|, and |auctionStartTime|.
-        1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
+        1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
           [=environment settings object/current monotonic time=], in milliseconds.
         1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
           |generateBidDuration|.
@@ -1456,7 +1457,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
                 [=interest group/ad components=].
           1. If |perBuyerCumulativeTimeout| is not null and is less than |perBuyerTimeout|, then set
             |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
-          1. Let |generateBidStartTime| be the [=environment settings object/current monotonic time=].
+          1. Let |generateBidStartTime| be |settings|'s
+            [=environment settings object/current monotonic time=].
           1. Set |generatedBid| to the result of [=generate a bid=] given
             |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
             |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
@@ -1464,7 +1466,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Set |ig|'s [=interest group/ads=] to |originalAds|.
           1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
-            [=environment settings object/current monotonic time=], in milliseconds.
+            |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
           1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
             by |generateBidDuration|.
           1. If |generatedBid| is failure, [=iteration/continue=].
@@ -2850,6 +2852,10 @@ of the following global objects:
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupBiddingScriptRunnerGlobalScope}}.
     1. Let |global| be |realm|'s [=realm/global object=].
+    1. Let |settings| be |realm|'s [=realm/settings object=].
+
+      Issue: <a href="https://github.com/WICG/turtledove/issues/676">WICG/turtledove#676</a> needs
+      to be fixed in order to get |realm|'s [=realm/settings object=].
     1. Set |global|'s
       [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=] to true if |ig|'s
       [=interest group/ad components=] is not null, or false otherwise.
@@ -2869,11 +2875,12 @@ of the following global objects:
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
     1. Let |directFromSellerSignalsJs| be |directFromSellerSignalsForBuyer|
       [=converted to ECMAScript values=].
-    1. Let |startTime| be the [=environment settings object/current monotonic time=].
+    1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
     1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
       « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignalsJS|, |browserSignalsJS|,
       |directFromSellerSignalsJs| », and |timeout|.
-    1. Let |duration| be the [=environment settings object/current monotonic time=] minus |startTime| in milliseconds.
+    1. Let |duration| be |settings|'s [=environment settings object/current monotonic time=] minus
+      |startTime| in milliseconds.
     1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null and not failure:
       1. Set |ig|'s [=interest group/priority=] to |global|'s
         [=InterestGroupBiddingScriptRunnerGlobalScope/priority=].
