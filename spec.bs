@@ -75,6 +75,10 @@ spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
     text: shared-storage-select-url; url: #permissionspolicy-shared-storage-select-url
 </pre>
 
+<pre class=link-defaults>
+spec:infra; type:dfn; text:user agent
+</pre>
+
 <style>
 /* Put nice boxes around each algorithm. */
 [data-algorithm]:not(.heading) {
@@ -147,10 +151,11 @@ When a user's interactions with a website indicate that the user may have a part
 advertiser or someone working on behalf of the advertiser (e.g. a demand side platform, DSP) can ask
 the user's browser to record this interest on-device by calling
 {{Window/navigator}}.{{Navigator/joinAdInterestGroup()}}. This indicates an intent to display an
-advertisement relevant to this interest to this user in the future. The user agent has an
+advertisement relevant to this interest to this user in the future. The [=user agent=] has an
 <dfn>interest group set</dfn>, a [=list=] of [=interest groups=] in which
 [=interest group/owner=] / [=interest group/name=] pairs are unique.
 
+<h3 id="join-ad-interest-groups">navigator.joinAdInterestGroup()</h3>
 
 <xmp class="idl">
 [SecureContext]
@@ -229,9 +234,9 @@ This is detectable because it can change the set of fields that are read from th
   1. If |interestGroup|'s [=interest group/owner=] is failure, then [=exception/throw=] a {{TypeError}}.
   1. Optionally, [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
 
-    Note: This [=implementation-defined=] condition is intended to allow user
-        agents to decline for a number of reasons, for example the [=interest group/owner=]'s [=site=]
-        not being <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
+    Note: This [=implementation-defined=] condition is intended to allow [=user agents=] to decline
+        for a number of reasons, for example the [=interest group/owner=]'s [=site=] not being
+        <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
   1. Set |interestGroup|'s [=interest group/name=] to |group|["{{GenerateBidInterestGroup/name}}"].
   1. Set |interestGroup|'s [=interest group/priority=] to
     |group|["{{AuctionAdInterestGroup/priority}}"].
@@ -319,7 +324,7 @@ This is detectable because it can change the set of fields that are read from th
             1. Let |origin| be the result of [=parsing an https origin=] on |originStr|.
             1. If |origin| is failure, then [=exception/throw=] a {{TypeError}}.
             1. [=list/Append=] |origin| to |allowedReportingOrigins|.
-            1. If [=list/size=] of |allowedReportingOrigins| is greater than 10, [=exception/throw=]
+            1. If |allowedReportingOrigins|'s [=list/size=] &gt; 10, [=exception/throw=]
               a {{TypeError}}.
           1. Set |igAd|'s [=interest group ad/allowed reporting origins=] to |allowedReportingOrigins|.
       1. [=list/Append=] |igAd| to |interestGroup|'s |interestGroupField|.
@@ -333,8 +338,8 @@ This is detectable because it can change the set of fields that are read from th
 
       * |group|["{{GenerateBidInterestGroup/updateURL}}"] [=map/exists=].
     1. Set |interestGroup|'s [=interest group/additional bid key=] to |decodedKey|.
-1. If |interestGroup|'s [=interest group/estimated size=] is greater than 50 KB, then
-  [=exception/throw=] a {{TypeError}}.
+1. If |interestGroup|'s [=interest group/estimated size=] &gt; 1048576, then [=exception/throw=] a
+  {{TypeError}}.
 1. Let |p| be [=a new promise=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
@@ -354,7 +359,7 @@ This is detectable because it can change the set of fields that are read from th
   1. If the most recent entry in |interestGroup|'s [=interest group/join counts=] corresponds to
     the current day in UTC, increment its count. If not, [=list/insert=] a new [=tuple=]
     the time set to the current UTC day and a count of 1.
-  1. Store |interestGroup| in the browser’s [=interest group set=].
+  1. Store |interestGroup| in the [=user agent=]'s [=interest group set=].
 1. Return |p|.
 
 </div>
@@ -472,6 +477,92 @@ To <dfn>build an interest group permissions url</dfn> given a [=origin=] |ownerO
 
 </div>
 
+<h3 id="interest-group-storage-maintenance">Interest Group Storage Maintenance</h3>
+
+There is a job that periodically [=performs storage maintenance=] on the [=user agent=]'s
+[=interest group set=]. It performs operations such as [=list/removing=] expired or excess
+[=interest groups=]. An [=interest group set=] must respect the following limits. Implementations
+may define their own values for the below constants, however we supply the below values as a
+starting point, inspired by what the initial implementation of this specification uses:
+  * <dfn>Interest group set max owners</dfn> is 1000, which defines the max number of
+    [=interest group/owners=] in the [=user agent=]'s [=interest group set=].
+  * <dfn>Max regular interest groups per owner</dfn> is 2000, which defines the max number of
+    [=regular interest groups=] in the [=user agent=]'s [=interest group set=] for an
+    [=interest group/owner=].
+  * <dfn>Max negative interest groups per owner</dfn> is 20000, which defines the max number of
+    [=negative interest groups=] in the [=user agent=]'s [=interest group set=] for an
+    [=interest group/owner=].
+  * <dfn>Max interest groups total size per owner</dfn> is <code>10\*1024\*1024</code>, which
+    defines the max total [=interest group/estimated size|sizes=] of [=interest groups=] in the
+    [=user agent=]'s [=interest group set=] for an [=interest group/owner=]. It includs both
+    [=regular interest groups=] and [=negative interest groups=].
+
+<div algorithm>
+To <dfn>perform storage maintenance</dfn>:
+
+1. Let |ownersAndExpiry| be a new [=ordered map=] whose [=map/keys=] are [=origins=] and
+  [=map/values=] are [=moments=].
+
+  Note: The [=map/key=] is from [=interest group/owner=], and [=map/value=] is from
+    [=interest group/expiry=]. It's used to determine a set of [=interest group/owners=] whose
+    [=interest groups=] will be removed from the [=user agent=]'s [=interest group set=] because the
+    number of distinct [=interest group/owners=] exceeds the [=Interest group set max owners=] limit.
+    It's sorted based on their [=map/values=] ([=interest group/expiry=]) in descending order, in
+    order to remove [=interest groups=] of [=interest group/owners=] expiring soonest first.
+
+1. Let |now| be the [=current wall time=].
+1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
+  1. Let |owner| be |ig|'s [=interest group/owner=].
+  1. If |ig|'s [=interest group/expiry=] is before |now|, then [=list/remove=] |ig| from the
+    [=user agent=]'s [=interest group set=] and [=iteration/continue=].
+  1. If |ownersAndExpiry|[|owner|] [=map/exists=], then [=map/set=] |ownersAndExpiry|[|owner|] to
+    |ig|'s [=interest group/expiry=] if it comes after |ownersAndExpiry|[|owner|].
+  1. Otherwise, [=map/set=] |ownersAndExpiry|[|owner|] to |ig|'s [=interest group/expiry=].
+1. If |ownersAndExpiry|'s [=map/size=] &gt; [=interest group set max owners=], then [=map/set=]
+  |ownersAndExpiry| to |ownersAndExpiry| [=map/sorted in descending order=] with |a| being less than
+  |b| if |a|'s [=map/value=] comes before |b|'s [=map/value=], where [=map/values=] are
+  [=interest group/expiry=].
+1. Let |owners| be the [=map/get the keys|keys=] of |ownersAndExpiry|.
+1. [=list/For each=] |i| in [=the range=] from 0 to |owners|'s [=set/size=], exclusive:
+  1. If |i| &ge; [=interest group set max owners=], then [=list/remove=] [=interest groups=] from
+    the [=user agent=]'s [=interest group set=] whose [=interest group/owner=] is |owners|[|i|], and
+    [=iteration/continue=].
+  1. Let |regularIgs| be a [=list=] of [=regular interest groups=] in the [=user agent=]'s
+    [=interest group set=] whose [=interest group/owner=] is |owners|[|i|].
+  1. If |regularIgs|'s [=list/size=] &gt; [=max regular interest groups per owner=], then
+    [=clear excess interest groups=] with |regularIgs| and [=max regular interest groups per owner=].
+  1. Let |negativeIgs| be a [=list=] of [=negative interest groups=] in the [=user agent=]'s
+    [=interest group set=] whose [=interest group/owner=] is |owners|[|i|].
+  1. If |negativeIgs|'s [=list/size=] &gt; [=max negative interest groups per owner=], then
+    [=clear excess interest groups=] with |negativeIgs| and [=max negative interest groups per owner=].
+1. [=list/For each=] |owner| of |owners|:
+  1. Let |igs| be a [=list=] of [=interest groups=] in the [=user agent=]'s [=interest group set=]
+    whose [=interest group/owner=] is |owner|, [=list/sorted in descending order=] with |a| being
+    less than |b| if |a|[=interest group/expiry=] comes before |b|[=interest group/expiry=].
+  1. Let |cumulativeSize| be 0.
+  1. [=list/For each=] |ig| of |igs|:
+    1. If the sum of |cumulativeSize| and |ig|'s [=interest group/estimated size=]
+      &gt; [=max interest groups total size per owner=], then [=list/remove=] |ig| from the
+      [=user agent=]'s [=interest group set=].
+    1. Otherwise, increment |cumulativeSize| by |ig|'s [=interest group/estimated size=].
+
+</div>
+
+<div algorithm>
+To <dfn>clear excess interest groups</dfn> with a [=list=] of [=interest groups=] |igs|, and an
+integer |maxIgs|:
+
+1. Let |sortedIgs| be |igs| [=list/sorted in descending order=] with |a| being less
+  than |b| if |a|'s [=interest group/expiry=] comes before |b|'s [=interest group/expiry=].
+
+  Note: In order to remove interest groups expiring soonest first, sort interest groups based on
+    their expiry in descending order.
+
+1. [=list/For each=] |i| in [=the range=] from |maxIgs| to |igs|'s [=list/size=], exclusive:
+  1. [=list/Remove=] |sortedIgs|[|i|] from the [=user agent=]'s [=interest group set=].
+
+</div>
+
 <h2 id="leaving-interest-groups">Leaving Interest Groups</h2>
 
 *This first introductory paragraph is non-normative.*
@@ -494,8 +585,7 @@ dictionary AuctionAdInterestGroupKey {
 
 <div algorithm>
 
-The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps
-are:
+The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps are:
 
 1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s
   [=environment settings object/origin=].
@@ -510,10 +600,9 @@ are:
     1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
     1. If |interestGroup| is not null:
       1. Let |owner| be |interestGroup|'s [=interest group descriptor/owner=].
-      1. Let |name| be |interestGroup|'s [=interest group descriptor/name=].
       1. If |owner| is [=same origin=] with |frameOrigin|, then [=list/remove=] [=interest groups=]
-        from the user agent's [=interest group set=] whose [=interest group/owner=] is |owner| and
-        [=interest group/name=] is |name|.
+        from the [=user agent=]'s [=interest group set=] whose [=interest group/owner=] is |owner| and
+        [=interest group/name=] is |interestGroup|'s [=interest group descriptor/name=].
 1. Otherwise:
   1. If [=this=]'s [=relevant global object=]'s [=associated Document=] is not [=allowed to use=] the
     "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
@@ -523,15 +612,15 @@ are:
   1. Let |owner| be the result of [=parsing an https origin=] with
     |group|["{{AuctionAdInterestGroupKey/owner}}"].
   1. If |owner| is failure, [=exception/throw=] a {{TypeError}}.
-  1. Let |name| be |group|["{{AuctionAdInterestGroupKey/name}}"].
   1. Run these steps [=in parallel=]:
     1. Let |permission| be the result of [=checking interest group permissions=] with
       |owner|, |frameOrigin|, and "`leave`".
     1. If |permission| is false, then [=queue a task=] to [=reject=] |p| with a
        "{{NotAllowedError}}" {{DOMException}} and do not run the remaining steps.
     1. [=Queue a task=] to [=resolve=] |p| with `undefined`.
-    1. [=list/Remove=] [=interest groups=] from the user agent's [=interest group set=] whose
-      [=interest group/owner=] is |owner| and [=interest group/name=] is |name|.
+    1. [=list/Remove=] [=interest groups=] from the [=user agent=]'s [=interest group set=] whose
+      [=interest group/owner=] is |owner| and [=interest group/name=] is
+      |group|["{{AuctionAdInterestGroupKey/name}}"].
 1. Return |p|.
 
 </div>
@@ -593,9 +682,9 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. If |auctionConfig| is failure, then [=exception/throw=] a {{TypeError}}.
 1. Optionally, [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
 
-    Note: This [=implementation-defined=] condition is intended to allow user
-        agents to decline for a number of reasons, for example the [=auction config/seller=]'s
-        [=site=] not being <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
+    Note: This [=implementation-defined=] condition is intended to allow [=user agents=] to decline
+        for a number of reasons, for example the [=auction config/seller=]'s [=site=] not being
+        <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
 1. Let |p| be [=a new promise=].
 1. Let |configMapping| be |global|'s [=associated Document=]'s [=node navigable=]'s
   [=navigable/traversable navigable=]'s [=traversable navigable/fenced frame config mapping=].
@@ -1134,14 +1223,14 @@ To <dfn>parse an https origin</dfn> given a [=string=] |input|:
 
   To <dfn>update bid count</dfn> given a [=list=] of [=interest group=]s |igs|:
   1. [=list/For each=] |ig| in |igs|:
-    1. Let |loadedIg| be the [=interest group=] from the user agent’s [=interest group set=]
+    1. Let |loadedIg| be the [=interest group=] from the [=user agent=]'s [=interest group set=]
       whose [=interest group/owner=] is |ig|'s [=interest group/owner=] and whose
       [=interest group/name=] is |ig|'s [=interest group/name=], [=iteration/continue=] if none found.
     1. If the most recent entry in |loadedIg|'s [=interest group/bid counts=] corresponds to
       the current day in UTC, increment its count. If not, [=list/insert=] a new [=tuple=] of
       the time set to the current UTC day and a count of 1.
     1. [=list/Replace=] the [=interest group=] that has |loadedIg|'s [=interest group/owner=] and
-      [=interest group/name=] in the browser’s [=interest group set=] with |loadedIg|.
+      [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |loadedIg|.
 
 </div>
 
@@ -1149,7 +1238,7 @@ To <dfn>parse an https origin</dfn> given a [=string=] |input|:
 
   To <dfn>update previous wins</dfn> given a [=generated bid=] |bid|:
   1. Let |ig| be |bid|'s [=generated bid/interest group=].
-  1. Let |loadedIg| be the [=interest group=] from the user agent’s [=interest group set=]
+  1. Let |loadedIg| be the [=interest group=] from the [=user agent=]'s [=interest group set=]
     whose [=interest group/owner=] is |ig|'s [=interest group/owner=] and whose
     [=interest group/name=] is |ig|'s [=interest group/name=], return if none found.
   1. Let |win| be a new [=previous win=].
@@ -1161,7 +1250,7 @@ To <dfn>parse an https origin</dfn> given a [=string=] |input|:
     [=serializing an Infra value to a JSON string=] given |ad|.
   1. [=list/Append=] |win| to |loadedIg|'s [=interest group/previous wins=].
   1. [=list/Replace=] the [=interest group=] that has |loadedIg|'s [=interest group/owner=] and
-    [=interest group/name=] in the browser’s [=interest group set=] with |loadedIg|.
+    [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |loadedIg|.
 
 </div>
 
@@ -1172,7 +1261,7 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
   [=map/values=] are [=per buyer bid generators=].
 1. Let |negativeTargetInfo| be a new [=negative target info=].
 1. [=list/For each=] |buyer| in |auctionConfig|'s [=auction config/interest group buyers=]:
-  1. [=list/For each=] |ig| of the user agent's [=interest group set=] whose
+  1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=] whose
     [=interest group/owner=] is |buyer|:
     1. Let |igName| be |ig|'s [=interest group/name=].
     1. If |ig|'s [=interest group/additional bid key=] is not null:
@@ -1269,8 +1358,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   [=traversable navigable's=] [=traversable navigable/captured ad auction headers=].
 1. If |auctionConfig|'s [=auction config/component auctions=] are not [=list/is empty|empty=]:
   1. [=Assert=] |topLevelAuctionConfig| is null.
-  1. Let |pendingComponentAuctions| be the [=list/size=] of |auctionConfig|'s
-    [=auction config/component auctions=].
+  1. Let |pendingComponentAuctions| be |auctionConfig|'s [=auction config/component auctions=]'s
+    [=list/size=].
   1. Let |topLevelDirectFromSellerSignalsForSeller| be null.
   1. Let |topLevelDirectFromSellerSignalsRetrieved| be false.
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
@@ -1347,7 +1436,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Set |auctionLevel| to "component-auction".
   1. Set |componentAuctionExpectedCurrency| to the result of [=looking up per-buyer currency=] with
     |topLevelAuctionConfig| and |auctionConfig|'s [=auction config/seller=].
-1. Let |pendingBuyers| be the [=map/size=] of |bidGenerators|.
+1. Let |pendingBuyers| be |bidGenerators|'s [=map/size=].
 1. Let |additionalBids| be the result of running [=validate and convert additional bids=] with
   |auctionConfig|, |topLevelAuctionConfig|, |negativeTargetInfo| and |global|.
 1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
@@ -2128,8 +2217,8 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
   1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].
   1. [=map/Remove=] |browserSignals|["`dataVersion`"].
 
-  Note: Remove fields specific to {{ReportResultBrowserSignals}} which only sellers can learn about,
-  so that they are not passed to "`reportWin()`".
+    Note: Remove fields specific to {{ReportResultBrowserSignals}} which only sellers can learn about,
+    so that they are not passed to "`reportWin()`".
 
   1. Return « |sellerSignals|, |browserSignals| ».
 </div>
@@ -2707,7 +2796,7 @@ threshold when responding to [=query k-anonymity count=].
 
 <div algorithm>
   To <dfn>increment k-anonymity count</dfn> given a |hashCode|:
-    1. Ask the [=k-anonymity server=] to record that this user agent has seen |hashCode|.
+    1. Ask the [=k-anonymity server=] to record that this [=user agent=] has seen |hashCode|.
 </div>
 
 <div algorithm>
@@ -2751,8 +2840,8 @@ flexible implementation model.
 However, some key differences from traditional Worklets motivate us to create a new kind of script
 execution environment. In particular, they:
 
- * Are not scoped to a particular {{Document}}, but are rather scoped to a user agent, as they are
-   spun up by [=interest groups=] in the user agent's [=interest group set=].
+ * Are not scoped to a particular {{Document}}, but are rather scoped to a [=user agent=], as they
+   are spun up by [=interest groups=] in the [=user agent=]'s [=interest group set=].
  * Consequently have a different, more flexible [=ECMAScript/agent cluster=] allocation model —
    specifically, they need not execute in the same [=ECMAScript/agent cluster=] as any {{Document}},
    and for privacy reasons implementations may be motivated to enjoy this flexibility.
@@ -2885,7 +2974,7 @@ of the following global objects:
       1. Set |ig|'s [=interest group/priority=] to |global|'s
         [=InterestGroupBiddingScriptRunnerGlobalScope/priority=].
       1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
-        [=interest group/name=] in the browser’s [=interest group set=] with |ig|.
+        [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
     1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority signals=]
       [=map/is not empty=]:
       1. [=map/For each=] |k| → |v| of |global|'s
@@ -2893,7 +2982,7 @@ of the following global objects:
         1. If |v| is null, [=map/remove=] |ig|'s [=interest group/priority signals overrides=][|k|].
         1. Otherwise, [=map/set=] |ig|'s [=interest group/priority signals overrides=][|k|] to |v|.
       1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
-        [=interest group/name=] in the browser’s [=interest group set=] with |ig|.
+        [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
     1. Let |generatedBid| be |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=].
     1. If |result| is a [=ECMAScript/normal completion=]:
       1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
@@ -3306,9 +3395,9 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
     failure, and [=exception/Throw=] a {{TypeError}}.
   1. Optionally, return.
 
-    Note: This [=implementation-defined=] condition is intended to allow user
-        agents to decline for a number of reasons, for example the |parsedUrl|'s [=site=]
-        not being <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
+    Note: This [=implementation-defined=] condition is intended to allow [=user agents=] to decline
+        for a number of reasons, for example the |parsedUrl|'s [=site=] not being
+        <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
   1. Set [=this=]'s [=relevant global object=]'s
     [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to |parsedUrl|.
 </div>
@@ -3369,9 +3458,9 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
   |owners|:
 
 1. [=list/For each=] |owner| of |owners|:
-  1. [=list/For each=] |originalInterestGroup| of the user agent's [=interest group set=] whose
-    [=interest group/owner=] is |owner| and [=interest group/next update after=] is before the
-    [=current wall time=]:
+  1. [=list/For each=] |originalInterestGroup| of the [=user agent=]'s [=interest group set=] whose
+    [=interest group/owner=] is |owner| and [=interest group/next update after=] is before
+    the [=current wall time=]:
 
     Note: Implementations can consider loading only a portion of these interest groups
     at a time to avoid issuing too many requests at once.
@@ -3552,7 +3641,7 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
       * |ig|'s [=interest group/estimated size=] is greater than 50 KB.
     1. Set |ig|'s [=interest group/next update after=] to the [=current wall time=] plus 24 hours.
     1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
-      [=interest group/name=] in the browser’s [=interest group set=] with |ig|.
+      [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
     1. <i id=abort-update>Abort update</i>: We jump here if some part of the
       [=interest group=] update failed. [=iteration/Continue=] to the next [=interest group=] update.
 
