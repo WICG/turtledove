@@ -22,6 +22,8 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [2.3 Scoring Bids](#23-scoring-bids)
     - [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions)
     - [2.5 Additional Trusted Signals (directFromSellerSignals)](#25-additional-trusted-signals-directfromsellersignals)
+      - [2.5.1 Using Subresource Bundles](#251-using-subresource-bundles)
+      - [2.5.2 Using Response Headers](#252-using-response-headers)
   - [3. Buyers Provide Ads and Bidding Functions (BYOS for now)](#3-buyers-provide-ads-and-bidding-functions-byos-for-now)
     - [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server)
     - [3.2 On-Device Bidding](#32-on-device-bidding)
@@ -55,7 +57,7 @@ The Protected Audience API includes support for:
 *   Microtargeting protection based on the browser ensuring that the same ad or ad component is being shown to at least some minimum number of people.
 *   Ad rendering in a temporarily relaxed version of Fenced Frames that prevents interaction with the surrounding page — but that does allow _normal network access for rendering the ad, and for logging and reporting some event-level outcomes_, as a temporary model until both a trusted-server reporting framework and ad delivery via Web Bundles are settled and in place.
 
-Most of these ideas are drawn from the previous ongoing discussion of variants on the [original TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/Original-TURTLEDOVE.md) idea.  Interest group metadata, and applying k-anonymity thresholds only to the rendering and reporting of ads, come from [Outcome-based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) and [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md), as well as discussion [here](https://github.com/WICG/turtledove/issues/361#issuecomment-1430069343).  The separation and clarification of the DSP and SSP roles are along the lines described in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md) and [PARRROT](https://github.com/prebid/identity-gatekeeper/blob/master/proposals/PARRROT.md).  The trusted servers to support bidding, rendering, and reporting come from the [SPARROW](https://github.com/WICG/sparrow) Gatekeeper and [Dovekey](https://github.com/google/ads-privacy/tree/master/proposals/dovekey) Key-Value server.
+Most of these ideas are drawn from the previous ongoing discussion of variants on the [original TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/Original-TURTLEDOVE.md) idea.  Interest group metadata, and applying [k-anonymity](https://github.com/WICG/turtledove/blob/main/FLEDGE_k_anonymity_server.md#what-is-k-anonymity) thresholds only to the rendering and reporting of ads, come from [Outcome-based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) and [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md), as well as discussion [here](https://github.com/WICG/turtledove/issues/361#issuecomment-1430069343).  The separation and clarification of the DSP and SSP roles are along the lines described in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md) and [PARRROT](https://github.com/prebid/identity-gatekeeper/blob/master/proposals/PARRROT.md).  The trusted servers to support bidding, rendering, and reporting come from the [SPARROW](https://github.com/WICG/sparrow) Gatekeeper and [Dovekey](https://github.com/google/ads-privacy/tree/master/proposals/dovekey) Key-Value server.
 
 As we approach third-party cookie deprecation in Chrome, you may be wondering about the availability of specific Protected Audience API services and features. You can find a list of the scoped Protected Audience API features and when they'll be supported [here](https://developer.chrome.com/en/docs/privacy-sandbox/protected-audience-api/feature-status/).  The temporary italicized carve-outs in the above bulleted list all need privacy-safe replacements before our work is done.
 
@@ -98,6 +100,7 @@ Browsers keep track of the set of interest groups that they have joined.  For ea
 const myGroup = {
   'owner': 'https://www.example-dsp.com',
   'name': 'womens-running-shoes',
+  'lifetimeMs': 30 * kMillisecsPerDay,
   'priority': 0.0,
   'priorityVector': {
     'signal1': 2,
@@ -119,8 +122,9 @@ const myGroup = {
   'userBiddingSignals': {...},
   'ads': [shoesAd1, shoesAd2, shoesAd3],
   'adComponents': [runningShoes1, runningShoes2, gymShoes, gymTrainers1, gymTrainers2],
+  'auctionServerRequestFlags': ['omit-ads'],
 };
-const joinPromise = navigator.joinAdInterestGroup(myGroup, 30 * kSecsPerDay);
+const joinPromise = navigator.joinAdInterestGroup(myGroup);
 ```
 
 
@@ -130,8 +134,9 @@ The returned `joinPromise` is resolved if the group is successfully joined, and 
 
 There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which looks only at `myGroup.name` and `myGroup.owner`. As with join calls, `leaveAdInterestGroup()` also returns a promise. As a special case to support in-ad UIs, invoking `navigator.leaveAdInterestGroup()` from inside an ad that is being targeted at a particular interest group will cause the browser to leave that group, irrespective of permission policies. Note that calling `navigator.leaveAdInterestGroup()` without arguments isn't supported inside a component ad frame.
 
-The browser will remain in an interest group for only a limited amount of time.  The duration is specified in the call to `joinAdInterestGroup()`, and will be capped at 30 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's `userBiddingSignal` or list of ads.
+There is a related API `navigator.clearOriginJoinedAdInterestGroups(owner, [<groupNamesToKeep>])` that leaves all interest groups owned by `owner` that were joined on the current top-level frame's origin, and also returns a Promise. The `[<groupNamesToKeep>]` argument is an optional list of interest group names that will not be left, and if not present, it will act as if an empty array was passed. This method has no effect on joined interest groups owned by `owner` that were most recently joined on different top-level origins.
 
+The browser will remain in an interest group for only a limited amount of time.  The duration, in milliseconds, is specified in the `lifetimeMs` attribute of the interest group, and will be capped at 30 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's `userBiddingSignal` or list of ads.  A duration <= 0 will leave the interest group.
 
 #### 1.2 Interest Group Attributes
 
@@ -171,7 +176,7 @@ discussed in [#333](https://github.com/WICG/turtledove/issues/333) and
 after the auction does not suffer from these problems, and because each interest
 group update only contains information from a single site, the cross-site identity
 join risks occur from side channels like IP address and timing correlation. The
-k-anonymity protection for the auction winning ad creative URL is still important as
+k-anonymity protection for the auction winning ad [creative](https://developer.chrome.com/en/docs/privacy-sandbox/glossary/#ad-creative) URL is still important as
 the URL potentially contains information from two sites, the joining and auction
 sites.
 
@@ -206,6 +211,15 @@ The `ads` list contains the various ads that the interest group might show.  Eac
 
 The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similar to the `ads` field, each entry is an object that includes a `renderURL` and optional `adRenderId`, and `metadata` fields. Thanks to `ads` and `adComponents` being separate fields, the buyer is able to update the `ads` field via the `updateURL` without losing `adComponents` stored in the interest group.
 
+The `auctionServerRequestFlags` field is optional and is only used for auctions [run on an auction server](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
+This field contains a list of enumerated values that change what data is sent in the auction blob:
+ * The `omit-ads` enumeration causes the request to omit the `ads` and `adComponents` fields for
+this interest group from the auction blob.
+  * The `include-full-ads` enumeration causes the request to include the full ad object in place of
+anywhere in the request where a plain `adRenderId` would have been sent (such as in the `ads`
+and `adComponents` fields as well as `prevWins`). Note that `include-full-ads` is not compatible
+with the auction server, so this mode is only for debugging.
+
 All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
 `biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must be
@@ -215,10 +229,18 @@ loading Protected Audience resources.
 
 The browser will provide protection against microtargeting, by only rendering an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 50 people would have seen the ad, if it were allowed to show).  While in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal this threshold applied only to the rendered creative, Protected Audience has the additional requirement that the tuple of the interest group owner, bidding script URL, and rendered creative must be k-anonymous for an ad to be shown (this is necessary to ensure the current event-level reporting for interest group win reporting is sufficiently private). For interest groups that have component ads, all of the component ads must also separately meet this threshold for the ad to be shown. Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold. This means that a small, specialized ad that is still below the k-anonymity threshold could still choose to participate in auctions, and its interest group has a way to fall back to a more generic ad until the more specialized one has a large enough audience.
 
+Interest groups are subject to limits needed to bound resource utilization on the user's device. The browser limits the byte size of interest groups in order to safeguard browser storage used to hold the interest groups. Each interest group is individually limited to 1MB, and calls to `navigator.joinAdInterestGroup` will return an error when called with an interest group that exceeds this limit. To safeguard browser compute resources, the most effective strategy is for sellers to set `perBuyerCumulativeTimeouts` on the auction config. As an added measure, the browser also limits the number of interest groups to which a user may be joined.
+
+Each owner is limited to:
+* a 10MB limit combined across all interest groups,
+* a maximum of 2,000 stored regular interest groups, and
+* a maximum of 20,000 stored [negative targeting interest groups](#621-negative-interest-groups).
+
+If any of these per-owner limits are exceeded, the interest group(s) that would expire soonest are removed until that owner is back within its limits.
 
 #### 1.3 Permission Delegation
 
-When a frame navigated to one domain calls joinAdInterestGroup() or leaveAdInterestGroup() for an interest group with a different owner, the browser will fetch the URL https://owner.domain/.well-known/interest-group/permissions/?origin=frame.origin, where `owner.domain` is domain that owns the interest group and `frame.origin` is the origin of the frame. The fetch uses the `omit` [credentials mode](https://fetch.spec.whatwg.org/#concept-request-credentials-mode), using the [Network Partition Key](https://fetch.spec.whatwg.org/#network-partition-keys) of the frame that invoked the method. To avoid leaking cross-origin data through the returned Promise unexpectedly, the fetch uses the `cors` [mode](https://fetch.spec.whatwg.org/#concept-request-mode). The fetched response should have a JSON MIME type and be of the format:
+When a frame navigated to one domain calls joinAdInterestGroup(), leaveAdInterestGroup(), or clearOriginJoinedAdInterestGroups() for an interest group with a different owner, the browser will fetch the URL https://owner.domain/.well-known/interest-group/permissions/?origin=frame.origin, where `owner.domain` is domain that owns the interest group and `frame.origin` is the origin of the frame. The fetch uses the `omit` [credentials mode](https://fetch.spec.whatwg.org/#concept-request-credentials-mode), using the [Network Partition Key](https://fetch.spec.whatwg.org/#network-partition-keys) of the frame that invoked the method. To avoid leaking cross-origin data through the returned Promise unexpectedly, the fetch uses the `cors` [mode](https://fetch.spec.whatwg.org/#concept-request-mode). The fetched response should have a JSON MIME type and be of the format:
 
 ```
 { "joinAdInterestGroup": true/false,
@@ -226,7 +248,7 @@ When a frame navigated to one domain calls joinAdInterestGroup() or leaveAdInter
 }
 ```
 
-Indicating whether the origin in the path has permissions to join and/or leave interest groups owned by the domain the request is sent to. Missing permissions are assumed to be false.
+Indicating whether the origin in the path has permissions to join and/or leave interest groups owned by the domain the request is sent to. Missing permissions are assumed to be false. Since calling `navigator.joinAdInterestGroup()` with a `lifetimeMs` of 0 effectively leaves an interest group, `joinAdInterestGroup: true` also allows an origin to call navigator.leaveAdInterestGroup(), even if `leaveadInterestGroup` is missing or is set to false. Note that both `leaveAdInterestGroup()` and `clearOriginJoinedAdInterestGroups()` check the "leaveAdInterestGroup" permission.
 
 Since joining or leaving a group may depend on a network request, browsers may delay these requests, or run them out of order. Each frame must, however, run all pending joins and leaves for a single owner in the order in which they were made. Same-origin operations should be applied immediately. When a page or frame is navigated, the browser should make a best-effort attempt to complete pending join and leave operations that are blocked on a network fetch, but may choose to drop them if there are more than 20 for a single top-level frame. This is intended to allow joining or leaving a cross-origin interest group at the same time as starting a navigation in response to a user gesture, though previous join/leave calls may still cause such an operation to be dropped.
 
@@ -271,7 +293,7 @@ const myAuctionConfig = {
   'trustedScoringSignalsURL': ...,
   'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
   'auctionSignals': {...},
-  'directFromSellerSignals: 'https://www.example-ssp.com/...',
+  'directFromSellerSignals': 'https://www.example-ssp.com/...',
   'sellerSignals': {...},
   'sellerTimeout': 100,
   'sellerExperimentGroupId': 12345,
@@ -438,6 +460,8 @@ The ultimate winner of the top-level auction is the single bid the top-level sel
 
 While the browser ensures (using TLS) that information stored in a buyer's interest group and coming from a buyer's trusted bidding signals server comes from the buyer, information passed into `runAdAuction()` is not known to come from the seller unless the seller calls `runAdAuction()` from its own iframe.  In a multi-seller auction it becomes impossible to have all sellers create the frame calling `runAdAuction()`.  `directFromSellerSignals` allows the browser to ensure the authenticity and integrity of information passed into an auction from the seller.
 
+##### 2.5.1 Using Subresource Bundles
+
 The optional `directFromSellerSignals` field can be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `directFromSellerSignals` are trusted to come from a seller because the content loads from a [subresource bundle](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md) loaded from a seller's origin. If present, `directFromSellerSignals` should be an HTTPS URL prefix using the seller's origin -- when combined with a browser-provided suffix (see details below), the resultant URL should be a resource in a subresource bundle that has been loaded by the current document, whose contents are of type `application/json`, with the following response headers: `Ad-Auction-Allowed: true` and `Ad-Auction-Only: true`.
 
 The URL prefix should not have a query string (i.e. `?a=b&c=d`). Different calls to `navigator.runAdAuction()` on a page may use different prefixes -- for instance, to give different signals to different ad slots. The browser will append the following suffixes to the prefix:
@@ -460,12 +484,56 @@ The bundle may be fetched using credentials like cookies, as described in the [s
 
 Worklet processes follow Chrome's standard site-isolation policies. On Android, due to resource constraints, it's possible that a worklet may run in the same process as a renderer.
 
-##### CORS Required
+###### CORS Required
 
 The origin of the frame that called `runAdAuction()` is not required to match the origin of `directFromSellerSignals`, so CORS is used when fetching `directFromSellerSignals`.  This means subresources in the bundle should include the [Access-Control-Allow-Origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin) header to authorize the origin that calls `runAdAuction()` -- this should also be done on the bundle file itself.
 
 For the JSON response, only the `https` scheme is supported -- the `uuid-in-package` scheme isn't supported as that scheme doesn't support CORS.
 
+#### 2.5.2 Using Response Headers
+
+An alternative way to pass DirectFromSellerSignals without subresource bundles is via the `Ad-Auction-Signals` response header of some `fetch()` request, together with the `directFromSellerSignalsHeaderAdSlot` parameter on `navigator.runAdAuction()`.
+
+With this method, a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) call is made by some script on the page (this call may be made in a subframe), with an extra option, `{adAuctionHeaders: true}`:
+
+```javascript
+let fetchResponse = await fetch("https://seller.com/signals", {adAuctionHeaders: true});
+```
+
+The browser will make the request it would without `{adAuctionHeaders: true}`, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that any `Ad-Auction-Signals` response header from the server will only be loaded in auctions via `directFromSellerSignalsHeaderAdSlot` (this is analogous to the guarantees of `Ad-Auction-Only` and `Sec-Fetch-Dest: webbundle` from the [subresource bundle version](#251-using-subresource-bundles) -- scripts on the page cannot set the `Sec-Ad-Auction-Fetch: ?1` request header without using the `{adAuctionHeaders: true}` option).
+
+The value of the `Ad-Auction-Signals` header must be JSON formatted, with the following schema:
+
+```json
+Ad-Auction-Signals=[{
+  "adSlot": "adSlot/1",
+  "sellerSignals": /*...*/,
+  "auctionSignals": /*...*/,
+  "perBuyerSignals": {"https://buyer1.example": /*...*/, /*...*/}
+},
+{
+  "adSlot": "adSlot/2",
+  "sellerSignals": /*...*/,
+  "auctionSignals": /*...*/,
+  "perBuyerSignals": {"https://buyer1.example": /*...*/, /*...*/}
+},
+/*...*/
+]
+```
+
+When invoking `navigator.runAdAuction()`, `directFromSellerSignalsHeaderAdSlot` is used to lookup the signals intended for that auction. `directFromSellerSignalsHeaderAdSlot` is a string that should match the `adSlot` value contained in some `Ad-Auction-Signals` response served from the origin of that auction's seller. Note that for multi-seller or component auctions, each component auction / top-level can specify its own `directFromSellerSignalsHeaderAdSlot`, and the response should be served from that component / top-level auction's seller's origin. Different sellers may safely use the same `adSlot` names without conflict. If `directFromSellerSignalsHeaderAdSlot` matches multiple `adSlot`s from header responses, one of those `adSlot` responses will be chosen arbitrarily.
+
+The JSON will be parsed by the browser, and passed via the same `directFromSellerSignals` worklet functions parameter as in [the subresource bundle](#251-using-subresource-bundles) version of DirectFromSellerSignals, with `sellerSignals` only being delivered to the seller, `perBuyerSignals` only being delivered to the buyer for each buyer origin key, and `auctionSignals` being delivered to all parties. Since the top-level JSON value is an array, multiple `adSlot` responses may be set for a given `Ad-Auction-Signals` header. In the dictionary with the `adSlot`, the `sellerSignals`, `auctionSignals`, and `perBuyerSignals` fields are optional -- they will be passed as null if not specified.
+
+Since both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` (the parameters on `navigator.runAdAuction()`) set the same `directFromSellerSignals` parameter on the worklet functions, it is not valid to use both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` in the same auction. However, component auctions in the same top-level auction / the top-level itself do not all need to use the same type of DirectFromSellerSignals (and it's also valid if only some component auctions / the top-level use DirectFromSellerSignals).
+
+Failure to find a matching `adSlot` results in the fields of the `directFromSellerSignals` object passed to worklet functions being set to null, similar to the [subresource bundle version](#251-using-subresource-bundles).
+
+Note that only the `Ad-Auction-Signals` response header from the server will only be loaded via `directFromSellerSignalsHeaderAdSlot` -- the payload of the request will be available to scripts running in that frame.
+
+Like `directFromSellerSignals`, `directFromSellerSignalsHeaderAdSlot` may be passed as a promise that resolves to the ad slot string -- the auction perform loading, but delays execution until the promise is resolved.
+
+The signals are only guaranteed to be available to `navigator.runAdAuction()` after the `fetch()` promise has resolved. Therefore, to avoid races, either `runAdAuction()` should be called after resolving the `fetch()` promise, or `directFromSellerSignalsHeaderAdSlot` should be passed a promise that only resolves after the `fetch()` promise resolves. 
 
 ### 3. Buyers Provide Ads and Bidding Functions (BYOS for now)
 
@@ -788,6 +856,12 @@ The arguments to this function are:
     * The `joinCount` field is the number of times this device has joined this interest group in the last 30 days while the interest group has been continuously stored (that is, there are no gaps in the storage of the interest group on the device due to leaving or membership expiring), using the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
     * The `recency` field is duration of time (in minutes) from when this device joined this interest group until now, using the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
     * `modelingSignals` is the `modelingSignals` returned from `generateBid()`, using the [noising scheme](#521-noised-and-bucketed-signals). This field is only present if `modelingSignals` was returned by `generateBid()`.
+    * `kAnonStatus` indicates the k-anonymity status of the ad.  When k-anonymity is calculated but not enforced, this field can help bidders understand the impact of k-anonymity enforcement.
+        * `passedAndEnforced` The ad was k-anonymous and k-anonymity was required to win the auction.
+        * `passedNotEnforced` The ad was k-anonymous though k-anonymity was not required to win the auction.
+        * `belowThreshold` The ad was not k-anonymous but k-anonymity was not required to win the auction.
+        * `notCalculated` The browser did not calculate the k-anonymity status of the ad, and k-anonymity was not required to win the auction.
+
 *   `directFromSellerSignals` is an object that may contain the following fields:
     *   `perBuyerSignals`: Like `auctionConfig.perBuyerSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
     *   `auctionSignals`: Like `auctionConfig.auctionSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
@@ -897,14 +971,13 @@ To facilitate negative targeting in Protected Audience auctions, each additional
 
 ##### 6.2.1 Negative Interest Groups
 
-Though negative interest groups are joined using the same `joinAdInterestGroup` API as regular interest groups, they remain distinct from one another. Only negative interest groups can provide an `additionalBidKey`, and only regular interest groups can provide `ads`; no interest group may provide both. The `additionalBidKey` field is described in more detail in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys).
+Though negative interest groups are joined using the same `joinAdInterestGroup` API as regular interest groups, they remain distinct from one another. Only negative interest groups can provide an `additionalBidKey`, and only regular interest groups can provide `ads`; no interest group may provide both. Relatedly, because the subset of fields used by a negative interest group cannot be meaningfully updated, any interest group that provides an `additionalBidKey` - a negative interest group - may not provide an `updateURL`. The `additionalBidKey` field is described in more detail in section [6.2.3 Additional Bid Keys](#623-additional-bid-keys).
 
 ```
 const myGroup = {
   'owner': 'https://www.example-dsp.com',
   'name': 'womens-running-shoes',
   'lifetimeMs': 30 * kSecsPerDay,
-  'updateURL': 'https://www.example-dsp.com/update?id=12345', //optional
   'additionalBidKey': 'EA/fR/uU8VNqT3w/2ic4P6Azdaj1J8U35vFwPEf5T4Y='
 };
 navigator.joinAdInterestGroup(myGroup);
@@ -940,17 +1013,17 @@ const additionalBid = {
 }
 ```
 
-Any negative interest group that wasn't joined from that identified origin won't be considered for negative targeting. This restriction is enforced so that negative targeting can only use targeting data from a single origin.  An additional bid that only specifies one negative interest group is not subject to the same restriction on joining origin.
+If a negative targeting group was joined from a different origin than that specified, the additional bid proceeds as if the negative interest group is not present. This "failing open" ensures that negative targeting can only use targeting data from a single origin. Because this origin check "fails open", buyers should make sure that negative interest groups used this way are joined from a consistent origin. An additional bid that only specifies one negative interest group is not subject to any restriction on joining origin.
 
 ##### 6.2.3 Additional Bid Keys
 
-We use a cryptographic signature mechanism to ensure that only the owner of a negative interest group can use it with additional bids. Each buyer will need to create a [Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) public/secret key pair to sign their additional bids to prove their authenticity, and to regularly rotate their key pairs.
+We use a cryptographic signature mechanism to ensure that only the owner of a negative interest group can use it with additional bids. Each buyer will need to create a [Ed25519](https://datatracker.ietf.org/doc/html/rfc8032) public/secret key pair to sign their additional bids to prove their authenticity, and to rotate their key pairs every 30 days for security.
 
-When a buyer joins a user into a negative interest group, they must provide their 32-byte Ed25519 public key, expressed as a base64-encoded string, via the negative interest group's `additionalBidKey` field. This can be seen in the example above in section [6.2.1 Negative Interest Groups](#621-negative-interest-groups). The additional bid key can then be updated via the negative interest group's `updateURL`, for example, to enable a buyer to rotate their Ed25519 key pair faster than they could with the expiration of their negative interest groups alone. Negative interest groups are updated at the same time and in the same way as regular interest groups, as described in section [1.2 Interest Group Attributes](#12-interest-group-attributes).
+When a buyer joins a user into a negative interest group, they must provide their current 32-byte Ed25519 public key, expressed as a base64-encoded string, via the negative interest group's `additionalBidKey` field. This can be seen in the example above in section [6.2.1 Negative Interest Groups](#621-negative-interest-groups).
 
-When the buyer issues an additional bid, that bid needs to be signed using their Ed25519 secret key. During a key rotation, the buyer may need to provide a signature of the additional bid with both the old and the new additional bid keys while negative interest groups stored on users' devices are updated to the new key. It's for this reason that additional bids may have more than one signature provided alongside the bid.
+When the buyer issues an additional bid, that bid needs to be signed using their current and previous Ed25519 secret keys. It's for this reason that additional bids may have more than one signature provided alongside the bid. The use of these two keys here supports the 30-day key rotation: the previous key is used to verify negative interest groups stored on the user's device _prior_ to most recent key rotation, the current key is used to verify negative interest groups stored on the user's device _since_ the most recent key rotation. Only these two keys are needed, because all previous keys will only have been used to join negative interest groups more than 30 days prior, and all of those negative interest groups are guaranteed to have expired.
 
-If the signature doesn't verify successfully, the additional bid proceeds as if the negative interest group is not present.  This "failing open" ensures that only the owner of the negative interest group, who created the additonalBidKey, is allowed to negatively target the interest group, and that nobody else can learn whether the interest group is present on the device.  Because the signature check "fails open", buyers should make sure they're using the right keys; for example it might be prudent to verify a bid signature before submitting the additional bid.
+If the signature doesn't verify successfully, the additional bid proceeds as if the negative interest group is not present. This "failing open" ensures that only the owner of the negative interest group, who created the additonalBidKey, is allowed to negatively target the interest group, and that nobody else can learn whether the interest group is present on the device. Because the signature check "fails open", buyers should make sure they're using the right keys; for example it might be prudent to verify a bid signature before submitting the additional bid.
 
 To ensure a consistent binary payload is signed, the buyer first needs to stringify their additional bid - the JSON data structure seen above. The buyer then generates the necessary signatures and then bundles these together in a JSON structure we'll call the _signed additional bid_.
 
