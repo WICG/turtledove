@@ -92,6 +92,8 @@ spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
   margin: 1em 0;
 }
 
+dl { padding-left: 1em; }
+
 /* domintro from https://resources.whatwg.org/standard.css */
 .domintro {
   position: relative;
@@ -3908,102 +3910,101 @@ dictionary DirectFromSellerSignalsForSeller {
 };
 </xmp>
 
-<h3 dfn-type=dfn>Interest group</h3>
+<h3 id=interest-group-header>Interest group</h3>
 
-An interest group is a [=struct=] with the following [=struct/items=]:
+An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="interest group">
-: <dfn>expiry</dfn>
-:: A [=moment=] at which the browser will forget about this interest group.
-: <dfn>owner</dfn>
-:: An [=origin=]. Frames that join interest groups owned by [=interest group/owner=] must either be
-  served from [=interest group/owner=], or another origin delegated by [=interest group/owner=] (See
-  [=checking interest group permissions=] for details). The [=origin/scheme=] must be "`https`".
-: <dfn>name</dfn>
-:: A [=string=]. The ([=interest group/owner=], [=interest group/name=]) tuple is a key that
-  uniquely defines each interest group.
-: <dfn>priority</dfn>
-:: A {{double}}, initially 0.0. Used to select which interest groups participate in an auction
-  when the number of interest groups are limited by {{AuctionAdConfig/perBuyerGroupLimits}}.
-  See [=applying interest groups limits to prioritized list=].
-: <dfn>enable bidding signals prioritization</dfn>
-:: A [=boolean=], initially false. Being true if the interest group's priority should be
-  calculated using vectors from bidding signals fetch.
-: <dfn>priority vector</dfn>
-:: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
-  {{double}}. Its dot product with the {{AuctionAdConfig/perBuyerPrioritySignals}} will be used
-  in place of [=interest group/priority=], if set.
-: <dfn>priority signals overrides</dfn>
-:: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
-  {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
-: <dfn>execution mode</dfn>
-:: "`compatibility`" or "`group-by-origin`".
-  TODO: Define spec for these execution modes, link to it from here and explain these modes.
-: <dfn>bidding url</dfn>
-:: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from.
-  <p class="note">
-    When non-null, the [=interest group/bidding url=]'s [=origin=] will always be [=same origin=]
-    with [=interest group/owner=].
-  </p>
-: <dfn>bidding wasm helper url</dfn>
-:: Null or a [=URL=]. Lets the bidder provide computationally-expensive subroutines in WebAssembly,
-  in addition to JavaScript, to be driven from the JavaScript function provided by
-  [=interest group/bidding url=].
-  <p class="note">
-    When non-null, the [=interest group/bidding wasm helper url=]'s [=origin=] will always be
-    [=same origin=] with [=interest group/owner=].
-  </p>
-: <dfn>update url</dfn>
-:: Null or a [=URL=]. Provides a mechanism for the group's owner to periodically update the
-  attributes of the interest group. See [[#interest-group-updates]]. Must be null if
-  [=interest group/additional bid key=] is not null.
-  <p class="note">
-    When non-null, the [=interest group/update url=]'s [=origin=] will always be [=same origin=]
-    with [=interest group/owner=].
-  </p>
-: <dfn>trusted bidding signals url</dfn>
-:: Null or a [=URL=]. Provide a mechanism for making real-time data available for use at bidding
-  time. See [=building trusted bidding signals url=].
-  <p class="note">
-    When non-null, the [=interest group/trusted bidding signals url=]'s [=origin=] will always be
-    [=same origin=] with [=interest group/owner=].
-  </p>
-: <dfn>trusted bidding signals keys</dfn>
-:: Null or a [=list=] of [=string=]. See [=building trusted bidding signals url=].
-: <dfn>user bidding signals</dfn>
-:: Null or a [=string=]. Additional metadata that the owner can use during on-device bidding.
-: <dfn>ads</dfn>
-:: Null or a [=list=] of [=interest group ad=]. Contains various ads that the interest group might
-  show. Must be null if [=interest group/additional bid key=] is not null.
-: <dfn>ad components</dfn>
-:: Null or a [=list=] of [=interest group ad=]. Contains various ad components (or "products") that
-  can be used to construct ads composed of multiple pieces — a top-level ad template "container"
-  which includes some slots that can be filled in with specific "products".
-: <dfn>additional bid key</dfn>
-:: Null or a [=byte sequence=] of length 32. Must be null if [=interest group/ads=] or
-  [=interest group/update url=] is not null. The Ed25519 public key (a 256-bit EdDSA public key)
-  used to guarantee that this [=interest group=], if used by an additional bid for a negative
-  targeting, can only be used by its [=interest group/owner=].
-: <dfn>joining origin</dfn>
-:: An [=origin=]. The top level page origin from where the interest group was joined.
-: <dfn>join counts</dfn>
-:: A [=list=] containing [=tuples=] of the day and per day join count. The day
-  is calculated based on UTC time. The join count is a count of the number of
-  times {{Navigator/joinAdInterestGroup()}} was called for this interest group on the
-  corresponding day.
-: <dfn>join time</dfn>
-:: A [=moment=] at which the browser joined this interest group, updated upon each join and
-  re-join.
-: <dfn>bid counts</dfn>
-:: A [=list=] containing [=tuples=] of the day and per day bid count. The day
-  is calculated based on UTC time. The bid count is a count of the number of
-  times the bid calculated during {{Navigator/runAdAuction()}} was greater than 0.
-: <dfn>previous wins</dfn>
-:: A [=list=] of [=previous wins=].
-: <dfn>next update after</dfn>
-:: A [=moment=] at which the browser will permit updating this interest group. See
-  [interest group updates](#interest-group-updates).
-
+  : <dfn>expiry</dfn>
+  :: A [=moment=] at which the browser will forget about this interest group.
+  : <dfn>owner</dfn>
+  :: An [=origin=]. Frames that join interest groups owned by [=interest group/owner=] must either be
+    served from [=interest group/owner=], or another origin delegated by [=interest group/owner=] (See
+    [=checking interest group permissions=] for details). The [=origin/scheme=] must be "`https`".
+  : <dfn>name</dfn>
+  :: A [=string=]. The ([=interest group/owner=], [=interest group/name=]) tuple is a key that
+    uniquely defines each interest group.
+  : <dfn>priority</dfn>
+  :: A {{double}}, initially 0.0. Used to select which interest groups participate in an auction
+    when the number of interest groups are limited by {{AuctionAdConfig/perBuyerGroupLimits}}.
+    See [=applying interest groups limits to prioritized list=].
+  : <dfn>enable bidding signals prioritization</dfn>
+  :: A [=boolean=], initially false. Being true if the interest group's priority should be
+    calculated using vectors from bidding signals fetch.
+  : <dfn>priority vector</dfn>
+  :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+    {{double}}. Its dot product with the {{AuctionAdConfig/perBuyerPrioritySignals}} will be used
+    in place of [=interest group/priority=], if set.
+  : <dfn>priority signals overrides</dfn>
+  :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
+    {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
+  : <dfn>execution mode</dfn>
+  :: "`compatibility`" or "`group-by-origin`".
+    TODO: Define spec for these execution modes, link to it from here and explain these modes.
+  : <dfn>bidding url</dfn>
+  :: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from.
+    <p class="note">
+      When non-null, the [=interest group/bidding url=]'s [=origin=] will always be [=same origin=]
+      with [=interest group/owner=].
+    </p>
+  : <dfn>bidding wasm helper url</dfn>
+  :: Null or a [=URL=]. Lets the bidder provide computationally-expensive subroutines in WebAssembly,
+    in addition to JavaScript, to be driven from the JavaScript function provided by
+    [=interest group/bidding url=].
+    <p class="note">
+      When non-null, the [=interest group/bidding wasm helper url=]'s [=origin=] will always be
+      [=same origin=] with [=interest group/owner=].
+    </p>
+  : <dfn>update url</dfn>
+  :: Null or a [=URL=]. Provides a mechanism for the group's owner to periodically update the
+    attributes of the interest group. See [[#interest-group-updates]]. Must be null if
+    [=interest group/additional bid key=] is not null.
+    <p class="note">
+      When non-null, the [=interest group/update url=]'s [=origin=] will always be [=same origin=]
+      with [=interest group/owner=].
+    </p>
+  : <dfn>trusted bidding signals url</dfn>
+  :: Null or a [=URL=]. Provide a mechanism for making real-time data available for use at bidding
+    time. See [=building trusted bidding signals url=].
+    <p class="note">
+      When non-null, the [=interest group/trusted bidding signals url=]'s [=origin=] will always be
+      [=same origin=] with [=interest group/owner=].
+    </p>
+  : <dfn>trusted bidding signals keys</dfn>
+  :: Null or a [=list=] of [=string=]. See [=building trusted bidding signals url=].
+  : <dfn>user bidding signals</dfn>
+  :: Null or a [=string=]. Additional metadata that the owner can use during on-device bidding.
+  : <dfn>ads</dfn>
+  :: Null or a [=list=] of [=interest group ad=]. Contains various ads that the interest group might
+    show. Must be null if [=interest group/additional bid key=] is not null.
+  : <dfn>ad components</dfn>
+  :: Null or a [=list=] of [=interest group ad=]. Contains various ad components (or "products") that
+    can be used to construct ads composed of multiple pieces — a top-level ad template "container"
+    which includes some slots that can be filled in with specific "products".
+  : <dfn>additional bid key</dfn>
+  :: Null or a [=byte sequence=] of length 32. Must be null if [=interest group/ads=] or
+    [=interest group/update url=] is not null. The Ed25519 public key (a 256-bit EdDSA public key)
+    used to guarantee that this [=interest group=], if used by an additional bid for a negative
+    targeting, can only be used by its [=interest group/owner=].
+  : <dfn>joining origin</dfn>
+  :: An [=origin=]. The top level page origin from where the interest group was joined.
+  : <dfn>join counts</dfn>
+  :: A [=list=] containing [=tuples=] of the day and per day join count. The day
+    is calculated based on UTC time. The join count is a count of the number of
+    times {{Navigator/joinAdInterestGroup()}} was called for this interest group on the
+    corresponding day.
+  : <dfn>join time</dfn>
+  :: A [=moment=] at which the browser joined this interest group, updated upon each join and
+    re-join.
+  : <dfn>bid counts</dfn>
+  :: A [=list=] containing [=tuples=] of the day and per day bid count. The day
+    is calculated based on UTC time. The bid count is a count of the number of
+    times the bid calculated during {{Navigator/runAdAuction()}} was greater than 0.
+  : <dfn>previous wins</dfn>
+  :: A [=list=] of [=previous wins=].
+  : <dfn>next update after</dfn>
+  :: A [=moment=] at which the browser will permit updating this interest group. See
+    [interest group updates](#interest-group-updates).
 </dl>
 
 A <dfn>regular interest group</dfn> is an [=interest group=] whose
@@ -4012,32 +4013,29 @@ A <dfn>regular interest group</dfn> is an [=interest group=] whose
 A <dfn>negative interest group</dfn> is an [=interest group=] whose
 [=interest group/additional bid key=] is not null.
 
-<h3 dfn-type=dfn>Interest group ad</h3>
-
-An interest group ad is a [=struct=] with the following [=struct/items=]:
+An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="interest group ad">
-: <dfn>render url</dfn>
-:: A [=URL=]. If this ad wins the auction, this URL (or a [=urn uuid=] that maps to this URL) will
-  be returned by {{Navigator/runAdAuction()}}. This URL is intended to be loaded into an ad
-  <{iframe}> (or a <{fencedframe}>).
-: <dfn>metadata</dfn>
-:: Null or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
-: <dfn>buyer reporting ID</dfn>
-:: Null or a [=string=]. Will be passed in place of interest group name to [=report win=], subject
-  to [=k-anonymity=] checks. Only meaningful in [=interest group/ads=], but ignored in
-  [=interest group/ad components=].
-: <dfn>buyer and seller reporting ID</dfn>
-:: Null or a [=string=]. Will be passed in place of interest group name or
-  [=interest group ad/buyer reporting ID=] to [=report win=] and [=report result=], subject to
-  [=k-anonymity=] checks. Only meaningful in [=interest group/ads=], but ignored in
-  [=interest group/ad components=].
-: <dfn>allowed reporting origins</dfn>
-:: Null or a [=list=] of [=origins=]. A list of up to 10 reporting origins that can receive reports
-  with registered macros. All origins must be HTTPS origins and
-  <a href="https://github.com/privacysandbox/attestation">enrolled</a>. Only meaningful in
-  [=interest group/ads=], but ignored in [=interest group/ad components=].
-
+  : <dfn>render url</dfn>
+  :: A [=URL=]. If this ad wins the auction, this URL (or a [=urn uuid=] that maps to this URL) will
+    be returned by {{Navigator/runAdAuction()}}. This URL is intended to be loaded into an ad
+    <{iframe}> (or a <{fencedframe}>).
+  : <dfn>metadata</dfn>
+  :: Null or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
+  : <dfn>buyer reporting ID</dfn>
+  :: Null or a [=string=]. Will be passed in place of interest group name to [=report win=], subject
+    to [=k-anonymity=] checks. Only meaningful in [=interest group/ads=], but ignored in
+    [=interest group/ad components=].
+  : <dfn>buyer and seller reporting ID</dfn>
+  :: Null or a [=string=]. Will be passed in place of interest group name or
+    [=interest group ad/buyer reporting ID=] to [=report win=] and [=report result=], subject to
+    [=k-anonymity=] checks. Only meaningful in [=interest group/ads=], but ignored in
+    [=interest group/ad components=].
+  : <dfn>allowed reporting origins</dfn>
+  :: Null or a [=list=] of [=origins=]. A list of up to 10 reporting origins that can receive reports
+    with registered macros. All origins must be HTTPS origins and
+    <a href="https://github.com/privacysandbox/attestation">enrolled</a>. Only meaningful in
+    [=interest group/ads=], but ignored in [=interest group/ad components=].
 </dl>
 
 <h3 dfn-type=dfn>Currency tag</h3>
