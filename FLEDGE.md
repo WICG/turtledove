@@ -492,15 +492,21 @@ For the JSON response, only the `https` scheme is supported -- the `uuid-in-pack
 
 #### 2.5.2 Using Response Headers
 
-An alternative way to pass DirectFromSellerSignals without subresource bundles is via the `Ad-Auction-Signals` response header of some `fetch()` request, together with the `directFromSellerSignalsHeaderAdSlot` parameter on `navigator.runAdAuction()`.
+An alternative way to pass DirectFromSellerSignals without subresource bundles is via the `Ad-Auction-Signals` response header of some `fetch()` request or `iframe` navigation, together with the `directFromSellerSignalsHeaderAdSlot` parameter on `navigator.runAdAuction()`.
 
-With this method, a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) call is made by some script on the page (this call may be made in a subframe), with an extra option, `{adAuctionHeaders: true}`:
+To pass DirectFromSellerSignals using a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) call made by some script on the page (including in a subframe), specify an extra option, `{adAuctionHeaders: true}`:
 
 ```javascript
 let fetchResponse = await fetch("https://seller.com/signals", {adAuctionHeaders: true});
 ```
 
-The browser will make the request it would without `{adAuctionHeaders: true}`, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that any `Ad-Auction-Signals` response header from the server will only be loaded in auctions via `directFromSellerSignalsHeaderAdSlot` (this is analogous to the guarantees of `Ad-Auction-Only` and `Sec-Fetch-Dest: webbundle` from the [subresource bundle version](#251-using-subresource-bundles) -- scripts on the page cannot set the `Sec-Ad-Auction-Fetch: ?1` request header without using the `{adAuctionHeaders: true}` option).
+To pass DirectFromSellerSignals using an [`iframe`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) navigation, specify the `adAuctionHeaders` attribute on the `iframe` element:
+
+```html
+<iframe src="..." adAuctionHeaders></iframe>
+```
+
+The browser will make the request for either the `fetch()` or the `iframe` navigation that it otherwise would, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that any `Ad-Auction-Signals` response header from the server will only be loaded in auctions via `directFromSellerSignalsHeaderAdSlot` (this is analogous to the guarantees of `Ad-Auction-Only` and `Sec-Fetch-Dest: webbundle` from the [subresource bundle version](#251-using-subresource-bundles) -- scripts on the page cannot set the `Sec-Ad-Auction-Fetch: ?1` request header without using the `{adAuctionHeaders: true}` option).
 
 The value of the `Ad-Auction-Signals` header must be JSON formatted, with the following schema:
 
@@ -1050,13 +1056,7 @@ Note that the key fields are used by the browser both to verify the signature, a
 
 The browser ensures, using TLS, the authenticity and integrity of information provided to the auction through calls made directly to an ad tech's servers. This guarantee is not provided for data passed in `runAdAuction()`. To account for this, additional bids use the same HTTP response header interception mechanism that's already in use for the [Bidding & Auction response blob](FLEDGE_browser_bidding_and_auction_API.md#step-3-get-response-blobs-to-browser) and `directFromSellerSignals`.
 
-To use HTTP response headers to convey the additional bids, the request to fetch them will first need to specify the `adAuctionHeaders` fetch flag.
-
-```
-fetch("https://...", {adAuctionHeaders: true});
-```
-
-This signals to the browser that it should look for one or more additional bids encoded as HTTP response headers from this Fetch. Each instance of the `Ad-Auction-Additional-Bid` response header will correspond to a single additional bid. The response may include more than one additional bid by specifying multiple instances of the `Ad-Auction-Additional-Bid` response header. The structure of each instance of the `Ad-Auction-Additional-Bid` header must be as follows:
+To use HTTP response headers to convey the additional bids, the request to fetch them will first need to specify the `adAuctionHeaders` fetch flag or `adAuctionHeaders` attribute on an iframe element, as described in section [2.5.2 Using Response Headers](#252-using-response-headers). This will cause the request to include an additional request header, `Sec-Ad-Auction-Fetch: ?1`. This also signals to the browser that it should look for one or more additional bids encoded as HTTP response headers from this Fetch. Each instance of the `Ad-Auction-Additional-Bid` response header will correspond to a single additional bid. The response may include more than one additional bid by specifying multiple instances of the `Ad-Auction-Additional-Bid` response header. The structure of each instance of the `Ad-Auction-Additional-Bid` header must be as follows:
 
 ```
 Ad-Auction-Additional-Bid:
