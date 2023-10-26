@@ -818,18 +818,29 @@ In auctions that involve multiple currencies, there may be values with different
 
 To help deal with this scenario, an optional mode is available that converts all bid-related information to seller's preferred currency (in component auctions, reporting for it is for that component's seller). This is configured via the `sellerCurrency` setting in each auction configuration.
 
-Regardless of configuration, the bid price passed to `reportWin()` and `reportResult()` is always the bid price that participated in that particular level of the auction (which, for top-level auction `reportResult()`, may be the bid price altered by the component auction seller's `scoreAd()`), subject to the usual rounding rules. Since passing the returned currency tags around could leak an unacceptable amount of information, the values provided for `browserSignals.bidCurrency` to those methods are the currencies required by the auction configuration (i.e. `sellerCurrency` and `perBuyerCurrencies`), or `'???'` if unspecified.
-
-(Warning: `reportResult` did not follow this rule in Chrome earlier than M116)
-
-All other values, including `highestScoringOtherBid` and winning bids provided to private aggregation and debug event-level loss reporting depend on the `sellerCurrency` setting. We refer to those usages as "potentially mixed currency" contexts, as they can involve information from multiple bids, and hence potentially multiple currencies.
-
-If `sellerCurrency` is not set, all bid prices in potentially mixed currency contexts are passed as-is, and all the corresponding currency tags (`bidCurrency`, `highestScoringOtherBidCurrency`) are redacted to `'???'`.
-
-If `sellerCurrency` is set, `scoreAd()` for an auction is responsible for converting bids not already in that currency to `sellerCurrency`, via the `incomingBidInSellerCurrency` field of its return value. A bid already explicitly in the seller's currency cannot be changed by `incomingBidInSellerCurrency`.  If neither the original bid is explicitly in `sellerCurrency` nor an `incomingBidInSellerCurrency` is specified, a value of 0 is used for reporting in potentially mixed currency contexts. All currency tags for reporting in those potentially mixed currency contexts will be set to `sellerCurrency`.
+If `sellerCurrency` is set, `scoreAd()` for an auction is responsible for converting bids not already in `sellerCurrency` to `sellerCurrency`, via the `incomingBidInSellerCurrency` field of its return value. A bid already explicitly in the seller's currency cannot be changed by `incomingBidInSellerCurrency`.  If neither the original bid is explicitly in `sellerCurrency` nor an `incomingBidInSellerCurrency` is specified, a value of 0 is used as the converted value.
 
 Note that `incomingBidInSellerCurrency` is different from the modified bid returned by a component auction: it represents a mechanical currency translation of the original buyer's bid, rather than the bid the component auction is making in a top-level auction (which could, perhaps, be reduced by the intermediate seller's fee or the like). It can also be specified in top-level auctions, unlike the modified bid.
 
+The following table summarizes which APIs get original and which get converted bid values, and how redaction for currency tags works, depending on whether `sellerCurrency` is set or not:
+| API | when `sellerCurrency` unset | when `sellerCurrency` set |
+| --- | --- | --- |
+|`reportWin()` `browserSignals.bid` | Original value | Same |
+|`reportWin()` `browserSignals.bidCurrency` | Currency required by auction configuration, or `'???'` | Same |
+|`reportResult()` `browserSignals.bid` | Original value of bid at that auction level (for top-level auction this includes any modification by component-auction)  | Same (in Chrome since M116) |
+|`reportResult()` `browserSignals.bidCurrency` | Currency required by auction configuration, or `'???'` | Same (in Chrome since M116) |
+|`reportWin()` browserSignals.highestScoringOtherBid | Original value | Converted value |
+|`reportWin()` browserSignals.highestScoringOtherBidCurrency | `'???'` | `sellerCurrency` |
+|`reportResult()` browserSignals.highestScoringOtherBid | Original value | Converted value |
+|`reportResult()` browserSignals.highestScoringOtherBidCurrency | `'???'` | `sellerCurrency` |
+| `forDebuggingOnly.report...` keyword `${winningBid}` | Original value | Converted value |
+| `forDebuggingOnly.report...` keyword `${winningBidCurrency}` | `'???'` | `sellerCurrency`|
+| `forDebuggingOnly.report...` keyword `${highestScoringOtherBid}` | Original value | Converted value |
+| `forDebuggingOnly.report...` keyword `${highestScoringOtherBidCurrency}` | `'???'` | `sellerCurrency`|
+| `forDebuggingOnly.report...` keyword `${topLevelWinningBid}` | Original value | Converted value (as converted by top-level `scoreAd()`) |
+| `forDebuggingOnly.report...` keyword `${topLevelWinningBidCurrency}` | `'???'` | `sellerCurrency` of top-level auction |
+| Private Aggregation `winning-bid` | Original value | Converted value |
+| Private Aggregation `highest-scoring-other-bid` | Original value | Converted value |
 
 #### 5.4 Losing Bidder Reporting
 
