@@ -15,7 +15,7 @@ From a privacy perspective, it is also important to note that the additional inf
 
 # Design
 
-The following summarizes the sequence of events for the buyer and seller. Distinguishing these flows here, since in principle, one should be able to report without the help of the other but with an opt-in from the ad's origin for mainitaining web's security principles for origins.
+The following summarizes the sequence of events for the buyer and seller. Distinguishing these flows here, since in principle, one should be able to report without the help of the other but with an opt-in from the ad's origin for maintaining web's security principles for origins.
 
 ![high level diagram](assets/fenced_frames_reporting.png)
 
