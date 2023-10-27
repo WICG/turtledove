@@ -988,8 +988,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       returned from an associated [=request=], whose [=request/initiator type=] is `"fetch"` and the
       {{RequestInit/adAuctionHeaders}} option set to `true`, resolves or rejects. Otherwise, there
       will be a race condition that the worklet can run without the direct from seller signals that
-      it needs. See [handling direct from seller signals](#handling-direct-from-seller-signals) for
-      details.
+      it needs. See [[#fetch-patch-auction-headers] for details.
 
     * To parse the value |result|:
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
@@ -3548,43 +3547,20 @@ Issue(WICG/turtledove#522): Move from "`*`" to "`self`".
 
 # Fetch Patch for Auction Headers # {#fetch-patch-for-auction-headers}
 
-This section specifies a manner by which signals may be provided to auctions such that the signals
-are only used within their intended auction.
+This section specifies a manner by which some data, including [=additional bid=] and
+[=direct from seller signals=], may be provided to auctions such that the data is only used within
+their intended auction.
 
 Any {{Document}} in a [=traversable navigable=] may run a Protected Audience auction (with
 {{Window/navigator}}.{{Navigator/runAdAuction()}}) whose worklet functions receive signal objects
-derived from JSON from an [:Ad-Auction-Signals:] header captured by a
-{{WindowOrWorkerGlobalScope/fetch()}} call (using the {{RequestInit/adAuctionHeaders}} option)
-initiated by any *other* {{Document}} in the *same* [=traversable navigable=].
+derived from JSON from an [:Ad-Auction-Signals:] header, or [=additional bids=] derived from an
+[:Ad-Auction-Additional-Bid:] header, captured by a {{WindowOrWorkerGlobalScope/fetch()}} call
+(using the {{RequestInit/adAuctionHeaders}} option) initiated by any *other* {{Document}} in the
+*same* [=traversable navigable=].
 
 <div algorithm="fetch per traversable navigable structures patch">
 Modify [[FETCH]]'s [[FETCH#infrastructure]] to add a new section called "Per Traversable Navigable
 Structures", with the following content:
-
-A <dfn>direct from seller signals key</dfn> is a [=struct=] with the following [=struct/items=]:
-
-<dl dfn-for="direct from seller signals key">
-  : <dfn>seller</dfn>
-  :: An [=origin=]. Matches the origin that served the captured [:Ad-Auction-Signals:] header.
-  : <dfn>ad slot</dfn>
-  :: A [=string=]. Matches the `adSlot` key of the JSON dictionaries in the top-level array of the
-    [:Ad-Auction-Signals:] value.
-</dl>
-
-A <dfn>direct from seller signals</dfn> is a [=struct=] with the following [=struct/items=]:
-
-<dl dfn-for="direct from seller signals">
-  : <dfn>auction signals</dfn>
-  :: Null or a [=string=].
-    Opaque JSON data passed to both buyers' and the seller's [=script runners=].
-  : <dfn>seller signals</dfn>
-  :: Null or a [=string=].
-    Opaque JSON data passed to the seller's [=script runner=].
-  : <dfn>per buyer signals</dfn>
-  :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
-    [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
-    passed to corresponding buyer's [=script runner=].
-</dl>
 
 Each [=traversable navigable=] has a <dfn for="traversable navigable">captured ad auction signals
 headers</dfn>, which is a [=map=] whose [=map/keys=] are [=direct from seller signals keys=] and
@@ -3600,7 +3576,7 @@ bids headers</dfn>, which is a [=map=] whose [=map/keys=] are [=auction nonces=]
 
 NOTE: This is only captured during a [=request=] whose [=request/initiator type=] is `"fetch"`, made
 with the {{RequestInit/adAuctionHeaders}} option set to `true`, as described in the
-[:Ad-Auction-Additional-Bids:] header description.
+[:Ad-Auction-Additional-Bid:] header description.
 </div>
 
 <div algorithm="fetch capture adAuctionHeaders boolean patch">
@@ -4377,6 +4353,33 @@ Width and height of an ad.
 : <dfn>height units</dfn>
 :: A [=string=]. Can only be one of "px" (pixel), "sh" (screen height), and "sw" (screen width).
 
+</dl>
+
+<h3 id=direct-from-seller-signals-header>Direct from seller signals</h3>
+
+A <dfn>direct from seller signals key</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="direct from seller signals key">
+  : <dfn>seller</dfn>
+  :: An [=origin=]. Matches the origin that served the captured [:Ad-Auction-Signals:] header.
+  : <dfn>ad slot</dfn>
+  :: A [=string=]. Matches the `adSlot` key of the JSON dictionaries in the top-level array of the
+    [:Ad-Auction-Signals:] value.
+</dl>
+
+A <dfn>direct from seller signals</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="direct from seller signals">
+  : <dfn>auction signals</dfn>
+  :: Null or a [=string=].
+    Opaque JSON data passed to both buyers' and the seller's [=script runners=].
+  : <dfn>seller signals</dfn>
+  :: Null or a [=string=].
+    Opaque JSON data passed to the seller's [=script runner=].
+  : <dfn>per buyer signals</dfn>
+  :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
+    [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
+    passed to corresponding buyer's [=script runner=].
 </dl>
 
 <h3 dfn-type=dfn>Score ad output</h3>
