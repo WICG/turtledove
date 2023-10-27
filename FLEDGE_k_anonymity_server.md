@@ -239,8 +239,14 @@ this, we're exploring options that include having the client request tokens
 at a constant rate and discard unused tokens.
 
 `Query` is a read-only API, so it doesn't have the same abuse concerns as
-`Join`.  We won't require Private State Tokens, or a Google Account, for a browser
-to call `Query`.
+`Join`. While we will not require Private State Tokens, or a Google Account,
+for a browser to call `Query`, the Query Server will take certain measures
+against set abuse to prevent the privacy of end users from being
+compromised. If the Query Server has evidence indicating that a set is
+corrupted and is more likely to leak identifying information about members,
+it will report the k-anonymity status of the set to be `false` until the
+risk to users' privacy has been addressed.
+
 
 #### Differential privacy of public data
 
