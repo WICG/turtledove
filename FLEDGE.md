@@ -17,6 +17,7 @@ See [the in progress FLEDGE specification](https://wicg.github.io/turtledove/).
     - [1.1 Joining Interest Groups](#11-joining-interest-groups)
     - [1.2 Interest Group Attributes](#12-interest-group-attributes)
     - [1.3 Permission Delegation](#13-permission-delegation)
+    - [1.4 Buyer Security Considerations](#14-buyer-security-considerations)
   - [2. Sellers Run On-Device Auctions](#2-sellers-run-on-device-auctions)
     - [2.1 Initiating an On-Device Auction](#21-initiating-an-on-device-auction)
     - [2.2 Auction Participants](#22-auction-participants)
@@ -50,7 +51,7 @@ During 2021, Chrome plans to run an Origin Trial for a first experiment which in
 *   Microtargeting protection based on the browser ensuring that the same ad or ad component is being shown to at least some minimum number of people.
 *   Ad rendering in a temporarily relaxed version of Fenced Frames that prevents interaction with the surrounding page — but that does allow _normal network access for rendering the ad, and for logging and reporting some event-level outcomes_, as a temporary model until both a trusted-server reporting framework and ad delivery via Web Bundles are settled and in place.
 
-Most of these ideas are drawn from the past year's ongoing discussion of variants on the [original TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/Original-TURTLEDOVE.md) idea.  Interest group metadata, and applying k-anonymity thresholds only to network updates and rendered ads, come from [Outcome-based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) and [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md).  The separation and clarification of the DSP and SSP roles are along the lines described in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md) and [PARRROT](https://github.com/prebid/identity-gatekeeper/blob/master/proposals/PARRROT.md).  The trusted servers to support bidding, rendering, and reporting come from the [SPARROW](https://github.com/WICG/sparrow) Gatekeeper and [Dovekey](https://github.com/google/ads-privacy/tree/master/proposals/dovekey) Key-Value server.
+Most of these ideas are drawn from the past year's ongoing discussion of variants on the [original TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/Original-TURTLEDOVE.md) idea.  Interest group metadata, and applying k-anonymity thresholds only to the rendering and reporting of ads, come from [Outcome-based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) and [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md), as well as discussion [here](https://github.com/WICG/turtledove/issues/361#issuecomment-1430069343).  The separation and clarification of the DSP and SSP roles are along the lines described in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md) and [PARRROT](https://github.com/prebid/identity-gatekeeper/blob/master/proposals/PARRROT.md).  The trusted servers to support bidding, rendering, and reporting come from the [SPARROW](https://github.com/WICG/sparrow) Gatekeeper and [Dovekey](https://github.com/google/ads-privacy/tree/master/proposals/dovekey) Key-Value server.
 
 This still lacks some features that are important for web advertising, and lacks some privacy protections that are important for preventing cross-site tracking.  For example, the first experiment does not (yet) have a mechanism for multi-level on-device auctions, an ad ecosystem feature that needs more design work before we can offer on-device support.  And the temporary italicized carve-outs in the above bulleted list all need privacy-safe replacements before our work is done.
 
@@ -187,7 +188,7 @@ The `executionMode` attribute is optional, and may contain one of the following 
 
 The `ads` list contains the various ads that the interest group might show.  Each entry is an object that must contain a `renderURL` property with the URL for the ad that would be shown. An ad may also have the following optional properties:
 
- * `adRenderId`: A short [Bytestring](https://webidl.spec.whatwg.org/#es-ByteString) up to 8 characters long serving as an identifier for this ad in this interest group. When this field is specified it will be sent instead of the full ad object for [B&A server auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
+ * `adRenderId`: A short [DOMString](https://webidl.spec.whatwg.org/#idl-DOMString) up to 12 characters long serving as an identifier for this ad in this interest group. When this field is specified it will be sent instead of the full ad object for [B&A server auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
 
  * `buyerAndSellerReportingId`: If set, the value is used instead of the interest group name or `buyerReportingId` for reporting in `reportWin` and `reportResult`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
 
@@ -222,6 +223,20 @@ Indicating whether the origin in the path has permissions to join and/or leave i
 Since joining or leaving a group may depend on a network request, browsers may delay these requests, or run them out of order. Each frame must, however, run all pending joins and leaves for a single owner in the order in which they were made. Same-origin operations should be applied immediately. When a page or frame is navigated, the browser should make a best-effort attempt to complete pending join and leave operations that are blocked on a network fetch, but may choose to drop them if there are more than 20 for a single top-level frame. This is intended to allow joining or leaving a cross-origin interest group at the same time as starting a navigation in response to a user gesture, though previous join/leave calls may still cause such an operation to be dropped.
 
 In order to prevent leaking data, join and leave calls must request the `.well-known` file, regardless of whether the user is in the group or not, as otherwise, whether or not a fetch is made can potentially leak data. Browsers may cache `.well-known` fetch results that share a network partition key.
+
+
+#### 1.4 Buyer Security Considerations
+
+As buyers construct interest groups there are some things they should consider
+to protect themselves:
+ * Buyers should join interest groups in an origin that is not also used for ad
+   rendering.  In other words, the `ads` `renderURL`s should not be same-origin
+   with the interest group’s `owner`.  This can help prevent ad creatives from
+   performing same-origin operations from the interest group owner’s origin.
+ * Buyers should only place bids in auctions with sellers that they trust and
+   have existing business relationships with, otherwise placing a bid may share
+   information the buyer learned about the user with an unknown seller.
+
 
 ### 2. Sellers Run On-Device Auctions
 
@@ -348,8 +363,6 @@ The values of some signals (those configured by fields `auctionSignals`, `seller
 #### 2.2 Auction Participants
 
 Each interest group the browser has joined and whose owner is in the list of `interestGroupBuyers` will have an opportunity to bid in the auction.  See the "Buyers Provide Ads and Bidding Functions" section, below, for how interest groups bid.
-
-The seller may instead specify `'interestGroupBuyers': '*'` to permit all interest groups into the auction, and decide ad admissibility later in the process, based on criteria other than the interest group owner.  For example, a seller with an out-of-band creative review process might decide admissibility solely based on the creative, not the buyer.
 
 
 #### 2.3 Scoring Bids
@@ -478,7 +491,7 @@ Buyers have three basic jobs in the on-device ad auction:
 
 Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsURL` and `trustedBiddingSignalsKeys` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
 
-    https://www.kv-server.example/getvalues?hostname=publisher.com&experimentGroupId=12345&keys=key1,key2&interestGroups=name1,name2
+    https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2&interestGroupNames=name1,name2&experimentGroupId=12345
 
 The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsURL`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `experimentGroupId` comes from `perBuyerExperimentGroupIds` if provided, `keys` is a list of `trustedBiddingSignalsKeys` strings, and `interestGroupNames` is a list of the names of the interest groups that data is being fetched for.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsURL` (which means they also share an owner).
 
@@ -571,12 +584,13 @@ The arguments to `generateBid()` are:
 *   auctionSignals: As provided by the seller in the call to `runAdAuction()`.  This is the opportunity for the seller to provide information about the page context (ad size, publisher ID, etc), the type of auction (first-price vs second-price), and so on.
 *   perBuyerSignals: The value for _this specific buyer_ as taken from the auction config passed to `runAdAuction()`.  This can include contextual signals about the page that come from the buyer's server, if the seller is an SSP which performs a real-time bidding call to buyer servers and pipes the response back, or if the publisher page contacts the buyer's server directly.  If so, the buyer may wish to check a cryptographic signature of those signals inside `generateBid()` as protection against tampering.
 *   trustedBiddingSignals: An object whose keys are the `trustedBiddingSignalsKeys` for the interest group, and whose values are those returned in the `trustedBiddingSignals` request.
-*   browserSignals: An object constructed by the browser, containing information that the browser knows, and which the buyer's auction script might want to use or verify.  The `dataVersion` field will only be present if the `Data-Version` header was provided and had a consistent value for all of the trusted bidding signals server responses used to construct the trustedBiddingSignals. `topLevelSeller` is only present if `generateBid()` is running as part of a component auction. Additional fields can include information about both the context (e.g. the true hostname of the current page, which the seller could otherwise lie about) and about the interest group itself (e.g. times when it previously won the auction, to allow on-device frequency capping). Note that unlike for `reportWin()` the `joinCount` in `generateBid()`'s browser signals *isn't* subject to the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
+*   browserSignals: An object constructed by the browser, containing information that the browser knows, and which the buyer's auction script might want to use or verify.  The `dataVersion` field will only be present if the `Data-Version` header was provided and had a consistent value for all of the trusted bidding signals server responses used to construct the trustedBiddingSignals. `topLevelSeller` is only present if `generateBid()` is running as part of a component auction. Additional fields can include information about both the context (e.g. the true hostname of the current page, which the seller could otherwise lie about) and about the interest group itself (e.g. times when it previously won the auction, to allow on-device frequency capping). Note that unlike for `reportWin()` the `joinCount` and `recency` in `generateBid()`'s browser signals *isn't* subject to the [noising and bucketing scheme](#521-noised-and-bucketed-signals). Furthermore, `recency` in `generateBid()`'s browser signals is specified in milliseconds, rounded to the nearest 100 milliseconds.
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
       'seller': 'https://www.example-ssp.com',
       'topLevelSeller': 'https://www.another-ssp.com',
       'joinCount': 3,
+      'recency': 3600000,
       'bidCount': 17,
       'prevWins': [[time1,ad1],[time2,ad2],...],
       'wasmHelper': ... /* a WebAssembly.Module object based on interest group's biddingWasmHelperURL */
