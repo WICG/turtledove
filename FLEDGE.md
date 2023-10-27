@@ -923,10 +923,10 @@ Note that `incomingBidInSellerCurrency` is different from the modified bid retur
 The following table summarizes which APIs get original and which get converted bid values, and how redaction for currency tags works, depending on whether `sellerCurrency` is set or not:
 | API | when `sellerCurrency` unset | when `sellerCurrency` set |
 | --- | --- | --- |
-|`reportWin()` `browserSignals.bid` | Original value | Same |
-|`reportWin()` `browserSignals.bidCurrency` | Currency required by auction configuration, or `'???'` | Same |
-|`reportResult()` `browserSignals.bid` | Original value of bid at that auction level (for top-level auction this includes any modification by component-auction)  | Same (in Chrome since M116) |
-|`reportResult()` `browserSignals.bidCurrency` | Currency required by auction configuration, or `'???'` | Same (in Chrome since M116) |
+|`reportWin()` `browserSignals.bid` | Original value | Original value |
+|`reportWin()` `browserSignals.bidCurrency` | Currency required by auction configuration, or `'???'` | Currency required by auction configuration, or `'???'` |
+|`reportResult()` `browserSignals.bid` | Original value of bid at that auction level (for top-level auction this includes any modification by component auction)  | Original value of bid at that auction level (for top-level auction this includes any modification by component auction) (in Chrome since M116) |
+|`reportResult()` `browserSignals.bidCurrency` | Currency required by auction configuration, or `'???'` | Currency required by auction configuration, or `'???'` (in Chrome since M116) |
 |`reportWin()` browserSignals.highestScoringOtherBid | Original value | Converted value |
 |`reportWin()` browserSignals.highestScoringOtherBidCurrency | `'???'` | `sellerCurrency` |
 |`reportResult()` browserSignals.highestScoringOtherBid | Original value | Converted value |
