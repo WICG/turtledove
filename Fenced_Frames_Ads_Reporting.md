@@ -47,13 +47,16 @@ The following new APIs will be added for achieving this.
 
 ## reportEvent (preregistered destination URL)
 
-There are two variants of the `reportEvent` API for event-level reporting that are invoked with different sets of parameters. In the first variant, fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon with event data to a URL registered by the worklet in `registerAdBeacon` (see below). The registered destination is required to be attested for Protected Audience API, otherwise the beacon will not be sent. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). Depending on the declared `destination`, the beacon is sent to either the buyer's or the seller's registered URL. Examples of such events are mouse hovers, clicks (which may or may not lead to navigation e.g. video player control element clicks), etc.
+There are two variants of the `reportEvent` API for event-level reporting that are invoked with different sets of parameters. In the first variant, fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon with event data to a URL registered by the worklet in `registerAdBeacon` (see below). Depending on the declared `destination`, the beacon is sent to either the buyer's or the seller's registered URL. Examples of such events are mouse hovers, clicks (which may or may not lead to navigation e.g. video player control element clicks), etc.
 
 This API is available from all documents in a fenced frame that are same-origin to the mapped URL of the fenced frame config (i.e., the ad creative URL that won the Protected Audience auction).
 
 The browser processes the beacon by sending an HTTP POST request, like the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
 
 Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. In the interim period when FLEDGE supports rendering the winning ad in an iframe, `window.fence` will also be available in such an iframe.
+
+### Enrollment Requirement
+The reporting destination registered by `registerAdBeacon` is required to be attested for Protected Audience API, otherwise the beacon will not be sent. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
 
 ### Parameters
 
@@ -107,11 +110,14 @@ window.fence.reportEvent({
 
 ## reportEvent (custom destination URL with substitution of preregistered macros)
 
-In the second `reportEvent` variant, fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon to a specified destination URL, where macros in the URL are substituted to values registered by the buyer's worklet in `registerAdMacro` (see below). The specified destination is required to be attested for Protected Audience API, otherwise the beacon will not be sent. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). This specified URL must be a valid HTTPS URL.
+In the second `reportEvent` variant, fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon to a specified destination URL, where macros in the URL are substituted to values registered by the buyer's worklet in `registerAdMacro` (see below). This specified URL must be a valid HTTPS URL.
 
 This API is available in the same contexts as `reportEvent` to a preregistered destination, i.e., documents that are same-origin to the fenced frame config's mapped URL. However, there are additional restrictions on the origin of the destination URL. The interest group declaration includes an allowlist of origins that may receive reports using this mode of `reportEvent` (custom destination URL with macro substitution). If at any point a report is attempted to a disallowed origin, access to this mode of `reportEvent` will be shut off for any ad loaded from this fenced frame config, for privacy reasons (to prevent reidentification by using the allowlist to encode cross-site data about a user in binary with its choices of allowed/disallowed origins). Note that this only applies to this mode of `reportEvent`: `reportEvent` to a preregistered destination will still work.
 
 Unlike `reportEvent` to a preregistered destination, here the browser processes the beacon by sending an HTTP GET request, as per feedback here: https://github.com/WICG/turtledove/issues/477#issuecomment-1524158476.
+
+### Enrollment Requirement
+The reporting destination specified in `reportEvent`'s `destinationURL` field is required to be attested for Protected Audience API, otherwise the beacon will not be sent. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
 
 ### Parameters
 
@@ -253,6 +259,9 @@ window.fence.setReportEventDataForAutomaticBeacons({
   'once': true,
 });
 ```
+
+#### Enrollment Requirement
+The reporting destination registered by `setReportEventDataForAutomaticBeacons` is required to be attested for Protected Audience API, otherwise the automatic beacon will not be sent. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
 
 # Support for Ad Components
 For ad components [rendered in fenced frames](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#4-browsers-render-the-winning-ad), the support for event-level reporting described below is available in Chrome starting M114. 
