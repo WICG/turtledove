@@ -45,14 +45,15 @@ The following summarizes the sequence of events for the buyer and seller. Distin
 The following new APIs will be added for achieving this.
 
 
-## reportEvent
+## reportEvent (preregistered destination URL)
 
-Fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon with event data to a URL registered by the worklet in `registerAdBeacon` (see below). The registered destination is required to be attested for Protected Audience API, otherwise the beacon will not be sent. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). Depending on the declared `destination`, the beacon is sent to either the buyer's or the seller's registered URL. Examples of such events are mouse hovers, clicks (which may or may not lead to navigation e.g. video player control element clicks), etc.
+There are two variants of the `reportEvent` API for event-level reporting that are invoked with different sets of parameters. In the first variant, fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon with event data to a URL registered by the worklet in `registerAdBeacon` (see below). The registered destination is required to be attested for Protected Audience API, otherwise the beacon will not be sent. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). Depending on the declared `destination`, the beacon is sent to either the buyer's or the seller's registered URL. Examples of such events are mouse hovers, clicks (which may or may not lead to navigation e.g. video player control element clicks), etc.
 
-This API is available from same-origin frames within the initial rendered ad document and across subsequent same-origin navigations, but it's no longer available after cross-origin navigations or in cross-origin subframes. (For this API, for chains of redirects, the requestor is considered same-origin with the target only if it is same-origin with all redirect URLs in the chain.) This way, the ad may redirect itself without losing access to reporting, but other sites can't send spurious reports.
+This API is available from all documents in a fenced frame that are same-origin to the mapped URL of the fenced frame config (i.e., the ad creative URL that won the Protected Audience auction).
 
 The browser processes the beacon by sending an HTTP POST request, like the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
 
+Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. In the interim period when FLEDGE supports rendering the winning ad in an iframe, `window.fence` will also be available in such an iframe.
 
 ### Parameters
 
@@ -104,12 +105,31 @@ window.fence.reportEvent({
 });
 ```
 
+## reportEvent (custom destination URL with substitution of preregistered macros)
 
-Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. In the interim period when FLEDGE supports rendering the winning ad in an iframe, `window.fence` will also be available in such an iframe.
+In the second `reportEvent` variant, fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon to a specified destination URL, where macros in the URL are substituted to values registered by the buyer's worklet in `registerAdMacro` (see below). The registered destination is required to be attested for Protected Audience API, otherwise the beacon will not be sent. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). This specified URL must be a valid HTTPS URL.
+
+This API is available in the same contexts as `reportEvent` to a preregistered destination, i.e., documents that are same-origin to the fenced frame config's mapped URL. However, there are additional restrictions on the origin of the destination URL. The interest group declaration includes an allowlist of origins that may receive reports using this mode of `reportEvent` (custom destination URL with macro substitution). If at any point a report is attempted to a disallowed origin, access to this mode of `reportEvent` will be shut off for any ad loaded from this fenced frame config, for privacy reasons (to prevent reidentification by using the allowlist to encode cross-site data about a user in binary with its choices of allowed/disallowed origins). Note that this only applies to this mode of `reportEvent`: `reportEvent` to a preregistered destination will still work.
+
+Unlike `reportEvent` to a preregistered destination, here the browser processes the beacon by sending an HTTP GET request, as per feedback here: https://github.com/WICG/turtledove/issues/477#issuecomment-1524158476.
+
+### Parameters
+
+**Destination URL:** Includes the desired destination URL for the report, with macros to be substituted based on the buyer worklet's specified values.
+
+### Example
+
+Here is an example that will substitute `${PUBLISHER_ID}` and `${SOURCE_URL_ENC}` macros based on values specified in the buyer worklet.
+```
+window.fence.reportEvent({
+  'destinationURL': 'https://adtech.example/impression?cid=555&pub_id=${PUBLISHER_ID}&site=${SOURCE_URL_ENC}&t=123'});
+```
+
+In this example, the destination eTLD+1 is "adtech.example". [The Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model) requires its corresponding site (scheme, eTLD+1) `"https://adtech.example"` to be enrolled as defined in [site-based enrollment](https://developer.chrome.com/blog/announce-enrollment-privacy-sandbox/#site-based-enrollment). Otherwise the beacon will not be sent.
 
 ## registerAdBeacon
 
-A similar API was initially discussed here: https://github.com/WICG/turtledove/issues/99 for reporting clicks. The idea is that the buyer and seller side worklets are able to register a URL with the browser in their reportWin and reportResult APIs. The registered URL's site is required to be attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). If the URL is attested for Protected Audience API, a beacon will be sent to the registered URL when events are reported by the fenced frame via reportEvent. Otherwise the beacon will not be sent. In the case of redirect, the redirected site is not checked for enrollment and attestation since the browser doesn't add any data directly to the redirect URL.  The initial reporting destination site is responsible for acting in accordance with its attestation if it decides to share any data via the redirect URL.
+A similar API was initially discussed here: https://github.com/WICG/turtledove/issues/99 for reporting clicks. The idea is that the buyer and seller side worklets are able to register a URL with the browser in their reportWin and reportResult APIs. The registered URL's site (scheme, eTLD+1) is required to be attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). If the URL is attested for Protected Audience API, a beacon will be sent to the registered URL when events are reported by the fenced frame via reportEvent. Otherwise the beacon will not be sent. In the case of redirect, the redirected site is not checked for enrollment and attestation since the browser doesn't add any data directly to the redirect URL.  The initial reporting destination site is responsible for acting in accordance with its attestation if it decides to share any data via the redirect.
 
 
 ### Parameters
@@ -127,8 +147,22 @@ registerAdBeacon({
 });
 ```
 
-In this example, the registered URL for the `click` event is 
-`"https://adtech.example.co.jp/click?buyer_event_id=123"`. The registrable domain of this URL is `"example.co.jp"`. [The Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model) requires its corresponding site `"https://example.co.jp"` to be enrolled as defined in [site-based enrollment](https://developer.chrome.com/blog/announce-enrollment-privacy-sandbox/#site-based-enrollment). Otherwise the beacon will not be sent when there is a `click` event.
+In this example, the destination eTLD+1 is "adtech.example". [The Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model) requires its corresponding site (scheme, eTLD+1) `"https://adtech.example"` to be enrolled as defined in [site-based enrollment](https://developer.chrome.com/blog/announce-enrollment-privacy-sandbox/#site-based-enrollment). Otherwise the beacon will not be sent when there is a `click` event.
+
+## registerAdMacro
+Bidder worklets are able to register macros with the browser in their `reportWin()` function. The registered macro values are used to substitute macros in the destination URL of the `reportEvent()` API's parameter.
+
+### Parameters
+Two strings.
+**macro name** It’s case sensitive, e.g., `“PUBLISHER_ID”`. 
+
+**macro value** The value of the macro that is used to substitute the macro (e.g., ${PUBLISHER_ID}) in `reportEvent()` API’s destination URL parameter.
+
+### Example
+```
+registerAdMacro(‘PUBLISHER_ID’, ‘123a’);
+registerAdMacro(‘SOURCE_URL_ENC’, ‘http%3A%2F%2Fpub%2Eexample%2Fpage’);
+```
 
 ## Support for Attribution Reporting 
 ### Goals
@@ -167,7 +201,7 @@ Since the `reserved.top_navigation` beacons are automatically generated by the b
 window.fence.setReportEventDataForAutomaticBeacons({
   'eventType': 'reserved.top_navigation',
   'eventData': 'an example string',
-  'destination':['seller', 'buyer']
+  'destination': ['seller', 'buyer'],
 });
 ```
 
@@ -179,6 +213,14 @@ If invoked multiple times, the latest invocation before the top-level navigation
 `eventData` is optional, and can be empty. If `eventData` is not specified, or is empty, the automatic beacon will still be sent but without an event data body in the HTTP request.
 
 If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon because the `destination` is unknown.
+
+An automatic beacon can be manually cleared out by calling `setReportEventDataForAutomaticBeacons` with an empty destination list.
+```
+window.fence.setReportEventDataForAutomaticBeacons({
+  'eventType': 'reserved.top_navigation',
+  'destination': [],
+});
+```
 
 `setReportEventDataForAutomaticBeacons` can also be invoked in the click handler of an anchor tag, and will be sent on navigation:
 
@@ -199,7 +241,23 @@ function addBeaconData(element) {
 
 The beacon data will be in place by the time that the navigation starts. When the navigation commits, the automatic beacon will be sent out with event data set to "link1 was clicked.".
 
+The dictionary passed into `setReportEventDataForAutomaticBeacons` also takes an optional `once` boolean that defaults to false. If `once` is set to true, the automatic beacon will only be sent for the next `reserved.top_navigation` event. Beacons will not be sent for subsequent `reserved.top_navigation` events until `setReportEventDataForAutomaticBeacons` is invoked again. When used with a click handler, this can be used to send beacons only for specific top-level navigations, rather than for every top-level navigation.
+
+For example, if a frame has multiple links that can perform top-level navigations, but only one of the links should have an automatic beacon associated with it, `setReportEventDataForAutomaticBeacons()` can be called in that link's click handler with `once` set to true. This will ensure that, if another link is clicked after the link with the associated automatic beacon, that other link will not result in a beacon being sent out.
+
+```
+window.fence.setReportEventDataForAutomaticBeacons({
+  'eventType': 'reserved.top_navigation',
+  'eventData': 'an example string',
+  'destination': ['seller', 'buyer'],
+  'once': true,
+});
+```
+
 # Support for Ad Components
+For ad components [rendered in fenced frames](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#4-browsers-render-the-winning-ad), the support for event-level reporting described below is available in Chrome starting M114. 
+For ad components rendered in iframes, the support will be available in Chrome starting M115. The support works for all combinations of the top-level ad and ad component being rendered in iframes and/or Fenced Frames.
+
 ## Goal
 When a rendered ad is composed of [multiple pieces](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces), it is useful to detect user clicks that happened on ad components.
 
