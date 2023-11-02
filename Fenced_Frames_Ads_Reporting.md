@@ -200,7 +200,7 @@ As mentioned in the explainer above, `reportEvent` beacons are POST requests and
 
 ##### Enrollment Requirement
 
-For redirects, the redirect URL is not checked for enrollment and attestation. This is because the browser does not add any data directly to the redirect URL. Only the initial reporting destination is checked for attestation for Protected Audience API. The initial reporting destination is responsible for acting accordance with its attestation if it decideds to share any data via the redirect.
+For redirects, the redirect URL is not checked for enrollment and attestation. This is because the browser does not add any data directly to the redirect URL. Only the initial reporting destination is checked for attestation for Protected Audience API. The initial reporting destination is responsible for acting accordance with its attestation if it decides to share any data via the redirect.
 
 ### API to populate event data for reserved.top_navigation
 
