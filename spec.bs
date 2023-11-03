@@ -1128,7 +1128,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       returned from an associated [=request=], whose [=request/initiator type=] is `"fetch"` and the
       {{RequestInit/adAuctionHeaders}} option set to `true`, resolves or rejects. Otherwise, there
       will be a race condition that the worklet can run without the direct from seller signals that
-      it needs. See [[#fetch-patch-auction-headers] for details.
+      it needs. See [[#fetch-patch-for-auction-headers]] for details.
 
     * To parse the value |result|:
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
@@ -3732,7 +3732,7 @@ Issue(WICG/turtledove#522): Move from "`*`" to "`self`".
 
 # Fetch Patch for Auction Headers # {#fetch-patch-for-auction-headers}
 
-This section specifies a manner by which some data, including [=additional bid=] and
+This section specifies a manner by which some data, including [=additional bids=] and
 [=direct from seller signals=], may be provided to auctions such that the data is only used within
 their intended auction.
 
@@ -3804,6 +3804,9 @@ The following step will be added to the [=HTTP-network-or-cache fetch=] algorith
 <div algorithm="fetch auction headers patch">
 The following will be added to [[Fetch#http-extensions]]:
 
+<h3 id=sec-ad-auction-fetch-header>The \`<a http-header><code>Sec-Ad-Auction-Fetch</code></a>\` HTTP
+request header</h3>
+
 The \`<dfn http-header><code>Sec-Ad-Auction-Fetch</code></dfn>\` request header is an optional
 [=structured header=] with of type [=structured header/boolean=]. [:Sec-Ad-Auction-Fetch:] will only
 be set on a [=request=] whose [=request/initiator type=] is `"fetch"`, made with the
@@ -3811,9 +3814,15 @@ be set on a [=request=] whose [=request/initiator type=] is `"fetch"`, made with
 the user agent will remove any [:Ad-Auction-Signals:] from the returned [=response=] -- the
 [:Ad-Auction-Signals:] value will instead only be used in Protected Audiences auctions. 
 
+<h3 id=ad-auction-signals-header>The \`<a http-header><code>Ad-Auction-Signals</code></a>\` HTTP
+response header</h3>
+
 The \`<dfn http-header><code>Ad-Auction-Signals</code></dfn>\` response header provides value
 of a JSON array of dictionaries, each with an `adSlot` key. Protected Audience non-component,
 component, and top-level auctions may specify which signals to load by the `adSlot` key.
+
+<h3 id=ad-auction-additional-bid-header>The \`<a http-header><code>Ad-Auction-Additional-Bid</code></a>\`
+HTTP response header.</h3>
 
 The \`<dfn http-header><code>Ad-Auction-Additional-Bid</code></dfn>\` response header provides value
 of a string in the format of `<auction nonce>:<base64-encoding of the signed additional bid>`, which
