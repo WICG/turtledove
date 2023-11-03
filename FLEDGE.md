@@ -955,10 +955,10 @@ The following table summarizes which APIs get original and which get converted b
 |`reportWin()` `browserSignals.bidCurrency` | Currency required by auction configuration, or `'???'` | Currency required by auction configuration, or `'???'` |
 |`reportResult()` `browserSignals.bid` | Original value of bid at that auction level (for top-level auction this includes any modification by component auction)  | Original value of bid at that auction level (for top-level auction this includes any modification by component auction) (in Chrome since M116) |
 |`reportResult()` `browserSignals.bidCurrency` | Currency required by auction configuration, or `'???'` | Currency required by auction configuration, or `'???'` (in Chrome since M116) |
-|`reportWin()` browserSignals.highestScoringOtherBid | Original value | Converted value |
-|`reportWin()` browserSignals.highestScoringOtherBidCurrency | `'???'` | `sellerCurrency` |
-|`reportResult()` browserSignals.highestScoringOtherBid | Original value | Converted value |
-|`reportResult()` browserSignals.highestScoringOtherBidCurrency | `'???'` | `sellerCurrency` |
+|`reportWin()` `browserSignals.highestScoringOtherBid` | Original value | Converted value |
+|`reportWin()` `browserSignals.highestScoringOtherBidCurrency` | `'???'` | `sellerCurrency` |
+|`reportResult()` `browserSignals.highestScoringOtherBid` | Original value | Converted value |
+|`reportResult()` `browserSignals.highestScoringOtherBidCurrency` | `'???'` | `sellerCurrency` |
 | `forDebuggingOnly.report...` keyword `${winningBid}` | Original value | Converted value |
 | `forDebuggingOnly.report...` keyword `${winningBidCurrency}` | `'???'` | `sellerCurrency`|
 | `forDebuggingOnly.report...` keyword `${highestScoringOtherBid}` | Original value | Converted value |
