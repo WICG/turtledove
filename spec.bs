@@ -706,6 +706,7 @@ dictionary AuctionAdConfig {
   USVString sellerCurrency;
   Promise<record<USVString, any>> perBuyerSignals;
   Promise<record<USVString, unsigned long long>> perBuyerTimeouts;
+  Promise<record<USVString, unsigned long long>> perBuyerCumulativeTimeouts;
   record<USVString, unsigned short> perBuyerGroupLimits;
   record<USVString, unsigned short> perBuyerExperimentGroupIds;
   record<USVString, record<USVString, double>> perBuyerPrioritySignals;
@@ -1163,23 +1164,36 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
         1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to
           |signalsString|.
     * To handle an error, set |auctionConfig|'s [=auction config/per buyer signals=] to failure.
-1. If |config|["{{AuctionAdConfig/perBuyerTimeouts}}"] [=map/exists=]:
-  1. Set |auctionConfig|'s [=auction config/per buyer timeouts=] to
-      |config|["{{AuctionAdConfig/perBuyerTimeouts}}"].
-  1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
-    [=auction config/per buyer timeouts=]:
-    * To parse the value |result|:
-      1. Set |auctionConfig|'s [=auction config/per buyer timeouts=] to a new [=ordered map=] whose
-        [=map/keys=] are [=origins=] and whose [=map/values=] are [=durations=] in milliseconds.
-      1. [=map/For each=] |key| → |value| of |result|:
-        1. If |key| is "*", then set |auctionConfig|'s [=auction config/all buyers timeout=]
-          to |value| in milliseconds or 500 milliseconds, whichever is smaller, and
-          [=iteration/continue=].
-        1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
-          failure, [=exception/throw=] a {{TypeError}}.
-        1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|] to
-          |value| in milliseconds or 500 milliseconds, whichever is smaller.
-    * To handle an error, set |auctionConfig|'s [=auction config/per buyer timeouts=] to failure.
+1. For each |idlTimeoutMember|, |perBuyerTimeoutField|, |allBuyersTimeoutField| in the following table
+  <table class="data">
+    <thead><tr><th>IDL timeout member</th><th>Per buyer timeout field</th><th>All buyers timeout field</th></tr></thead>
+    <tr>
+      <td>"{{AuctionAdConfig/perBuyerTimeouts}}"</td>
+      <td>[=auction config/per buyer timeouts=]</td>
+      <td>[=auction config/all buyers timeout=]</td>
+    </tr>
+    <tr>
+      <td>"{{AuctionAdConfig/perBuyerCumulativeTimeouts}}"</td>
+      <td>[=auction config/per buyer cumulative timeouts=]</td>
+      <td>[=auction config/all buyers cumulative timeout=]</td>
+    </tr>
+  </table>
+  1. If |config| [=map/contains=] |idlTimeoutMember|:
+    1. Set |auctionConfig|'s |perBuyerTimeoutField| to |config|[|idlTimeoutMember|].
+    1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
+      |perBuyerTimeoutField|:
+      * To parse the value |result|:
+        1. Set |auctionConfig|'s |perBuyerTimeoutField| to a new [=ordered map=] whose
+          [=map/keys=] are [=origins=] and whose [=map/values=] are [=durations=] in milliseconds.
+        1. [=map/For each=] |key| → |value| of |result|:
+          1. If |perBuyerTimeoutField| is "{{AuctionAdConfig/perBuyerTimeouts}}", and
+            |value| &gt; 500, then set |value| to 500.
+          1. If |key| is "*", then set |auctionConfig|'s |allBuyersTimeoutField| to |value| in
+            milliseconds, and [=iteration/continue=].
+          1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
+            failure, [=exception/throw=] a {{TypeError}}.
+          1. [=map/Set=] |auctionConfig|'s |perBuyerTimeoutField|[|buyer|] to |value| in milliseconds.
+      * To handle an error, set |auctionConfig|'s |perBuyerTimeoutField| to failure.
 1. If |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"] [=map/exists=], [=map/for each=]
   |key| → |value| of |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"]:
   1. If |value| is 0, then return failure.
@@ -1483,6 +1497,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Decrement |pendingAdditionalBids| by 1.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
+  1. Let |perBuyerCumulativeTimeout| be |auctionConfig|'s
+    [=auction config/all buyers cumulative timeout=].
+  1. If |auctionConfig|'s [=auction config/per buyer cumulative timeouts=] is not null and
+    [=auction config/per buyer cumulative timeouts=][|buyer|] [=map/exists=], then set
+    |perBuyerCumulativeTimeout| to |auctionConfig|'s
+    [=auction config/per buyer cumulative timeouts=][|buyer|].
   1. Let |buyerExperimentGroupId| be |allBuyersExperimentGroupId|.
   1. Let |perBuyerExperimentGroupIds| be |auctionConfig|'s
     [=auction config/per buyer experiment group ids=].
@@ -1516,6 +1536,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perBuyerGenerator|:
     1. Let |keys| be a new [=ordered set=].
     1. Let |igNames| be a new [=ordered set=].
+    1. Let |fetchSignalStartTime| be |settings|'s [=environment settings object/current monotonic time=].
+
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
@@ -1526,16 +1548,25 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       with |biddingSignalsUrl| and true.
     1. If |dataVersion| is not null, then [=map/set=]
       |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
+    1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to |settings|'s
+      [=environment settings object/current monotonic time=], in milliseconds.
+    1. If |perBuyerCumulativeTimeout| is not null:
+      1. Decrement |perBuyerCumulativeTimeout| by |fetchSignalDuration|.
+      1. If |perBuyerCumulativeTimeout| is negative, then [=iteration/break=];
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
         1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
-        1. Let |directFromSellerSignalsForBuyer| be the result of running
-            [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and
-            |ig|'s [=interest group/owner=].
-        1. Let |generatedBid| be the result of [=generate a bid=] given
-          |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
-          |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
-          |ig|, and |auctionStartTime|.
+        1. If |perBuyerCumulativeTimeout| is not null and is less than |perBuyerTimeout|, then set
+          |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
+        1. Let |generateBidStartTime| be |settings|'s
+          [=environment settings object/current monotonic time=].
+        1. Let |generatedBid| be the result of [=generate a bid=] given |allTrustedBiddingSignals|,
+          |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
+          |perBuyerTimeout|, |expectedCurrency|, |ig|, and |auctionStartTime|.
+        1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
+          [=environment settings object/current monotonic time=], in milliseconds.
+        1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
+          |generateBidDuration|.
         1. If |generatedBid| is failure, [=iteration/continue=].
         1. If [=query generated bid k-anonymity count=] given |generatedBid| returns false:
 
@@ -1563,13 +1594,20 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               1. If [=query component ad k-anonymity count=] given |adComponent|'s
                 [=interest group ad/render url=] returns true, [=list/append=] |adComponent| to |ig|'s
                 [=interest group/ad components=].
+          1. If |perBuyerCumulativeTimeout| is not null and is less than |perBuyerTimeout|, then set
+            |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
+          1. Let |generateBidStartTime| be |settings|'s
+            [=environment settings object/current monotonic time=].
           1. Set |generatedBid| to the result of [=generate a bid=] given
             |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
             |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
             and |ig|.
-
           1. Set |ig|'s [=interest group/ads=] to |originalAds|.
           1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
+          1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
+            |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
+          1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
+            by |generateBidDuration|.
           1. If |generatedBid| is failure, [=iteration/continue=].
         1. [=list/Insert=] |generatedBid|'s [=generated bid/interest group=] in |bidIgs|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
@@ -2953,6 +2991,10 @@ of the following global objects:
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupBiddingScriptRunnerGlobalScope}}.
     1. Let |global| be |realm|'s [=realm/global object=].
+    1. Let |settings| be |realm|'s [=realm/settings object=].
+
+      Issue: <a href="https://github.com/WICG/turtledove/issues/676">WICG/turtledove#676</a> needs
+      to be fixed in order to get |realm|'s [=realm/settings object=].
     1. Set |global|'s
       [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=] to true if |ig|'s
       [=interest group/ad components=] is not null, or false otherwise.
@@ -2972,11 +3014,12 @@ of the following global objects:
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
     1. Let |directFromSellerSignalsJs| be |directFromSellerSignalsForBuyer|
       [=converted to ECMAScript values=].
-    1. Let |startTime| be the [=current wall time=].
+    1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
     1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
       « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignalsJS|, |browserSignalsJS|,
       |directFromSellerSignalsJs| », and |timeout|.
-    1. Let |duration| be the [=current wall time=] minus |startTime| in milliseconds.
+    1. Let |duration| be |settings|'s [=environment settings object/current monotonic time=] minus
+      |startTime| in milliseconds.
     1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null and not failure:
       1. Set |ig|'s [=interest group/priority=] to |global|'s
         [=InterestGroupBiddingScriptRunnerGlobalScope/priority=].
@@ -3056,12 +3099,15 @@ of the following global objects:
 
 <div algorithm>
   To <dfn>evaluate a script</dfn> with a [=ECMAScript/realm=] |realm|, [=string=] |script|, [=string=]
-  |functionName|, a [=list=] |arguments|, and an integer millisecond duration |timeout|, run these steps.
+  |functionName|, a [=list=] |arguments|, and an integer millisecond [=duration=] |timeout|, run these steps.
   They return a [=ECMAScript/Completion Record=], which is either an [=ECMAScript/abrupt completion=] (in
   the case of a parse failure or execution error), or a [=ECMAScript/normal completion=] populated with the
   [=ECMAScript/ECMAScript language value=] result of invoking |functionName|.
 
     1. [=Assert=] that these steps are running [=in parallel=].
+
+    1. If |timeout| &le; 0, [=immediately=] interrupt the execution and set |finalCompletion| to a
+      new [=ECMAScript/throw completion=] given null.
 
     1. Let |global| be |realm|'s [=realm/global object=], and run these steps in |realm|'s [=realm/agent=]:
 
@@ -3233,7 +3279,7 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
     [=generated bid/ad cost=] to |generateBidOutput|["{{GenerateBidOutput/adCost}}"].
   1. If |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"] [=map/exists=]:
     1. Let |modelingSignals| be |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"].
-    1. If |modelingSignals| &ge; 0 and |modelingSignals| < 4096, then set |bid|'s
+    1. If |modelingSignals| &ge; 0 and |modelingSignals| &lt; 4096, then set |bid|'s
       [=generated bid/modeling signals=] to the result of [=converted to an IDL value|converting=]
       the ECMAScript value represented by |modelingSignals| to an {{unsigned short}}.
   1. Return |bid|.
@@ -4003,7 +4049,10 @@ dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
   DOMString buyerReportingId;
   unsigned short modelingSignals;
   unsigned long dataVersion;
+  KAnonStatus kAnonStatus;
 };
+
+enum KAnonStatus { "passedAndEnforced", "passedNotEnforced", "belowThreshold", "notCalculated" };
 </xmp>
 
 <dl class=domintro>
@@ -4031,6 +4080,17 @@ dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
   <dt>{{ReportWinBrowserSignals/dataVersion}}
   <dd>Only set if the Data-Version header was provided in the response headers from the trusted
     bidding signals server
+  <dt>{{ReportWinBrowserSignals/kAnonStatus}}
+  <dd>Indicate the k-anonymity status of the ad with the following {{KAnonStatus}} enums:
+      * {{KAnonStatus/passedAndEnforced}}: The ad was k-anonymous and k-anonymity was required to win the auction.
+      * {{KAnonStatus/passedNotEnforced}}: The ad was k-anonymous though k-anonymity was not required to win the auction.
+      * {{KAnonStatus/belowThreshold}}: The ad was not k-anonymous but k-anonymity was not required to win the auction.
+      * {{KAnonStatus/notCalculated}}: The browser did not calculate the k-anonymity status of the ad, and k-anonymity was not required to win the auction.
+
+    From a long-term perspective, the status will always be set to `passedAndEnforced` after 
+    k-anonymity is enforced. However, as a temporary solution, current implementations may set 
+    `kAnonStatus` to one of the other three statuses to allow API users to assess the future 
+    impact of enforcing that ads are k-anonymous.
 </dl>
 
 <xmp class="idl">
@@ -4260,6 +4320,23 @@ An auction config is a [=struct=] with the following items:
   Restricts the `generateBid()` script's runtime for all buyers without a timeout specified in
   [=auction config/per buyer timeouts=]. If the timeout expires, only the bid submitted via
   `setBid()` is considered.
+: <dfn>per buyer cumulative timeouts</dfn>
+:: Null, a {{Promise}}, failure, or an [=ordered map=] whose [=map/keys=] are [=origins=] and
+  whose [=map/values=] are [=durations=] in milliseconds.
+  [=map/Keys=] are buyers and must be valid HTTPS [=origins=]. [=map/Values=] are collective
+  timeouts for all interest groups of the buyer represented by the [=map/key=]. Includes the time of
+  loading scripts and signals, and running the `generateBid()` functions. Once the timer expires,
+  the affected buyer's interest groups may no longer generate any bids. All bids generated before
+  the timeout will continue to participate in the auction.
+  Implementations should attempt, on a best-effort basis, to generate bids for each buyer in
+  priority order, so lower priority [=interest groups=] are the ones more likely to be timed out. If
+  {{Promise}}s are passed in to the [=auction config=] for fields that support them,
+  [=wait until configuration input promises resolve=] before starting the timer.
+
+: <dfn>all buyers cumulative timeout</dfn>
+:: Null or a [=duration=] in milliseconds, initially null.
+  Restricts a buyer's cumulative timeout for all buyers without one specified in
+  [=auction config/per buyer cumulative timeouts=].
 : <dfn>per buyer group limits</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
   {{unsigned short}}s.
@@ -4345,12 +4422,13 @@ To <dfn>wait until configuration input promises resolve</dfn> given an [=auction
 1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
 1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-  [=auction config/per buyer timeouts=], and [=auction config/direct from seller signals header ad slot=]
-  are not {{Promise}}s, and [=auction config/expects additional bids=] is false.
+  [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], and
+  [=auction config/direct from seller signals header ad slot=] are not {{Promise}}s, and
+  [=auction config/expects additional bids=] is false.
 1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
   [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-  [=auction config/per buyer timeouts=], or [=auction config/direct from seller signals header ad slot=]
-  is failure, return failure.
+  [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], or
+  [=auction config/direct from seller signals header ad slot=] is failure, return failure.
 1. Return.
 
 </div>
