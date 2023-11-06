@@ -250,7 +250,7 @@ window.fence.setReportEventDataForAutomaticBeacons({
 });
 ```
 
-When 3rd party cookies are enabled, automatic beacon requests only (not beacons sent manually through `reportEvent`) allow credentials (cookies) to be set in headers. This was requested by https://github.com/WICG/turtledove/issues/866 in order to help with migration. These requests are subject to CORS and only occur after opt-in by virtue of calling the `setReportEventDataForAutomaticBeacons` API.
+When 3rd party cookies are enabled, automatic beacon requests only (not beacons sent manually through `reportEvent`) allow credentials (cookies) to be set in headers. This was requested by https://github.com/WICG/turtledove/issues/866 in order to help with migration and ARA debugging. These requests are subject to CORS and only occur after opt-in by virtue of calling the `setReportEventDataForAutomaticBeacons` API.
 
 # Support for Ad Components
 For ad components [rendered in fenced frames](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#4-browsers-render-the-winning-ad), the support for event-level reporting described below is available in Chrome starting M114. 
