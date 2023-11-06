@@ -890,25 +890,22 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 
      : name
      :: |winningBid|'s [=generated bid/interest group=]'s [=interest group/name=]
+1. Let |fencedFrameReportingMap| be the [=map=] «[ "`buyer`" → «», "`seller`" → «» ]».
+1. If |auctionConfig|'s [=auction config/component auctions=] is [=list/empty=], then [=map/set=]
+  |fencedFrameReportingMap|["`component-seller`"] to an empty [=list=] «».
 1. Set |pendingConfig|'s [=fenced frame config/fenced frame reporting metadata=] to a [=struct=]
    with the following [=struct/items=]:
     : [=fenced frame reporting metadata/value=]
-    :: If |auctionConfig|'s [=auction config/component auctions=] is [=list/empty=] (i.e., if
-       there was no component auction), then a [=struct=]  with the following [=struct/items=]:
+    :: A [=struct=]  with the following [=struct/items=]:
        : [=fenced frame reporting metadata/fenced frame reporting map=]
-       :: a [=map=] «[ "<code>buyer</code>" → «», "<code>seller</code>" → «»]»
+       :: |fencedFrameReportingMap|
 
        : [=fenced frame reporting metadata/direct seller is seller=]
-       :: true
+       :: true if |auctionConfig|'s [=auction config/component auctions=] is [=list/empty=], false
+          otherwise
 
-       Otherwise (i.e., if there was a component auction), a [=struct=] with the following
-       [=struct/items=]:
-       : [=fenced frame reporting metadata/fenced frame reporting map=]
-       :: a [=map=] «[ "<code>buyer</code>" → «», "<code>seller</code>" → «»,
-          "<code>component-seller</code>" → «»]»
-
-       : [=fenced frame reporting metadata/direct seller is seller=]
-       :: false
+       : [=fenced frame reporting metadata/allowed reporting origins=]
+       :: |winningBid|'s [=generated bid/bid ad=]'s [=interest group ad/allowed reporting origins=]
 
     : [=fenced frame reporting metadata/visibility=]
     :: "<a for=visibility>`opaque`</a>"
@@ -945,15 +942,10 @@ To <dfn>asynchronously finish reporting</dfn> given a
       1. Let |buyerMap| be |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
          [=reporting result/reporting beacon map=].
       1. If |buyerMap| is null, set |buyerMap| to an empty [=map=] «[]».
-      1. Let |allowedReportingOrigins| be |leadingBidInfo|'s [=leading bid info/leading bid=]'s
-        [=generated bid/bid ad=]'s [=interest group ad/allowed reporting origins=].
       1. Let |macroMap| be |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
          [=reporting result/reporting macro map=].
-      1. TODO: Pass |macroMap| and |allowedReportingOrigins| to [=Finalize a reporting destination=]
-        when it is updated to take the parameters. May need to convert |macroMap| to a list, based
-        on what that function expects.
       1. [=Finalize a reporting destination=] with |reportingMap|,
-         {{FenceReportingDestination/buyer}}, and |buyerMap|.
+         {{FenceReportingDestination/buyer}}, |buyerMap|, and |macroMap|.
       1. [=Send report=] to |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
          [=reporting result/report url=].
       1. Set |buyerDone| to true.
