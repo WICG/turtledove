@@ -2012,6 +2012,9 @@ To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=
 1. Let |keysStr| be the result of [=string/concatenating=] |keys| with separator set to ",".
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keysStr| using
   [=component percent-encode set=] to |list|.
+
+  Issue: The implementation encodes 0x20 (SP) to U+002B (+), while [=string/UTF-8 percent-encoding=]
+    encodes it to "%20".
 1. Return |list|.
 
 </div>
@@ -2022,6 +2025,10 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
 [=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, an {{unsigned short}}-or-null
 |experimentGroupId|, and an [=origin=] |topLevelOrigin|:
 1. Let |queryParamsList| be a new empty [=list=].
+
+  Note: Create a query param of the form "`&<name>=<values in comma-delimited list>`", e.g.,
+    "`hostname=publisher1.com&keys=key1,key2&interestGroupNames=ad+platform,name2&experimentGroupId=1234`".
+
 1. [=list/Append=] "hostname=" to |queryParamsList|.
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
   [=component percent-encode set=] to |queryParamsList|.
@@ -2038,6 +2045,9 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
   1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
 1. Let |fullSignalsUrl| be |signalsUrl|.
 1. Set |fullSignalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
+
+  Note: Not using [=urlencoded serializer|application/x-www-form-urlencoded serializer=] to
+    construct the query string because it uses a different percent encode set from the implementation.
 1. return |fullSignalsUrl|.
 
 </div>
@@ -2385,7 +2395,7 @@ the [=additional bid=] to compete against other bids in a Protected Audience [=a
 
 <div id="additional-bid-example" class=example>
   <p> Each additional bid is expressed using the following JSON data structure:</p>
-  <pre class="highlight">
+  <pre highlight="js">
   const additionalBid = {
     "bid": {
       "ad": 'ad-metadata',
@@ -2712,7 +2722,7 @@ identified ahead of time in the [=additional bid=]'s `joiningOrigin` field. Any
 
 <div id="negative-igs-example" class=example>
   <p>Use `negativeInterestGroup` in additional bid's JSON:</p>
-  <pre class="highlight">
+  <pre highlight="js">
   const additionalBid = {
     ...
     "negativeInterestGroup": "example_advertiser_negative_interest_group",
@@ -2720,7 +2730,7 @@ identified ahead of time in the [=additional bid=]'s `joiningOrigin` field. Any
   }
   </pre>
   <p>Use `negativeInterestGroups` in additional bid's JSON:</p>
-  <pre class="highlight">
+  <pre highlight="js">
   const additionalBid = {
     ...
     "negativeInterestGroups": {
