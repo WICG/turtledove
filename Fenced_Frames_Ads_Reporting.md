@@ -15,7 +15,7 @@ From a privacy perspective, it is also important to note that the additional inf
 
 # Design
 
-The following summarizes the sequence of events for the buyer and seller. Distinguishing these flows here, since in principle, one should be able to report without the help of the other.
+The following summarizes the sequence of events for the buyer and seller. Distinguishing these flows here, since in principle, one should be able to report without the help of the other but with an opt-in from the ad's origin for maintaining web's security principles for origins.
 
 ![high level diagram](assets/fenced_frames_reporting.png)
 
@@ -54,6 +54,9 @@ This API is available from all documents in a fenced frame that are same-origin 
 The browser processes the beacon by sending an HTTP POST request, like the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
 
 Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. In the interim period when FLEDGE supports rendering the winning ad in an iframe, `window.fence` will also be available in such an iframe.
+
+### Enrollment Requirement
+The reporting destination URL registered by `registerAdBeacon` is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API, otherwise the beacon is not allowed to be sent to this reporting destination. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
 
 ### Parameters
 
@@ -113,6 +116,9 @@ This API is available in the same contexts as `reportEvent` to a preregistered d
 
 Unlike `reportEvent` to a preregistered destination, here the browser processes the beacon by sending an HTTP GET request, as per feedback here: https://github.com/WICG/turtledove/issues/477#issuecomment-1524158476.
 
+### Enrollment Requirement
+The reporting destination URL specified in `reportEvent`'s `destinationURL` field is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API, otherwise the beacon is not allowed to be sent to this reporting destination. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
+
 ### Parameters
 
 **Destination URL:** Includes the desired destination URL for the report, with macros to be substituted based on the buyer worklet's specified values.
@@ -124,6 +130,8 @@ Here is an example that will substitute `${PUBLISHER_ID}` and `${SOURCE_URL_ENC}
 window.fence.reportEvent({
   'destinationURL': 'https://adtech.example/impression?cid=555&pub_id=${PUBLISHER_ID}&site=${SOURCE_URL_ENC}&t=123'});
 ```
+
+In this example, the reporting destination eTLD+1 is "adtech.example". [The Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model) requires its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) `"https://adtech.example"` to be enrolled as defined in [site-based enrollment](https://developer.chrome.com/blog/announce-enrollment-privacy-sandbox/#site-based-enrollment). Otherwise the beacon will not be sent.
 
 ## registerAdBeacon
 
@@ -144,6 +152,8 @@ registerAdBeacon({
  'click': 'https://adtech.example/click?buyer_event_id=123',
 });
 ```
+
+In this example, the reporting destination eTLD+1 is "adtech.example". [The Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model) requires its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) `"https://adtech.example"` to be enrolled as defined in [site-based enrollment](https://developer.chrome.com/blog/announce-enrollment-privacy-sandbox/#site-based-enrollment). Otherwise the beacon will not be sent when there is a `click` event.
 
 ## registerAdMacro
 Bidder worklets are able to register macros with the browser in their `reportWin()` function. The registered macro values are used to substitute macros in the destination URL of the `reportEvent()` API's parameter.
@@ -188,10 +198,13 @@ The beacons that are generated from a `reportEvent` invocation or via an automat
 
 As mentioned in the explainer above, `reportEvent` beacons are POST requests and carry `eventData` in the request's body. The same will be true for automatic beacon requests. Note that for any server redirects of the initial request, the browser sends a GET request and does not include the initial request's body. For attribution registration flow, if the `eventData` needs to be used as part of the redirected request, it must be explicitly passed on as part of the redirect URL.
 
+##### Enrollment Requirement
+
+For redirects, the redirect URL is not checked for enrollment and attestation. This is because the browser does not add any data directly to the redirect URL. Only the initial reporting destination is checked for attestation for Protected Audience API. The initial reporting destination is responsible for acting in accordance with its attestation if it decides to share any data via the redirect.
+
 ### API to populate event data for automatic beacons
 
 Since automatic beacons are automatically generated by the browser, there needs to be some way for those beacons to be associated with a destination and include event data, as it happens in `reportEvent` generated beacons. To achieve this, a new `setReportEventDataForAutomaticBeacons` API can be invoked from within the fenced frame:
-
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
@@ -201,16 +214,15 @@ window.fence.setReportEventDataForAutomaticBeacons({
 });
 ```
 
+If `setReportEventDataForAutomaticBeacons` is invoked, the browser will send an automatic beacon to all URLs registered via registerAdBeacon for the given event, but it will only send an event data body (the information in eventData) with the HTTP request to destinations specified in the destination field. This means that invoking setReportEventDataForAutomaticBeacons acts as an opt-in by the fenced frame document to allow sending the beacon to all registered URLs, aligning with cross-origin security principles.
+
+If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon to any registered URLs.
 
 Currently, the only `eventType`s that `setReportEventDataForAutomaticBeacons` allows are `'reserved.top_navigation_start'` and `'reserved.top_navigation_commit'`. Note that the script invoking this API can volunteer this information to a given destination type or not, similar to `reportEvent`, using the `destination` field.
 
 If invoked multiple times, the latest invocation before the top-level navigation would be the one that’s honored.
 
-`eventData` is optional, and can be empty. If `eventData` is not specified, or is empty, the automatic beacon will still be sent but without an event data body in the HTTP request.
-
-If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon because the `destination` is unknown.
-
-An automatic beacon can be manually cleared out by calling `setReportEventDataForAutomaticBeacons` with an empty destination list.
+Automatic beacon data can be manually cleared out by calling `setReportEventDataForAutomaticBeacons` with an empty destination list.
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
   'eventType': 'reserved.top_navigation_start',
@@ -237,9 +249,9 @@ function addBeaconData(element) {
 
 The beacon data will be in place by the time that the navigation starts. When the navigation commits, the automatic beacon will be sent out with event data set to "link1 was clicked.".
 
-The dictionary passed into `setReportEventDataForAutomaticBeacons` also takes an optional `once` boolean that defaults to false. If `once` is set to true, the automatic beacon will only be sent for the next event. Beacons will not be sent for subsequent events until `setReportEventDataForAutomaticBeacons` is invoked again. When used with a click handler, this can be used to send beacons only for specific top-level navigations, rather than for every top-level navigation.
+The dictionary passed into `setReportEventDataForAutomaticBeacons` also takes an optional `once` boolean that defaults to false. If `once` is set to true, the automatic beacon will only be sent for the next event. Beacons will not be sent for subsequent events until `setReportEventDataForAutomaticBeacons` is invoked again. When used with a click handler, this can be used to send beacon data only for specific top-level navigations, rather than for every top-level navigation.
 
-For example, if a frame has multiple links that can perform top-level navigations, but only one of the links should have an automatic beacon associated with it, `setReportEventDataForAutomaticBeacons()` can be called in that link's click handler with `once` set to true. This will ensure that, if another link is clicked after the link with the associated automatic beacon, that other link will not result in a beacon being sent out.
+For example, if a frame has multiple links that can perform top-level navigations, but only one of the links is of interest for analytics purposes, `setReportEventDataForAutomaticBeacons()` can be called in that link's click handler with `once` set to true. This will ensure that, if another link is clicked after the link with the associated automatic beacon, that other link will not result in an automatic beacon being sent out.
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
@@ -249,6 +261,11 @@ window.fence.setReportEventDataForAutomaticBeacons({
   'once': true,
 });
 ```
+
+When 3rd party cookies are enabled, automatic beacon requests only (not beacons sent manually through `reportEvent`) allow credentials (cookies) to be set in headers. This was requested by https://github.com/WICG/turtledove/issues/866 in order to help with migration and ARA debugging. These requests are subject to CORS and only occur after opt-in by virtue of calling the `setReportEventDataForAutomaticBeacons` API.
+
+#### Enrollment Requirement
+The reporting destination URL registered by `setReportEventDataForAutomaticBeacons` is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API, otherwise the automatic beacon is not allowed to be sent to this reporting destination. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
 
 # Support for Ad Components
 For ad components [rendered in fenced frames](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#4-browsers-render-the-winning-ad), the support for event-level reporting described below is available in Chrome starting M114. 
@@ -265,7 +282,7 @@ For fenced frames rendering the ad components under the top-level ad fenced fram
 * Invocation of the `reportEvent` API from an ad component fenced frame is disallowed.
 * The only supported beacons to be sent from an ad component fenced frame are the `reserved.top_navigation_start` and `reserved.top_navigation_commit` automatic beacons. Note these beacons are gated on a user activation (e.g. click).
 * To ensure that there is no arbitrary data that can be received at the server from the component ad, the `eventData` field via `window.fence.setReportEventDataForAutomaticBeacons`, if specified, will be ignored. This ensures that information from the component ad URL is not revealed in the event report, or else it could lead to the join of two independently k-anonymous URLs (parent and component ad) at the receiving server.
-* To send the beacon from a component fenced frame, `window.fence.setReportEventDataForAutomaticBeacons` must be invoked within the ad component fenced frame with `eventType` set to `'reserved.top_navigation_start'` or `'reserved.top_navigation_commit'`. The beacon will be sent when there is a user activation (e.g. click) on the ad component fenced frame, which results in a top-level navigation.
+* Automatic beacons will be sent from a component fenced frame (with no event data) when there is a user activation (e.g. click) on the ad component fenced frame, which results in a top-level navigation. The ad component must still opt in using `setReportEventDataForAutomaticBeacons` before the beacon can send.
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({

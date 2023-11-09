@@ -67,6 +67,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Onetag | DSP & SSP | 2023-2024 | | privacysandbox@onetag.com |
 | Yahoo Inc | DSP | beginning 15 Jan 2024 | | googleprivacysandbox@yahooinc.com |
 | Magnite | SSP | January 2024 | | privacysandbox@magnite.com |
+| Globo | DSP & SSP | Testing | | adtech-delivery@g.globo |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
@@ -79,4 +80,5 @@ Companies who may be interested in participating in tests and early adoption opp
 | Clarin | Publisher | | mfranco@clarin.com |
 | Terra Networks | Publisher | | adtech.terra.br@telefonica.com |
 | OLX Brasil | Publisher | | adtech@olxbr.com |
+| Globo | Publisher | | adtech-delivery@g.globo|
 
