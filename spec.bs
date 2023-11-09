@@ -415,11 +415,20 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 
 <div algorithm>
 
-To <dfn>check interest group permissions</dfn> given an [=origin=]
-|ownerOrigin|, an [=origin=] |frameOrigin|, and an enum |joinOrLeave| which is "`join`" or "`leave`":
+To <dfn>check interest group permissions</dfn> given an [=origin=] |ownerOrigin|, an [=origin=]
+|frameOrigin|, and an enum |joinOrLeave| which is "`join`" or "`leave`":
 1. If |ownerOrigin| is [=same origin=] with |frameOrigin|, then return true.
-1. Let |permissionsUrl| be the result of [=building an interest group permissions url=] with
-  |ownerOrigin| and |frameOrigin|.
+1. Let |permissionsUrl| be a new [=URL=] with the following [=struct/items=]:
+  :   [=url/scheme=]
+  ::  |ownerOrigin|'s [=origin/scheme=]
+  :   [=url/host=]
+  ::  |ownerOrigin|'s [=origin/host=]
+  :   [=url/port=]
+  ::  |ownerOrigin|'s [=origin/port=]
+  :   [=url/path=]
+  ::  « ".well-known", "interest-group", "permissions" »
+  :   [=url/query=]
+  ::  « ("origin", [=serialization of an origin|serialized=] |frameOrigin|) »
 1. Let |request| be a new [=request=] with the following properties:
   :   [=request/URL=]
   ::  |permissionsUrl|
@@ -465,17 +474,6 @@ The browser may cache requests for |permissionsUrl| within a network partition.
 In order to prevent leaking data, the browser must request |permissionsUrl|
 regardless of whether the user is a member of the ad interest group. This
 prevents a leak of the user's ad interest group membership to the server.
-
-</div>
-
-<div algorithm>
-
-To <dfn>build an interest group permissions url</dfn> given a [=origin=] |ownerOrigin| and a [=origin=] |frameOrigin|:
-1. Let |serializedFrameOrigin| be the result of [=serialization of an origin|serializing=] |frameOrigin|.
-1. Return the string formed by [=string/concatenating=]
-  * The [=serialization of an origin|serialization=] of |ownerOrigin|,
-  * The string "`/.well-known/interest-group/permissions/?origin=`", and
-  * The result of [=string/UTF-8 percent-encoding=] |serializedFrameOrigin| using [=component percent-encode set=].
 
 </div>
 
