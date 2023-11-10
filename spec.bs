@@ -418,6 +418,8 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 To <dfn>check interest group permissions</dfn> given an [=origin=] |ownerOrigin|, an [=origin=]
 |frameOrigin|, and an enum |joinOrLeave| which is "`join`" or "`leave`":
 1. If |ownerOrigin| is [=same origin=] with |frameOrigin|, then return true.
+1. Let |encodedFrameOrigin| be the result of [=string/UTF-8 percent-encoding=] the
+  [=serialization of an origin|serialized=] |frameOrigin| using [=component percent-encode set=].
 1. Let |permissionsUrl| be a new [=URL=] with the following [=struct/items=]:
   :   [=url/scheme=]
   ::  |ownerOrigin|'s [=origin/scheme=]
@@ -428,7 +430,7 @@ To <dfn>check interest group permissions</dfn> given an [=origin=] |ownerOrigin|
   :   [=url/path=]
   ::  « ".well-known", "interest-group", "permissions" »
   :   [=url/query=]
-  ::  « ("origin", [=serialization of an origin|serialized=] |frameOrigin|) »
+  ::  The result of [=string/concatenating=] « "origin=", |encodedFrameOrigin| »
 1. Let |request| be a new [=request=] with the following properties:
   :   [=request/URL=]
   ::  |permissionsUrl|
@@ -2028,10 +2030,15 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
 
   Note: These steps create a [=url/query=] of the form "`&<name>=<values in comma-delimited list>`". E.g.,
     "`hostname=publisher1.com&keys=key1,key2&interestGroupNames=ad+platform,name2&experimentGroupId=1234`".
+    <br><br>These steps don't use the [=urlencoded serializer|application/x-www-form-urlencoded serializer=]
+    to construct the query string because it repeats a key if it has multiple values instead of a
+    comma-demilited list (e.g., "keys=key1&keys=key2", instead of "keys=key1,key2"), and it also
+    uses a different percent encode set from the Chrome implementation.
 
 1. [=list/Append=] "hostname=" to |queryParamsList|.
-1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
-  [=component percent-encode set=] to |queryParamsList|.
+1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] the
+  [=serialization of an origin|serialized=] |topLevelOrigin| using [=component percent-encode set=]
+  to |queryParamsList|.
 1. If |keys| is not [=set/is empty|empty=]:
   1. [=list/Append=] "&keys=" to |queryParamsList|.
   1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
@@ -2045,9 +2052,6 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
   1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
 1. Let |fullSignalsUrl| be |signalsUrl|.
 1. Set |fullSignalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
-
-  Note: Not using [=urlencoded serializer|application/x-www-form-urlencoded serializer=] to
-    construct the query string because it uses a different percent encode set from the Chrome implementation.
 1. return |fullSignalsUrl|.
 
 </div>
