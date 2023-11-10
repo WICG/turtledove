@@ -179,36 +179,36 @@ registerAdMacro(‘SOURCE_URL_ENC’, ‘http%3A%2F%2Fpub%2Eexample%2Fpage’);
 
 ### registerAdBeacon
 
-The `reportResult` and `reportWin` worklet code will be able to register an event called `reserved.top_navigation` via `registerAdBeacon`. 
+The `reportResult` and `reportWin` worklet code will be able to register two new events, called `reserved.top_navigation_start` and `reserved.top_navigation_commit`, via `registerAdBeacon`. 
 
 ```
 registerAdBeacon({
- 'reserved.top_navigation': 'https://adtech.example/click?buyer_event_id=123',
+ 'reserved.top_navigation_start': 'https://adtech.example/click?buyer_event_id=123',
+ 'reserved.top_navigation_commit': 'https://adtech.example/click?buyer_event_id=123',
 });
 ```
 
-The new event, if registered, implies that an automatic beacon will be sent by the browser to the registered URL when a top-level navigation is invoked from within the fenced frame and the navigation was preceded by a call to [window.fence.setReportEventDataForAutomaticBeacons](#api-to-populate-event-data-for-reservedtop_navigation). This will impact top-level navigation initiated from the fenced frame in the same tab (via [unfencedTop target](https://github.com/WICG/fenced-frame/blob/master/explainer/integration_with_web_platform.md#top-level-navigation)) or in a different tab. Note that this beacon is gated on a transient user activation. More details about the beacon are below.
-
+The new events, if registered, implies that an automatic beacon will be sent by the browser to the registered URL when a top-level navigation is invoked from within the fenced frame and the navigation was preceded by a call to [window.fence.setReportEventDataForAutomaticBeacons](#api-to-populate-event-data-for-reservedtop_navigation). More specifically, a `reserved.top_navigation_start` beacon will be sent when a top-level navigation [begins](https://html.spec.whatwg.org/multipage/browsing-the-web.html#beginning-navigation) and a `reserved.top_navigation_commit` beacon will be sent when the navigation successfully [completes](https://html.spec.whatwg.org/multipage/browsing-the-web.html#ending-navigation). This will impact top-level navigation initiated from the fenced frame in the same tab (via [unfencedTop target](https://github.com/WICG/fenced-frame/blob/master/explainer/integration_with_web_platform.md#top-level-navigation)) or in a different tab. Note that this beacon is gated on a transient user activation. More details about the beacon are below.
 
 ### reportEvent
 
-The beacons that are generated from a `reportEvent` invocation or via the automatic `reserved.top_navigation` event will now be automatically eligible for attribution, i.e. the browser appends the `Attribution-Reporting-Eligible` HTTP request header. The beacon responses can then register attribution sources as usual, as described [here](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#registering-attribution-sources).
+The beacons that are generated from a `reportEvent` invocation or via an automatic beacon will now be automatically eligible for attribution, i.e. the browser appends the `Attribution-Reporting-Eligible` HTTP request header. The beacon responses can then register attribution sources as usual, as described [here](https://github.com/WICG/attribution-reporting-api/blob/main/EVENT.md#registering-attribution-sources).
 
 #### Redirects
 
-As mentioned in the explainer above, `reportEvent` beacons are POST requests and carry `eventData` in the request's body. The same will be true for automatic `reserved.top_navigation` requests. Note that for any server redirects of the initial request, the browser sends a GET request and does not include the initial request's body. For attribution registration flow, if the `eventData` needs to be used as part of the redirected request, it must be explicitly passed on as part of the redirect URL.
+As mentioned in the explainer above, `reportEvent` beacons are POST requests and carry `eventData` in the request's body. The same will be true for automatic beacon requests. Note that for any server redirects of the initial request, the browser sends a GET request and does not include the initial request's body. For attribution registration flow, if the `eventData` needs to be used as part of the redirected request, it must be explicitly passed on as part of the redirect URL.
 
 ##### Enrollment Requirement
 
 For redirects, the redirect URL is not checked for enrollment and attestation. This is because the browser does not add any data directly to the redirect URL. Only the initial reporting destination is checked for attestation for Protected Audience API. The initial reporting destination is responsible for acting in accordance with its attestation if it decides to share any data via the redirect.
 
-### API to populate event data for reserved.top_navigation
+### API to populate event data for automatic beacons
 
-Since the `reserved.top_navigation` beacons are automatically generated by the browser, there needs to be some way for those beacons to include event data, as it happens in `reportEvent` generated beacons. Because this is information about a frame that can be sent to a cross-origin destination, there also needs to be a way for the frame to opt in/opt out of having this information sent. To achieve this, a new `setReportEventDataForAutomaticBeacons` API can be invoked from within the fenced frame:
+Since automatic beacons are automatically generated by the browser, there needs to be some way for those beacons to be associated with a destination and include event data, as it happens in `reportEvent` generated beacons. To achieve this, a new `setReportEventDataForAutomaticBeacons` API can be invoked from within the fenced frame:
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
-  'eventType': 'reserved.top_navigation',
+  'eventType': 'reserved.top_navigation_commit',
   'eventData': 'an example string',
   'destination': ['seller', 'buyer'],
 });
@@ -218,14 +218,14 @@ If `setReportEventDataForAutomaticBeacons` is invoked, the browser will send an 
 
 If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon to any registered URLs.
 
-Currently, the only `eventType` that `setReportEventDataForAutomaticBeacons` allows is `'reserved.top_navigation'`. Note that the script invoking this API can volunteer the information in `eventData` to a given destination type or not, similar to `reportEvent`, using the `destination` field.
+Currently, the only `eventType`s that `setReportEventDataForAutomaticBeacons` allows are `'reserved.top_navigation_start'` and `'reserved.top_navigation_commit'`. Note that the script invoking this API can volunteer this information to a given destination type or not, similar to `reportEvent`, using the `destination` field.
 
 If invoked multiple times, the latest invocation before the top-level navigation would be the one that’s honored.
 
 Automatic beacon data can be manually cleared out by calling `setReportEventDataForAutomaticBeacons` with an empty destination list.
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
-  'eventType': 'reserved.top_navigation',
+  'eventType': 'reserved.top_navigation_start',
   'destination': [],
 });
 ```
@@ -237,7 +237,7 @@ window.fence.setReportEventDataForAutomaticBeacons({
 function addBeaconData(element) {
   const data = element.id + " was clicked.";
   let beacon_event = {
-    eventType: "reserved.top_navigation",
+    eventType: "reserved.top_navigation_commit",
     eventData: data,
     destination: ["buyer"],
   }
@@ -249,13 +249,13 @@ function addBeaconData(element) {
 
 The beacon data will be in place by the time that the navigation starts. When the navigation commits, the automatic beacon will be sent out with event data set to "link1 was clicked.".
 
-The dictionary passed into `setReportEventDataForAutomaticBeacons` also takes an optional `once` boolean that defaults to false. If `once` is set to true, the automatic beacon will only be sent for the next `reserved.top_navigation` event. Beacons will not be sent for subsequent `reserved.top_navigation` events until `setReportEventDataForAutomaticBeacons` is invoked again. When used with a click handler, this can be used to send beacon data only for specific top-level navigations, rather than for every top-level navigation.
+The dictionary passed into `setReportEventDataForAutomaticBeacons` also takes an optional `once` boolean that defaults to false. If `once` is set to true, the automatic beacon will only be sent for the next event. Beacons will not be sent for subsequent events until `setReportEventDataForAutomaticBeacons` is invoked again. When used with a click handler, this can be used to send beacon data only for specific top-level navigations, rather than for every top-level navigation.
 
 For example, if a frame has multiple links that can perform top-level navigations, but only one of the links is of interest for analytics purposes, `setReportEventDataForAutomaticBeacons()` can be called in that link's click handler with `once` set to true. This will ensure that, if another link is clicked after the link with the associated automatic beacon, that other link will not result in an automatic beacon being sent out.
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
-  'eventType': 'reserved.top_navigation',
+  'eventType': 'reserved.top_navigation_start',
   'eventData': 'an example string',
   'destination': ['seller', 'buyer'],
   'once': true,
@@ -276,13 +276,13 @@ When a rendered ad is composed of [multiple pieces](https://github.com/WICG/turt
 
 ## Design
 ### Event Type and Reporting Destination
-For fenced frames rendering the ad components under the top-level ad fenced frame, the `reserved.top_navigation` event type and corresponding reporting destination registered for the top-level fenced frame are reused when beacons are sent from the ad component fenced frames.
+For fenced frames rendering the ad components under the top-level ad fenced frame, the automatic beacon event type and corresponding reporting destination registered for the top-level fenced frame are reused when beacons are sent from the ad component fenced frames.
 
-### Restricted to send `reserved.top_navigation` beacons only
+### Restricted to send automatic beacons only
 * Invocation of the `reportEvent` API from an ad component fenced frame is disallowed.
-* The only supported beacon to be sent from an ad component fenced frame is the `reserved.top_navigation` automatic beacon. Note this beacon is gated on a user activation (e.g. click).
+* The only supported beacons to be sent from an ad component fenced frame are the `reserved.top_navigation_start` and `reserved.top_navigation_commit` automatic beacons. Note these beacons are gated on a user activation (e.g. click).
 * To ensure that there is no arbitrary data that can be received at the server from the component ad, the `eventData` field via `window.fence.setReportEventDataForAutomaticBeacons`, if specified, will be ignored. This ensures that information from the component ad URL is not revealed in the event report, or else it could lead to the join of two independently k-anonymous URLs (parent and component ad) at the receiving server.
-* `reserved.top_navigation` beacons will be sent from a component fenced frame (with no event data) when there is a user activation (e.g. click) on the ad component fenced frame, which results in a top-level navigation. The ad component must still opt in using `setReportEventDataForAutomaticBeacons` before the beacon can send.
+* Automatic beacons will be sent from a component fenced frame (with no event data) when there is a user activation (e.g. click) on the ad component fenced frame, which results in a top-level navigation. The ad component must still opt in using `setReportEventDataForAutomaticBeacons` before the beacon can send.
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
