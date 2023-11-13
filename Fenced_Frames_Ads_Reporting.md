@@ -249,6 +249,8 @@ function addBeaconData(element) {
 
 The beacon data will be in place by the time that the navigation starts. When the navigation commits, the automatic beacon will be sent out with event data set to "link1 was clicked.".
 
+#### Send Automatic Beacons Once
+
 The dictionary passed into `setReportEventDataForAutomaticBeacons` also takes an optional `once` boolean that defaults to false. If `once` is set to true, the automatic beacon will only be sent for the next event. Beacons will not be sent for subsequent events until `setReportEventDataForAutomaticBeacons` is invoked again. When used with a click handler, this can be used to send beacon data only for specific top-level navigations, rather than for every top-level navigation.
 
 For example, if a frame has multiple links that can perform top-level navigations, but only one of the links is of interest for analytics purposes, `setReportEventDataForAutomaticBeacons()` can be called in that link's click handler with `once` set to true. This will ensure that, if another link is clicked after the link with the associated automatic beacon, that other link will not result in an automatic beacon being sent out.
@@ -261,6 +263,25 @@ window.fence.setReportEventDataForAutomaticBeacons({
   'once': true,
 });
 ```
+
+#### Cross-Origin Support
+
+Data for automatic beacons can only be set by documents that are same-origin to the mapped URL of the fenced frame config. However, cross-origin documents can still send automatic beacons, if the document and the data are **both** opted in.
+
+A cross-origin document will be considered opted into sending automatic beacons if it is served with the response header `Allow-Fenced-Frame-Automatic-Beacons: true`.
+
+To opt in the data, the dictionary passed into `setReportEventDataForAutomaticBeacons` takes an optional `crossOrigin` boolean that defaults to false. If set to true, the automatic beacon data can be used if an cross-origin document wants to send an automatic beacon and is opted in.
+
+```
+window.fence.setReportEventDataForAutomaticBeacons({
+  'eventType': 'reserved.top_navigation_start',
+  'eventData': 'an example string',
+  'destination': ['seller', 'buyer'],
+  'crossOrigin': true,
+});
+```
+
+#### Credentials in Beacons
 
 When 3rd party cookies are enabled, automatic beacon requests only (not beacons sent manually through `reportEvent`) allow credentials (cookies) to be set in headers. This was requested by https://github.com/WICG/turtledove/issues/866 in order to help with migration and ARA debugging. These requests are subject to CORS and only occur after opt-in by virtue of calling the `setReportEventDataForAutomaticBeacons` API.
 
