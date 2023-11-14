@@ -415,11 +415,22 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 
 <div algorithm>
 
-To <dfn>check interest group permissions</dfn> given an [=origin=]
-|ownerOrigin|, an [=origin=] |frameOrigin|, and an enum |joinOrLeave| which is "`join`" or "`leave`":
+To <dfn>check interest group permissions</dfn> given an [=origin=] |ownerOrigin|, an [=origin=]
+|frameOrigin|, and an enum |joinOrLeave| which is "`join`" or "`leave`":
 1. If |ownerOrigin| is [=same origin=] with |frameOrigin|, then return true.
-1. Let |permissionsUrl| be the result of [=building an interest group permissions url=] with
-  |ownerOrigin| and |frameOrigin|.
+1. Let |encodedFrameOrigin| be the result of [=string/UTF-8 percent-encoding=] the
+  [=serialization of an origin|serialized=] |frameOrigin| using [=component percent-encode set=].
+1. Let |permissionsUrl| be a new [=URL=] with the following [=struct/items=]:
+  :   [=url/scheme=]
+  ::  |ownerOrigin|'s [=origin/scheme=]
+  :   [=url/host=]
+  ::  |ownerOrigin|'s [=origin/host=]
+  :   [=url/port=]
+  ::  |ownerOrigin|'s [=origin/port=]
+  :   [=url/path=]
+  ::  « ".well-known", "interest-group", "permissions" »
+  :   [=url/query=]
+  ::  The result of [=string/concatenating=] « "origin=", |encodedFrameOrigin| »
 1. Let |request| be a new [=request=] with the following properties:
   :   [=request/URL=]
   ::  |permissionsUrl|
@@ -465,17 +476,6 @@ The browser may cache requests for |permissionsUrl| within a network partition.
 In order to prevent leaking data, the browser must request |permissionsUrl|
 regardless of whether the user is a member of the ad interest group. This
 prevents a leak of the user's ad interest group membership to the server.
-
-</div>
-
-<div algorithm>
-
-To <dfn>build an interest group permissions url</dfn> given a [=origin=] |ownerOrigin| and a [=origin=] |frameOrigin|:
-1. Let |serializedFrameOrigin| be the result of [=serialization of an origin|serializing=] |frameOrigin|.
-1. Return the string formed by [=string/concatenating=]
-  * The [=serialization of an origin|serialization=] of |ownerOrigin|,
-  * The string "`/.well-known/interest-group/permissions/?origin=`", and
-  * The result of [=string/UTF-8 percent-encoding=] |serializedFrameOrigin| using [=component percent-encode set=].
 
 </div>
 
@@ -2014,6 +2014,9 @@ To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=
 1. Let |keysStr| be the result of [=string/concatenating=] |keys| with separator set to ",".
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keysStr| using
   [=component percent-encode set=] to |list|.
+
+  Issue: The Chrome implementation encodes 0x20 (SP) to U+002B (+), while [=string/UTF-8 percent-encoding=]
+    encodes it to "%20".
 1. Return |list|.
 
 </div>
@@ -2024,9 +2027,18 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
 [=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, an {{unsigned short}}-or-null
 |experimentGroupId|, and an [=origin=] |topLevelOrigin|:
 1. Let |queryParamsList| be a new empty [=list=].
+
+  Note: These steps create a [=url/query=] of the form "`&<name>=<values in comma-delimited list>`". E.g.,
+    "`hostname=publisher1.com&keys=key1,key2&interestGroupNames=ad+platform,name2&experimentGroupId=1234`".
+    <br><br>These steps don't use the [=urlencoded serializer|application/x-www-form-urlencoded serializer=]
+    to construct the query string because it repeats a key if it has multiple values instead of a
+    comma-demilited list (e.g., "keys=key1&keys=key2", instead of "keys=key1,key2"), and it also
+    uses a different percent encode set from the Chrome implementation.
+
 1. [=list/Append=] "hostname=" to |queryParamsList|.
-1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
-  [=component percent-encode set=] to |queryParamsList|.
+1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] the
+  [=serialization of an origin|serialized=] |topLevelOrigin| using [=component percent-encode set=]
+  to |queryParamsList|.
 1. If |keys| is not [=set/is empty|empty=]:
   1. [=list/Append=] "&keys=" to |queryParamsList|.
   1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
@@ -2387,7 +2399,7 @@ the [=additional bid=] to compete against other bids in a Protected Audience [=a
 
 <div id="additional-bid-example" class=example>
   <p> Each additional bid is expressed using the following JSON data structure:</p>
-  <pre class="highlight">
+  <pre highlight="js">
   const additionalBid = {
     "bid": {
       "ad": 'ad-metadata',
@@ -2714,7 +2726,7 @@ identified ahead of time in the [=additional bid=]'s `joiningOrigin` field. Any
 
 <div id="negative-igs-example" class=example>
   <p>Use `negativeInterestGroup` in additional bid's JSON:</p>
-  <pre class="highlight">
+  <pre highlight="js">
   const additionalBid = {
     ...
     "negativeInterestGroup": "example_advertiser_negative_interest_group",
@@ -2722,7 +2734,7 @@ identified ahead of time in the [=additional bid=]'s `joiningOrigin` field. Any
   }
   </pre>
   <p>Use `negativeInterestGroups` in additional bid's JSON:</p>
-  <pre class="highlight">
+  <pre highlight="js">
   const additionalBid = {
     ...
     "negativeInterestGroups": {
