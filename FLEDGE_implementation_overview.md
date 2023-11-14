@@ -57,7 +57,7 @@ Nothing is reported to the server, and the win is not recorded, until the winnin
 
 
 ## Component Auctions
-In the case of top-level auction with multiple nested component auctions, the auctions are largely run independently, except that the interest group loading phases for all auctions must complete before any auction enters the generate bid phase, and the top-level auction only requests an executor/process for itself once all component auctions have received one, to avoid deadlock.  The top-level auction scores bids as soon as it receives winning bids from each component auction, and has its executor loaded.  Each component auction only waits for its own promises to be resolved before generating bids.
+In the case of top-level auction with multiple nested component auctions, the auctions are largely run independently, except that the interest group loading phases for all auctions must complete before any auction enters the generate bid phase. Each component auction waits only on its own Promises to resolve before generating bids.  The top-level auction only requests an executor/process for itself once all component auctions have received one, to avoid deadlock.  The top-level auction scores bids as soon as it receives winning bids from each component auction, has its executor loaded, and all Promises for all AuctionConfigs have been resolved, including for component auctions.
 
 Each component auction unloads the seller executor once all bids have been scored, again to avoid deadlock.  So the reporting phase may have to reload both the winning component seller worklet, and the winning bidder worklet.
 
