@@ -1313,19 +1313,20 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
     1. If |ig|'s [=interest group/additional bid key=] is not null:
       1. [=map/Set=] |negativeTargetInfo|[(|buyer|, |igName|)] to (|ig|'s
         [=interest group/joining origin=], |ig|'s [=interest group/additional bid key=]).
+    1. Let |biddingUrl| be |ig|'s [=interest group/bidding url=].
     1. [=iteration/Continue=] if any of the following conditions hold:
-      * |ig|'s [=interest group/bidding url=] is null;
+      * |biddingUrl| is null;
       * |ig|'s [=interest group/ads=] is null, or [=list/is empty=].
     1. Let |signalsUrl| be |ig|'s [=interest group/trusted bidding signals url=].
     1. Let |joiningOrigin| be |ig|'s [=interest group/joining origin=].
     1. If |bidGenerators| does not [=map/contain=] |buyer|:
       1. Let |perBuyerGenerator| be a new [=per buyer bid generator=].
       1. Let |perSignalsUrlGenerator| be a new [=per signals url bid generator=].
-      1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to « |ig| ».
+      1. Let |perBiddingUrlGenerator| be a new [=per bidding url bid generator=].
+      1. [=map/Set=] |perBiddingUrlGenerator|[|biddingUrl|] to « |ig| ».
+      1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to |perBiddingUrlGenerator|.
       1. [=map/Set=] |perBuyerGenerator|[|signalsUrl|] to |perSignalsUrlGenerator|.
       1. [=map/Set=] |bidGenerators|[|buyer|] to |perBuyerGenerator|.
-      1. TODO: add a perBiddingScriptUrlGenerator layer that replaces the list of IGs with a map
-        from biddingScriptUrl to a list of IGs.
     1. Otherwise:
       1. Let |perBuyerGenerator| be |bidGenerators|[|buyer|].
       1. If |perBuyerGenerator| does not [=map/contain=] |signalsUrl|:
@@ -1334,9 +1335,13 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
         1. [=map/Set=] |perBuyerGenerator|[|signalsUrl|] to |perSignalsUrlGenerator|.
       1. Otherwise:
         1. Let |perSignalsUrlGenerator| be |perBuyerGenerator|[|signalsUrl|].
-        1. If |perSignalsUrlGenerator| does not [=map/contain=] |joiningOrigin|, then [=map/set=]
-          |perSignalsUrlGenerator|[|joiningOrigin|] to « |ig| ».
-        1. Otherwise, [=list/append=] |ig| to |perSignalsUrlGenerator|[|joiningOrigin|].
+        1. If |perSignalsUrlGenerator| does not [=map/contain=] |joiningOrigin|:
+          1. Let |perBiddingUrlGenerator| be a new [=per bidding url bid generator=].
+          1. [=map/Set=] |perBiddingUrlGenerator|[|biddingUrl|] to « |ig| ».
+          1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to |perBiddingUrlGenerator|.
+        1. Otherwise:
+          1. Let |perBiddingUrlGenerator| be |perSignalsUrlGenerator|[|joiningOrigin|].
+          1. [=list/Append=] |ig| to ||perBiddingUrlGenerator||[|biddingUrl|].
 1. Return « |bidGenerators|, |negativeTargetInfo| ».
 
 </div>
@@ -1347,7 +1352,7 @@ To <dfn>generate a bid</dfn> given an [=ordered map=] |allTrustedBiddingSignals|
 |auctionSignals|, a {{BiddingBrowserSignals}} |browserSignals|, a [=string=]-or-null |perBuyerSignals|,
 a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=duration=]
 |perBuyerTimeout| in milliseconds, a [=currency tag=] |expectedCurrency|, an [=interest group=] |ig|,
-and a [=moment=] |auctionStartTime|:
+a [=moment=] |auctionStartTime|, and a [=ECMAScript/realm=] |realm|:
   1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=]
     with |ig|.
   1. Set |browserSignals|["{{BiddingBrowserSignals/joinCount}}"] to the sum of |ig|'s
@@ -1383,7 +1388,7 @@ and a [=moment=] |auctionStartTime|:
       |allTrustedBiddingSignals|[|key|].
   1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |ig|, |expectedCurrency|,
     |igGenerateBid|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|, |browserSignals|,
-    |directFromSellerSignalsForBuyer|, and |perBuyerTimeout|.
+    |directFromSellerSignalsForBuyer|, |perBuyerTimeout| and |realm|.
 </div>
 
 <div algorithm="generate and score bids">
@@ -1534,11 +1539,11 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. Let |keys| be a new [=ordered set=].
     1. Let |igNames| be a new [=ordered set=].
     1. Let |fetchSignalStartTime| be |settings|'s [=environment settings object/current monotonic time=].
-
-    1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
-      1. [=list/For each=] |ig| of |groups|:
-        1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
-        1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
+    1. [=map/For each=] |joiningOrigin| → |perBiddingUrlGenerator| of |perSignalsUrlGenerator|:
+      1. [=map/For each=] biddingUrl → |groups| of |perBiddingUrlGenerator|:
+        1. [=list/For each=] |ig| of |groups|:
+          1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
+          1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
     1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
       |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|, and |topLevelOrigin|.
     1. Let « |allTrustedBiddingSignals|, |dataVersion| » be the result of [=fetching trusted signals=]
@@ -1550,66 +1555,70 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. If |perBuyerCumulativeTimeout| is not null:
       1. Decrement |perBuyerCumulativeTimeout| by |fetchSignalDuration|.
       1. If |perBuyerCumulativeTimeout| is negative, then [=iteration/break=];
-    1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
-      1. [=list/For each=] |ig| of |groups|:
-        1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
-        1. If |perBuyerCumulativeTimeout| is not null and is less than |perBuyerTimeout|, then set
-          |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
-        1. Let |generateBidStartTime| be |settings|'s
-          [=environment settings object/current monotonic time=].
-        1. Let |generatedBid| be the result of [=generate a bid=] given |allTrustedBiddingSignals|,
-          |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
-          |perBuyerTimeout|, |expectedCurrency|, |ig|, and |auctionStartTime|.
-        1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
-          [=environment settings object/current monotonic time=], in milliseconds.
-        1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
-          |generateBidDuration|.
-        1. If |generatedBid| is failure, [=iteration/continue=].
-        1. If [=query generated bid k-anonymity count=] given |generatedBid| returns false:
-
-          Note: [=Generate a bid=] is now rerun with only k-anonymous [=interest group/ads=] to give
-          the buyer a chance to [=generate a bid=] for k-anonymous [=interest group/ads=]. Allowing
-          the buyer to first [=generate a bid=] for non-k-anonymous [=interest group/ads=] provides a
-          mechanism to bootstrap the k-anonymity count, otherwise no [=interest group/ads=] would
-          ever trigger [=increment k-anonymity count=] and all ads would fail
-          [=query k-anonymity count=].
-          1. TODO: Run [=score and rank a bid=] on |generatedBid| to find the highest scoring bid
-            that isn't k-anonymous. After the auction, if the highest scoring bid that isn't
-            k-anonymous has a higher score than the highest scoring k-anonymous bid, then call
-            [=increment ad k-anonymity count=] on it.
-          1. Let |originalAds| be |ig|'s [=interest group/ads=].
-          1. If |originalAds| is not null:
-            1. Set |ig|'s [=interest group/ads=] to a new [=list=] of [=interest group ad=].
-            1. [=list/For each=] |ad| in |originalAds|:
-              1. If [=query ad k-anonymity count=] given |ig| and |ad|'s
-                [=interest group ad/render url=] returns true, [=list/append=] |ad| to |ig|'s
-                [=interest group/ads=].
-          1. Let |originalAdComponents| be |ig|'s [=interest group/ad components=].
-          1. If |originalAdComponents| is not null:
-            1. Set |ig|'s [=interest group/ad components=] to a new [=list=] of [=interest group ad=].
-            1. [=list/For each=] |adComponent| in |originalAdComponents|:
-              1. If [=query component ad k-anonymity count=] given |adComponent|'s
-                [=interest group ad/render url=] returns true, [=list/append=] |adComponent| to |ig|'s
-                [=interest group/ad components=].
+    1. [=map/For each=] |joiningOrigin| → |perBiddingUrlGenerator| of |perSignalsUrlGenerator|:
+      1. [=map/For each=] biddingUrl → |groups| of |perBiddingUrlGenerator|:
+        1. Let |realmForOriginGroupMode| be null.
+        1. [=list/For each=] |ig| of |groups|:
           1. If |perBuyerCumulativeTimeout| is not null and is less than |perBuyerTimeout|, then set
             |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
           1. Let |generateBidStartTime| be |settings|'s
             [=environment settings object/current monotonic time=].
-          1. Set |generatedBid| to the result of [=generate a bid=] given
+          1. Let « |generatedBid|, |realm| » be the result of [=generate a bid=] given
             |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
-            |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
-            and |ig|.
-          1. Set |ig|'s [=interest group/ads=] to |originalAds|.
-          1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
-          1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
-            |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
-          1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
-            by |generateBidDuration|.
+            |perBuyerSignals|, |perBuyerTimeout|, |expectedCurrency|, |ig|, |auctionStartTime|, and
+            |realmForOriginGroupMode|.
+          1. Set |realmForOriginGroupMode| to |realm|.
+          1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
+            [=environment settings object/current monotonic time=], in milliseconds.
+          1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
+            |generateBidDuration|.
           1. If |generatedBid| is failure, [=iteration/continue=].
-        1. [=list/Insert=] |generatedBid|'s [=generated bid/interest group=] in |bidIgs|.
-        1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
-          |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
-          |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
+          1. If [=query generated bid k-anonymity count=] given |generatedBid| returns false:
+
+            Note: [=Generate a bid=] is now rerun with only k-anonymous [=interest group/ads=] to give
+            the buyer a chance to [=generate a bid=] for k-anonymous [=interest group/ads=]. Allowing
+            the buyer to first [=generate a bid=] for non-k-anonymous [=interest group/ads=] provides a
+            mechanism to bootstrap the k-anonymity count, otherwise no [=interest group/ads=] would
+            ever trigger [=increment k-anonymity count=] and all ads would fail
+            [=query k-anonymity count=].
+            1. TODO: Run [=score and rank a bid=] on |generatedBid| to find the highest scoring bid
+              that isn't k-anonymous. After the auction, if the highest scoring bid that isn't
+              k-anonymous has a higher score than the highest scoring k-anonymous bid, then call
+              [=increment ad k-anonymity count=] on it.
+            1. Let |originalAds| be |ig|'s [=interest group/ads=].
+            1. If |originalAds| is not null:
+              1. Set |ig|'s [=interest group/ads=] to a new [=list=] of [=interest group ad=].
+              1. [=list/For each=] |ad| in |originalAds|:
+                1. If [=query ad k-anonymity count=] given |ig| and |ad|'s
+                  [=interest group ad/render url=] returns true, [=list/append=] |ad| to |ig|'s
+                  [=interest group/ads=].
+            1. Let |originalAdComponents| be |ig|'s [=interest group/ad components=].
+            1. If |originalAdComponents| is not null:
+              1. Set |ig|'s [=interest group/ad components=] to a new [=list=] of [=interest group ad=].
+              1. [=list/For each=] |adComponent| in |originalAdComponents|:
+                1. If [=query component ad k-anonymity count=] given |adComponent|'s
+                  [=interest group ad/render url=] returns true, [=list/append=] |adComponent| to |ig|'s
+                  [=interest group/ad components=].
+            1. If |perBuyerCumulativeTimeout| is not null and is less than |perBuyerTimeout|, then set
+              |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
+            1. Let |generateBidStartTime| be |settings|'s
+              [=environment settings object/current monotonic time=].
+            1. Let « |generatedBidResult|, realmIgnored » be the result of [=generate a bid=] given
+              |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
+              |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
+              |expectedCurrency|, |ig|, |auctionStartTime| and |realmForOriginGroupMode|.
+            1. Set |generatedBid| to |generatedBidResult|.
+            1. Set |ig|'s [=interest group/ads=] to |originalAds|.
+            1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
+            1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
+              |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
+            1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
+              by |generateBidDuration|.
+            1. If |generatedBid| is failure, [=iteration/continue=].
+          1. [=list/Insert=] |generatedBid|'s [=generated bid/interest group=] in |bidIgs|.
+          1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
+            |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
+            |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -2939,9 +2948,6 @@ execution environment. In particular, they:
     1. Let |agent| be the result of [=obtaining a script runner agent=] given null, true, and false.
       Run the rest of these steps in |agent|.
 
-       Issue: This exclusively creates a new [=ECMAScript/agent cluster=] for a given script to run
-       in, but we should make this work with [=interest group/execution mode=] somehow.
-
     1. Let |realmExecutionContext| be the result of [=creating a new realm=] given |agent| and the
        following customizations:
 
@@ -2981,10 +2987,22 @@ of the following global objects:
   [=currency tag=] |expectedCurrency|, a {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null
   |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=] |trustedBiddingSignals|,
   a {{BiddingBrowserSignals}} |browserSignals|, a {{DirectFromSellerSignalsForBuyer}}
-  |directFromSellerSignalsForBuyer| and an integer millisecond [=duration=] |timeout|:
+  |directFromSellerSignalsForBuyer|, an integer millisecond [=duration=] |timeout|, and a
+  [=ECMAScript/realm=]-or-null |realmForOriginGroupMode|:
 
-    1. Let |realm| be the result of [=creating a new script runner realm=] given
-      {{InterestGroupBiddingScriptRunnerGlobalScope}}.
+    1. Let |realmIsReusedForOriginGroupMode| be false.
+
+    1. If |ig|'s [=interest group/execution mode=] is "group-by-origin", and |realmForOriginGroupMode|
+      is not null, then:
+      1. Let |realm| be |realmForOriginGroupMode|.
+      1. Set |realmIsReusedForOriginGroupMode| to true.
+
+    1. Otherwise:
+      1. Let |realm| be the result of [=creating a new script runner realm=] given
+        {{InterestGroupBiddingScriptRunnerGlobalScope}}.
+      1. If |ig|'s [=interest group/execution mode=] is "group-by-origin", then set
+        |realmForOriginGroupMode| to |realm|.
+
     1. Let |global| be |realm|'s [=realm/global object=].
     1. Let |settings| be |realm|'s [=realm/settings object=].
 
@@ -3010,7 +3028,8 @@ of the following global objects:
     1. Let |directFromSellerSignalsJs| be |directFromSellerSignalsForBuyer|
       [=converted to ECMAScript values=].
     1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
-    1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
+    1. Let |result| be the result of [=evaluating a script=] with |realm|,
+      |realmIsReusedForOriginGroupMode|, |script|, "`generateBid`",
       « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignalsJS|, |browserSignalsJS|,
       |directFromSellerSignalsJs| », and |timeout|.
     1. Let |duration| be |settings|'s [=environment settings object/current monotonic time=] minus
@@ -3043,7 +3062,7 @@ of the following global objects:
     1. If |generatedBid| is not failure:
       1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
       1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
-    1. Return |generatedBid|.
+    1. Return « |generatedBid|, |realmForOriginGroupMode| ».
 </div>
 
 <div algorithm>
@@ -3060,7 +3079,7 @@ of the following global objects:
     1. Let |trustedScoringSignalsJS| be |trustedScoringSignals| [=converted to ECMAScript values=].
     1. Let |directFromSellerSignalsJs| be |directFromSellerSignalsForSeller|
       [=converted to ECMAScript values=].
-    1. Return the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
+    1. Return the result of [=evaluating a script=] with |realm|, false, |script|, "`scoreAd`",
       «|adMetadata|, |bidValue|, |auctionConfigJS|, |trustedScoringSignalsJS|, |browserSignalsJS|,
       |directFromSellerSignalsJs|», and |timeout|.
 </div>
@@ -3075,7 +3094,7 @@ of the following global objects:
     1. Let |argumentsJS| be the result of [=converting a Web IDL arguments list to an ECMAScript
       arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
       [=exception/throws=] an exception, return « "null", null, null, null ».
-    1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|,
+    1. Let |result| be the result of [=evaluating a script=] with |realm|, false, |script|,
       |functionName|, |argumentsJS|, and 50 milliseconds.
     1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null, null ».
     1. Let |resultJSON| be "null".
@@ -3093,8 +3112,9 @@ of the following global objects:
 </div>
 
 <div algorithm>
-  To <dfn>evaluate a script</dfn> with a [=ECMAScript/realm=] |realm|, [=string=] |script|, [=string=]
-  |functionName|, a [=list=] |arguments|, and an integer millisecond [=duration=] |timeout|, run these steps.
+  To <dfn>evaluate a script</dfn> with a [=ECMAScript/realm=] |realm|, a [=boolean=]
+  |realmIsReusedForOriginGroupMode|, [=string=] |script|, [=string=] |functionName|, a [=list=]
+  |arguments|, and an integer millisecond [=duration=] |timeout|, run these steps.
   They return a [=ECMAScript/Completion Record=], which is either an [=ECMAScript/abrupt completion=] (in
   the case of a parse failure or execution error), or a [=ECMAScript/normal completion=] populated with the
   [=ECMAScript/ECMAScript language value=] result of invoking |functionName|.
@@ -3106,24 +3126,37 @@ of the following global objects:
 
     1. Let |global| be |realm|'s [=realm/global object=], and run these steps in |realm|'s [=realm/agent=]:
 
-    1. Let |result| be [$ParseScript$](|script|, |realm|, `empty`).
+    1. If |realmIsReusedForOriginGroupMode|:
 
-       Note: The resulting [=ECMAScript/Script Record=] will have no \[[HostDefined]] component,
-       unlike traditional [=scripts=] on the web platform.
+      1. [=Assert=] |functionName| is "`generateBid`".
 
-    1. If |result| is a list of errors, return
-       Completion { \[[Type]]: `throw`, \[[Value]]: |result|, \[[Target]]: `empty` }.
+      1. *Prepare to run script*: Push |realmExecutionContext| onto the
+        [=ECMAScript/execution context stack|JavaScript execution context stack=]; it is now the
+        [=ECMAScript/running execution context|running JavaScript execution context=].
 
-    1. [=Assert=]: |result| is a [=ECMAScript/Script Record=].
+      Note: When the execution environment is re-used in "`group-by-origin`" mode, the top-level script
+        will not be re-executed, with only the "`generateBid()`" function being run the subsequent times.
 
-    1. *Prepare to run script*: Push |realmExecutionContext| onto the [=ECMAScript/execution context
-       stack|JavaScript execution context stack=]; it is now the [=ECMAScript/running execution
-       context|running JavaScript execution context=].
+    1. Otherwise:
 
-    1. Let |evaluationStatus| be the result of [$ScriptEvaluation$](result).
+      1. Let |result| be [$ParseScript$](|script|, |realm|, `empty`).
 
-    1. If |evaluationStatus| is an [=ECMAScript/abrupt completion=], jump to the step labeled <i>
-       <a href="#evaluate-script-return">return</a></i>.
+         Note: The resulting [=ECMAScript/Script Record=] will have no \[[HostDefined]] component,
+         unlike traditional [=scripts=] on the web platform.
+
+      1. If |result| is a list of errors, return
+         Completion { \[[Type]]: `throw`, \[[Value]]: |result|, \[[Target]]: `empty` }.
+
+      1. [=Assert=]: |result| is a [=ECMAScript/Script Record=].
+
+      1. *Prepare to run script*: Push |realmExecutionContext| onto the [=ECMAScript/execution context
+         stack|JavaScript execution context stack=]; it is now the [=ECMAScript/running execution
+         context|running JavaScript execution context=].
+
+      1. Let |evaluationStatus| be the result of [$ScriptEvaluation$](result).
+
+      1. If |evaluationStatus| is an [=ECMAScript/abrupt completion=], jump to the step labeled <i>
+         <a href="#evaluate-script-return">return</a></i>.
 
     1. Let |F| be [$Get$](|global|, |functionName|). If that returns a [=ECMAScript/throw completion=],
        set |finalCompletion| to |F| and jump to the step labeled <i>
@@ -3574,7 +3607,7 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
 
         <dt>"`executionMode`"
         <dd>
-        1. If |value| is "`compatibility`" or "`group-by-origin`",
+        1. If |value| is "`compatibility`" or "`group-by-origin`" or "`frozen-context`",
           set |ig|'s [=interest group/execution mode=] to |value|.
         1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
@@ -4125,7 +4158,7 @@ An interest group is a [=struct=] with the following [=struct/items=]:
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
 : <dfn>execution mode</dfn>
-:: "`compatibility`" or "`group-by-origin`".
+:: "`compatibility`" or "`group-by-origin`" or "`frozen-context`".
   TODO: Define spec for these execution modes, link to it from here and explain these modes.
 : <dfn>bidding url</dfn>
 :: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from.
@@ -4466,9 +4499,12 @@ A per buyer bid generator is an [=ordered map=] whose [=map/keys=] are [=URLs=] 
 <h3 dfn-type=dfn>Per signals url bid generator</h3>
 
 A per signals url bid generator is an [=ordered map=] whose [=map/keys=] are [=origins=]
-representing [=interest group/joining origins=], and whose [=map/values=] are [=lists=] of
-[=interest groups=].
+representing [=interest group/joining origins=], and whose [=map/values=] are
+[=per bidding url bid generators=].
 
+A <dfn>per bidding url bid generator</dfn> is an [=ordered map=] whose [=map/keys=] are [=URLs=]
+representing [=interest group/bidding urls=], and whose [=map/values=] are [=lists=] of
+[=interest groups=].
 
 <h3 dfn-type=dfn>Previous win</h3>
 
