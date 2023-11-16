@@ -164,6 +164,8 @@ Two strings.
 
 **macro value** The value of the macro that is used to substitute the macro (e.g., ${PUBLISHER_ID}) in `reportEvent()` API’s destination URL parameter.
 
+These strings should be URL-encoded (percent encoded). If either of these strings contains characters that are impossible in URL-encoded strings (i.e., any characters besides the unreserved characters [here](https://en.wikipedia.org/wiki/Percent-encoding#Percent-encoding_in_a_URI) and `%`), the `registerAdMacro` call will fail with a type error. This is to prevent substituted macros from escaping URL parameters in the destination URL template, e.g. substituting `https://ad.com?param=${PARAM}` with (`PARAM`, `innocuous_value?malicious_param=malicious_value`).
+
 ### Example
 ```
 registerAdMacro(‘PUBLISHER_ID’, ‘123a’);
