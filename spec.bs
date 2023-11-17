@@ -415,11 +415,22 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 
 <div algorithm>
 
-To <dfn>check interest group permissions</dfn> given an [=origin=]
-|ownerOrigin|, an [=origin=] |frameOrigin|, and an enum |joinOrLeave| which is "`join`" or "`leave`":
+To <dfn>check interest group permissions</dfn> given an [=origin=] |ownerOrigin|, an [=origin=]
+|frameOrigin|, and an enum |joinOrLeave| which is "`join`" or "`leave`":
 1. If |ownerOrigin| is [=same origin=] with |frameOrigin|, then return true.
-1. Let |permissionsUrl| be the result of [=building an interest group permissions url=] with
-  |ownerOrigin| and |frameOrigin|.
+1. Let |encodedFrameOrigin| be the result of [=string/UTF-8 percent-encoding=] the
+  [=serialization of an origin|serialized=] |frameOrigin| using [=component percent-encode set=].
+1. Let |permissionsUrl| be a new [=URL=] with the following [=struct/items=]:
+  :   [=url/scheme=]
+  ::  |ownerOrigin|'s [=origin/scheme=]
+  :   [=url/host=]
+  ::  |ownerOrigin|'s [=origin/host=]
+  :   [=url/port=]
+  ::  |ownerOrigin|'s [=origin/port=]
+  :   [=url/path=]
+  ::  « ".well-known", "interest-group", "permissions" »
+  :   [=url/query=]
+  ::  The result of [=string/concatenating=] « "origin=", |encodedFrameOrigin| »
 1. Let |request| be a new [=request=] with the following properties:
   :   [=request/URL=]
   ::  |permissionsUrl|
@@ -465,17 +476,6 @@ The browser may cache requests for |permissionsUrl| within a network partition.
 In order to prevent leaking data, the browser must request |permissionsUrl|
 regardless of whether the user is a member of the ad interest group. This
 prevents a leak of the user's ad interest group membership to the server.
-
-</div>
-
-<div algorithm>
-
-To <dfn>build an interest group permissions url</dfn> given a [=origin=] |ownerOrigin| and a [=origin=] |frameOrigin|:
-1. Let |serializedFrameOrigin| be the result of [=serialization of an origin|serializing=] |frameOrigin|.
-1. Return the string formed by [=string/concatenating=]
-  * The [=serialization of an origin|serialization=] of |ownerOrigin|,
-  * The string "`/.well-known/interest-group/permissions/?origin=`", and
-  * The result of [=string/UTF-8 percent-encoding=] |serializedFrameOrigin| using [=component percent-encode set=].
 
 </div>
 
@@ -598,7 +598,7 @@ The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps are
 1. If |group| [=map/is empty=]:
   1. Let |instance| be |global|'s [=Window/browsing context=]'s
     [=browsing context/fenced frame config instance=].
-  1. If |instance| is null, [=exception/throw=] a {{TypeError}}.
+  1. If |instance| is null, then return.
   1. Let |interestGroup| be |instance|'s [=fenced frame config instance/interest group descriptor=].
   1. Run these steps [=in parallel=]:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=resolve=]
@@ -1125,8 +1125,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       returned from an associated [=request=], whose [=request/initiator type=] is `"fetch"` and the
       {{RequestInit/adAuctionHeaders}} option set to `true`, resolves or rejects. Otherwise, there
       will be a race condition that the worklet can run without the direct from seller signals that
-      it needs. See [[#handling-direct-from-seller-signals]] for details.
-
+      it needs. See [[#fetch-patch-for-auction-headers]] for details.
     * To parse the value |result|:
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
         |result|.
@@ -1401,7 +1400,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |leadingBidInfo| be a new [=leading bid info=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. Let |capturedAuctionHeaders| be |global|'s [=associated Document's=] [=node navigable's=]
-  [=traversable navigable's=] [=traversable navigable/captured ad auction headers=].
+  [=traversable navigable's=] [=traversable navigable/captured ad auction signals headers=].
 1. If |auctionConfig|'s [=auction config/component auctions=] are not [=list/is empty|empty=]:
   1. [=Assert=] |topLevelAuctionConfig| is null.
   1. Let |pendingComponentAuctions| be |auctionConfig|'s [=auction config/component auctions=]'s
@@ -2014,6 +2013,9 @@ To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=
 1. Let |keysStr| be the result of [=string/concatenating=] |keys| with separator set to ",".
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keysStr| using
   [=component percent-encode set=] to |list|.
+
+  Issue: The Chrome implementation encodes 0x20 (SP) to U+002B (+), while [=string/UTF-8 percent-encoding=]
+    encodes it to "%20".
 1. Return |list|.
 
 </div>
@@ -2024,9 +2026,18 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
 [=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, an {{unsigned short}}-or-null
 |experimentGroupId|, and an [=origin=] |topLevelOrigin|:
 1. Let |queryParamsList| be a new empty [=list=].
+
+  Note: These steps create a [=url/query=] of the form "`&<name>=<values in comma-delimited list>`". E.g.,
+    "`hostname=publisher1.com&keys=key1,key2&interestGroupNames=ad+platform,name2&experimentGroupId=1234`".
+    <br><br>These steps don't use the [=urlencoded serializer|application/x-www-form-urlencoded serializer=]
+    to construct the query string because it repeats a key if it has multiple values instead of a
+    comma-demilited list (e.g., "keys=key1&keys=key2", instead of "keys=key1,key2"), and it also
+    uses a different percent encode set from the Chrome implementation.
+
 1. [=list/Append=] "hostname=" to |queryParamsList|.
-1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
-  [=component percent-encode set=] to |queryParamsList|.
+1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] the
+  [=serialization of an origin|serialized=] |topLevelOrigin| using [=component percent-encode set=]
+  to |queryParamsList|.
 1. If |keys| is not [=set/is empty|empty=]:
   1. [=list/Append=] "&keys=" to |queryParamsList|.
   1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
@@ -2387,7 +2398,7 @@ the [=additional bid=] to compete against other bids in a Protected Audience [=a
 
 <div id="additional-bid-example" class=example>
   <p> Each additional bid is expressed using the following JSON data structure:</p>
-  <pre class="highlight">
+  <pre highlight="js">
   const additionalBid = {
     "bid": {
       "ad": 'ad-metadata',
@@ -2714,7 +2725,7 @@ identified ahead of time in the [=additional bid=]'s `joiningOrigin` field. Any
 
 <div id="negative-igs-example" class=example>
   <p>Use `negativeInterestGroup` in additional bid's JSON:</p>
-  <pre class="highlight">
+  <pre highlight="js">
   const additionalBid = {
     ...
     "negativeInterestGroup": "example_advertiser_negative_interest_group",
@@ -2722,7 +2733,7 @@ identified ahead of time in the [=additional bid=]'s `joiningOrigin` field. Any
   }
   </pre>
   <p>Use `negativeInterestGroups` in additional bid's JSON:</p>
-  <pre class="highlight">
+  <pre highlight="js">
   const additionalBid = {
     ...
     "negativeInterestGroups": {
@@ -3720,16 +3731,39 @@ This specification defines two [=policy-controlled features=] identified by the 
 Issue(WICG/turtledove#522): Move from "`*`" to "`self`".
 
 
-# Handling Direct from Seller Signals # {#handling-direct-from-seller-signals}
+# Fetch Patch for Auction Headers # {#fetch-patch-for-auction-headers}
 
-This section specifies a manner by which signals may be provided to auctions such that the signals
-are only used within their intended auction.
+This section specifies a manner by which some data, including [=additional bids=] and
+[=direct from seller signals=], may be provided to auctions such that the data is only used within
+their intended auction.
 
 Any {{Document}} in a [=traversable navigable=] may run a Protected Audience auction (with
 {{Window/navigator}}.{{Navigator/runAdAuction()}}) whose worklet functions receive signal objects
-derived from JSON from an [:Ad-Auction-Signals:] header captured by a
-{{WindowOrWorkerGlobalScope/fetch()}} call (using the {{RequestInit/adAuctionHeaders}} option)
-initiated by any *other* {{Document}} in the *same* [=traversable navigable=].
+derived from JSON from an [:Ad-Auction-Signals:] header, or [=additional bids=] derived from an
+[:Ad-Auction-Additional-Bid:] header, captured by a {{WindowOrWorkerGlobalScope/fetch()}} call
+(using the {{RequestInit/adAuctionHeaders}} option) initiated by any *other* {{Document}} in the
+*same* [=traversable navigable=].
+
+<div algorithm="fetch per traversable navigable structures patch">
+Modify [[FETCH]]'s [[FETCH#infrastructure]] to add a new section called "Per Traversable Navigable
+Structures", with the following content:
+
+Each [=traversable navigable=] has a <dfn for="traversable navigable">captured ad auction signals
+headers</dfn>, which is a [=map=] whose [=map/keys=] are [=direct from seller signals keys=] and
+whose [=map/values=] are [=direct from seller signals=].
+
+NOTE: This is only captured during a [=request=] whose [=request/initiator type=] is `"fetch"`, made
+with the {{RequestInit/adAuctionHeaders}} option set to `true`, as described in the
+[:Ad-Auction-Signals:] header description.
+
+Each [=traversable navigable=] has a <dfn for="traversable navigable">captured ad auction additional
+bids headers</dfn>, which is a [=map=] whose [=map/keys=] are [=auction nonces=] and whose
+[=map/values=] are [=strings=].
+
+NOTE: This is only captured during a [=request=] whose [=request/initiator type=] is `"fetch"`, made
+with the {{RequestInit/adAuctionHeaders}} option set to `true`, as described in the
+[:Ad-Auction-Additional-Bid:] header description.
+</div>
 
 <div algorithm="fetch capture adAuctionHeaders boolean patch">
 Modify the definition of a [=request=]: 
@@ -3768,52 +3802,6 @@ The following step will be added to the [=HTTP-network-or-cache fetch=] algorith
 
 </div>
 
-<div algorithm="fetch per traversable navigable structures patch">
-Modify [[FETCH]]'s [[FETCH#infrastructure]] to add a new section called "Per Traversable Navigable
-Structures", with the following content:
-
-<h3 id=direct-from-sellers-signals-key-struct>Direct from seller signals key</h3>
-A <dfn>direct from seller signals key</dfn> is a [=struct=] with the following [=struct/items=]:
-
-NOTE: This is only captured during a [=request=] whose [=request/initiator type=] is `"fetch"`, made
-with the {{RequestInit/adAuctionHeaders}} option set to `true`, as described in the
-[:Ad-Auction-Signals:] header description.
-
-<dl dfn-for="direct from seller signals key">
-: <dfn>seller</dfn>
-:: An [=origin=]. Matches the origin that served the captured [:Ad-Auction-Signals:] header.
-: <dfn>ad slot</dfn>
-:: A [=string=]. Matches the `adSlot` key of the JSON dictionaries in the top-level array of the
-  [:Ad-Auction-Signals:] value.
-
-</dl>
-
-<h3 id=direct-from-sellers-signals-struct>Direct from seller signals</h3>
-A <dfn>direct from seller signals</dfn> is a [=struct=] with the following [=struct/items=]:
-
-NOTE: This is only captured during a [=request=] whose [=request/initiator type=] is `"fetch"`, made
-with the {{RequestInit/adAuctionHeaders}} option set to `true`, as described in the
-[:Ad-Auction-Signals:] header description.
-
-<dl dfn-for="direct from seller signals">
-: <dfn>auction signals</dfn>
-:: Null or a [=string=].
-  Opaque JSON data passed to both buyers' and the seller's [=script runners=].
-: <dfn>seller signals</dfn>
-:: Null or a [=string=].
-  Opaque JSON data passed to the seller's [=script runner=].
-: <dfn>per buyer signals</dfn>
-:: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
-  [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
-  passed to corresponding buyer's [=script runner=].
-
-</dl>
-
-Each [=traversable navigable=] has a <dfn for="traversable navigable">captured ad auction headers
-</dfn>, which is a [=map=] whose [=map/keys=] are [=direct from seller signals keys=] and whose
-[=map/values=] are [=direct from seller signals=].
-</div>
-
 <div algorithm="fetch auction headers patch">
 The following will be added to [[Fetch#http-extensions]]:
 
@@ -3839,15 +3827,17 @@ HTTP response header.</h3>
 
 The \`<dfn http-header><code>Ad-Auction-Additional-Bid</code></dfn>\` response header provides value
 of a string in the format of `<auction nonce>:<base64-encoding of the signed additional bid>`, which
-corresponds to a single additional bid. The response may include more than one additional bid by
-specifying multiple instances of the [:Ad-Auction-Additional-Bid:] response header.
+corresponds to a single [=additional bid=]. The response may include more than one [=additional bid=]
+by specifying multiple instances of the [:Ad-Auction-Additional-Bid:] response header.
 </div>
 
-<div algorithm="fetch auction signals redirect patch">
-The following step will be added to the [=HTTP fetch=] algorithm, immediately under the step "If
+<div algorithm="ad auction fetch redirect patch">
+The following steps will be added to the [=HTTP fetch=] algorithm, immediately under the step "If
 <var ignore>internalResponse</var>’s [=status=] is a [=redirect status=]:"
 
-1. [=header list/Delete=] "[:Ad-Auction-Signals:]" from <var ignore>response</var>'s
+1. [=header list/Delete=] "[:Ad-Auction-Signals:]" from |response|'s
+  [=response/header list=].
+1. [=header list/Delete=] "[:Ad-Auction-Additional-Bid:]" from |response|'s
   [=response/header list=].
 
 </div>
@@ -3858,33 +3848,58 @@ The following step will be added to the [=HTTP fetch=] algorithm, before step
 
 1. If |response| is not null, |response|'s [=status=] is not a [=redirect status=], |fetchParams|'s
   [=fetch params/task destination=] is a [=global object=] that's a {{Window}} object, and
-  |request|'s [=request/capture-ad-auction-headers=] is `true`, then run [=update captured headers=]
-  with |fetchParams|'s [=fetch params/task destination=]'s [=associated Document's=] [=node
-  navigable's=] [=traversable navigable's=] [=traversable navigable/captured ad auction headers=],
-  |response|'s [=response/header list=], and |request|'s [=request/URL=]'s [=url/origin=].
+  |request|'s [=request/capture-ad-auction-headers=] is `true`:
+  1. Let |navigable| be |fetchParams|'s [=fetch params/task destination=]'s [=associated Document=]'s
+    [=node navigable=]'s [=traversable navigable=].
+  1. Run [=update captured headers=] with |navigable|'s
+    [=traversable navigable/captured ad auction signals headers=], |navigable|'s
+    [=traversable navigable/captured ad auction additional bids headers=], |response|'s
+    [=response/header list=], and |request|'s [=request/URL=]'s [=url/origin=].
 
 </div>
 
 <div algorithm="fetch update captured headers patch">
 The following algorithm will be added to the [[FETCH#fetching]] section:
 
-<h3 id=update-captured-headers>Update captured headers</h3>
-
   To <dfn id=concept-update-captured-headers>update captured headers</dfn> with a [=traversable
-  navigable/captured ad auction headers=] |storedHeaders|, [=header list=] |responseHeaders|, and
-  [=origin=] |requestOrigin|:
+  navigable/captured ad auction signals headers=] |storedSignalsHeaders|,
+  [=traversable navigable/captured ad auction additional bids headers=] |storedAdditionalBidsHeaders|,
+  [=header list=] |responseHeaders|, and [=origin=] |requestOrigin|:
   1. Let |adAuctionSignals| be the result of [=header list/getting=] [:Ad-Auction-Signals:] from
     |responseHeaders|.
-  1. If |adAuctionSignals| is null, return.
-  1. [=header list/Delete=] "[:Ad-Auction-Signals:]" from |responseHeaders|.
+  1. If |adAuctionSignals| is not null:
+    1. [=header list/Delete=] "[:Ad-Auction-Signals:]" from |responseHeaders|.
 
-    NOTE: This step prevents the header value from being used outside the intended auctions --
-    that is, scripts making the {{WindowOrWorkerGlobalScope/fetch()}} request aren't able to load
-    the header value.
+      NOTE: This step prevents the header value from being used outside the intended auctions --
+      that is, scripts making the {{WindowOrWorkerGlobalScope/fetch()}} request aren't able to load
+      the header value.
+    1. [=Handle ad auction signals header value=] given |adAuctionSignals|, |storedSignalsHeaders| and
+      |requestOrigin|.
+  1. Let |additionalBids| be the result of [=header list/getting, decoding, and splitting=]
+    [:Ad-Auction-Additional-Bid:] from |responseHeaders|.
+  1. If |additionalBids| is not null:
+    1. [=header list/Delete=] "[:Ad-Auction-Additional-Bid:]" from |responseHeaders|.
+
+      NOTE: This step prevents the header value from being used outside the intended auctions --
+      that is, scripts making the {{WindowOrWorkerGlobalScope/fetch()}} request aren't able to load
+      the header value.
+    1. [=list/For each=] |bid| of |additionalBids|:
+      1. Let |nonceAndAdditionalBid| be the result of [=strictly splitting=] |bid| on U+003A (:).
+      1. If |nonceAndAdditionalBid|'s [=list/size=] is not 2, then [=iteration/continue=].
+      1. Let |nonce| be |nonceAndAdditionalBid|[0].
+      1. If |nonce|'s [=string/length=] is not 36, then [=iteration/continue=].
+      1. Set |storedAdditionalBidsHeaders|[|nonce|] to |nonceAndAdditionalBid|[1].
+
+</div>
+
+<div algorithm>
+To <dfn>handle ad auction signals header value</dfn> given a [=byte sequence=] |adAuctionSignals|,
+[=traversable navigable/captured ad auction signals headers=] |storedSignalsHeaders|, and [=origin=]
+|requestOrigin|:
+
   1. Let |parsedSignals| be the result of [=parsing JSON bytes to an Infra value=], given
     |adAuctionSignals|.
-  1. If |parsedSignals| is failure, return.
-  1. If |parsedSignals| is not a [=list=], return.
+  1. If |parsedSignals| is failure or not a [=list=], return.
   1. Let |headerAdSlots| be a new [=ordered set=].
   1. [=list/For each=] |signal| in |parsedSignals|:
     1. If |signal| is not an [=ordered map=], [=iteration/continue=].
@@ -3894,10 +3909,10 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
       NOTE: Implementations can consider also issuing a diagnostic error message in this case
       ([:Ad-Auction-Signals:] header with duplicate `adSlot` dictionaries).
     1. [=set/Append=] |signal|["`adSlot`"] to |headerAdSlots|.
-    1. Create a new [=direct from seller signals key=] |signalsKey|, with its
+    1. Let |signalsKey| be a new [=direct from seller signals key=], with its
       [=direct from seller signals key/seller=] set to |requestOrigin| and its
       [=direct from seller signals key/ad slot=] set to |signal|["`adSlot`"].
-    1. Create a new [=direct from seller signals=] |processedSignals|.
+    1. Let |processedSignals| be a new [=direct from seller signals=].
     1. [=map/Remove=] |signal|["`adSlot`"].
     1. [=map/For each=] |key| → |value| of |signal|:
       1. Switch on |key|:
@@ -3916,17 +3931,15 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
           <dd>
           1. If |value| is not an [=ordered map=], [=iteration/continue=].
           1. For each |buyer| → |buyerSignals| of |value|:
-            1. Let |buyerOrigin| be the result of [=parsing an https origin=] on |buyer|. If this
-              [=exception/throws=], [=iteration/continue=].
+            1. Let |buyerOrigin| be the result of [=parsing an https origin=] on |buyer|.
+            1. If |buyerOrigin| is failure, [=iteration/continue=].
             1. Let |buyerSignalsString| be the result of
               [=serializing an Infra value to a JSON string=], given |buyerSignals|.
             1. Set |processedSignals|'s
               [=direct from seller signals/per buyer signals=][|buyerOrigin|] to |buyerSignalsString|.
-        
         </dl>
 
-    1. Set |storedHeaders|[|signalsKey|] to |processedSignals|.
-
+    1. Set |storedSignalsHeaders|[|signalsKey|] to |processedSignals|.
 </div>
 
 
@@ -4544,7 +4557,6 @@ response headers.
 : <dfn>provided as additional bid</dfn>
 :: A [=boolean=], initially false.
 
-
 </dl>
 
 <h3 dfn-type=dfn>Ad descriptor</h3>
@@ -4573,6 +4585,33 @@ Width and height of an ad.
 : <dfn>height units</dfn>
 :: A [=string=]. Can only be one of "px" (pixel), "sh" (screen height), and "sw" (screen width).
 
+</dl>
+
+<h3 id=direct-from-seller-signals-section>Direct from seller signals</h3>
+
+A <dfn>direct from seller signals key</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="direct from seller signals key">
+  : <dfn>seller</dfn>
+  :: An [=origin=]. Matches the origin that served the captured [:Ad-Auction-Signals:] header.
+  : <dfn>ad slot</dfn>
+  :: A [=string=]. Matches the `adSlot` key of the JSON dictionaries in the top-level array of the
+    [:Ad-Auction-Signals:] value.
+</dl>
+
+A <dfn>direct from seller signals</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="direct from seller signals">
+  : <dfn>auction signals</dfn>
+  :: Null or a [=string=].
+    Opaque JSON data passed to both buyers' and the seller's [=script runners=].
+  : <dfn>seller signals</dfn>
+  :: Null or a [=string=].
+    Opaque JSON data passed to the seller's [=script runner=].
+  : <dfn>per buyer signals</dfn>
+  :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
+    [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
+    passed to corresponding buyer's [=script runner=].
 </dl>
 
 <h3 dfn-type=dfn>Score ad output</h3>
