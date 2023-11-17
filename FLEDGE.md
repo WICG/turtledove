@@ -535,11 +535,15 @@ To pass DirectFromSellerSignals using a [`fetch()`](https://developer.mozilla.or
 let fetchResponse = await fetch("https://seller.com/signals", {adAuctionHeaders: true});
 ```
 
+The script must resolve the `directFromSellerSignalsHeaderAdSlot` Promise only after the response for this call is received. If the script chooses to call `runAdAuction()` after this response is received, the Promise may be immediately resolved.
+
 To pass DirectFromSellerSignals using an [`iframe`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) navigation, specify the `adAuctionHeaders` attribute on the `iframe` element:
 
 ```html
 <iframe src="..." adAuctionHeaders></iframe>
 ```
+
+The script that invokes `runAdAuction()` will be part of the response from that iframe navigation, and so because `runAdAuction()` is not called until after the response is received, the `directFromSellerSignalsHeaderAdSlot` Promise may be immediately resolved.
 
 The browser will make the request for either the `fetch()` or the `iframe` navigation that it otherwise would, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that any `Ad-Auction-Signals` response header from the server will only be loaded in auctions via `directFromSellerSignalsHeaderAdSlot` (this is analogous to the guarantees of `Ad-Auction-Only` and `Sec-Fetch-Dest: webbundle` from the [subresource bundle version](#251-using-subresource-bundles) -- scripts on the page cannot set the `Sec-Ad-Auction-Fetch: ?1` request header without using the `{adAuctionHeaders: true}` option).
 

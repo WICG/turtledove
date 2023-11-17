@@ -51,6 +51,11 @@ fetch('https://www.example-ssp.com/auction', { <b>adAuctionHeaders: true</b>, â€
 </pre>
 Note that `adAuctionHeaders` only works with HTTPS requests.
 
+Response blobs can also be retrieved using an `iframe` navigation by specifying the `adAuctionHeaders` attribute on the iframe element. As with the Fetch, this navigation is initiated with a flag to prepare the browser to look for `Ad-Auction-Result` HTTP response headers:
+```html
+<iframe src="..." adAuctionHeaders></iframe>
+```
+
 For each response blob sent back to the browser, the sellerâ€™s server attaches a response header containing the base64url encoded (RFC 4648 section 5) SHA-256 hash of the response blob:
 
 ```
