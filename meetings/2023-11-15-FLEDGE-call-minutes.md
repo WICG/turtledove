@@ -231,8 +231,10 @@ Intending to land this in M120 [when Mode B testing begins](https://bugs.chromiu
 *   Kleber - Is there a GitHub issue on this? 
 *   Roni - Harshad just opened up (#[908](https://github.com/WICG/turtledove/issues/908)) and it was mentioned in another issue. 
 *   Kleber - Will talk to the GPT folks and see if this question needs to be moved over to their repo, and will investigate into the information flow. 
-*   David - GPT supports width and height.  It may be a way to pass a size. 
-*   Paul - Implementation(_kevin: not sure which feature_) is close.  It would be M121.  
+*   David - GPT supports width and height.  It may be a way to pass a size.
+
+## David Dabbs - updateURL ability to update userBiddingSignals #760
+*   Paul - Implementation is close.  It would be M121.  
     *   Kleber - Merging into an old branch is for bug fixes, and new features would go on a new branch. 
 
 
