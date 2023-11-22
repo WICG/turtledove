@@ -315,7 +315,7 @@ const myAuctionConfig = {
   'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
   'auctionSignals': {...},
   'requestedSize': {width: '100', height: '200'},
-  'allSlotsRequestedSizedSizes': [{width: '100', height: '200'}, {width: '200', height: '300'}, ...],
+  'allSlotsRequestedSizes': [{width: '100', height: '200'}, {width: '200', height: '300'}, ...],
   'directFromSellerSignals': 'https://www.example-ssp.com/...',
   'sellerSignals': {...},
   'sellerTimeout': 100,
