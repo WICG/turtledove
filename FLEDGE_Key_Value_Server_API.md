@@ -39,15 +39,10 @@ provides more context about these namespaces.
 The server can be configured to run in slightly different modes depending on
 whether it is serving the DSP use case or the SSP use case.
 
-### Subkey
+### Hostname
 
-For a given key, a subkey may be used to further specify a dedicated value
-override.
-
-During the query, the browser sets the hostname as the subkey value. When a
-query to a particular subkey does not match any existing entry, the server
-system can automatically fallback to a default value for the key, specified by
-not setting the subkey during data updates.
+During the query, the browser sets the hostname. This matches the hostname
+described in the main explainer.
 
 ## Query API Version 1
 
@@ -57,16 +52,15 @@ This is the mechanism for the browser client to fetch real-time bidding signals.
 The API is called during the ad auction process, as described in the
 [FLEDGE explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#31-fetching-real-time-data-from-a-trusted-server).
 
-The returned values are purely dependent on the keys (namespace + key + subkey),
+The returned values are purely dependent on the keys (namespace + key + hostname),
 except for advanced use cases explicitly agreed upon between browsers and ad
 tech platforms. A potential advanced use case being discussed is how to provide
 country-level IPGeo information to the bidders. The API provides read-only
 access to the key/value data.
 
-As mentioned in the Mutating API section below, possible data staleness may
-occur. Different values may be returned for the same keys if reads happen during
-data updates, due to the distributed nature of the system. But if the data is
-stable, requests are deterministic.
+Possible data staleness may occur. Different values may be returned for the
+same keys if reads happen during data updates, due to the distributed nature
+of the system. But if the data is stable, requests are deterministic.
 
 ### Form
 
@@ -75,7 +69,7 @@ GET `https://www.kv-server.example/v1/getvalues`
 ### Examples
 
 ```
-https://www.dsp-kv-server.example/v1/getvalues?subkey=publisher.com&keys=key1,key2&interestGroupNames=name1,name2
+https://www.dsp-kv-server.example/v1/getvalues?hostname=publisher.com&keys=key1,key2&interestGroupNames=name1,name2
 https://www.ssp-kv-server.example/v1/getvalues?renderUrls=url1,url2&adComponentRenderUrls=url3,url4
 ```
 
@@ -137,11 +131,9 @@ https://www.ssp-kv-server.example/v1/getvalues?renderUrls=url1,url2&adComponentR
    </td>
   </tr>
   <tr>
-   <td>subkey
+   <td>hostname
    </td>
    <td>The browser sets the hostname of the publisher page to be the value.
-<p>
-If no specific value is available in the system for this subkey, a default value will be returned. The default value corresponds to the key when the subkey is not set.
    </td>
    <td>DSP
    </td>
@@ -365,13 +357,13 @@ If the restrictions are not followed by the client, for example due to misconfig
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "context": {
-      "description": "global context shared by all partitions",
+    "metadata": {
+      "description": "global metadata shared by all partitions",
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "subkey": {
-          "description": "Auxiliary key. For Chrome, it is the hostname of the top-level frame calling runAdAuction(). Set if sent to the trusted bidding signals server.",
+        "hostname": {
+          "description": "The hostname of the top-level frame calling runAdAuction().",
           "type": "string"
         }
       }
@@ -380,63 +372,56 @@ If the restrictions are not followed by the client, for example due to misconfig
       "description": "A list of partitions. Each must be processed independently",
       "type": "array",
       "items": {
-        "$ref": "#/$defs/single_partition_object"
+        "title": "Single partition object",
+        "description": "A collection of keys that can be processed together",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "Unique id of the partition in this request",
+            "type": "number"
+          },
+          "compressionGroupId": {
+            "description": "Unique id of a compression group in this request. Only partitions belonging to the same compression group will be compressed together in the response",
+            "type": "number"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "description": "One group of keys and common attributes about them",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "tags": {
+                  "description": "List of tags describing this group's attributes",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "data": {
+                  "type": "array",
+                  "description": "List of keys to get values for",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "id",
+          "compressionGroupId",
+          "arguments"
+        ]
       }
     }
   },
   "required": [
-    "context",
+    "metadata",
     "partitions"
-  ],
-  "$defs": {
-    "single_partition_object": {
-      "title": "Single partition object",
-      "description": "A collection of keys that can be processed together",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "description": "Unique id of the partition in this request",
-          "type": "number"
-        },
-        "compressionGroup": {
-          "description": "Unique id of a compression group in this request. Only partitions belonging to the same compression group will be compressed together in the response",
-          "type": "number"
-        },
-        "keyGroups": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/single_key_group_object"
-          }
-        }
-      },
-      "required": [
-        "id",
-        "compressionGroup",
-        "keyGroups"
-      ]
-    },
-    "single_key_group_object": {
-      "description": "All keys from this group share some common attributes",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "tags": {
-          "description": "List of tags describing this key group's attributes",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "keyList": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    }
-  }
+  ]
 }
 ```
 
@@ -444,20 +429,20 @@ Example trusted bidding signals request from Chrome:
 
 ```json
 {
-  "context": {
-    "subkey": "example.com"
+  "metadata": {
+    "hostname": "example.com"
   },
   "partitions": [
     {
       "id": 0,
-      "compressionGroup": 0,
-      "keyGroups": [
+      "compressionGroupId": 0,
+      "arguments": [
         {
           "tags": [
             "structured",
             "groupNames"
           ],
-          "keyList": [
+          "data": [
             "InterestGroup1"
           ]
         },
@@ -466,7 +451,7 @@ Example trusted bidding signals request from Chrome:
             "custom",
             "keys"
           ],
-          "keyList": [
+          "data": [
             "keyAfromInterestGroup1",
             "keyBfromInterestGroup1"
           ]
@@ -475,14 +460,14 @@ Example trusted bidding signals request from Chrome:
     },
     {
       "id": 1,
-      "compressionGroup": 0,
-      "keyGroups": [
+      "compressionGroupId": 0,
+      "arguments": [
         {
           "tags": [
             "structured",
             "groupNames"
           ],
-          "keyList": [
+          "data": [
             "InterestGroup2",
             "InterestGroup3"
           ]
@@ -492,7 +477,7 @@ Example trusted bidding signals request from Chrome:
             "custom",
             "keys"
           ],
-          "keyList": [
+          "data": [
             "keyMfromInterestGroup2",
             "keyNfromInterestGroup3"
           ]
@@ -523,78 +508,67 @@ The schema of the JSON in one compression group:
     "partitions": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/single_partition_output"
-      }
-    }
-  },
-  "$defs": {
-    "single_partition_output": {
-      "title": "Output for one partition",
-      "type": "object",
-      "properties": {
-        "id": {
-          "description": "Unique id of the partition from the request",
-          "type": "number"
-        },
-        "keyGroupOutputs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/single_key_group_output"
-          }
-        }
-      }
-    },
-    "single_key_group_output": {
-      "title": "Output for one key group",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "tags": {
-          "description": "Attributes of this key group.",
-          "type": "array",
-          "items": {
-            "description": "List of tags describing this key group's attributes",
-            "type": "string"
-          }
-        },
-        "keyValues": {
-          "description": "If a keyValues object exists, it must at least contain one key-value pair. If no key-value pair can be returned, the key group should not be in the response.",
-          "type": "object",
-          "patternProperties": {
-            ".*": {
-              "$ref": "#/$defs/single_value_output"
+        "title": "Output for one partition",
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "Unique id of the partition from the request",
+            "type": "number"
+          },
+          "keyGroupOutputs": {
+            "type": "array",
+            "items": {
+              "title": "Output for one key group",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "tags": {
+                  "description": "Attributes of this key group.",
+                  "type": "array",
+                  "items": {
+                    "description": "List of tags describing this key group's attributes",
+                    "type": "string"
+                  }
+                },
+                "keyValues": {
+                  "description": "If a keyValues object exists, it must at least contain one key-value pair. If no key-value pair can be returned, the key group should not be in the response.",
+                  "type": "object",
+                  "patternProperties": {
+                    ".*": {
+                      "description": "One value to be returned in response for one key",
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "value": {
+                          "type": [
+                            "string",
+                            "number",
+                            "integer",
+                            "object",
+                            "array",
+                            "boolean"
+                          ]
+                        },
+                        "global_ttl_sec": {
+                          "description": "Adtech-specified TTL for client-side caching, not dedicated to a specific subkey. In seconds. Unset means no caching.",
+                          "type": "integer"
+                        },
+                        "dedicated_ttl_sec": {
+                          "description": "Adtech-specified TTL for client-side caching, specific to the subkey in the request. In seconds. Unset means no caching.",
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "value"
+                      ]
+                    }
+                  }
+                }
+              }
             }
           }
         }
       }
-    },
-    "single_value_output": {
-      "description": "One value to be returned in response for one key",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "value": {
-          "type": [
-            "string",
-            "number",
-            "integer",
-            "object",
-            "array",
-            "boolean"
-          ]
-        },
-        "global_ttl_sec": {
-          "description": "Adtech-specified TTL for client-side caching, not dedicated to a specific subkey. In seconds. Unset means no caching.",
-          "type": "integer"
-        },
-        "dedicated_ttl_sec": {
-          "description": "Adtech-specified TTL for client-side caching, specific to the subkey in the request. In seconds. Unset means no caching.",
-          "type": "integer"
-        }
-      },
-      "required": [
-        "value"
-      ]
     }
   }
 }
@@ -620,7 +594,7 @@ Example of one (trusted bidding signals server) response:
                   "signal1": 1
                 }
               },
-              "ttl_sec": 1
+              "dedicated_ttl_sec": 1
             }
           }
         },
@@ -632,14 +606,14 @@ Example of one (trusted bidding signals server) response:
           "keyValues": {
             "keyAfromInterestGroup1": {
               "value": "valueForA",
-              "ttl_sec": 120
+              "dedicated_ttl_sec": 120
             },
             "keyBfromInterestGroup1": {
               "value": [
                 "value1ForB",
                 "value2ForB"
               ],
-              "ttl_sec": 60
+              "dedicated_ttl_sec": 60
             }
           }
         }
@@ -665,11 +639,11 @@ Example of one trusted scoring signals server response:
           "keyValues": {
             "renderurls.com/1": {
               "value": "value3",
-              "ttl_sec": 120
+              "dedicated_ttl_sec": 120
             },
             "renderurls.com/2": {
               "value": "value4",
-              "ttl_sec": 120
+              "dedicated_ttl_sec": 120
             }
           }
         },
@@ -681,14 +655,14 @@ Example of one trusted scoring signals server response:
           "keyValues": {
             "adcomponents.com/1": {
               "value": "value1",
-              "ttl_sec": 120
+              "dedicated_ttl_sec": 120
             },
             "adcomponents.com/2": {
               "value": [
                 "value2A",
                 "value2B"
               ],
-              "ttl_sec": 60
+              "dedicated_ttl_sec": 60
             }
           }
         }

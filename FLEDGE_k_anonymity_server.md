@@ -18,15 +18,7 @@ where the crowd consists of $k$ users.
 
 ## Use cases in the Privacy Sandbox
 
-The [FLEDGE](FLEDGE.md) proposal calls for k-anonymity thresholds on several
-features.  The first threshold is before interest groups are updated.
-A browser should not request an interest group update from an untrusted
-server unless there are at least $k$ other browsers also requesting the
-same interest group update.  This allows the browser for a particular user
-to _hide in the crowd_ of other users also requesting the same update.
-To implement this k-anonymity thresholds are applied to the `dailyUpdateUrl`.
-
-k-anonymity is also applied to the `renderUrl` for ad creatives.  One of the
+k-anonymity is applied to the `renderUrl` for ad creatives.  One of the
 goals of [FLEDGE](FLEDGE.md) is to offer microtargeting protection; that is,
 a user won't be shown an ad unless some minimum number, $k$, of other users
 are also being shown the same ad.  This is accomplished by applying k-anonymity
@@ -36,6 +28,26 @@ future also prevent user-identifying information from the embedding site from
 being passed to an ad's fenced frame via parameters like `size`.  Adding `size`
 to the k-anonymity check of the `renderUrl` is under discussion in [this
 issue](https://github.com/WICG/turtledove/issues/312#issuecomment-1307471709).
+
+k-anonymity is also applied at Reporting Time: if the buyer has provided a `reportWin`
+function in the script available at `biddingScriptUrl`, the `browserSignals` argument
+to the `reportWin` function call will include `interestGroupName` if the tuple of 
+interest group owner, name, bidding script URL and ad creative URL is jointly 
+k-anonymous (see 
+[here](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#52-buyer-reporting-on-render-and-ad-events)).
+
+
+Previously the [FLEDGE](FLEDGE.md) proposal called for k-anonymity thresholds on 
+Interest Group updates. The idea was a browser would not request an Interest Group 
+update from an untrusted server unless there were at least $k$ other browsers also 
+requesting the same Interest Group update. This meant a k-anon check was done on
+the Interest Group's `dailyUpdateUrl`. After much discussion (in particular see
+this comment on the proliferation of Interest Groups causing tradeoffs w/r/t latency
+[here](https://github.com/WICG/turtledove/issues/361#issuecomment-1430069343), and
+the bottom of section 1.2 discussing the `updateUrl` (`dailyUpdateUrl`) in the main explainer
+[here](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#12-interest-group-attributes)) 
+it was decided to drop this requirement as the marginal cost to the auction was large
+and the marginal benefit to privacy not enough.
 
 Beyond FLEDGE there are also plans to use k-anonymity thresholds in [shared
 storage](https://github.com/WICG/shared-storage).  The shared storage
@@ -227,8 +239,14 @@ this, we're exploring options that include having the client request tokens
 at a constant rate and discard unused tokens.
 
 `Query` is a read-only API, so it doesn't have the same abuse concerns as
-`Join`.  We won't require Private State Tokens, or a Google Account, for a browser
-to call `Query`.
+`Join`. While we will not require Private State Tokens, or a Google Account,
+for a browser to call `Query`, the Query Server will take certain measures
+against set abuse to prevent the privacy of end users from being
+compromised. If the Query Server has evidence indicating that a set is
+corrupted and is more likely to leak identifying information about members,
+it will report the k-anonymity status of the set to be `false` until the
+risk to users' privacy has been addressed.
+
 
 #### Differential privacy of public data
 
