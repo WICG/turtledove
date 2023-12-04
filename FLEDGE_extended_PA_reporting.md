@@ -69,33 +69,30 @@ with an arbitrary `event_key` within `generateBid`, `scoreAd`, `reportWin`, and 
 
 ### Example 1: Correlating bidding signals with click information.
 
-We consider the scenario where a buyer wants to learn the click through rate of ads when a user has
+We consider the scenario where a buyer wants to learn the click-through rate of ads when a user has
 been in an interest group for a given time.
 
-The buyer may implement `getImpressionReportBucket()` and `getClickReportBucket()` which map an
-interest group and the time the user has spent in that interest group to a 128-bit integer.
+To generate the bucket that represent interest group age, the buyer may implement `getImpressionReportBucket()` and `getClickReportBucket()` functions which return buckets that map an interest group and the time the user has spent in that interest group to a 128-bit integer as `BigInt`. The `browserSignals.recency` value inside `generateBid()` specifies the duration in minutes since the user joined the interest group.
 
-The buyer can then do the following during generateBid (when the above information is available)
+Once the buckets have been derived, the buyer can call Private Aggregation inside `generateBid()`:  
 
 ```
 function generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
- …
+  // …
   privateAggregation.contributeToHistogramOnEvent(“reserved.win”, {
-      bucket: getImpressionReportBucket(),
+      bucket: getImpressionReportBucket(), // 128-bit integer as BigInt
       value: 1
   });
   privateAggregation.contributeToHistogramOnEvent("click", {
       bucket: getClickReportBuckets(), // 128-bit integer as BigInt
       value: 1
   });
+}
 ```
 
-The above logic will trigger a report if the generated bid wins (see
-[reserved.win](#reporting-bidding-data-for-wins)). And another one, if the user later clicks on the
-winning ad (this needs to be triggered by the fenced frame itself, see
-[reportPrivateAggregationEvent](#reporting-bidding-data-associated-with-an-event-in-a-frame). When
-the buyer receives an aggregated report they can infer what the click-through-rate (CTR) was for
-users on different “interest group age” buckets.
+The impression report will be sent if the [`reserved.win`](#reporting-bidding-data-for-wins) event is triggered, which is a reserved event for when the bid wins the auction. The click report will be sent if the `click` event is triggered by the [`window.fence.reportEvent("click")`](#reporting-bidding-data-associated-with-an-event-in-a-frame) call originating from the fenced frame of the ad.
+
+The buyer can then generate the summary report of the impression count and click count to infer the click-through rate of the users in different interest group age buckets. 
 
 ### Example 2: Getting the average bid gap for an ad. 
 
