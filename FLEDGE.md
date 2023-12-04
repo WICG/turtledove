@@ -651,7 +651,6 @@ The arguments to `generateBid()` are:
       'dataVersion': 1, /* Data-Version value from the trusted bidding signals server's response(s) */
     }
     ```
-    The `prevWins` is a list of [`PreviousWin` dictionaries](https://wicg.github.io/turtledove/#dictdef-previouswin), for all of the Interest Groups previous wins on the browser. `timeDelta` is the difference between the auction start time and the time of the previous win. `adJSON` is the stringified JSON of what was returned in the `ad` element by `generateBid` for that Interest Group's winning bid in that auction. 
 *   directFromSellerSignals is an object that may contain the following fields:
     *   perBuyerSignals: Like auctionConfig.perBuyerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
     *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
