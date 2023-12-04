@@ -83,4 +83,5 @@ Companies who may be interested in participating in tests and early adoption opp
 | Terra Networks | Publisher | | adtech.terra.br@telefonica.com |
 | OLX Brasil | Publisher | | adtech@olxbr.com |
 | Globo | Publisher | | adtech-delivery@g.globo|
+| A Gazeta | Publisher | | cdutra@redegazeta.com.br |
 
