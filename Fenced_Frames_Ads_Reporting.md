@@ -56,7 +56,7 @@ The browser processes the beacon by sending an HTTP POST request, like the exist
 Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. In the interim period when FLEDGE supports rendering the winning ad in an iframe, `window.fence` will also be available in such an iframe.
 
 ### Enrollment Requirement
-The reporting destination URL registered by `registerAdBeacon` is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API, otherwise the beacon is not allowed to be sent to this reporting destination. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
+The reporting destination URL registered by `registerAdBeacon` is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API or Attribution Reporting API, otherwise the beacon is not allowed to be sent to this reporting destination. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
 
 ### Parameters
 
@@ -117,7 +117,7 @@ This API is available in the same contexts as `reportEvent` to a preregistered d
 Unlike `reportEvent` to a preregistered destination, here the browser processes the beacon by sending an HTTP GET request, as per feedback here: https://github.com/WICG/turtledove/issues/477#issuecomment-1524158476.
 
 ### Enrollment Requirement
-The reporting destination URL specified in `reportEvent`'s `destinationURL` field is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API, otherwise the beacon is not allowed to be sent to this reporting destination. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
+The reporting destination URL specified in `reportEvent`'s `destinationURL` field is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API or Attribution Reporting API, otherwise the beacon is not allowed to be sent to this reporting destination. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
 
 ### Parameters
 
@@ -202,7 +202,7 @@ As mentioned in the explainer above, `reportEvent` beacons are POST requests and
 
 ##### Enrollment Requirement
 
-For redirects, the redirect URL is not checked for enrollment and attestation. This is because the browser does not add any data directly to the redirect URL. Only the initial reporting destination is checked for attestation for Protected Audience API. The initial reporting destination is responsible for acting in accordance with its attestation if it decides to share any data via the redirect.
+For redirects, the redirect URL is not checked for enrollment and attestation. This is because the browser does not add any data directly to the redirect URL. Only the initial reporting destination is checked for attestation for Protected Audience API or Attribution Reporting API. The initial reporting destination is responsible for acting in accordance with its attestation if it decides to share any data via the redirect.
 
 ### API to populate event data for automatic beacons
 
@@ -267,7 +267,7 @@ window.fence.setReportEventDataForAutomaticBeacons({
 When 3rd party cookies are enabled, automatic beacon requests only (not beacons sent manually through `reportEvent`) allow credentials (cookies) to be set in headers. This was requested by https://github.com/WICG/turtledove/issues/866 in order to help with migration and ARA debugging. These requests are subject to CORS and only occur after opt-in by virtue of calling the `setReportEventDataForAutomaticBeacons` API.
 
 #### Enrollment Requirement
-The reporting destination URL registered by `setReportEventDataForAutomaticBeacons` is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API, otherwise the automatic beacon is not allowed to be sent to this reporting destination. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
+The reporting destination URL registered by `setReportEventDataForAutomaticBeacons` is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API or Attribution Reporting API, otherwise the automatic beacon is not allowed to be sent to this reporting destination. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
 
 # Support for Ad Components
 For ad components [rendered in fenced frames](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#4-browsers-render-the-winning-ad), the support for event-level reporting described below is available in Chrome starting M114. 
