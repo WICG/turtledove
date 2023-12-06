@@ -70,7 +70,7 @@ If you want to participate in the call, please make sure you join the WICG: http
 
 
 *   Fabian Höring:
-    *   Slides presented (forthcoming in https://github.com/WICG/turtledove/pull/936)
+    *   Slides presented: https://github.com/WICG/turtledove/blob/main/meetings/2023-11-29-FLEDGE-call-minutes-slides-ab-testing.pdf
     *   Why do we need AB testing?
         *   Increase performance of PA
         *   Measure technical changes - when we roll out stuff on 1% of users and make sure we don’t break anything
