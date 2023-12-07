@@ -270,7 +270,7 @@ Data for automatic beacons can only be set by documents that are same-origin to 
 
 A cross-origin document will be considered opted into sending automatic beacons if it is served with the response header `Allow-Fenced-Frame-Automatic-Beacons: true`.
 
-To opt in the data, the dictionary passed into `setReportEventDataForAutomaticBeacons` takes an optional `crossOriginExposed` boolean that defaults to false. If set to true, the automatic beacon data can be used if an cross-origin document wants to send an automatic beacon and is opted in.
+To opt in the data, the dictionary passed into `setReportEventDataForAutomaticBeacons` takes an optional `crossOriginExposed` boolean that defaults to false. If set to true, the automatic beacon data can be used if a cross-origin document wants to send an automatic beacon and is opted in. A document will use the data of the first ancestor frame that has automatic beacon data registered for the event type being sent.
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
