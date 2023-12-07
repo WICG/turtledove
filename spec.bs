@@ -704,6 +704,7 @@ dictionary AuctionAdConfig {
   USVString trustedScoringSignalsURL;
   sequence<USVString> interestGroupBuyers;
   Promise<any> auctionSignals;
+  record<USVString, DOMString> requestedSize;
   Promise<any> sellerSignals;
   Promise<DOMString> directFromSellerSignalsHeaderAdSlot;
   unsigned long long sellerTimeout;
@@ -1085,6 +1086,20 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     * To parse the value |result|, set |auctionConfig|'s [=auction config/auction signals=] to the
       result of [=serializing a JavaScript value to a JSON string=].
     * To handle an error, set |auctionConfig|'s [=auction config/auction signals=] to failure.
+1. If |config|["{{AuctionAdConfig/requestedSize}}"] [=map/exists=]:
+  1. Let |requestedSize| be |config|["{{AuctionAdConfig/requestedSize}}"]
+  1. If |requestedSize|["height"] does not [=map/exist=], throw TypeError.
+  1. If |requestedSize|["width"] does not [=map/exist=], throw TypeError.
+  1. Let |width| and |widthUnit| be the dimension and dimension unit that results from running
+    [=parse an AdRender dimension value=] with |requestedSize|["width"], respectively.
+  1. If |width| is null, throw TypeError.
+  1. Let |height| and |heightUnit| be the dimension and dimension unit that results from running
+    [=parse an AdRender dimension value=] with |requestedSize|["height"], respectively.
+  1. If |height| is null, throw TypeError.
+  1. Let |adSize| be a new [=ad size=].
+  1. Set |adSize|'s [=ad size/width=] to |width|, [=ad size/width units=] to |widthUnit|,
+    [=ad size/height=] to |height|, [=ad size/height units=] to |heightUnit|.
+  1. Set |auctionConfig|'s [=auction config/requested size=] to |adSize|.
 1. If |config|["{{AuctionAdConfig/sellerSignals}}"] [=map/exists=]:
   1. Set |auctionConfig|'s [=auction config/seller signals=] to
     |config|["{{AuctionAdConfig/sellerSignals}}"].
@@ -4309,6 +4324,9 @@ An auction config is a [=struct=] with the following items:
 : <dfn>auction signals</dfn>
 :: Null, a [=string=], a {{Promise}}, or failure.
   Opaque JSON data passed to both sellers' and buyers' [=script runners=].
+: <dfn>requested size</dfn>
+:: Null or an [=ad size=], initially null.
+  The size of the frame for the ad being selected by the auction.
 : <dfn>seller signals</dfn>
 :: Null, a [=string=], a {{Promise}}, or failure.
   Opaque JSON data passed to the seller's [=script runner=].
