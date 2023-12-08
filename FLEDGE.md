@@ -249,7 +249,7 @@ header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
 loading Protected Audience resources. The `trustedBiddingSignalsURL` must also not have a [query](https://url.spec.whatwg.org/#concept-url-query). (See 6.13 [here](https://wicg.github.io/turtledove/#dom-navigator-joinadinterestgroup)).
 
 The `renderUrl` property of an `ad` must be also be a valid and credentialless HTTPs URL, but does _not_
-have the same origin, response header, fragment, or query requirements (see 5.15 [here](https://url.spec.whatwg.org/#concept-url-query)).
+have the same origin, response header, fragment, or query requirements.
 
 (You can find detailed error conditions for all fields in step 6 of [the `joinAdInterestGroup()` section of the spec](https://wicg.github.io/turtledove/#dom-navigator-joinadinterestgroup)).
 
