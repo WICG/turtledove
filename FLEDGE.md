@@ -694,7 +694,9 @@ The arguments to `generateBid()` are:
       'joinCount': 3,
       'recency': 3600000,
       'bidCount': 17,
-      'prevWins': [[time1,ad1],[time2,ad2],...],
+      'prevWinsMs': [[timeDeltaMs1,ad1],[timeDeltaMs2,ad2],...] /* List of this interest group's previous wins. */
+          /* Each element is milliseconds since win and the entry from the interest group's 'ads' list
+             corresponding to the ad that won though with only the 'renderURL' and 'metadata' fields. */
       'wasmHelper': ... /* a WebAssembly.Module object based on interest group's biddingWasmHelperURL */
       'dataVersion': 1, /* Data-Version value from the trusted bidding signals server's response(s) */
     }
