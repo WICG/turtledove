@@ -1012,7 +1012,7 @@ const additionalBid = {
     ]
   },
 
-  "auctionNonce": "12345678-90ab-cdef-fedcba09876543210",
+  "auctionNonce": "12345678-90ab-cdef-fedc-ba0987654321",
   "seller": "https://www.example-ssp.com",
   "topLevelSeller": "https://www.another-ssp.com"
 }
@@ -1119,7 +1119,7 @@ To ensure a consistent binary payload is signed, the buyer first needs to string
 const signedAdditionalBid = {
   // "bid" is the result of JSON.stringify(additionalBid)
   "bid": "{\"interestGroup\":{\"name\":\"campaign123\"...},...}"
-  "signatures": {
+  "signatures": [
     {
        "key": "9TCI6ZvHsCqMvhGN0+zv67Vx3/l9Z+//mq3hY4atV14=",
        "signature": "SdEnASmeyDTjEkag+hczHtJ7wGN9f2P2E...=="
@@ -1128,7 +1128,7 @@ const signedAdditionalBid = {
        "key": "eTQOmfYCmLL2gqraPJX6YjryU6hW6yHEwmdsXeNL2qA=",
        "signature": "kSz0go9iax9KNBuMTLjWoUHQvcxnus8I5...=="
      },
-   }
+   ]
 }
 ```
 
