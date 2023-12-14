@@ -527,7 +527,7 @@ For the JSON response, only the `https` scheme is supported -- the `uuid-in-pack
 
 #### 2.5.2 Using Response Headers
 
-An alternative way to pass DirectFromSellerSignals without subresource bundles is via the `Ad-Auction-Signals` response header of some `fetch()` request or `iframe` navigation, together with the `directFromSellerSignalsHeaderAdSlot` parameter on `navigator.runAdAuction()`.
+An alternative way to pass DirectFromSellerSignals without subresource bundles is via the `Ad-Auction-Signals` response header of some `fetch()` request or `iframe` navigation, together with the `directFromSellerSignalsHeaderAdSlot` field on `navigator.runAdAuction()`.
 
 To pass DirectFromSellerSignals using a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) call made by some script on the page (including in a subframe), specify an extra option, `{adAuctionHeaders: true}`:
 
@@ -570,7 +570,7 @@ When invoking `navigator.runAdAuction()`, `directFromSellerSignalsHeaderAdSlot` 
 
 The JSON will be parsed by the browser, and passed via the same `directFromSellerSignals` worklet functions parameter as in [the subresource bundle](#251-using-subresource-bundles) version of DirectFromSellerSignals, with `sellerSignals` only being delivered to the seller, `perBuyerSignals` only being delivered to the buyer for each buyer origin key, and `auctionSignals` being delivered to all parties. Since the top-level JSON value is an array, multiple `adSlot` responses may be set for a given `Ad-Auction-Signals` header. In the dictionary with the `adSlot`, the `sellerSignals`, `auctionSignals`, and `perBuyerSignals` fields are optional -- they will be passed as null if not specified.
 
-Since both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` (the parameters on `navigator.runAdAuction()`) set the same `directFromSellerSignals` parameter on the worklet functions, it is not valid to use both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` in the same auction. However, component auctions in the same top-level auction / the top-level itself do not all need to use the same type of DirectFromSellerSignals (and it's also valid if only some component auctions / the top-level use DirectFromSellerSignals).
+Since both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` (the fields on `navigator.runAdAuction()`) set the same `directFromSellerSignals` parameter on the worklet functions, it is not valid to use both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` in the same auction. However, component auctions in the same top-level auction / the top-level itself do not all need to use the same type of DirectFromSellerSignals (and it's also valid if only some component auctions / the top-level use DirectFromSellerSignals).
 
 Failure to find a matching `adSlot` results in the fields of the `directFromSellerSignals` object passed to worklet functions being set to null, similar to the [subresource bundle version](#251-using-subresource-bundles).
 
@@ -1146,7 +1146,7 @@ Note that the key fields are used by the browser both to verify the signature, a
 
 The browser ensures, using TLS, the authenticity and integrity of information provided to the auction through calls made directly to an ad tech's servers. This guarantee is not provided for data passed in `runAdAuction()`. To account for this, additional bids use the same HTTP response header interception mechanism that's already in use for the [Bidding & Auction response blob](FLEDGE_browser_bidding_and_auction_API.md#step-3-get-response-blobs-to-browser) and `directFromSellerSignals`.
 
-Servers return additional bids to the browser using the `Ad-Auction-Additional-Bid` response header of some `fetch()` request or `iframe` navigation, together with the `additionalBids` parameter on `navigator.runAdAuction()`. This uses the same syntax as that used to convey `directFromSellerSignals` [using response headers](#252-using-response-headers).
+Servers return additional bids to the browser using the `Ad-Auction-Additional-Bid` response header of some `fetch()` request or `iframe` navigation, together with the `additionalBids` field on `navigator.runAdAuction()`. This uses the same syntax as that used to convey `directFromSellerSignals` [using response headers](#252-using-response-headers).
 
 To request additional bids using a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) call made by some script on the page (including in a subframe), specify an extra option, `{adAuctionHeaders: true}`:
 
