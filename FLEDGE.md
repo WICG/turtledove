@@ -698,7 +698,9 @@ The arguments to `generateBid()` are:
       'joinCount': 3,
       'recency': 3600000,
       'bidCount': 17,
-      'prevWins': [[time1,ad1],[time2,ad2],...],
+      'prevWinsMs': [[timeDeltaMs1,ad1],[timeDeltaMs2,ad2],...] /* List of this interest group's previous wins. */
+          /* Each element is milliseconds since win and the entry from the interest group's 'ads' list
+             corresponding to the ad that won though with only the 'renderURL' and 'metadata' fields. */
       'wasmHelper': ... /* a WebAssembly.Module object based on interest group's biddingWasmHelperURL */
       'dataVersion': 1, /* Data-Version value from the trusted bidding signals server's response(s) */
     }
@@ -1014,7 +1016,7 @@ const additionalBid = {
     ]
   },
 
-  "auctionNonce": "12345678-90ab-cdef-fedcba09876543210",
+  "auctionNonce": "12345678-90ab-cdef-fedc-ba0987654321",
   "seller": "https://www.example-ssp.com",
   "topLevelSeller": "https://www.another-ssp.com"
 }
@@ -1121,7 +1123,7 @@ To ensure a consistent binary payload is signed, the buyer first needs to string
 const signedAdditionalBid = {
   // "bid" is the result of JSON.stringify(additionalBid)
   "bid": "{\"interestGroup\":{\"name\":\"campaign123\"...},...}"
-  "signatures": {
+  "signatures": [
     {
        "key": "9TCI6ZvHsCqMvhGN0+zv67Vx3/l9Z+//mq3hY4atV14=",
        "signature": "SdEnASmeyDTjEkag+hczHtJ7wGN9f2P2E...=="
@@ -1130,7 +1132,7 @@ const signedAdditionalBid = {
        "key": "eTQOmfYCmLL2gqraPJX6YjryU6hW6yHEwmdsXeNL2qA=",
        "signature": "kSz0go9iax9KNBuMTLjWoUHQvcxnus8I5...=="
      },
-   }
+   ]
 }
 ```
 

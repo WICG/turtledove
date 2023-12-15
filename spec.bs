@@ -704,6 +704,7 @@ dictionary AuctionAdConfig {
   USVString trustedScoringSignalsURL;
   sequence<USVString> interestGroupBuyers;
   Promise<any> auctionSignals;
+  record<DOMString, DOMString> requestedSize;
   Promise<any> sellerSignals;
   Promise<DOMString> directFromSellerSignalsHeaderAdSlot;
   unsigned long long sellerTimeout;
@@ -1085,6 +1086,24 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     * To parse the value |result|, set |auctionConfig|'s [=auction config/auction signals=] to the
       result of [=serializing a JavaScript value to a JSON string=].
     * To handle an error, set |auctionConfig|'s [=auction config/auction signals=] to failure.
+1. If |config|["{{AuctionAdConfig/requestedSize}}"] [=map/exists=]:
+  1. Let |requestedSize| be |config|["{{AuctionAdConfig/requestedSize}}"]
+  1. If |requestedSize|["height"] does not [=map/exist=], throw a {{TypeError}}.
+
+  1. If |requestedSize|["width"] does not [=map/exist=], throw a {{TypeError}}.
+
+  1. Let |width| and |widthUnit| be the dimension and dimension unit that results from running
+    [=parse an AdRender dimension value=] with |requestedSize|["width"], respectively.
+  1. If |width| is null, throw a {{TypeError}}.
+
+  1. Let |height| and |heightUnit| be the dimension and dimension unit that results from running
+    [=parse an AdRender dimension value=] with |requestedSize|["height"], respectively.
+  1. If |height| is null, throw a {{TypeError}}.
+
+  1. Let |adSize| be a new [=ad size=].
+  1. Set |adSize|'s [=ad size/width=] to |width|, [=ad size/width units=] to |widthUnit|,
+    [=ad size/height=] to |height|, [=ad size/height units=] to |heightUnit|.
+  1. Set |auctionConfig|'s [=auction config/requested size=] to |adSize|.
 1. If |config|["{{AuctionAdConfig/sellerSignals}}"] [=map/exists=]:
   1. Set |auctionConfig|'s [=auction config/seller signals=] to
     |config|["{{AuctionAdConfig/sellerSignals}}"].
@@ -1288,9 +1307,10 @@ To <dfn>parse an https origin</dfn> given a [=string=] |input|:
     [=interest group/name=] is |ig|'s [=interest group/name=], return if none found.
   1. Let |win| be a new [=previous win=].
   1. Set |win|'s [=previous win/time=] to the [=current wall time=].
-  1. Let |ad| be the [=interest group ad=] from |ig|'s [=interest group/ads=] whose
-    [=ad descriptor/url=] is |bid|'s [=generated bid/ad descriptor=]
-    [=ad descriptor/url=], return if none found.
+  1. Let |ad| be an [=interest group ad=] whose [=interest group ad/render url=] is |bid|'s
+    [=generated bid/bid ad=]'s [=interest group ad/render url=], and whose
+    [=interest group ad/metadata=] is |bid|'s [=generated bid/bid ad=]'s
+    [=interest group ad/metadata=].
   1. Set |win|'s [=previous win/ad json=] to the result of
     [=serializing an Infra value to a JSON string=] given |ad|.
   1. [=list/Append=] |win| to |loadedIg|'s [=interest group/previous wins=].
@@ -2027,27 +2047,28 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
 |experimentGroupId|, and an [=origin=] |topLevelOrigin|:
 1. Let |queryParamsList| be a new empty [=list=].
 
-  Note: These steps create a [=url/query=] of the form "`&<name>=<values in comma-delimited list>`". E.g.,
-    "`hostname=publisher1.com&keys=key1,key2&interestGroupNames=ad+platform,name2&experimentGroupId=1234`".
-    <br><br>These steps don't use the [=urlencoded serializer|application/x-www-form-urlencoded serializer=]
-    to construct the query string because it repeats a key if it has multiple values instead of a
-    comma-demilited list (e.g., "keys=key1&keys=key2", instead of "keys=key1,key2"), and it also
-    uses a different percent encode set from the Chrome implementation.
+  Note: These steps create a [=url/query=] of the form "`&<name>=<values in comma-delimited list>`".
+  E.g., "`hostname=publisher1.com&keys=key1,key2&interestGroupNames=ad+platform,name2&experimentGroupId=1234`".
+    <br><br>These steps don't use the [=urlencoded serializer|application/x-www-form-urlencoded
+    serializer=] to construct the query string because it repeats a key if it has multiple values
+    instead of a comma-demilited list (e.g., "`keys=key1&keys=key2`", instead of
+    "`keys=key1,key2`"), and it also uses a different percent encode set from the Chrome
+    implementation.
 
 1. [=list/Append=] "hostname=" to |queryParamsList|.
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] the
   [=serialization of an origin|serialized=] |topLevelOrigin| using [=component percent-encode set=]
   to |queryParamsList|.
 1. If |keys| is not [=set/is empty|empty=]:
-  1. [=list/Append=] "&keys=" to |queryParamsList|.
+  1. [=list/Append=] "`&keys=`" to |queryParamsList|.
   1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
     |keys|.
 1. If |igNames| is not [=set/is empty|empty=]:
-  1. [=list/Append=] "&interestGroupNames=" to |queryParamsList|.
+  1. [=list/Append=] "`&interestGroupNames=`" to |queryParamsList|.
   1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
     |igNames|.
 1. If |experimentGroupId| is not null:
-  1. [=list/Append=] "&experimentGroupId=" to |queryParamsList|.
+  1. [=list/Append=] "`&experimentGroupId=`" to |queryParamsList|.
   1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
 1. Let |fullSignalsUrl| be |signalsUrl|.
 1. Set |fullSignalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
@@ -2068,15 +2089,15 @@ Note: When trusted scoring signals fetches are not batched, |renderURLs|'s [=lis
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
   [=component percent-encode set=] to |queryParamsList|.
 1. If |renderURLs| is not [=set/is empty|empty=]:
-  1. [=list/Append=] "&renderURLs=" to |queryParamsList|.
+  1. [=list/Append=] "`&renderURLs=`" to |queryParamsList|.
   1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
     |renderURLs|.
 1. If |adComponentRenderURLs| is not [=set/is empty|empty=]:
-  1. [=list/Append=] "&adComponentRenderURLs=" to |queryParamsList|.
+  1. [=list/Append=] "`&adComponentRenderURLs=`" to |queryParamsList|.
   1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
     |adComponentRenderURLs|.
 1. If |experimentGroupId| is not null:
-  1. [=list/Append=] "&experimentGroupId=" to |queryParamsList|.
+  1. [=list/Append=] "`&experimentGroupId=`" to |queryParamsList|.
   1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
 1. Set |signalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
 1. return |signalsUrl|.
@@ -3909,9 +3930,14 @@ To <dfn>handle ad auction signals header value</dfn> given a [=byte sequence=] |
   1. Let |parsedSignals| be the result of [=parsing JSON bytes to an Infra value=], given
     |adAuctionSignals|.
   1. If |parsedSignals| is failure or not a [=list=], return.
+  1. Let |headerAdSlots| be a new [=ordered set=].
   1. [=list/For each=] |signal| of |parsedSignals|:
     1. If |signal| is not an [=ordered map=], [=iteration/continue=].
     1. If |signal|["`adSlot`"] doesn't exist, [=iteration/continue=].
+    1. If |headerAdSlots| [=set/contains=] |signal|["`adSlot`"], [=iteration/continue=]. Optionally,
+      [=report a warning to the console=] with a diagnostic error message indicating that a
+      duplicate [:Ad-Auction-Signals:] `adSlot` dictionary was ignored.
+    1. [=set/Append=] |signal|["`adSlot`"] to |headerAdSlots|.
     1. Let |signalsKey| be a new [=direct from seller signals key=], with its
       [=direct from seller signals key/seller=] set to |requestOrigin| and its
       [=direct from seller signals key/ad slot=] set to |signal|["`adSlot`"].
@@ -4308,6 +4334,9 @@ An auction config is a [=struct=] with the following items:
 : <dfn>auction signals</dfn>
 :: Null, a [=string=], a {{Promise}}, or failure.
   Opaque JSON data passed to both sellers' and buyers' [=script runners=].
+: <dfn>requested size</dfn>
+:: Null or an [=ad size=], initially null.
+  The size of the frame for the ad being selected by the auction.
 : <dfn>seller signals</dfn>
 :: Null, a [=string=], a {{Promise}}, or failure.
   Opaque JSON data passed to the seller's [=script runner=].
