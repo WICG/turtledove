@@ -1093,7 +1093,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       result of [=serializing a JavaScript value to a JSON string=].
     * To handle an error, set |auctionConfig|'s [=auction config/auction signals=] to failure.
 1. If |config|["{{AuctionAdConfig/requestedSize}}"] [=map/exists=]:
-  1. Let |adSize| be the result from running [=parse an ad size value=] with
+  1. Let |adSize| be the result from running [=parse an AdRender ad size=] with
     |config|["{{AuctionAdConfig/requestedSize}}"]
   1. If |adSize| is null, throw a {{TypeError}}.
   1. Set |auctionConfig|'s [=auction config/requested size=] to |adSize|.
@@ -1101,7 +1101,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. If |config|["{{AuctionAdConfig/allSlotsRequestedSizes}}"] is [=list/empty=]:
     1. Throw a {{TypeError}}.
   1. [=list/For each=] |adSizeValue| in |config|["{{AuctionAdConfig/allSlotsRequestedSizes}}"]:
-    1. Let |adSize| be the result of running [=parse an ad size value=] with |adSizeValue|.
+    1. Let |adSize| be the result of running [=parse an AdRender ad size=] with |adSizeValue|.
     1. If |adSize| is null, throw a {{TypeError}}.
     1. If |auctionConfig|'s [=auction config/all slots requested sizes=] contains |adSize|,
       throw a {{TypeError}}.
@@ -2062,10 +2062,24 @@ To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=
 
 <div algorithm>
 
+To <dfn>convert an ad size to a string</dfn> given an [=ad size=] |adSize|.
+
+1. Let |sizeList| be an empty [=list=].
+1. [=list/Append=] |adSize|'s [=ad size/width=] to |sizeList|.
+1. [=list/Append=] |adSize|'s [=ad size/width units=] to |sizeList|.
+1. [=list/Append=] "," to |sizeList|.
+1. [=list/Append=] |adSize|'s [=ad size/height=] to |sizeList|.
+1. [=list/Append=] |adSize|'s [=ad size/height units=] to |sizeList|.
+1. Return the result of [string/concatenating] |sizeList|.
+
+</div>
+
+<div algorithm>
+
 To <dfn>calculate the ad slot size query param</dfn> given an [=interest group=] |ig| and
 [=auction config=] |config|:
 
-1. Switch on [=ig=]'s [=interest group/trusted bidding signals slot size mode=]:
+1. Switch on |ig|'s [=interest group/trusted bidding signals slot size mode=]:
   <dl class=switch>
     <dt>"`none`"
     <dd>
@@ -2076,21 +2090,21 @@ To <dfn>calculate the ad slot size query param</dfn> given an [=interest group=]
     1. If |config|'s [=auction config/requested size=] is null:
       1. Return "".
     1. Otherwise:
-      1. Let |adSizeString| the result of [=stringifying an ad size=] of |config|'s
+      1. Let |adSizeString| the result of running [=convert an ad size to a string=] on |config|'s
         [=auction config/requested size=].
-      1. Return the result of [=string/concatenating=] "&slotSize=" and |adSizeString|.
+      1. Return the result of [=string/concatenating=] "&amp;slotSize=" and |adSizeString|.
   
     <dt>"`all-slots-requested-sizes`"
     <dd>
     1. If |config|'s [=auction config/all slots requested sizes=] is null:
       1. Return "".
     1. Let |allSizesList| be a new [=list/empty=] [=list=].
-    1. [=list/For each=] adSize in |config|'s [=auction config/all slots requested sizes=]:
-      1. Let |adSizeString| the result of [=stringifying an ad size=] of |adSize|.
+    1. [=list/For each=] |adSize| in |config|'s [=auction config/all slots requested sizes=]:
+      1. Let |adSizeString| the result of running [=convert an ad size to a string=] on |adSize|.
       1. [=list/Append=] |adSizeString| to |allSizesList|.
     1.  Let |allSizes| be the result of [=string/concatenating=] |allSizesList|, with ","
       as a separator.
-    1.  Return the result of [=string/concatenating=] "&allSlotsRequestedSizes=" and
+    1.  Return the result of [=string/concatenating=] "&amp;allSlotsRequestedSizes=" and
       |allSizes|.
   </dl>
 </div>
@@ -2099,7 +2113,7 @@ To <dfn>calculate the ad slot size query param</dfn> given an [=interest group=]
 
 To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
 [=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, an {{unsigned short}}-or-null
-|experimentGroupId|, and an [=origin=] |topLevelOrigin|:
+|experimentGroupId|, an [=origin=] |topLevelOrigin|, and a [=string=] |slotSizeQueryParam|:
 1. Let |queryParamsList| be a new empty [=list=].
 
   Note: These steps create a [=url/query=] of the form "`&<name>=<values in comma-delimited list>`".
@@ -4685,7 +4699,7 @@ Width and height of an ad.
 :: A [=string=]. Can only be one of "px" (pixel), "sh" (screen height), and "sw" (screen width).
 
 <div algorith>
-  To <dfn>parse an AdRender ad size</dfn> given an [=object=] |adSlotSize|:
+  To <dfn>parse an AdRender ad size</dfn> given an object |adSlotSize|:
 
   1. If |adSlotSize|["height"] does not [=map/exist=], return null.
   1. If |adSlotSize|["width"] does not [=map/exist=], return null.
