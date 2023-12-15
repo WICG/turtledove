@@ -1341,7 +1341,7 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
       * |ig|'s [=interest group/bidding url=] is null;
       * |ig|'s [=interest group/ads=] is null, or [=list/is empty=].
     1. Let |signalsUrl| be |ig|'s [=interest group/trusted bidding signals url=].
-    1. Let |slotSizeQueryParam| be the result of [=calculating the ad slot size quert param]
+    1. Let |slotSizeQueryParam| be the result of [=calculating the ad slot size query param=]
       given |ig| and |auctionConfig|.
     1. Let |joiningOrigin| be |ig|'s [=interest group/joining origin=].
     1. If |bidGenerators| does not [=map/contain=] |buyer|:
@@ -2058,6 +2058,41 @@ To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=
     encodes it to "%20".
 1. Return |list|.
 
+</div>
+
+<div algorithm>
+
+To <dfn>calculate the ad slot size query param</dfn> given an [=interest group=] |ig| and
+[=auction config=] |config|:
+
+1. Switch on [=ig=]'s [=interest group/trusted bidding signals slot size mode=]:
+  <dl class=switch>
+    <dt>"`none`"
+    <dd>
+    1. return "".
+  
+    <dt>"`slot-size`"
+    <dd>
+    1. If |config|'s [=auction config/requested size=] is null:
+      1. Return "".
+    1. Otherwise:
+      1. Let |adSizeString| the result of [=stringifying an ad size=] of |config|'s
+        [=auction config/requested size=].
+      1. Return the result of [=string/concatenating=] "&slot-size=" and |adSizeString|.
+  
+    <dt>"`all-slots-requested-sizes`"
+    <dd>
+    1. If |config|'s [=auction config/all slots requested sizes=] is null:
+      1. Return "".
+    1. Let |allSizesList| be a new [=list/empty=] [=list=].
+    1. [=list/For each=] adSize in |config|'s [=auction config/all slots requested sizes=]:
+      1. Let |adSizeString| the result of [=stringifying an ad size=] of |adSize|.
+      1. [=list/Append=] |adSizeString| to |allSizesList|.
+    1.  Let |allSizes| be the result of [=string/concatenating=] |allSizesList|, with ","
+      as a separator.
+    1.  Return the result of [=string/concatenating=] "&all-slots-requested-sizes" and
+      |allSizes|.
+  </dl>
 </div>
 
 <div algorithm>
