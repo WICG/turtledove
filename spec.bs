@@ -180,6 +180,7 @@ dictionary GenerateBidInterestGroup {
   boolean enableBiddingSignalsPrioritization = false;
   record<DOMString, double> priorityVector;
 
+  record<USVString, sequence<DOMString>> sellerCapabilities;
   DOMString executionMode = "compatibility";
   USVString biddingLogicURL;
   USVString biddingWasmHelperURL;
@@ -248,6 +249,12 @@ This is detectable because it can change the set of fields that are read from th
   1. If |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"] [=map/exists=], then set
     |interestGroup|'s [=interest group/priority signals overrides=] to
     |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"].
+  1. If |group|["{{GenerateBidInterestGroup/sellerCapabilities}}"] [=map/exists=], [=map/for each=]
+    |key| → |value| of |group|["{{GenerateBidInterestGroup/sellerCapabilities}}"]:
+    1. If |key| is "*", then set |interestGroup|'s [=interest group/all seller capabilities=] to
+      |value|.
+    1. Otherwise, [=map/set=] |interestGroup|'s [=interest group/seller capabilities=][|key|] to
+      |value|.
   1. Set |interestGroup|'s [=interest group/execution mode=] to
     |group|["{{GenerateBidInterestGroup/executionMode}}"].
   1. For each |groupMember| and |interestGroupField| in the following table
@@ -4240,6 +4247,11 @@ An interest group is a [=struct=] with the following [=struct/items=]:
 : <dfn>priority signals overrides</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
   {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
+: <dfn>seller capabilities</dfn>
+:: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
+  [=lists=] of [=strings=].
+: <dfn>all seller capabilities</dfn>
+:: Null or a [=list=] of [=strings=].
 : <dfn>execution mode</dfn>
 :: "`compatibility`" or "`group-by-origin`".
   TODO: Define spec for these execution modes, link to it from here and explain these modes.
