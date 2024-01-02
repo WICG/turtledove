@@ -57,6 +57,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | MicroAd | SSP & DSP | | | privacysandbox@microad.co.jp |
 | Blendee | SSP & DSP | | | privacysandbox@blendee.com |
 | Adlook (subsidiary of RTB House) | DSP | Continuous testing ongoing; long term commitment. | | privacysandbox@adlook.com |
+| PrimeAudience (subsidiary of RTB House) | Ad Network | Continuous testing ongoing; long term commitment. | | contact@primeaudience.com |
 | Microsoft (Xandr, MSAN) | SSP + DSP(s) | Testing | | privacy_sandbox@microsoft.com |
 | Nexxen (Unruly/Tremor/Amobee) | SSP & DSP| 2023-2024 | coming soon | privacysandbox@nexxen.com |
 | Triplelift | SSP | Jan 2024 | | prod-privacysandbox@triplelift.com |
@@ -68,6 +69,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Yahoo Inc | DSP | beginning 15 Jan 2024 | | googleprivacysandbox@yahooinc.com |
 | Magnite | SSP | January 2024 | | privacysandbox@magnite.com |
 | Globo | DSP & SSP | Testing | | adtech-delivery@g.globo |
+| Mediavine | DSP & SSP | 2023-2024 | | privacysandbox@mediavine.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
@@ -81,4 +83,5 @@ Companies who may be interested in participating in tests and early adoption opp
 | Terra Networks | Publisher | | adtech.terra.br@telefonica.com |
 | OLX Brasil | Publisher | | adtech@olxbr.com |
 | Globo | Publisher | | adtech-delivery@g.globo|
+| A Gazeta | Publisher | | cdutra@redegazeta.com.br |
 

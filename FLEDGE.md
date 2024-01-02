@@ -30,12 +30,14 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [3.3 Metadata with the Ad Bid](#33-metadata-with-the-ad-bid)
     - [3.4 Ads Composed of Multiple Pieces](#34-ads-composed-of-multiple-pieces)
     - [3.5 Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups)
+    - [3.6 Currency Checking](#36-currency-checking)
   - [4. Browsers Render the Winning Ad](#4-browsers-render-the-winning-ad)
   - [5. Event-Level Reporting (for now)](#5-event-level-reporting-for-now)
     - [5.1 Seller Reporting on Render](#51-seller-reporting-on-render)
     - [5.2 Buyer Reporting on Render and Ad Events](#52-buyer-reporting-on-render-and-ad-events)
       - [5.2.1 Noised and Bucketed Signals](#521-noised-and-bucketed-signals)
-    - [5.3 Losing Bidder Reporting](#53-losing-bidder-reporting)
+    - [5.3 Currencies in Reporting](#53-currencies-in-reporting)
+    - [5.4 Losing Bidder Reporting](#54-losing-bidder-reporting)
   - [6. Additional Bids](#6-additional-bids)
     - [6.1 Auction Nonce](#61-auction-nonce)
     - [6.2 Negative Targeting](#62-negative-targeting)
@@ -341,6 +343,10 @@ const myAuctionConfig = {
                                  'https://www.another-buyer.com': 345,
                                  '*': 456,
                                  ...},
+  'perBuyerCurrencies': {'https://example.co.uk': 'GBP',
+                         'https://example.fr': 'EUR',
+                         '*': 'USD'},
+  'sellerCurrency:' : 'CAD',
   'componentAuctions': [
     {'seller': 'https://www.some-other-ssp.com',
       'decisionLogicURL': ...,
@@ -383,6 +389,8 @@ Optionally, `sellerExperimentGroupId` can be specified by the seller to support 
 
 Optionally, `perBuyerPrioritySignals` is an object mapping string keys to Javascript numbers that can be used to dynamically compute interest group priorities before `perBuyerGroupLimits` are applied. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
 
+Optionally, `perBuyerCurrencies` and `sellerCurrency` are used for [currency-checking](#36-currency-checking). `sellerCurrency` also affects how [currencies behave in reporting](#53-currencies-in-reporting).
+
 Optionally, `resolveToConfig` is a boolean directing the promise returned from `runAdAuction()` to resolve to a `FencedFrameConfig` if true, for use in a `<fencedframe>`, or if false to an opaque `urn:uuid` URL, for use in an `<iframe>`.  If `resolveToConfig` is not set, it defaults to false.
 If the `window.FencedFrameConfig` interface is not exposed (because e.g., the script is running in an older version of Chrome that does not yet implement `FencedFrameConfig`, then the auction will _always_ yield a URN.
 Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame element, you have two options:
@@ -420,6 +428,8 @@ scoreAd(adMetadata, bid, auctionConfig, trustedScoringSignals, browserSignals,
     directFromSellerSignals) {
   ...
   return {desirability: desirabilityScoreForThisAd,
+          incomingBidInSellerCurrency:
+              convertToEuros(bid, browserSignals.bidCurrency),
           allowComponentAuction: componentAuctionsAllowed};
 }
 ```
@@ -441,6 +451,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
                        'https://cdn.com/next_ad_component_of_bid',
                        ...],
       'biddingDurationMsec': 12,
+      'bidCurrency': 'USD', /* bidCurrency returned by generateBid, or '???' if none */
       'dataVersion': 1, /* Data-Version value from the trusted scoring signals server's response */
     }
     ```
@@ -451,6 +462,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
 The output of `scoreAd()` is an object with the following fields:
 * desirability: Number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.) The winner of the auction is the ad object which was given the highest score.
 * allowComponentAuction: (optional) If the bid being scored is from a component auction and this value is not true, the bid is ignored. If not present, this value is considered false. This field must be present and true both when the component seller scores a bid, and when that bid is being scored by the top-level auction.
+* incomingBidInSellerCurrency: (optional) Provides a conversion of a bid in a multi-currency auction to seller's own currency. Please see [the section on this functionality](#53-currencies-in-reporting) for more details.
 
 If `scoreAd()` returns only a numeric value, it's equivalent to returning {`desirability`: numericValue, `allowComponentAuction`: false}.
 
@@ -472,6 +484,7 @@ Seller scripts in component auctions behave a little differently.  They still ex
 * desirability: Numeric score of the bid. Must be positive or the ad will be rejected.
 * allowComponentAuction: If this field is not true, the bid will be rejected.
 * bid: (optional) Modified bid value to provide to the top-level seller script. If present, this will be passed to the top-level seller's `scoreAd()` and `reportResult()` methods instead of the original bid, if the ad wins the component auction and top-level auction, respectively.
+* bidCurrency: (optional) Annotates the currency of the modified bid provided by `bid`. Please see the [Currency Checking section](#36-currency-checking)
 
 Once all of a component auction's bids have been scored by the component auction's seller script, the bid with the highest score is passed to the top-level seller to score. For that bid, the top-level seller's `scoreAd()` method is passed the `ad` value from the component auction seller's `scoreAd()` method, and there is an additional `componentSeller` field in the `browserSignals`, which is the seller for the component auction. All other values are the same as if the bid had come from an interest group participating directly in the top-level auction. In the case of a tie, one of the highest scoring bids will be chosen randomly and only that bid will be passed to the top-level seller to score. The seller of a component auction may reject all bids by giving them scores <= 0. In that case, no bid from that component auction will be passed to the top-level auction.
 
@@ -514,15 +527,25 @@ For the JSON response, only the `https` scheme is supported -- the `uuid-in-pack
 
 #### 2.5.2 Using Response Headers
 
-An alternative way to pass DirectFromSellerSignals without subresource bundles is via the `Ad-Auction-Signals` response header of some `fetch()` request, together with the `directFromSellerSignalsHeaderAdSlot` parameter on `navigator.runAdAuction()`.
+An alternative way to pass DirectFromSellerSignals without subresource bundles is via the `Ad-Auction-Signals` response header of some `fetch()` request or `iframe` navigation, together with the `directFromSellerSignalsHeaderAdSlot` field on `navigator.runAdAuction()`.
 
-With this method, a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) call is made by some script on the page (this call may be made in a subframe), with an extra option, `{adAuctionHeaders: true}`:
+To pass DirectFromSellerSignals using a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) call made by some script on the page (including in a subframe), specify an extra option, `{adAuctionHeaders: true}`:
 
 ```javascript
 let fetchResponse = await fetch("https://seller.com/signals", {adAuctionHeaders: true});
 ```
 
-The browser will make the request it would without `{adAuctionHeaders: true}`, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that any `Ad-Auction-Signals` response header from the server will only be loaded in auctions via `directFromSellerSignalsHeaderAdSlot` (this is analogous to the guarantees of `Ad-Auction-Only` and `Sec-Fetch-Dest: webbundle` from the [subresource bundle version](#251-using-subresource-bundles) -- scripts on the page cannot set the `Sec-Ad-Auction-Fetch: ?1` request header without using the `{adAuctionHeaders: true}` option).
+The script must resolve the `directFromSellerSignalsHeaderAdSlot` Promise only after the response for this call has been received. If the script chooses to call `runAdAuction()` after this response is received, `directFromSellerSignalsHeaderAdSlot` can be specified directly without a Promise.
+
+To pass DirectFromSellerSignals using an [`iframe`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) navigation, specify the `adAuctionHeaders` attribute on the `iframe` element:
+
+```html
+<iframe src="https://seller.com/signals" adAuctionHeaders></iframe>
+```
+
+If script that invokes `runAdAuction()` is part of the response to that iframe navigation, `directFromSellerSignalsHeaderAdSlot` can be specified directly without a Promise because `runAdAuction()` cannot be called until after the response - with its DirectFromSellerSignals headers - has been received.
+
+The browser will make the request for either the `fetch()` or the `iframe` navigation that it otherwise would, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that any `Ad-Auction-Signals` response header from the server will only be loaded in auctions via `directFromSellerSignalsHeaderAdSlot` (this is analogous to the guarantees of `Ad-Auction-Only` and `Sec-Fetch-Dest: webbundle` from the [subresource bundle version](#251-using-subresource-bundles) -- scripts on the page cannot set the `Sec-Ad-Auction-Fetch: ?1` request header without using the `{adAuctionHeaders: true}` option).
 
 The value of the `Ad-Auction-Signals` header must be JSON formatted, with the following schema:
 
@@ -543,11 +566,11 @@ Ad-Auction-Signals=[{
 ]
 ```
 
-When invoking `navigator.runAdAuction()`, `directFromSellerSignalsHeaderAdSlot` is used to lookup the signals intended for that auction. `directFromSellerSignalsHeaderAdSlot` is a string that should match the `adSlot` value contained in some `Ad-Auction-Signals` response served from the origin of that auction's seller. Note that for multi-seller or component auctions, each component auction / top-level can specify its own `directFromSellerSignalsHeaderAdSlot`, and the response should be served from that component / top-level auction's seller's origin. Different sellers may safely use the same `adSlot` names without conflict. If `directFromSellerSignalsHeaderAdSlot` matches multiple `adSlot`s from header responses, one of those `adSlot` responses will be chosen arbitrarily.
+When invoking `navigator.runAdAuction()`, `directFromSellerSignalsHeaderAdSlot` is used to lookup the signals intended for that auction. `directFromSellerSignalsHeaderAdSlot` is a string that should match the `adSlot` value contained in some `Ad-Auction-Signals` response served from the origin of that auction's seller. Note that for multi-seller or component auctions, each component auction / top-level can specify its own `directFromSellerSignalsHeaderAdSlot`, and the response should be served from that component / top-level auction's seller's origin. Different sellers may safely use the same `adSlot` names without conflict. If `directFromSellerSignalsHeaderAdSlot` matches multiple `adSlot`s from header responses, signals from the most recently-received response will be sent to worklet functions. Furthermore, if a response is received for an adSlot whose name matches that for existing captured signals, memory from the old signals will be released and the new signals will be stored. A response that specifices the same adSlot name in multiple dictionaries is invalid.
 
 The JSON will be parsed by the browser, and passed via the same `directFromSellerSignals` worklet functions parameter as in [the subresource bundle](#251-using-subresource-bundles) version of DirectFromSellerSignals, with `sellerSignals` only being delivered to the seller, `perBuyerSignals` only being delivered to the buyer for each buyer origin key, and `auctionSignals` being delivered to all parties. Since the top-level JSON value is an array, multiple `adSlot` responses may be set for a given `Ad-Auction-Signals` header. In the dictionary with the `adSlot`, the `sellerSignals`, `auctionSignals`, and `perBuyerSignals` fields are optional -- they will be passed as null if not specified.
 
-Since both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` (the parameters on `navigator.runAdAuction()`) set the same `directFromSellerSignals` parameter on the worklet functions, it is not valid to use both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` in the same auction. However, component auctions in the same top-level auction / the top-level itself do not all need to use the same type of DirectFromSellerSignals (and it's also valid if only some component auctions / the top-level use DirectFromSellerSignals).
+Since both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` (the fields on `navigator.runAdAuction()`) set the same `directFromSellerSignals` parameter on the worklet functions, it is not valid to use both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` in the same auction. However, component auctions in the same top-level auction / the top-level itself do not all need to use the same type of DirectFromSellerSignals (and it's also valid if only some component auctions / the top-level use DirectFromSellerSignals).
 
 Failure to find a matching `adSlot` results in the fields of the `directFromSellerSignals` object passed to worklet functions being set to null, similar to the [subresource bundle version](#251-using-subresource-bundles).
 
@@ -653,6 +676,7 @@ generateBid(interestGroup, auctionSignals, perBuyerSignals,
   return {'ad': adObject,
           'adCost': optionalAdCost,
           'bid': bidValue,
+          'bidCurrency': 'USD',
           'render': {url: renderURL, width: renderWidth, height: renderHeight},
           'adComponents': [{url: adComponent1, width: componentWidth1, height: componentHeight1},
                            {url: adComponent2, width: componentWidth2, height: componentHeight2}, ...],
@@ -680,7 +704,9 @@ The arguments to `generateBid()` are:
       'joinCount': 3,
       'recency': 3600000,
       'bidCount': 17,
-      'prevWins': [[time1,ad1],[time2,ad2],...],
+      'prevWinsMs': [[timeDeltaMs1,ad1],[timeDeltaMs2,ad2],...] /* List of this interest group's previous wins. */
+          /* Each element is milliseconds since win and the entry from the interest group's 'ads' list
+             corresponding to the ad that won though with only the 'renderURL' and 'metadata' fields. */
       'wasmHelper': ... /* a WebAssembly.Module object based on interest group's biddingWasmHelperURL */
       'dataVersion': 1, /* Data-Version value from the trusted bidding signals server's response(s) */
     }
@@ -695,7 +721,8 @@ The output of `generateBid()` contains the following fields:
 
 *   ad: (optional) Arbitrary metadata about the ad which this interest group wants to show. The seller uses this information in its auction and decision logic. If not present, it's treated as if the value were null.
 *   adCost: (optional) A numerical value used to pass reporting advertiser click or conversion cost from generateBid to reportWin. The precision of this number is limited to an 8-bit mantissa and 8-bit exponent, with any rounding performed stochastically.
-* bid: A numerical bid that will enter the auction. The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand"). If the bid is zero or negative, then this interest group will not participate in the seller's auction at all. With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear. While this returned value is expected to be a JavaScript Number, internal calculations dealing with currencies should be done with integer math that more accurately represent powers of ten.
+*   bid: A numerical bid that will enter the auction. The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand"). If the bid is zero or negative, then this interest group will not participate in the seller's auction at all. With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear. While this returned value is expected to be a JavaScript Number, internal calculations dealing with currencies should be done with integer math that more accurately represent powers of ten.
+*   bidCurrency: (optional) The currency for the bid, used for [currency-checking](#36-currency-checking).
 *   render: A dictionary describing the creative that should be rendered if this bid wins the auction. This includes:
     * url: The creative's URL.
     * size: A dictionary containing `width` and `height` fields, describing the creative's size (see the interest group declaration above). When the ad is loaded in a fenced frame, the fenced frame's inner frame (i.e. the size visible to the ad creative) will be frozen to this size, and it will be unable to see changes to the frame size made by the embedder.
@@ -789,6 +816,16 @@ The `BidFor240Minutes` interest group will have a positive priority if it was jo
 
 The `FilterOnDataFromServer` interest group will result in fetching `https://buyer1.com/bidder_signals?publisher=<...>&interest_groups=FilterOnDataFromServer,<...>`, and then if that result has a `perInterestGroupData.FilterOnDataFromServer.priorityVector` object, then that is used just like the `priorityVector` field from the other two examples, except that it's only used for filtering, not to set the priority (unless the group has a true `enableBiddingSignalsPrioritization` field).  A [user defined function](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md#support-for-user-defined-functions-udfs) could be used on the Protected Audience Key-Value server to calculate that `priorityVector` value, and hence to decide if `FilterOnDataFromServer`'s `generateBid()` method is invoked or if it's filtered out.
 
+### 3.6 Currency Checking
+
+If participants in the auction need to deal with multiple currencies, they can optionally take advantage of automated currency checking. All of it operates on currency tags, which are required to contain 3 upper-case ASCII letters.
+
+If the `generateBid()` method returns a `bidCurrency`, and the `perBuyerCurrencies` for that buyer is specified, their consistency will be checked, and if there is a mismatch, the bid will be dropped.  Both the `perBuyerCurrencies` for that buyer and returned `bidCurrency` must be present for checking to take place; if one or both are missing the currency check does not take place and the bid is passed on as-is.  The returned `bidCurrency` will be passed to `scoreAd()`'s `browserSignals.bidCurrency`, with unspecified currency rendered as `'???'`.
+
+Currency checking after `scoreAd()` happens only inside component auctions.  If the component seller's `scoreAd()` modifies the bid value, the modified bid's currency will be checked; if not, the passed-through bid from the original buyer's currency will be. In either case, the currency will be checked both against the component auction's `sellerCurrency` and top-level auction's `perBuyerCurrencies` as applied to the component auction's seller.  As before, both the bid currency and the configured currency in question must be specified for the checking to take place; if one or both are missing that particular currency check does not take place. If there is a mismatch, the bid will not take part in the top-level auction.
+
+`sellerCurrency` also has an extensive effect on how reporting behaves.  Please see the section on [Currencies in Reporting](#53-currencies-in-reporting) for more details.
+
 ### 4. Browsers Render the Winning Ad
 
 The winning ad will be rendered in a [Fenced Frame](https://github.com/shivanigithub/fenced-frame): a mechanism under development for rendering a document in an embedded context which is unable to communicate with the surrounding page.  This communication blockage is necessary to meet the privacy goal that sites cannot learn about their visitors' ad interests.  (Note that the microtargeting prevention threshold alone is not enough to address this threat: the threshold prevents ads which could identify a single person, but it allows ads which identify a group of people that share a single interest.)
@@ -839,14 +876,17 @@ The arguments to this function are:
       'componentSeller': 'https://www.some-other-ssp.com',
       'interestGroupOwner': 'https://www.example-dsp.com/',
       'renderURL': 'https://cdn.com/url-of-winning-creative.wbn',
-      'bid:' bidValue,
+      'bid': bidValue,
+      'bidCurrency': 'USD',
       'desirability': desirabilityScoreForWinningAd,
       'topLevelSellerSignals': outputOfTopLevelSellersReportResult,
       'dataVersion': versionFromKeyValueResponse,
       'modifiedBid': modifiedBidValue,
-      'highestScoringOtherBid': highestScoringOtherBidValue
+      'highestScoringOtherBid': highestScoringOtherBidValue,
+      'highestScoringOtherBidCurrency': 'EUR'
     }
     ```
+    * `bidCurrency` and `highestScoringOtherBidCurrency` provide (highly redacted) information on what currency the corresponding numbers are in. Please refer to the section on [Currencies in Reporting](#53-currencies-in-reporting) for more details.
 *   directFromSellerSignals is an object that may contain the following fields:
     *   sellerSignals: Like auctionConfig.sellerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?sellerSignals`.
     *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
@@ -910,7 +950,37 @@ When `joinCount` is passed to `generateBid()`, no noising or bucketing is applie
 
 These signals were requested in [issue 435](https://github.com/WICG/turtledove/issues/435). The signals are intented to ship in Chrome M114, they will no longer be available for event level reporting when event level reporting is retired.
 
-#### 5.3 Losing Bidder Reporting
+#### 5.3 Currencies in Reporting
+
+In auctions that involve multiple currencies, there may be values with different units floating around, which makes aggregated information incomprehensible, and event-level information hard to process, potentially requiring participants to interpret currencies of jurisdictions they do no business in.
+
+To help deal with this scenario, an optional mode is available that converts all bid-related information to seller's preferred currency (in component auctions, reporting for it is for that component's seller). This is configured via the `sellerCurrency` setting in each auction configuration.
+
+If `sellerCurrency` is set, `scoreAd()` for an auction is responsible for converting bids not already in `sellerCurrency` to `sellerCurrency`, via the `incomingBidInSellerCurrency` field of its return value. A bid already explicitly in the seller's currency cannot be changed by `incomingBidInSellerCurrency` (passing an identical value is a no-op; passing a different one rejects the bid).  If neither the original bid is explicitly in `sellerCurrency` nor an `incomingBidInSellerCurrency` is specified, a value of 0 is used as the converted value.
+
+Note that `incomingBidInSellerCurrency` is different from the modified bid returned by a component auction: it represents a mechanical currency translation of the original buyer's bid, rather than the bid the component auction is making in a top-level auction (which could, perhaps, be reduced by the intermediate seller's fee or the like). It can also be specified in top-level auctions, unlike the modified bid.
+
+The following table summarizes which APIs get original and which get converted bid values, and how redaction for currency tags works, depending on whether `sellerCurrency` is set or not:
+| API | when `sellerCurrency` unset | when `sellerCurrency` set |
+| --- | --- | --- |
+|`reportWin()` `browserSignals.bid` | Original value | Original value |
+|`reportWin()` `browserSignals.bidCurrency` | Currency required by auction configuration, or `'???'` | Currency required by auction configuration, or `'???'` |
+|`reportResult()` `browserSignals.bid` | Original value of bid at that auction level (for top-level auction this includes any modification by component auction)  | Original value of bid at that auction level (for top-level auction this includes any modification by component auction) (in Chrome since M116) |
+|`reportResult()` `browserSignals.bidCurrency` | Currency required by auction configuration, or `'???'` | Currency required by auction configuration, or `'???'` (in Chrome since M116) |
+|`reportWin()` `browserSignals.highestScoringOtherBid` | Original value | Converted value |
+|`reportWin()` `browserSignals.highestScoringOtherBidCurrency` | `'???'` | `sellerCurrency` |
+|`reportResult()` `browserSignals.highestScoringOtherBid` | Original value | Converted value |
+|`reportResult()` `browserSignals.highestScoringOtherBidCurrency` | `'???'` | `sellerCurrency` |
+| `forDebuggingOnly.report...` keyword `${winningBid}` | Original value | Converted value |
+| `forDebuggingOnly.report...` keyword `${winningBidCurrency}` | `'???'` | `sellerCurrency`|
+| `forDebuggingOnly.report...` keyword `${highestScoringOtherBid}` | Original value | Converted value |
+| `forDebuggingOnly.report...` keyword `${highestScoringOtherBidCurrency}` | `'???'` | `sellerCurrency`|
+| `forDebuggingOnly.report...` keyword `${topLevelWinningBid}` | Original value | Converted value (as converted by top-level `scoreAd()`) |
+| `forDebuggingOnly.report...` keyword `${topLevelWinningBidCurrency}` | `'???'` | `sellerCurrency` of top-level auction |
+| Private Aggregation `winning-bid` | Original value | Converted value |
+| Private Aggregation `highest-scoring-other-bid` | Original value | Converted value |
+
+#### 5.4 Losing Bidder Reporting
 
 We also need to provide a mechanism for the _losing_ bidders in the auction to learn aggregate outcomes.  Certainly they should be able to count the number of times they bid, and losing ads should also be able to learn (in aggregate) some seller-provided information about e.g. the auction clearing price.  Likewise, a reporting mechanism should be available to buyers who attempted to bid with a creative that had not yet reached the k-anonymity threshold.
 
@@ -952,7 +1022,7 @@ const additionalBid = {
     ]
   },
 
-  "auctionNonce": "12345678-90ab-cdef-fedcba09876543210",
+  "auctionNonce": "12345678-90ab-cdef-fedc-ba0987654321",
   "seller": "https://www.example-ssp.com",
   "topLevelSeller": "https://www.another-ssp.com"
 }
@@ -966,7 +1036,7 @@ Each additional bid may provide a value for **at most** one of the `negativeInte
 
 The `auctionNonce`, `seller`, and `topLevelSeller` fields are used to prevent replay of this additional bid. The `auctionNonce` is described below in section [6.1 Auction Nonce](#61-auction-nonce). The `seller` and `topLevelSeller` fields echo those present in the `browserSignals` argument to `generateBid()` as described in section [3.2 On-Device Bidding](#32-on-device-bidding). In `generateBid()`, these are meant to ensure that the buyer acknowledges and accepts that their bid can participate in an auction with those parties. Additional bids don't have a corresponding call to `generateBid()`, and so the `seller` and `topLevelSeller` fields in an additional bid are intended to allow for the same acknowledgement as those in `browserSignals`.
 
-Additional bids are not provided through the auction config passed to `runAdAuction()`, but rather through the response headers of a Fetch request, as described below in section [6.3 HTTP Response Headers](#63-http-response-headers). However, the auction config still has an `additionalBids` field, which is a Promise with no value, used only to signal to the auction that the additional bids have arrived and are ready to be accepted in the auction. For each additional bid, its owner must be included in  interestGroupBuyers  for that additional bid to participate in the auction.
+Additional bids are not provided through the auction config passed to `runAdAuction()`, but rather through the response headers of a Fetch request or `iframe` navigation, as described below in section [6.3 HTTP Response Headers](#63-http-response-headers). However, the auction config still has an `additionalBids` field, which is a Promise with no value, used only to signal to the auction that the additional bids have arrived and are ready to be accepted in the auction. For each additional bid, its owner must be included in  interestGroupBuyers  for that additional bid to participate in the auction.
 
 ```
 navigator.runAdAuction({
@@ -1059,7 +1129,7 @@ To ensure a consistent binary payload is signed, the buyer first needs to string
 const signedAdditionalBid = {
   // "bid" is the result of JSON.stringify(additionalBid)
   "bid": "{\"interestGroup\":{\"name\":\"campaign123\"...},...}"
-  "signatures": {
+  "signatures": [
     {
        "key": "9TCI6ZvHsCqMvhGN0+zv67Vx3/l9Z+//mq3hY4atV14=",
        "signature": "SdEnASmeyDTjEkag+hczHtJ7wGN9f2P2E...=="
@@ -1068,7 +1138,7 @@ const signedAdditionalBid = {
        "key": "eTQOmfYCmLL2gqraPJX6YjryU6hW6yHEwmdsXeNL2qA=",
        "signature": "kSz0go9iax9KNBuMTLjWoUHQvcxnus8I5...=="
      },
-   }
+   ]
 }
 ```
 
@@ -1078,20 +1148,34 @@ Note that the key fields are used by the browser both to verify the signature, a
 
 The browser ensures, using TLS, the authenticity and integrity of information provided to the auction through calls made directly to an ad tech's servers. This guarantee is not provided for data passed in `runAdAuction()`. To account for this, additional bids use the same HTTP response header interception mechanism that's already in use for the [Bidding & Auction response blob](FLEDGE_browser_bidding_and_auction_API.md#step-3-get-response-blobs-to-browser) and `directFromSellerSignals`.
 
-To use HTTP response headers to convey the additional bids, the request to fetch them will first need to specify the `adAuctionHeaders` fetch flag.
+Servers return additional bids to the browser using the `Ad-Auction-Additional-Bid` response header of some `fetch()` request or `iframe` navigation, together with the `additionalBids` field on `navigator.runAdAuction()`. This uses the same syntax as that used to convey `directFromSellerSignals` [using response headers](#252-using-response-headers).
 
-```
-fetch("https://...", {adAuctionHeaders: true});
+To request additional bids using a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) call made by some script on the page (including in a subframe), specify an extra option, `{adAuctionHeaders: true}`:
+
+```javascript
+let fetchResponse = await fetch("https://...", {adAuctionHeaders: true});
 ```
 
-This signals to the browser that it should look for one or more additional bids encoded as HTTP response headers from this Fetch. Each instance of the `Ad-Auction-Additional-Bid` response header will correspond to a single additional bid. The response may include more than one additional bid by specifying multiple instances of the `Ad-Auction-Additional-Bid` response header. The structure of each instance of the `Ad-Auction-Additional-Bid` header must be as follows:
+The script must resolve the `additionalBids` Promise only after the response for this call has been received. If the script chooses to call `runAdAuction()` after this response is received, the `additionalBids` Promise may be immediately resolved.
+
+To request additional bids using an [`iframe`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) navigation, specify the `adAuctionHeaders` attribute on the `iframe` element:
+
+```html
+<iframe src="https://..." adAuctionHeaders></iframe>
+```
+
+If script that invokes `runAdAuction()` is part of the response to that iframe navigation, the `adAuctionHeaders` Promise may be immediately resolved from within the iframe because `runAdAuction()` cannot be called until after the response - with its additional bid headers - has been received.
+
+The browser will make the request for either the Fetch or the `iframe` navigation that it otherwise would, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that each `Ad-Auction-Additional-Bid` response header from the server will be decoded as an additional bid and loaded into the auction. Each instance of the `Ad-Auction-Additional-Bid` response header will correspond to a single additional bid. The response may include more than one additional bid by specifying multiple instances of the `Ad-Auction-Additional-Bid` response header. The structure of each instance of the `Ad-Auction-Additional-Bid` header must be as follows:
 
 ```
 Ad-Auction-Additional-Bid:
     <auction nonce>:<base64-encoding of the signed additional bid>
 ```
 
-These HTTP response headers are intercepted by the browser and diverted to participate in the auction without passing through the JavaScript context. When all of the additional bids for an auction have been received this way, the seller should resolve the `additionalBids` Promise passed into the auctionConfig that was described in section [6. Additional Bids](#6-additional-bids). The browser will use this as the signal that it's ready to accept the bids provided by the `Ad-Auction-Additional-Bid` response headers into the auction.
+The browser uses the auction nonce prefix from each response header to associate each additional bid to its corresponding auction. For single-seller auctions, this maps to a particular call to `runAdAuction()`, whereas for multi-seller auctions, this maps to a particular component auction.
+
+All `Ad-Auction-Additional-Bid` response headers are intercepted by the browser and diverted to participate in the auction without passing through the JavaScript context. When all of the additional bids for an auction have been received this way, the seller should resolve the `additionalBids` Promise passed as described above. The browser will use this as the signal that it has all of the additional bids intended for this auction.
 
 #### 6.4 Reporting Additional Bid Wins
 
