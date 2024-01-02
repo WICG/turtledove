@@ -39,15 +39,10 @@ provides more context about these namespaces.
 The server can be configured to run in slightly different modes depending on
 whether it is serving the DSP use case or the SSP use case.
 
-### Subkey
+### Hostname
 
-For a given key, a subkey may be used to further specify a dedicated value
-override.
-
-During the query, the browser sets the hostname as the subkey value. When a
-query to a particular subkey does not match any existing entry, the server
-system can automatically fallback to a default value for the key, specified by
-not setting the subkey during data updates.
+During the query, the browser sets the hostname. This matches the hostname
+described in the main explainer.
 
 ## Query API Version 1
 
@@ -57,16 +52,15 @@ This is the mechanism for the browser client to fetch real-time bidding signals.
 The API is called during the ad auction process, as described in the
 [FLEDGE explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#31-fetching-real-time-data-from-a-trusted-server).
 
-The returned values are purely dependent on the keys (namespace + key + subkey),
+The returned values are purely dependent on the keys (namespace + key + hostname),
 except for advanced use cases explicitly agreed upon between browsers and ad
 tech platforms. A potential advanced use case being discussed is how to provide
 country-level IPGeo information to the bidders. The API provides read-only
 access to the key/value data.
 
-As mentioned in the Mutating API section below, possible data staleness may
-occur. Different values may be returned for the same keys if reads happen during
-data updates, due to the distributed nature of the system. But if the data is
-stable, requests are deterministic.
+Possible data staleness may occur. Different values may be returned for the
+same keys if reads happen during data updates, due to the distributed nature
+of the system. But if the data is stable, requests are deterministic.
 
 ### Form
 
@@ -75,7 +69,7 @@ GET `https://www.kv-server.example/v1/getvalues`
 ### Examples
 
 ```
-https://www.dsp-kv-server.example/v1/getvalues?subkey=publisher.com&keys=key1,key2
+https://www.dsp-kv-server.example/v1/getvalues?hostname=publisher.com&keys=key1,key2&interestGroupNames=name1,name2
 https://www.ssp-kv-server.example/v1/getvalues?renderUrls=url1,url2&adComponentRenderUrls=url3,url4
 ```
 
@@ -137,11 +131,9 @@ https://www.ssp-kv-server.example/v1/getvalues?renderUrls=url1,url2&adComponentR
    </td>
   </tr>
   <tr>
-   <td>subkey
+   <td>hostname
    </td>
    <td>The browser sets the hostname of the publisher page to be the value.
-<p>
-If no specific value is available in the system for this subkey, a default value will be returned. The default value corresponds to the key when the subkey is not set.
    </td>
    <td>DSP
    </td>
@@ -365,13 +357,13 @@ If the restrictions are not followed by the client, for example due to misconfig
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "context": {
-      "description": "global context shared by all partitions",
+    "metadata": {
+      "description": "global metadata shared by all partitions",
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "subkey": {
-          "description": "Auxiliary key. For Chrome, it is the hostname of the top-level frame calling runAdAuction(). Set if sent to the trusted bidding signals server.",
+        "hostname": {
+          "description": "The hostname of the top-level frame calling runAdAuction().",
           "type": "string"
         }
       }
@@ -389,26 +381,27 @@ If the restrictions are not followed by the client, for example due to misconfig
             "description": "Unique id of the partition in this request",
             "type": "number"
           },
-          "compressionGroup": {
+          "compressionGroupId": {
             "description": "Unique id of a compression group in this request. Only partitions belonging to the same compression group will be compressed together in the response",
             "type": "number"
           },
-          "keyGroups": {
+          "arguments": {
             "type": "array",
             "items": {
-              "description": "All keys from this group share some common attributes",
+              "description": "One group of keys and common attributes about them",
               "type": "object",
               "additionalProperties": false,
               "properties": {
                 "tags": {
-                  "description": "List of tags describing this key group's attributes",
+                  "description": "List of tags describing this group's attributes",
                   "type": "array",
                   "items": {
                     "type": "string"
                   }
                 },
-                "keyList": {
+                "data": {
                   "type": "array",
+                  "description": "List of keys to get values for",
                   "items": {
                     "type": "string"
                   }
@@ -419,14 +412,14 @@ If the restrictions are not followed by the client, for example due to misconfig
         },
         "required": [
           "id",
-          "compressionGroup",
-          "keyGroups"
+          "compressionGroupId",
+          "arguments"
         ]
       }
     }
   },
   "required": [
-    "context",
+    "metadata",
     "partitions"
   ]
 }
@@ -436,20 +429,20 @@ Example trusted bidding signals request from Chrome:
 
 ```json
 {
-  "context": {
-    "subkey": "example.com"
+  "metadata": {
+    "hostname": "example.com"
   },
   "partitions": [
     {
       "id": 0,
-      "compressionGroup": 0,
-      "keyGroups": [
+      "compressionGroupId": 0,
+      "arguments": [
         {
           "tags": [
             "structured",
             "groupNames"
           ],
-          "keyList": [
+          "data": [
             "InterestGroup1"
           ]
         },
@@ -458,7 +451,7 @@ Example trusted bidding signals request from Chrome:
             "custom",
             "keys"
           ],
-          "keyList": [
+          "data": [
             "keyAfromInterestGroup1",
             "keyBfromInterestGroup1"
           ]
@@ -467,14 +460,14 @@ Example trusted bidding signals request from Chrome:
     },
     {
       "id": 1,
-      "compressionGroup": 0,
-      "keyGroups": [
+      "compressionGroupId": 0,
+      "arguments": [
         {
           "tags": [
             "structured",
             "groupNames"
           ],
-          "keyList": [
+          "data": [
             "InterestGroup2",
             "InterestGroup3"
           ]
@@ -484,7 +477,7 @@ Example trusted bidding signals request from Chrome:
             "custom",
             "keys"
           ],
-          "keyList": [
+          "data": [
             "keyMfromInterestGroup2",
             "keyNfromInterestGroup3"
           ]
