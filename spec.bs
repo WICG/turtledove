@@ -3093,6 +3093,10 @@ of the following global objects:
       1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
         [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
     1. Let |generatedBid| be |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=].
+    1. If |global|'s [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] is not null:
+
+    1. If |global|'s [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] is not null:
+
     1. If |result| is a [=ECMAScript/normal completion=]:
       1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
         |result|'s \[[Value]] to a {{GenerateBidOutput}}.
@@ -3224,6 +3228,64 @@ interface InterestGroupScriptRunnerGlobalScope {
 
 </pre>
 
+<pre class="idl">
+[Exposed=InterestGroupBiddingAndScoringScriptRunnerGlobalScope]
+
+interface ForDebuggingOnly {
+  undefined reportAdAuctionWin(DOMString url);
+  undefined reportAdAuctionLoss(DOMString url);
+}
+
+interface InterestGroupBiddingAndScoringScriptRunnerGlobalScope : InterestGroupScriptRunnerGlobalScope{
+  readonly attribute ForDebuggingOnly forDebuggingOnly;
+};
+
+</pre>
+
+Each {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope}} has a
+<dl dfn-for="InterestGroupBiddingAndScoringScriptRunnerGlobalScope">
+  : <dfn>debug win report url</dfn>
+  :: Null, failure, or a [=URL=]. Initially null.
+  : <dfn>debug loss report url</dfn>
+  :: Null, failure, or a [=URL=]. Initially null.
+</dl>
+
+<div algorithm>
+The <dfn method for="ForDebuggingOnly">reportAdAuctionWin(|url|)</dfn> method steps are:
+
+  1. Let |global| be [=this=]'s [=relevant global object=].
+  1. Let |parsedUrl| be the result of running the [=URL parser=] on |url|.
+  1. If |parsedUrl| is failure, or |parsedUrl|'s [=url/scheme=] is not "`https`":
+    1. Set |global|'s
+      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] to failure.
+  1. Optionally, return.
+
+    Note: This [=implementation-defined=] condition is intended to allow [=user agents=] to decline
+        for a number of reasons, for example the |parsedUrl|'s [=site=] not being
+        <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
+
+  1. Set |global|'s
+    [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] to |parsedUrl|.
+</div>
+
+<div algorithm>
+The <dfn method for="ForDebuggingOnly">reportAdAuctionLoss(|url|)</dfn> method steps are:
+
+  1. Let |global| be [=this=]'s [=relevant global object=].
+  1. Let |parsedUrl| be the result of running the [=URL parser=] on |url|.
+  1. If |parsedUrl| is failure, or |parsedUrl|'s [=url/scheme=] is not "`https`":
+    1. Set |global|'s
+      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] to failure.
+  1. Optionally, return.
+
+    Note: This [=implementation-defined=] condition is intended to allow [=user agents=] to decline
+        for a number of reasons, for example the |parsedUrl|'s [=site=] not being
+        <a href="https://github.com/privacysandbox/attestation">enrolled</a>.
+
+  1. Set |global|'s
+    [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] to |parsedUrl|.
+</div>
+
 ### InterestGroupBiddingScriptRunnerGlobalScope ### {#bidding-global-scope}
 
 <pre class="idl">
@@ -3231,7 +3293,7 @@ interface InterestGroupScriptRunnerGlobalScope {
  Global=(InterestGroupScriptRunnerGlobalScope,
          InterestGroupBiddingScriptRunnerGlobalScope)]
 interface InterestGroupBiddingScriptRunnerGlobalScope
-        : InterestGroupScriptRunnerGlobalScope {
+        : InterestGroupBiddingAndScoringScriptRunnerGlobalScope {
   boolean setBid(optional GenerateBidOutput generateBidOutput = {});
   undefined setPriority(double priority);
   undefined setPrioritySignalsOverride(DOMString key, optional double? priority);
@@ -3275,7 +3337,6 @@ Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
 
 </dl>
 
-
 <div algorithm>
 
 To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOutput}}
@@ -3283,7 +3344,8 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 |isComponentAuction| and a [=boolean=] |groupHasAdComponents|:
   1. Let |bid| be a new [=generated bid=].
   1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] &le; 0:
-    1. Set |bid|'s [=generated bid/bid=] to a [=bid with currency=] with [=bid with currency/value=] |generateBidOutput|["{{GenerateBidOutput/bid}}"] and [=bid with currency/currency=] null.
+    1. Set |bid|'s [=generated bid/bid=] to a [=bid with currency=] with [=bid with currency/value=]
+      |generateBidOutput|["{{GenerateBidOutput/bid}}"] and [=bid with currency/currency=] null.
     1. Return |bid|.
   1. If |generateBidOutput|["{{GenerateBidOutput/render}}"] does not [=map/exist=], return failure.
   1. If |isComponentAuction| is true, and
@@ -3291,8 +3353,8 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   1. Let |bidCurrency| be null.
   1. If |generateBidOutput|["{{GenerateBidOutput/bidCurrency}}"] is specified:
      1. If the result of [=checking whether a string is a valid currency tag=] on
-      |generateBidOutput|["{{GenerateBidOutput/bidCurrency}}"] is true, then set |bidCurrency| to |generateBidOutput|["{{GenerateBidOutput/bidCurrency}}"]
-     1. Otherwise return failure.
+      |generateBidOutput|["{{GenerateBidOutput/bidCurrency}}"] is true, then set |bidCurrency| to
+      |generateBidOutput|["{{GenerateBidOutput/bidCurrency}}"], otherwise return failure.
   1. If the result of [=checking a currency tag=] with |expectedCurrency| and |bidCurrency| is
     false, return failure.
   1. Set |bid|'s [=generated bid/bid=] to a [=bid with currency=] with [=bid with currency/value=]
@@ -3449,7 +3511,7 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
  Global=(InterestGroupScriptRunnerGlobalScope,
          InterestGroupScoringScriptRunnerGlobalScope)]
 interface InterestGroupScoringScriptRunnerGlobalScope
-        : InterestGroupScriptRunnerGlobalScope {
+        : InterestGroupBiddingAndScoringScriptRunnerGlobalScope {
 };
 
 </pre>
@@ -3492,7 +3554,7 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
   1. Let |global| be [=this=]'s [=relevant global object=].
   1. If |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=] is not null, then
     set |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to failure, and
-    [=exception/Throw=] a {{TypeError}}.
+    [=exception/throw=] a {{TypeError}}.
   1. Let |parsedUrl| be the result of running the [=URL parser=] on |url|.
   1. If |parsedUrl| is failure, or |parsedUrl|'s [=url/scheme=] is not "`https`", set |global|'s
     [=InterestGroupReportingScriptRunnerGlobalScope/report url=] to failure, and [=exception/throw=]
@@ -4118,7 +4180,9 @@ dictionary ReportingBrowserSignals {
   <dt>{{ReportingBrowserSignals/componentSeller}}
   <dd>Copied from [=leading bid info/component seller=]
   <dt>{{ReportingBrowserSignals/buyerAndSellerReportingId}}
-  <dd>Set if the winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its listing in the interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with interest group owner, bidding script URL, and [=ad creative=] URL.
+  <dd>Set if the winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its
+    listing in the interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=]
+    combined with interest group owner, bidding script URL, and [=ad creative=] URL.
 </dl>
 
 <xmp class="idl">
@@ -4656,6 +4720,12 @@ response headers.
 :: A [=duration=] in milliseconds. How long it took to run `generateBid()`.
 : <dfn>provided as additional bid</dfn>
 :: A [=boolean=], initially false.
+: <dfn>debug win report url</dfn>
+:: Null or a [=URL=], initially null. Set by
+  {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly.reportAdAuctionWin(url)}}.
+: <dfn>debug loss report url</dfn>
+:: Null or a [=URL=], initially null. Set by
+  {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly.reportAdAuctionLoss(url)}}.
 
 </dl>
 
