@@ -70,6 +70,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Magnite | SSP | January 2024 | | privacysandbox@magnite.com |
 | Globo | DSP & SSP | Testing | | adtech-delivery@g.globo |
 | Mediavine | DSP & SSP | 2023-2024 | | privacysandbox@mediavine.com |
+| Jivox | Ad Server (DCO) | Testing in progress | | jvx-google-privacy-sandbox-team@jivox.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
