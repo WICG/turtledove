@@ -266,7 +266,7 @@ window.fence.setReportEventDataForAutomaticBeacons({
 
 #### Cross-Origin Support
 
-Data for automatic beacons can only be set by documents that are same-origin to the mapped URL of the fenced frame config. However, cross-origin documents can still send automatic beacons, if the document and the data are **both** opted in.
+Data for automatic beacons can only be set by documents that are same-origin to the mapped URL of the fenced frame config. However, cross-origin documents in child iframes of the main ad frame can still send automatic beacons, if the document and the data are **both** opted in.
 
 A cross-origin document will be considered opted into sending automatic beacons if it is served with the response header `Allow-Fenced-Frame-Automatic-Beacons: true`.
 
