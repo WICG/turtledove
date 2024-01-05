@@ -132,9 +132,9 @@ const myGroup = {
                    {renderUrl: gymTrainers1, sizeGroup: 'size4', ...},
                    {renderUrl: gymTrainers2, sizeGroup: 'size4', ...}],
   'adSizes': {'size1': {width: '100', height: '100'},
-              'size2': {width: '100px', height: '200px'},
-              'size3': {width: '75sw', height: '25sh'},
-              'size4': {width: '100', height: '25sh'}},
+              'size2': {width: '100', height: '200'},
+              'size3': {width: '75', height: '25'},
+              'size4': {width: '100', height: '25'}},
   'sizeGroups:' {'group1': ['size1', 'size2', 'size3'],
                  'group2': ['size3', 'size4']},
   'auctionServerRequestFlags': ['omit-ads'],
@@ -531,15 +531,25 @@ For the JSON response, only the `https` scheme is supported -- the `uuid-in-pack
 
 #### 2.5.2 Using Response Headers
 
-An alternative way to pass DirectFromSellerSignals without subresource bundles is via the `Ad-Auction-Signals` response header of some `fetch()` request, together with the `directFromSellerSignalsHeaderAdSlot` parameter on `navigator.runAdAuction()`.
+An alternative way to pass DirectFromSellerSignals without subresource bundles is via the `Ad-Auction-Signals` response header of some `fetch()` request or `iframe` navigation, together with the `directFromSellerSignalsHeaderAdSlot` field on `navigator.runAdAuction()`.
 
-With this method, a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) call is made by some script on the page (this call may be made in a subframe), with an extra option, `{adAuctionHeaders: true}`:
+To pass DirectFromSellerSignals using a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) call made by some script on the page (including in a subframe), specify an extra option, `{adAuctionHeaders: true}`:
 
 ```javascript
 let fetchResponse = await fetch("https://seller.com/signals", {adAuctionHeaders: true});
 ```
 
-The browser will make the request it would without `{adAuctionHeaders: true}`, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that any `Ad-Auction-Signals` response header from the server will only be loaded in auctions via `directFromSellerSignalsHeaderAdSlot` (this is analogous to the guarantees of `Ad-Auction-Only` and `Sec-Fetch-Dest: webbundle` from the [subresource bundle version](#251-using-subresource-bundles) -- scripts on the page cannot set the `Sec-Ad-Auction-Fetch: ?1` request header without using the `{adAuctionHeaders: true}` option).
+The script must resolve the `directFromSellerSignalsHeaderAdSlot` Promise only after the response for this call has been received. If the script chooses to call `runAdAuction()` after this response is received, `directFromSellerSignalsHeaderAdSlot` can be specified directly without a Promise.
+
+To pass DirectFromSellerSignals using an [`iframe`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) navigation, specify the `adAuctionHeaders` attribute on the `iframe` element:
+
+```html
+<iframe src="https://seller.com/signals" adAuctionHeaders></iframe>
+```
+
+If script that invokes `runAdAuction()` is part of the response to that iframe navigation, `directFromSellerSignalsHeaderAdSlot` can be specified directly without a Promise because `runAdAuction()` cannot be called until after the response - with its DirectFromSellerSignals headers - has been received.
+
+The browser will make the request for either the `fetch()` or the `iframe` navigation that it otherwise would, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that any `Ad-Auction-Signals` response header from the server will only be loaded in auctions via `directFromSellerSignalsHeaderAdSlot` (this is analogous to the guarantees of `Ad-Auction-Only` and `Sec-Fetch-Dest: webbundle` from the [subresource bundle version](#251-using-subresource-bundles) -- scripts on the page cannot set the `Sec-Ad-Auction-Fetch: ?1` request header without using the `{adAuctionHeaders: true}` option).
 
 The value of the `Ad-Auction-Signals` header must be JSON formatted, with the following schema:
 
@@ -564,7 +574,7 @@ When invoking `navigator.runAdAuction()`, `directFromSellerSignalsHeaderAdSlot` 
 
 The JSON will be parsed by the browser, and passed via the same `directFromSellerSignals` worklet functions parameter as in [the subresource bundle](#251-using-subresource-bundles) version of DirectFromSellerSignals, with `sellerSignals` only being delivered to the seller, `perBuyerSignals` only being delivered to the buyer for each buyer origin key, and `auctionSignals` being delivered to all parties. Since the top-level JSON value is an array, multiple `adSlot` responses may be set for a given `Ad-Auction-Signals` header. In the dictionary with the `adSlot`, the `sellerSignals`, `auctionSignals`, and `perBuyerSignals` fields are optional -- they will be passed as null if not specified.
 
-Since both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` (the parameters on `navigator.runAdAuction()`) set the same `directFromSellerSignals` parameter on the worklet functions, it is not valid to use both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` in the same auction. However, component auctions in the same top-level auction / the top-level itself do not all need to use the same type of DirectFromSellerSignals (and it's also valid if only some component auctions / the top-level use DirectFromSellerSignals).
+Since both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` (the fields on `navigator.runAdAuction()`) set the same `directFromSellerSignals` parameter on the worklet functions, it is not valid to use both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` in the same auction. However, component auctions in the same top-level auction / the top-level itself do not all need to use the same type of DirectFromSellerSignals (and it's also valid if only some component auctions / the top-level use DirectFromSellerSignals).
 
 Failure to find a matching `adSlot` results in the fields of the `directFromSellerSignals` object passed to worklet functions being set to null, similar to the [subresource bundle version](#251-using-subresource-bundles).
 
@@ -595,9 +605,9 @@ Buyers have three basic jobs in the on-device ad auction:
 
 Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsURL`, `trustedBiddingSignalsKeys`, and, optionally, `trustedBiddingSignalsSlotSizeMode` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
 
-    https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2&interestGroupNames=name1,name2&experimentGroupId=12345&slot-size=100,200
+    https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2&interestGroupNames=name1,name2&experimentGroupId=12345&slotSize=100,200
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsURL`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `experimentGroupId` comes from `perBuyerExperimentGroupIds` if provided, `keys` is a list of `trustedBiddingSignalsKeys` strings, and `interestGroupNames` is a list of the names of the interest groups that data is being fetched for.  `trustedBiddingSignalsSlotSizeMode` is one of `none` (which is the default), `slot-size`, and `all-slots-requested-sizes`.  In the second case, `&slotSize=<width>,<height>` is appended to the URL, where width and height are the normalized width and height from the `requestedSize` of the (component) auction's AuctionConfig.  "Normalized" means units are always appended, and trailing zeros are removed, so {width: 62.50sw", height: "10.0" becomes "62.5sw,10px".  In the `all-slots-requested-sizes` case, `&slotSizes=<width1>,<height1>,<width2>,<height2>,...` is appended, where all sizes are taken from the (component) auction's `allSlotsRequestedSizes` value.  If the corresponding value is not present in the auction, no value is appended.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsURL` and `trustedBiddingSignalsSlotSizeMode` (which means they also share an owner).
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsURL`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `experimentGroupId` comes from `perBuyerExperimentGroupIds` if provided, `keys` is a list of `trustedBiddingSignalsKeys` strings, and `interestGroupNames` is a list of the names of the interest groups that data is being fetched for.  `trustedBiddingSignalsSlotSizeMode` is one of `none` (which is the default), `slot-size`, and `all-slots-requested-sizes`.  In the second case, `&slotSize=<width>,<height>` is appended to the URL, where width and height are the normalized width and height from the `requestedSize` of the (component) auction's AuctionConfig.  "Normalized" means units are always appended, and trailing zeros are removed, so {width: "62.50sw", height: "10.0"} becomes "62.5sw,10px".  In the `all-slots-requested-sizes` case, `&allSlotsRequestedSizes=<width1>,<height1>,<width2>,<height2>,...` is appended, where all sizes are taken from the (component) auction's `allSlotsRequestedSizes` value.  If the corresponding value is not present in the auction configuration, no value is appended.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsURL` and `trustedBiddingSignalsSlotSizeMode` (which means they also share an owner).
 
 The response from the server should be a JSON object of the form:
 
@@ -1030,7 +1040,7 @@ Each additional bid may provide a value for **at most** one of the `negativeInte
 
 The `auctionNonce`, `seller`, and `topLevelSeller` fields are used to prevent replay of this additional bid. The `auctionNonce` is described below in section [6.1 Auction Nonce](#61-auction-nonce). The `seller` and `topLevelSeller` fields echo those present in the `browserSignals` argument to `generateBid()` as described in section [3.2 On-Device Bidding](#32-on-device-bidding). In `generateBid()`, these are meant to ensure that the buyer acknowledges and accepts that their bid can participate in an auction with those parties. Additional bids don't have a corresponding call to `generateBid()`, and so the `seller` and `topLevelSeller` fields in an additional bid are intended to allow for the same acknowledgement as those in `browserSignals`.
 
-Additional bids are not provided through the auction config passed to `runAdAuction()`, but rather through the response headers of a Fetch request, as described below in section [6.3 HTTP Response Headers](#63-http-response-headers). However, the auction config still has an `additionalBids` field, which is a Promise with no value, used only to signal to the auction that the additional bids have arrived and are ready to be accepted in the auction. For each additional bid, its owner must be included in  interestGroupBuyers  for that additional bid to participate in the auction.
+Additional bids are not provided through the auction config passed to `runAdAuction()`, but rather through the response headers of a Fetch request or `iframe` navigation, as described below in section [6.3 HTTP Response Headers](#63-http-response-headers). However, the auction config still has an `additionalBids` field, which is a Promise with no value, used only to signal to the auction that the additional bids have arrived and are ready to be accepted in the auction. For each additional bid, its owner must be included in  interestGroupBuyers  for that additional bid to participate in the auction.
 
 ```
 navigator.runAdAuction({
@@ -1142,20 +1152,34 @@ Note that the key fields are used by the browser both to verify the signature, a
 
 The browser ensures, using TLS, the authenticity and integrity of information provided to the auction through calls made directly to an ad tech's servers. This guarantee is not provided for data passed in `runAdAuction()`. To account for this, additional bids use the same HTTP response header interception mechanism that's already in use for the [Bidding & Auction response blob](FLEDGE_browser_bidding_and_auction_API.md#step-3-get-response-blobs-to-browser) and `directFromSellerSignals`.
 
-To use HTTP response headers to convey the additional bids, the request to fetch them will first need to specify the `adAuctionHeaders` fetch flag.
+Servers return additional bids to the browser using the `Ad-Auction-Additional-Bid` response header of some `fetch()` request or `iframe` navigation, together with the `additionalBids` field on `navigator.runAdAuction()`. This uses the same syntax as that used to convey `directFromSellerSignals` [using response headers](#252-using-response-headers).
 
-```
-fetch("https://...", {adAuctionHeaders: true});
+To request additional bids using a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) call made by some script on the page (including in a subframe), specify an extra option, `{adAuctionHeaders: true}`:
+
+```javascript
+let fetchResponse = await fetch("https://...", {adAuctionHeaders: true});
 ```
 
-This signals to the browser that it should look for one or more additional bids encoded as HTTP response headers from this Fetch. Each instance of the `Ad-Auction-Additional-Bid` response header will correspond to a single additional bid. The response may include more than one additional bid by specifying multiple instances of the `Ad-Auction-Additional-Bid` response header. The structure of each instance of the `Ad-Auction-Additional-Bid` header must be as follows:
+The script must resolve the `additionalBids` Promise only after the response for this call has been received. If the script chooses to call `runAdAuction()` after this response is received, the `additionalBids` Promise may be immediately resolved.
+
+To request additional bids using an [`iframe`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) navigation, specify the `adAuctionHeaders` attribute on the `iframe` element:
+
+```html
+<iframe src="https://..." adAuctionHeaders></iframe>
+```
+
+If script that invokes `runAdAuction()` is part of the response to that iframe navigation, the `adAuctionHeaders` Promise may be immediately resolved from within the iframe because `runAdAuction()` cannot be called until after the response - with its additional bid headers - has been received.
+
+The browser will make the request for either the Fetch or the `iframe` navigation that it otherwise would, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that each `Ad-Auction-Additional-Bid` response header from the server will be decoded as an additional bid and loaded into the auction. Each instance of the `Ad-Auction-Additional-Bid` response header will correspond to a single additional bid. The response may include more than one additional bid by specifying multiple instances of the `Ad-Auction-Additional-Bid` response header. The structure of each instance of the `Ad-Auction-Additional-Bid` header must be as follows:
 
 ```
 Ad-Auction-Additional-Bid:
     <auction nonce>:<base64-encoding of the signed additional bid>
 ```
 
-These HTTP response headers are intercepted by the browser and diverted to participate in the auction without passing through the JavaScript context. When all of the additional bids for an auction have been received this way, the seller should resolve the `additionalBids` Promise passed into the auctionConfig that was described in section [6. Additional Bids](#6-additional-bids). The browser will use this as the signal that it's ready to accept the bids provided by the `Ad-Auction-Additional-Bid` response headers into the auction.
+The browser uses the auction nonce prefix from each response header to associate each additional bid to its corresponding auction. For single-seller auctions, this maps to a particular call to `runAdAuction()`, whereas for multi-seller auctions, this maps to a particular component auction.
+
+All `Ad-Auction-Additional-Bid` response headers are intercepted by the browser and diverted to participate in the auction without passing through the JavaScript context. When all of the additional bids for an auction have been received this way, the seller should resolve the `additionalBids` Promise passed as described above. The browser will use this as the signal that it has all of the additional bids intended for this auction.
 
 #### 6.4 Reporting Additional Bid Wins
 
