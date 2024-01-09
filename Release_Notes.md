@@ -6,6 +6,16 @@
 
 *   Functions that are called from Protected Audience worklets are now only accessible from inside the worklets, not from the global scope.  See [#489](https://github.com/WICG/turtledove/issues/489) for more information.
 
+## Chrome M114
+
+* Support the ability to specify `requestedSize` in the auction config, which is eventually stored in the winning fenced frame config's container size. The `requestedSize` may not be accessible through browser signals in the auction until M116, and is a lower priority because it is a convenience feature only (presumably the size of the ad slot is already passed in through other signals, if it is needed).
+
+
+## Chrome M113
+
+* Support some of the size-related API changes (the ability to declare ad sizes in `joinAdInterestGroup`, include sizes with bids in `generateBid`, and have those sizes macro'd into the URL with `AD_WIDTH` and `AD_HEIGHT` macros), in a backwards compatible and opt-in way. 
+
+
 ## Chrome M109
 
 *   Since version 109.0.5414.16, the [`sendReports` parameter to `navigator.deprecatedURNToURL()`](https://github.com/WICG/turtledove/blob/main/Proposed_First_FLEDGE_OT_Details.md#advertisement-rendering) is respected.
