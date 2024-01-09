@@ -44,8 +44,8 @@ The usefulness of this page depends on testers sharing information and updates.
 | --------------- | --------------- | ---------------------- | ------------------------------------- | ------------------ |
 | Criteo | DSP | Started in 2022, long term commitment | [An update on FLEDGE testing](https://medium.com/criteo-engineering/an-update-on-fledge-chrome-testing-d0046430a3ec)| privacy-sandbox-testing@criteo.com |
 | Criteo | SSP | November 2023 | | privacy-sandbox-testing@criteo.com |
-| Teads | DSP | January 2024 | | privacysandbox@teads.com |
-| Teads | SSP | January 2024 | | privacysandbox@teads.com |
+| Teads | DSP | March 15th 2024 - May 15th 2024 | | privacysandbox@teads.com |
+| Teads | SSP | March 15th 2024 - May 15th 2024 | | privacysandbox@teads.com |
 | NextRoll | DSP | 2024-01-30 | coming soon | privacysandbox@nextroll.com |
 | OpenX | SSP | Limited testing in progress | | joel.meyer@openx.com |
 | RTB House | DSP | Continuous testing ongoing; long term commitment. | https://blog.rtbhouse.com/whitepaper-deep-insights-from-early-fledge-experiments/ | privacysandbox@rtbhouse.com |
