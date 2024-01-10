@@ -42,7 +42,7 @@ The usefulness of this page depends on testers sharing information and updates.
 
 | Company / Party | Role in testing | Est. Testing Timeframe | Link to testing plan and/or learnings | How to contact you |
 | --------------- | --------------- | ---------------------- | ------------------------------------- | ------------------ |
-| Criteo | DSP | Started in 2022, long term commitment | [An update on FLEDGE testing](https://medium.com/criteo-engineering/an-update-on-fledge-chrome-testing-d0046430a3ec)| privacy-sandbox-testing@criteo.com |
+| Criteo | DSP | Started in 2022, long term commitment | <ul><li>Participating in the CMA testing</li><li>Entering a stable testing phase on March 11 2024</li><li> [A statistical model for measuring Privacy Sandbox performance impacts](https://medium.com/criteo-engineering/privacy-sandbox-market-testing-a-statistical-model-for-measuring-performance-impacts-2e99ff402898)</li><li> [An update on FLEDGE testing](https://medium.com/criteo-engineering/an-update-on-fledge-chrome-testing-d0046430a3ec) </li></ul> | privacy-sandbox-testing@criteo.com |
 | Criteo | SSP | November 2023 | | privacy-sandbox-testing@criteo.com |
 | Teads | DSP | March 15th 2024 - May 15th 2024 | | privacysandbox@teads.com |
 | Teads | SSP | March 15th 2024 - May 15th 2024 | | privacysandbox@teads.com |
