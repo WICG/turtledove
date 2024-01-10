@@ -42,6 +42,7 @@ spec: html; urlPrefix: https://html.spec.whatwg.org/C
     text: create an agent; url: create-an-agent
     text: immediately; url: immediately
     text: valid floating-point number; url: valid-floating-point-number
+    text: structured clone algorithm; url: dom-structuredclone
 spec: infra; urlPrefix: https://infra.spec.whatwg.org/
   type: dfn
     text: convert an Infra value to a JSON-compatible JavaScript value; url: #convert-an-infra-value-to-a-json-compatible-javascript-value
@@ -4869,15 +4870,22 @@ JavaScript is controlled and limited as follows:
 - Responses are required to contain the `Ad-Auction-Allowed: ?1` header.
 - Fetches are uncredentialed.
 
-Protected Audience has the browser pass in several “browserSignals” to the bidding script that give the script
-unforgeable information about the context that the script is being executed in. This way bidders
-and sellers have the choice to only participate in auctions where they are comfortable working with
-the involved parties.
+Protected Audience has the browser pass in several “browserSignals” to the bidding script that give
+the script unforgeable information about the context that the script is being executed in. This way
+bidders and sellers have the choice to only participate in auctions where they are comfortable
+working with the involved parties.
 
-The [execution environment](#script-runners) available to these scripts is the absolute minimum necessary to calculate
-
-a bid. It supports only ECMAScript. It does not support network, storage, timer, date, DOM,
-Workers, postMessage, Navigator or Window APIs.
+The [execution environment](#script-runners) available to these scripts is the absolute minimum
+necessary to calculate a bid. It supports only ECMAScript. It does not support network, storage,
+timer, date, DOM, Workers, postMessage, Navigator or Window APIs.
 
 Protected Audience adds Permission-Policies to control access to the Protected Audience APIs to
 give sites and embedders the ability to clamp down on use of the APIs as they see fit.
+
+Auction config and interest group data are processed as JSON and not via the [=structured clone
+algorithm=], in part because interest groups are updated via JSON server responses. However, there
+is also a security reason to not use the structured clone algorithm, which is that the data may
+be shared with other parties -- in particular, the auction config
+{{AuctionAdConfig/perBuyerSignals}} are sent from the seller to each buyer. Supporting structured
+cloning here would mean that buyer scripts would have to be prepared to handle arbitrary, complex,
+and potentially cyclic objects from the seller.
