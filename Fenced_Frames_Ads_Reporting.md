@@ -51,7 +51,7 @@ There are two variants of the `reportEvent` API for event-level reporting that a
 
 This API is available from all documents in a fenced frame that are same-origin to the mapped URL of the fenced frame config (i.e., the ad creative URL that won the Protected Audience auction).
 
-The browser processes the beacon by sending an HTTP POST request, like the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
+The browser processes the beacon by sending an HTTP POST request, like the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon). The POST request is sent immediately or as soon as the corresponding registerAdBeacon is invoked, and is done asynchronously to avoid blocking other actions.
 
 Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. In the interim period when FLEDGE supports rendering the winning ad in an iframe, `window.fence` will also be available in such an iframe.
 
