@@ -762,16 +762,17 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     1. Run [=interest group update=] with |auctionConfig|'s
       [=auction config/interest group buyers=].
 1. Let |generateBidResults| be a new [=list=] of [=generate bid results=].
+1. Let |auctionReporter| be a new [=auction reporter=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. Let « |winnerInfo|, |auctionReporter| » be the result of running [=generate and score bids=]
-    with |auctionConfig|, null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|,
-    and |generateBidResults|.
+  1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
+    null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|, |generateBidResults|,
+    and |auctionReporter|.
   1. If |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
     given |global|, to [=reject=] |p| with a "{{TypeError}}".
-  1. If |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null, then
-    [=queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p| with
-    null.
+  1. Otherwise if |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null,
+    then [=queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
+    with null.
   1. Otherwise:
     1. Let |winner| be |winnerInfo|'s [=leading bid info/leading bid=].
     1. Let |fencedFrameConfig| be the result of [=filling in a pending fenced frame config=] with
@@ -1451,8 +1452,8 @@ and a [=moment=] |auctionStartTime|:
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, an [=origin=]
-|topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of
-[=generate bid result=] |generateBidResults|:
+|topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, a [=list=] of [=generate bid result=]
+|generateBidResults|, and an [=auction reporter=] |auctionReporter|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
@@ -1473,7 +1474,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinner| be the result of running [=generate and score bids=] with |component|,
-      |auctionConfig|, |global|, |topLevelOrigin|, |bidIgs|, and |generateBidResults|.
+      |auctionConfig|, |global|, |topLevelOrigin|, |bidIgs|, |generateBidResults| and
+      |auctionReporter|.
     1. If |compWinner| is failure, return failure.
     1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns
       failure, return failure.
@@ -1593,7 +1595,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|].
   1. Let |expectedCurrency| be the result of [=looking up per-buyer currency=] with |auctionConfig|
     and |buyer|.
-  1. Let |auctionReporter| be a new [=auction reporter=].
   1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perBuyerGenerator|:
     1. Let |keys| be a new [=ordered set=].
     1. Let |igNames| be a new [=ordered set=].
@@ -1610,11 +1611,11 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
     1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to |settings|'s
       [=environment settings object/current monotonic time=], in milliseconds.
-    1. If |perBuyerCumulativeTimeout| is not null:
-      1. Decrement |perBuyerCumulativeTimeout| by |fetchSignalDuration|.
-      1. If |perBuyerCumulativeTimeout| is negative, then [=iteration/break=];
+    1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout| by
+      |fetchSignalDuration|.
     1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
       1. [=list/For each=] |ig| of |groups|:
+        1. If |perBuyerCumulativeTimeout| is negative, then [=iteration/break=];
         1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
         1. If |perBuyerCumulativeTimeout| is not null and is less than |perBuyerTimeout|, then set
           |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
@@ -1637,8 +1638,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 
           Note: [=Generate a bid=] is now rerun with only k-anonymous [=interest group/ads=] to give
           the buyer a chance to [=generate a bid=] for k-anonymous [=interest group/ads=]. Allowing
-          the buyer to first [=generate a bid=] for non-k-anonymous [=interest group/ads=] provides
-          a mechanism to bootstrap the k-anonymity count, otherwise no [=interest group/ads=] would
+          the buyer to first [=generate a bid=] for non-k-anonymous [=interest group/ads=] provides a
+          mechanism to bootstrap the k-anonymity count, otherwise no [=interest group/ads=] would
           ever trigger [=increment k-anonymity count=] and all ads would fail
           [=query k-anonymity count=].
           1. TODO: Run [=score and rank a bid=] on |generatedBid| to find the highest scoring bid
@@ -3298,12 +3299,12 @@ interface InterestGroupScriptRunnerGlobalScope {
 
 <pre class="idl">
 [Exposed=InterestGroupBiddingAndScoringScriptRunnerGlobalScope]
-
 interface ForDebuggingOnly {
   undefined reportAdAuctionWin(DOMString url);
   undefined reportAdAuctionLoss(DOMString url);
 };
 
+[Exposed=InterestGroupBiddingAndScoringScriptRunnerGlobalScope]
 interface InterestGroupBiddingAndScoringScriptRunnerGlobalScope : InterestGroupScriptRunnerGlobalScope{
   readonly attribute ForDebuggingOnly forDebuggingOnly;
 };
@@ -4782,11 +4783,11 @@ A <dfn>generate bid result</dfn> holds information from `generateBid()`.
     {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionLoss(url)}}.
   : <dfn>seller debug win report url</dfn>
   :: Null or a [=URL=], initially null. In the case of a component auction, these are the values
-    from component seller that the scored ad was created in. Set by seller's `scoreAd()`'s
+    from component seller that the scored ad was created in. Set by `scoreAd()`'s
     {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionWin(url)}}.
   : <dfn>seller debug loss report url</dfn>
   :: Null or a [=URL=], initially null. In the case of a component auction, these are the values
-    from component seller that the scored ad was created in. Set by seller's `scoreAd()`'s
+    from component seller that the scored ad was created in. Set by `scoreAd()`'s
     {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionLoss(url)}}.
   : <dfn>top level seller debug win report url</dfn>
   :: Null or a [=URL=], initially null. Set in the case this bid was made in a component auction,
@@ -4994,9 +4995,11 @@ An <dfn>auction reporter</dfn> is a [=struct=] with the following [=struct/items
 
 <dl dfn-for="auction reporter">
   : <dfn>debug win report urls</dfn>
-  :: A [=list=] of [=strings=]. xxx
+  :: A [=list=] of [=URLs=] whose [=url/schemes=] are "`https`". The final [=leading bid info=]'s
+    [=leading bid info/leading bid=]'s corresponding debug win reports.
   : <dfn>debug loss report urls</dfn>
-  :: A [=list=] of [=strings=]. xxx
+  :: A [=list=] of [=strings=] whose [=url/schemes=] are "`https`". Losing [=generated bids=]'
+    corresponding debug loss reports.
 </dl>
 
 # Privacy Considerations # {#privacy-considerations}
