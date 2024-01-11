@@ -72,6 +72,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Mediavine | DSP & SSP | 2023-2024 | | privacysandbox@mediavine.com |
 | Jivox | Ad Server (DCO) | Testing in progress | | jvx-google-privacy-sandbox-team@jivox.com |
 | Wirtualna Polska Media | Publisher & SSP | Running Protected Audience API tests since July 2023 | https://github.com/grupawp/PAapi | privacysandbox@grupawp.pl |
+| Appier Inc | DSP | 2023 Q1 - ongoing | | privacy-sandbox@appier.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
