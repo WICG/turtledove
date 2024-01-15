@@ -87,4 +87,5 @@ Companies who may be interested in participating in tests and early adoption opp
 | OLX Brasil | Publisher | | adtech@olxbr.com |
 | Globo | Publisher | | adtech-delivery@g.globo|
 | A Gazeta | Publisher | | cdutra@redegazeta.com.br |
+| TNL Mediagene | Publisher | | privacysandbox@tnlmediagene.com |
 
