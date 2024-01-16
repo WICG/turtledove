@@ -42,6 +42,7 @@ spec: html; urlPrefix: https://html.spec.whatwg.org/C
     text: create an agent; url: create-an-agent
     text: immediately; url: immediately
     text: valid floating-point number; url: valid-floating-point-number
+    text: structured clone algorithm; url: dom-structuredclone
 spec: infra; urlPrefix: https://infra.spec.whatwg.org/
   type: dfn
     text: convert an Infra value to a JSON-compatible JavaScript value; url: #convert-an-infra-value-to-a-json-compatible-javascript-value
@@ -365,119 +366,6 @@ This is detectable because it can change the set of fields that are read from th
     the time set to the current UTC day and a count of 1.
   1. Store |interestGroup| in the [=user agent=]'s [=interest group set=].
 1. Return |p|.
-
-</div>
-
-<div algorithm>
-
-The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig| is the sum of:
-1. The [=string/length=] of the [=serialization of an origin|serialization=] of |ig|'s
-  [=interest group/owner=].
-1. The [=string/length=] of |ig|'s [=interest group/name=].
-1. 8, which is the size of |ig|'s [=interest group/priority=].
-1. The [=string/length=] of |ig|'s [=interest group/execution mode=].
-1. 2, which is the size of |ig|'s [=interest group/enable bidding signals prioritization=].
-1. If |ig|'s [=interest group/priority vector=] is not null, [=map/for each=] |key| → |value| of
-  [=interest group/priority vector=]:
-  1. The [=string/length=] of |key|.
-  1. 8, which is the size of |value|.
-1. If |ig|'s [=interest group/priority signals overrides=] is not null, [=map/for each=] |key| → |value| of
-  [=interest group/priority signals overrides=]:
-  1. The [=string/length=] of |key|.
-  1. 8, which is the size of |value|.
-1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
-  [=interest group/bidding url=], if the field is not null.
-1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
-  [=interest group/bidding wasm helper url=], if the field is not null.
-1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
-  [=interest group/update url=], if the field is not null.
-1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
-  [=interest group/trusted bidding signals url=], if the field is not null.
-1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
-  1. The [=string/length=] of |key|.
-1. The [=string/length=] of |ig|'s [=interest group/user bidding signals=].
-1. If |ig|'s [=interest group/ads=] is not null, [=list/for each=] |ad| of it:
-  1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
-    [=interest group ad/render url=].
-  1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
-  1. The [=string/length=] of |ad|'s [=interest group ad/buyer reporting ID=] if the field is not null.
-  1. The [=string/length=] of |ad|'s [=interest group ad/buyer and seller reporting ID=] if the
-    field is not null.
-  1. If |ad|'s [=interest group ad/allowed reporting origins=] is not null, [=list/for each=]
-    |origin| of it:
-    1. The [=string/length=] of the [=serialization of an origin|serialization=] of |origin|.
-1. If |ig|'s [=interest group/ad components=] is not null, [=list/for each=] |ad| of it:
-  1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
-    [=interest group ad/render url=].
-  1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
-1. If |ig|'s [=interest group/additional bid key=] is not null:
-  1. 32, which is its size (number of bytes).
-
-</div>
-
-<div algorithm>
-
-To <dfn>check interest group permissions</dfn> given an [=origin=] |ownerOrigin|, an [=origin=]
-|frameOrigin|, and an enum |joinOrLeave| which is "`join`" or "`leave`":
-1. If |ownerOrigin| is [=same origin=] with |frameOrigin|, then return true.
-1. Let |encodedFrameOrigin| be the result of [=string/UTF-8 percent-encoding=] the
-  [=serialization of an origin|serialized=] |frameOrigin| using [=component percent-encode set=].
-1. Let |permissionsUrl| be a new [=URL=] with the following [=struct/items=]:
-  :   [=url/scheme=]
-  ::  |ownerOrigin|'s [=origin/scheme=]
-  :   [=url/host=]
-  ::  |ownerOrigin|'s [=origin/host=]
-  :   [=url/port=]
-  ::  |ownerOrigin|'s [=origin/port=]
-  :   [=url/path=]
-  ::  « ".well-known", "interest-group", "permissions" »
-  :   [=url/query=]
-  ::  The result of [=string/concatenating=] « "origin=", |encodedFrameOrigin| »
-1. Let |request| be a new [=request=] with the following properties:
-  :   [=request/URL=]
-  ::  |permissionsUrl|
-  :   [=request/header list=]
-  ::  «`Accept`: `application/json`»
-  :   [=request/client=]
-  ::  `null`
-  :   [=request/origin=]
-  ::  |frameOrigin|
-  :   [=request/mode=]
-  ::  "`cors`"
-  :   [=request/referrer=]
-  :: "`no-referrer`"
-  :   [=request/credentials mode=]
-  ::  "`omit`"
-  :   [=request/redirect mode=]
-  :: "`error`"
-
-  Issue: One of the side-effects of a `null` client for this subresource request is it neuters all
-    service worker interceptions, despite not having to set the service workers mode.
-1. Let |resource| be null.
-1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
-  [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
-  and null, failure, or a [=byte sequence=] |responseBody|:
-  1. If |responseBody| is null or failure, set |resource| to failure and return.
-  1. Let |headers| be |response|'s [=response/header list=].
-  1. Let |mimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
-  1. If |mimeType| is failure or is not a [=JSON MIME Type=], set |resource| to failure and return.
-  1. Set |resource| to |responseBody|.
-1. Wait for |resource| to be set.
-1. If |resource| is failure, then return false.
-1. Let |permissions| be the result of [=parsing JSON bytes to an Infra value=] with |resource|,
-  returning false on failure.
-1. If |permissions| is not an [=ordered map=], then return false.
-1. If |joinOrLeave| is "`join`" and |permissions|["`joinAdInterestGroup`"] [=map/exists=], then
-  return |permissions|["`joinAdInterestGroup`"].
-1. If |joinOrLeave| is "`leave`" and |permissions|["`leaveAdInterestGroup`"] [=map/exists=], then
-  return |permissions|["`leaveAdInterestGroup`"].
-1. Return false.
-
-The browser may cache requests for |permissionsUrl| within a network partition.
-
-In order to prevent leaking data, the browser must request |permissionsUrl|
-regardless of whether the user is a member of the ad interest group. This
-prevents a leak of the user's ad interest group membership to the server.
 
 </div>
 
@@ -1321,15 +1209,6 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 
 <div algorithm>
 
-To <dfn>parse an https origin</dfn> given a [=string=] |input|:
-1. Let |url| be the result of running the [=URL parser=] on |input|.
-1. If |url| is failure, or its [=origin/scheme=] is not "`https`", then return failure.
-1. Return |url|'s [=url/origin=].
-
-</div>
-
-<div algorithm>
-
   To <dfn>update bid count</dfn> given a [=list=] of [=interest group=]s |igs|:
   1. [=list/For each=] |ig| in |igs|:
     1. Let |loadedIg| be the [=interest group=] from the [=user agent=]'s [=interest group set=]
@@ -1748,13 +1627,6 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dd>|ig|'s [=interest group/ad components=] [=converted to an AuctionAd sequence=]
     </dl>
   1. Return |igGenerateBid|.
-</div>
-
-<div algorithm>
-To <dfn>serialize a URL</dfn> given a [=URL=]-or-null |url|:
-
-  1. If |url| is null, then return {{undefined}}.
-  1. Return the [=URL serializer|serialization=] of |url|.
 </div>
 
 <div algorithm>
@@ -2203,35 +2075,6 @@ To <dfn>send report</dfn> given a [=URL=] |url|:
     Issue: Stop using "`no-cors`" mode where possible
     (<a href="https://github.com/WICG/turtledove/issues/667">WICG/turtledove#667</a>).
   1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true.
-</div>
-
-<div algorithm>
-
-To <dfn>serialize an integer</dfn>, represent it as a string of the shortest possible decimal
-number.
-
-Issue: This would ideally be replaced by a more descriptive algorithm in Infra. See
-<a href="https://github.com/whatwg/infra/issues/201">infra/201</a>
-
-</div>
-
-<div algorithm>
-To <dfn>round a value</dfn> given a {{double}} |value|:
-  1. If |value| is not a [=valid floating-point number=], return |value|.
-  1. Let |valueExp| be |value|'s IEEE 754 biased exponent field minus 1023.
-  1. Let |normValue| be |value| multiplied by 2<sup>(&minus;1 &times; |valueExp|)</sup>.
-  1. If |valueExp| is less than &minus;128:
-    1. If |value| is less than 0, return &minus;0.
-    1. Otherwise, return 0.
-  1. If |valueExp| is greater than 127:
-    1. If |value| is less than 0, return &minus;&infin;.
-    1. Otherwise, return &infin;.
-  1. Let |precisionScaledValue| be |normValue| multiplied by 256.
-  1. Let |noisyScaledValue| be |precisionScaledValue| plus a random {{double}} value greater than or
-    equal to 0 but less than 1.
-  1. Let |truncatedScaledValue| be the largest integer not greater than |noisyScaledValue|.
-  1. Return |truncatedScaledValue| multiplied by 2<sup>(|valueExp| &minus; 8)</sup>.
-
 </div>
 
 <div algorithm>
@@ -3640,7 +3483,10 @@ Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
   1. If [=this=]'s [=relevant global object=]'s [=InterestGroupReportingScriptRunnerGlobalScope/
      reporting beacon map=] is not null, then [=exception/Throw=] a {{TypeError}}.
 
-  1. [=map/For each=] |url| of |map|'s [=map/values=]:
+  1. [=map/For each=] |type| → |url| of |map|:
+
+     1. If |type| [=string/starts with=] "`reserved.`" and |type| does not match one of the
+        [=fencedframetype/automatic beacon event type=] values, [=exception/throw=] a {{TypeError}}.
 
      1. Let |parsedURL| be the result of running [=URL parser=] on |url|.
 
@@ -3890,7 +3736,97 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
 
 # Common Algorithms # {#common-algorithms}
 
-The following algorithms are some helper methods used in this document.
+The following algorithms are some helper algorithms used in this specification.
+
+<div algorithm>
+
+The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig| is the sum of:
+1. The [=string/length=] of the [=serialization of an origin|serialization=] of |ig|'s
+  [=interest group/owner=].
+1. The [=string/length=] of |ig|'s [=interest group/name=].
+1. 8, which is the size of |ig|'s [=interest group/priority=].
+1. The [=string/length=] of |ig|'s [=interest group/execution mode=].
+1. 2, which is the size of |ig|'s [=interest group/enable bidding signals prioritization=].
+1. If |ig|'s [=interest group/priority vector=] is not null, [=map/for each=] |key| → |value| of
+  [=interest group/priority vector=]:
+  1. The [=string/length=] of |key|.
+  1. 8, which is the size of |value|.
+1. If |ig|'s [=interest group/priority signals overrides=] is not null, [=map/for each=] |key| → |value| of
+  [=interest group/priority signals overrides=]:
+  1. The [=string/length=] of |key|.
+  1. 8, which is the size of |value|.
+1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
+  [=interest group/bidding url=], if the field is not null.
+1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
+  [=interest group/bidding wasm helper url=], if the field is not null.
+1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
+  [=interest group/update url=], if the field is not null.
+1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
+  [=interest group/trusted bidding signals url=], if the field is not null.
+1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
+  1. The [=string/length=] of |key|.
+1. The [=string/length=] of |ig|'s [=interest group/user bidding signals=].
+1. If |ig|'s [=interest group/ads=] is not null, [=list/for each=] |ad| of it:
+  1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
+    [=interest group ad/render url=].
+  1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
+  1. The [=string/length=] of |ad|'s [=interest group ad/buyer reporting ID=] if the field is not null.
+  1. The [=string/length=] of |ad|'s [=interest group ad/buyer and seller reporting ID=] if the
+    field is not null.
+  1. If |ad|'s [=interest group ad/allowed reporting origins=] is not null, [=list/for each=]
+    |origin| of it:
+    1. The [=string/length=] of the [=serialization of an origin|serialization=] of |origin|.
+1. If |ig|'s [=interest group/ad components=] is not null, [=list/for each=] |ad| of it:
+  1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
+    [=interest group ad/render url=].
+  1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
+1. If |ig|'s [=interest group/additional bid key=] is not null:
+  1. 32, which is its size (number of bytes). 
+
+</div>
+
+<div algorithm>
+  To <dfn>parse an https origin</dfn> given a [=string=] |input|:
+
+    1. Let |url| be the result of running the [=URL parser=] on |input|.
+    1. If |url| is failure, or its [=origin/scheme=] is not "`https`", then return failure.
+    1. Return |url|'s [=url/origin=].
+</div>
+
+<div algorithm>
+  To <dfn>serialize a URL</dfn> given a [=URL=]-or-null |url|:
+
+    1. If |url| is null, then return {{undefined}}.
+    1. Return the [=URL serializer|serialization=] of |url|.
+</div>
+
+<div algorithm>
+  To <dfn>round a value</dfn> given a {{double}} |value|:
+
+    1. If |value| is not a [=valid floating-point number=], return |value|.
+    1. Let |valueExp| be |value|'s IEEE 754 biased exponent field minus 1023.
+    1. Let |normValue| be |value| multiplied by 2<sup>(&minus;1 &times; |valueExp|)</sup>.
+    1. If |valueExp| &lt; &minus;128:
+      1. If |value| &lt; 0, return &minus;0.
+      1. Otherwise, return 0.
+    1. If |valueExp| &gt; 127:
+      1. If |value| &lt; 0, return &minus;&infin;.
+      1. Otherwise, return &infin;.
+    1. Let |precisionScaledValue| be |normValue| multiplied by 256.
+    1. Let |noisyScaledValue| be |precisionScaledValue| plus a random {{double}} value greater than
+      or equal to 0 but less than 1.
+    1. Let |truncatedScaledValue| be the largest integer not greater than |noisyScaledValue|.
+    1. Return |truncatedScaledValue| multiplied by 2<sup>(|valueExp| &minus; 8)</sup>.
+</div>
+
+<div algorithm>
+To <dfn>serialize an integer</dfn>, represent it as a string of the shortest possible decimal
+number.
+
+Issue: This would ideally be replaced by a more descriptive algorithm in Infra. See
+<a href="https://github.com/whatwg/infra/issues/201">infra/201</a>
+
+</div>
 
 <div algorithm>
   To <dfn>get uuid from string</dfn> given a [=string=] |input|:
@@ -3900,12 +3836,9 @@ The following algorithms are some helper methods used in this document.
     1. [=list/For each=] |i| in [=the range=] from 1 to 36, inclusive:
       1. Let |unit| be |input|'s |i|th [=code unit=].
       1. If « 8, 13, 18, 23 » [=list/contains=] |i|:
-        1. If |unit| is not 0x002D (-):
-
-          1. Return an empty [=string=].
+        1. If |unit| is not 0x002D (-), then return an empty [=string=].
       1. Otherwise:
-        1. If |unit| is not an [=ASCII lower hex digit=]:
-          1. Return an empty [=string=].
+        1. If |unit| is not an [=ASCII lower hex digit=], then return an empty [=string=].
         1. Append |unit| to the end of |uuidStr|.
     1. Return [=ASCII encoded=] |uuidStr|.
 </div>
@@ -3919,6 +3852,72 @@ This specification defines two [=policy-controlled features=] identified by the 
 [=policy-controlled feature/default allowlists=] are "`*`".
 
 Issue(WICG/turtledove#522): Move from "`*`" to "`self`".
+
+<div algorithm>
+
+To <dfn>check interest group permissions</dfn> given an [=origin=] |ownerOrigin|, an [=origin=]
+|frameOrigin|, and an enum |joinOrLeave| which is "`join`" or "`leave`":
+1. If |ownerOrigin| is [=same origin=] with |frameOrigin|, then return true.
+1. Let |encodedFrameOrigin| be the result of [=string/UTF-8 percent-encoding=] the
+  [=serialization of an origin|serialized=] |frameOrigin| using [=component percent-encode set=].
+1. Let |permissionsUrl| be a new [=URL=] with the following [=struct/items=]:
+  :   [=url/scheme=]
+  ::  |ownerOrigin|'s [=origin/scheme=]
+  :   [=url/host=]
+  ::  |ownerOrigin|'s [=origin/host=]
+  :   [=url/port=]
+  ::  |ownerOrigin|'s [=origin/port=]
+  :   [=url/path=]
+  ::  « ".well-known", "interest-group", "permissions" »
+  :   [=url/query=]
+  ::  The result of [=string/concatenating=] « "origin=", |encodedFrameOrigin| »
+1. Let |request| be a new [=request=] with the following properties:
+  :   [=request/URL=]
+  ::  |permissionsUrl|
+  :   [=request/header list=]
+  ::  «`Accept`: `application/json`»
+  :   [=request/client=]
+  ::  `null`
+  :   [=request/origin=]
+  ::  |frameOrigin|
+  :   [=request/mode=]
+  ::  "`cors`"
+  :   [=request/referrer=]
+  :: "`no-referrer`"
+  :   [=request/credentials mode=]
+  ::  "`omit`"
+  :   [=request/redirect mode=]
+  :: "`error`"
+
+  Issue: One of the side-effects of a `null` client for this subresource request is it neuters all
+    service worker interceptions, despite not having to set the service workers mode.
+1. Let |resource| be null.
+1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
+  [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
+  and null, failure, or a [=byte sequence=] |responseBody|:
+  1. If |responseBody| is null or failure, set |resource| to failure and return.
+  1. Let |headers| be |response|'s [=response/header list=].
+  1. Let |mimeType| be the result of [=header list/extracting a MIME type=] from |headers|.
+  1. If |mimeType| is failure or is not a [=JSON MIME Type=], set |resource| to failure and return.
+  1. Set |resource| to |responseBody|.
+1. Wait for |resource| to be set.
+1. If |resource| is failure, then return false.
+1. Let |permissions| be the result of [=parsing JSON bytes to an Infra value=] with |resource|,
+  returning false on failure.
+1. If |permissions| is not an [=ordered map=], then return false.
+1. If |joinOrLeave| is "`join`" and |permissions|["`joinAdInterestGroup`"] [=map/exists=], then
+  return |permissions|["`joinAdInterestGroup`"].
+1. If |joinOrLeave| is "`leave`" and |permissions|["`leaveAdInterestGroup`"] [=map/exists=], then
+  return |permissions|["`leaveAdInterestGroup`"].
+1. Return false.
+
+The browser may cache requests for |permissionsUrl| within a network partition.
+
+In order to prevent leaking data, the browser must request |permissionsUrl|
+regardless of whether the user is a member of the ad interest group. This
+prevents a leak of the user's ad interest group membership to the server.
+
+</div>
 
 
 # Fetch Patch for Auction Headers # {#fetch-patch-for-auction-headers}
@@ -5037,15 +5036,22 @@ JavaScript is controlled and limited as follows:
 - Responses are required to contain the `Ad-Auction-Allowed: ?1` header.
 - Fetches are uncredentialed.
 
-Protected Audience has the browser pass in several “browserSignals” to the bidding script that give the script
-unforgeable information about the context that the script is being executed in. This way bidders
-and sellers have the choice to only participate in auctions where they are comfortable working with
-the involved parties.
+Protected Audience has the browser pass in several “browserSignals” to the bidding script that give
+the script unforgeable information about the context that the script is being executed in. This way
+bidders and sellers have the choice to only participate in auctions where they are comfortable
+working with the involved parties.
 
-The [execution environment](#script-runners) available to these scripts is the absolute minimum necessary to calculate
-
-a bid. It supports only ECMAScript. It does not support network, storage, timer, date, DOM,
-Workers, postMessage, Navigator or Window APIs.
+The [execution environment](#script-runners) available to these scripts is the absolute minimum
+necessary to calculate a bid. It supports only ECMAScript. It does not support network, storage,
+timer, date, DOM, Workers, postMessage, Navigator or Window APIs.
 
 Protected Audience adds Permission-Policies to control access to the Protected Audience APIs to
 give sites and embedders the ability to clamp down on use of the APIs as they see fit.
+
+Auction config and interest group data are processed as JSON and not via the [=structured clone
+algorithm=], in part because interest groups are updated via JSON server responses. However, there
+is also a security reason to not use the structured clone algorithm, which is that the data may
+be shared with other parties -- in particular, the auction config
+{{AuctionAdConfig/perBuyerSignals}} are sent from the seller to each buyer. Supporting structured
+cloning here would mean that buyer scripts would have to be prepared to handle arbitrary, complex,
+and potentially cyclic objects from the seller.
