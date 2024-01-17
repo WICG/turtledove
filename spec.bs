@@ -650,23 +650,24 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     1. Run [=interest group update=] with |auctionConfig|'s
       [=auction config/interest group buyers=].
 1. Let |generateBidResults| be a new [=list=] of [=generate bid results=].
-1. Let |auctionReporter| be a new [=auction reporter=].
+1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
+  null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|, and |generateBidResults|.
+1. Let |auctionReportInfo| be the result of running [=collect forDebuggingOnly reports=] with
+  |generateBidResults| and |winnerInfo|.
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
-    null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|, |generateBidResults|,
-    and |auctionReporter|.
   1. If |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
     given |global|, to [=reject=] |p| with a "{{TypeError}}".
   1. Otherwise if |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null:
     1. [=queue a global task=] on [=DOM manipulation task source=], given |global|, to resolve |p|
       with null.
-    1. [=list/For each=] |reportUrl| of |auctionReporter|'s [=auction reporter/debug loss report urls=]:
+    1. [=list/For each=] |reportUrl| of |auctionReportInfo|'s
+      [=auction report info/debug loss report urls=]:
       1. [=Send report=] to |reportUrl|.
   1. Otherwise:
     1. Let |winner| be |winnerInfo|'s [=leading bid info/leading bid=].
     1. Let |fencedFrameConfig| be the result of [=filling in a pending fenced frame config=] with
-       |pendingConfig|, |auctionConfig|, |winnerInfo|, and |auctionReporter|.
+       |pendingConfig|, |auctionConfig|, |winnerInfo|, and |auctionReportInfo|.
     1. [=fenced frame config mapping/Finalize a pending config=] on |configMapping| with |urn| and
        |fencedFrameConfig|.
     1. Wait until |auctionConfig|'s [=auction config/resolve to config=] is a boolean.
@@ -767,7 +768,7 @@ To <dfn>construct a pending fenced frame config</dfn> given an [=auction config=
 
 To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame config=]
 |pendingConfig|, [=auction config=] |auctionConfig|, [=leading bid info=] |winningBidInfo|, and
-[=auction reporter=] |auctionReporter|:
+[=auction report info=] |auctionReportInfo|:
 1. Let |winningBid| be |winningBidInfo|'s [=leading bid info/leading bid=].
 1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
    |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
@@ -812,7 +813,7 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
       [=fenced frame config/fenced frame reporting metadata=]'s
       [=fenced frame reporting metadata/value=]'s
       [=fenced frame reporting metadata/fenced frame reporting map=], |winningBidInfo| and
-      |auctionReporter|.
+      |auctionReportInfo|.
 1. Set |pendingConfig|'s [=fenced frame config/nested configs=]'s [=nested configs/value=] to
    the result of running [=create nested configs=] with |winningBid|'s
    [=generated bid/ad component descriptors=].
@@ -824,7 +825,7 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 
 To <dfn>asynchronously finish reporting</dfn> given a
 [=fencedframetype/fenced frame reporting map=] |reportingMap|, [=leading bid info=] |leadingBidInfo|,
-and [=auction reporter=] |auctionReporter|.
+and [=auction report info=] |auctionReportInfo|.
 1. Let |buyerDone|, |sellerDone|, and |componentSellerDone| be [=booleans=], initially false.
 1. If |leadingBidInfo|'s [=leading bid info/component seller=] is null, set |componentSellerDone|
    to true.
@@ -868,9 +869,9 @@ and [=auction reporter=] |auctionReporter|.
       1. [=Send report=] to |leadingBidInfo|'s [=leading bid info/component seller reporting result=]'s
          [=reporting result/report url=].
       1. Set |componentSellerDone| to true.
-1. [=list/For each=] |reportUrl| of |auctionReporter|'s [=auction reporter/debug win report urls=]:
+1. [=list/For each=] |reportUrl| of |auctionReportInfo|'s [=auction report info/debug win report urls=]:
   1. [=Send report=] to |report|.
-1. [=list/For each=] |reportUrl| of |auctionReporter|'s [=auction reporter/debug loss report urls=]:
+1. [=list/For each=] |reportUrl| of |auctionReportInfo|'s [=auction report info/debug loss report urls=]:
   1. [=Send report=] to |report|.
 
 </div>
@@ -1333,8 +1334,8 @@ and a [=moment=] |auctionStartTime|:
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, an [=origin=]
-|topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, a [=list=] of [=generate bid result=]
-|generateBidResults|, and an [=auction reporter=] |auctionReporter|:
+|topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of
+[=generate bid result=] |generateBidResults|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
@@ -1355,8 +1356,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinner| be the result of running [=generate and score bids=] with |component|,
-      |auctionConfig|, |global|, |topLevelOrigin|, |bidIgs|, |generateBidResults| and
-      |auctionReporter|.
+      |auctionConfig|, |global|, |topLevelOrigin|, |bidIgs|, and |generateBidResults|.
     1. If |compWinner| is failure, return failure.
     1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns
       failure, return failure.
@@ -1510,10 +1510,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           [=environment settings object/current monotonic time=], in milliseconds.
         1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
           |generateBidDuration|.
-        1. If |generateBidResult|'s [=generate bid result/generated bid=] is null:
-          1. If |generateBidResult|'s [=generate bid result/bidder debug loss report url=] is not
-            null, then [=list/append=] it to |auctionReporter|'s
-            [=auction reporter/debug loss report urls=], and [=iteration/continue=].
+        1. If |generatedBid| is failure, [=iteration/continue=].
         1. If [=query generated bid k-anonymity count=] given |generatedBid| returns false:
 
           Note: [=Generate a bid=] is now rerun with only k-anonymous [=interest group/ads=] to give
@@ -1563,24 +1560,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
 1. If |topLevelAuctionConfig| is null:
-  1. [=list/For each=] |generateBidResult| of |generateBidResults|:
-    1. If |generateBidResult|'s [=generate bid result/generated bid=] is |leadingBidInfo|'s
-      [=leading bid info/leading bid=]:
-      1. If |generateBidResult|'s [=generate bid result/bidder debug win report url=] is not null,
-        then [=list/append=] it to |auctionReporter|'s [=auction reporter/debug win report urls=].
-      1. If |generateBidResult|'s [=generate bid result/seller debug win report url=] is not null,
-        then [=list/append=] it to |auctionReporter|'s [=auction reporter/debug win report urls=].
-      1. If |generateBidResult|'s [=generate bid result/top level seller debug win report url=] is
-        not null, then [=list/append=] it to |auctionReporter|'s
-        [=auction reporter/debug win report urls=].
-      1. [=iteration/Continue=].
-    1. If |generateBidResult|'s [=generate bid result/bidder debug loss report url=] is not null,
-      then [=list/append=] it to |auctionReporter|'s [=auction reporter/debug loss report urls=].
-    1. If |generateBidResult|'s [=generate bid result/seller debug loss report url=] is not null,
-      then [=list/append=] it to |auctionReporter|'s [=auction reporter/debug loss report urls=].
-    1. If |generateBidResult|'s [=generate bid result/top level seller debug loss report url=] is
-      not null, then [=list/append=] it to |auctionReporter|'s
-      [=auction reporter/debug loss report urls=].
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
     [=report result=] with |leadingBidInfo|, |directFromSellerSignalsForSeller|, null, and |global|.
   1. Let |directFromSellerSignalsForWinner| be the result of running
@@ -2287,6 +2266,42 @@ a {{ReportingBrowserSignals}} |browserSignals|, and a [=direct from seller signa
      :: |reportingMacroMap|
 </div>
 
+# Reporting # {#reporting}
+
+## forDebuggingOnly ## {#for-debugging-only-header}
+
+*This first introductory paragraph is non-normative.*
+
+"`generateBid()`" and "`scoreAd()`" can call
+{{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionWin(url)}} and
+{{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionLoss(url)}}
+for event-level forDebuggingOnly reports for winning and losing bids.
+
+<div algorithm>
+  To <dfn>collect forDebuggingOnly reports</dfn> given a [=list=] of [=generate bid results=]
+  |generateBidResults|, and a [=generated bid=] |winningGeneratedBid|:
+
+  1. Let |auctionReportInfo| be a new [=auction report info=].
+  1. [=list/For each=] |generateBidResult| of |generateBidResults|:
+    1. If |generateBidResult|'s [=generate bid result/generated bid=] is |winningGeneratedBid|:
+      1. If |generateBidResult|'s [=generate bid result/bidder debug win report url=] is not null,
+        then [=list/append=] it to |auctionReportInfo|'s [=auction report info/debug win report urls=].
+      1. If |generateBidResult|'s [=generate bid result/seller debug win report url=] is not null,
+        then [=list/append=] it to |auctionReportInfo|'s [=auction report info/debug win report urls=].
+      1. If |generateBidResult|'s [=generate bid result/top level seller debug win report url=] is
+        not null, then [=list/append=] it to |auctionReportInfo|'s
+        [=auction report info/debug win report urls=].
+    1. Otherwise:
+      1. If |generateBidResult|'s [=generate bid result/bidder debug loss report url=] is not null,
+        then [=list/append=] it to |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+      1. If |generateBidResult|'s [=generate bid result/seller debug loss report url=] is not null,
+        then [=list/append=] it to |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+      1. If |generateBidResult|'s [=generate bid result/top level seller debug loss report url=] is
+        not null, then [=list/append=] it to |auctionReportInfo|'s
+        [=auction report info/debug loss report urls=].
+  1. Return |auctionReportInfo|.
+</div>
+
 # Additional Bids and Negative Targeting # {#additional-bids-and-negative-targeting}
 
 ## createAuctionNonce() ## {#create-auction-nonce}
@@ -2983,32 +2998,25 @@ of the following global objects:
       1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
         [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
     1. Let |generatedBid| be |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=].
-    1. Let |debugWinReportUrl| be null.
-    1. Let |debugLossReportUrl| be |global|'s
-      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=].
-    1. If |debugLossReportUrl| is failure, then set |debugLossReportUrl| to null.
     1. If |result| is a [=ECMAScript/normal completion=]:
       1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
         |result|'s \[[Value]] to a {{GenerateBidOutput}}.
-      1. Let |debugWinReportUrl| be |global|'s
-        [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=].
-      1. If |debugWinReportUrl| is failure, then set |debugWinReportUrl| to null.
-      1. Let |debugLossReportUrl| be |global|'s
-        [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=].
-      1. If |debugLossReportUrl| is failure, then set |debugLossReportUrl| to null.
       1. If no exception was [=exception/thrown=] in the previous step, then set |generatedBid| to
         the result of [=converting GenerateBidOutput to generated bid=] with |generatedBidIDL|,
         |ig|, |expectedCurrency|, |isComponentAuction|, and |global|'s
         [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=].
+    1. Let |debugLossReportUrl| be |global|'s
+      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] if it's not
+      failure, null otherwise.
     1. Let |debugWinReportUrl| be null.
     1. If |generatedBid| is a [=generated bid=] and |generatedBid|'s [=generated bid/bid=]'s
       [=bid with currency/value=] &le; 0, then set |generatedBid| to null.
-    1. Otherwise:
+    1. If |generatedBid| is a [=generated bid=]:
       1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
       1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
       1. Set |debugWinReportUrl| to |global|'s
-        [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=].
-      1. If |debugWinReportUrl| is failure, then set |debugWinReportUrl| to null.      
+        [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] if it's not
+        failure, null otherwise.
     1. Return a [=generate bid result=] with the following [=struct/items=]:
       : [=generate bid result/generated bid=]
       :: |generatedBid|
@@ -3035,12 +3043,12 @@ of the following global objects:
     1. Let |scoreAdResult| be the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
       «|adMetadata|, |bidValue|, |auctionConfigJS|, |trustedScoringSignalsJS|, |browserSignalsJS|,
       |directFromSellerSignalsJs|», and |timeout|.
-    1. Let |debugWinReportUrl| to |global|'s
-      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=].
-    1. If |debugWinReportUrl| is failure, then set |debugWinReportUrl| to null.
-    1. Let |debugLossReportUrl| to |global|'s
-      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=].
-    1. If |debugLossReportUrl| is failure, then set |debugLossReportUrl| to null.
+    1. Let |debugWinReportUrl| be |global|'s
+      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] if it's not
+      failure, null otherwise.
+    1. Let |debugLossReportUrl| be |global|'s
+      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] if it's not
+      failure, null otherwise.
     1. Return « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl| ».
 </div>
 
@@ -4989,15 +4997,15 @@ A <dfn>reporting result</dfn> is a [=struct=] with the following [=struct/items=
      {{InterestGroupReportingScriptRunnerGlobalScope/registerAdMacro(name, value)}}.
 </dl>
 
-An <dfn>auction reporter</dfn> is a [=struct=] with the following [=struct/items=]:
+An <dfn>auction report info</dfn> is a [=struct=] with the following [=struct/items=]:
 
-<dl dfn-for="auction reporter">
+<dl dfn-for="auction report info">
   : <dfn>debug win report urls</dfn>
-  :: A [=list=] of [=URLs=] whose [=url/schemes=] are "`https`". The final [=leading bid info=]'s
-    [=leading bid info/leading bid=]'s corresponding debug win reports.
+  :: A [=list=] of [=URLs=] whose [=url/schemes=] must be "`https`". The winning bid's
+    [=generate bid result=]'s debug win report URLs.
   : <dfn>debug loss report urls</dfn>
-  :: A [=list=] of [=strings=] whose [=url/schemes=] are "`https`". Losing [=generated bids=]'
-    corresponding debug loss reports.
+  :: A [=list=] of [=strings=] whose [=url/schemes=] must be "`https`". Losing bid's
+    [=generate bid result=]'s debug loss report URLs.
 </dl>
 
 # Privacy Considerations # {#privacy-considerations}
