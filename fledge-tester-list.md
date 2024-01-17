@@ -42,7 +42,7 @@ The usefulness of this page depends on testers sharing information and updates.
 
 | Company / Party | Role in testing | Est. Testing Timeframe | Link to testing plan and/or learnings | How to contact you |
 | --------------- | --------------- | ---------------------- | ------------------------------------- | ------------------ |
-| Criteo | DSP | Started in 2022, long term commitment | [An update on FLEDGE testing](https://medium.com/criteo-engineering/an-update-on-fledge-chrome-testing-d0046430a3ec)| privacy-sandbox-testing@criteo.com |
+| Criteo | DSP | Started in 2022, long term commitment | <ul><li>Participating in the CMA testing</li><li>Entering a stable testing phase on March 11 2024</li><li> [A statistical model for measuring Privacy Sandbox performance impacts](https://medium.com/criteo-engineering/privacy-sandbox-market-testing-a-statistical-model-for-measuring-performance-impacts-2e99ff402898)</li><li> [An update on FLEDGE testing](https://medium.com/criteo-engineering/an-update-on-fledge-chrome-testing-d0046430a3ec) </li></ul> | privacy-sandbox-testing@criteo.com |
 | Criteo | SSP | November 2023 | | privacy-sandbox-testing@criteo.com |
 | Teads | DSP | March 15th 2024 - May 15th 2024 | | privacysandbox@teads.com |
 | Teads | SSP | March 15th 2024 - May 15th 2024 | | privacysandbox@teads.com |
@@ -61,7 +61,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Microsoft (Xandr, MSAN) | SSP + DSP(s) | Testing | | privacy_sandbox@microsoft.com |
 | Nexxen (Unruly/Tremor/Amobee) | SSP & DSP| 2023-2024 | coming soon | privacysandbox@nexxen.com |
 | Triplelift | SSP | Jan 2024 | | prod-privacysandbox@triplelift.com |
-| Seedtag | SSP | January 2024 | coming soon | privacysandbox@seedtag.com |
+| Seedtag | SSP | January 15th 2024 - April 15th 2024 | coming soon | privacysandbox@seedtag.com |
 | Index Exchange | SSP | By January 31, 2024 | | privacy-sandbox-support@indexexchange.com |
 | PubMatic | SSP | Jan 2024 | | privacysandbox@pubmatic.com |
 | Adform | DSP | Beginning January 1, 2024 | | privacysandbox@adform.com |
@@ -72,6 +72,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Mediavine | DSP & SSP | 2023-2024 | | privacysandbox@mediavine.com |
 | Jivox | Ad Server (DCO) | Testing in progress | | jvx-google-privacy-sandbox-team@jivox.com |
 | Wirtualna Polska Media | Publisher & SSP | Running Protected Audience API tests since July 2023 | https://github.com/grupawp/PAapi | privacysandbox@grupawp.pl |
+| Appier Inc | DSP | 2023 Q1 - ongoing | | privacy-sandbox@appier.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
