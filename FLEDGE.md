@@ -123,14 +123,14 @@ const myGroup = {
   'trustedBiddingSignalsKeys': ['key1', 'key2'],
   'trustedBiddingSignalsSlotSizeMode' : 'slot-size',
   'userBiddingSignals': {...},
-  'ads': [{renderUrl: shoesAd1, sizeGroup: 'group1', ...},
-          {renderUrl: shoesAd2, sizeGroup: 'group2', ...},
-          {renderUrl: shoesAd3, sizeGroup: 'size3', ...}],
-  'adComponents': [{renderUrl: runningShoes1, sizeGroup: 'group2', ...},
-                   {renderUrl: runningShoes2, sizeGroup: 'group2', ...},
-                   {renderUrl: gymShoes, sizeGroup; 'group2', ...},
-                   {renderUrl: gymTrainers1, sizeGroup: 'size4', ...},
-                   {renderUrl: gymTrainers2, sizeGroup: 'size4', ...}],
+  'ads': [{renderURL: shoesAd1, sizeGroup: 'group1', ...},
+          {renderURL: shoesAd2, sizeGroup: 'group2', ...},
+          {renderURL: shoesAd3, sizeGroup: 'size3', ...}],
+  'adComponents': [{renderURL: runningShoes1, sizeGroup: 'group2', ...},
+                   {renderURL: runningShoes2, sizeGroup: 'group2', ...},
+                   {renderURL: gymShoes, sizeGroup; 'group2', ...},
+                   {renderURL: gymTrainers1, sizeGroup: 'size4', ...},
+                   {renderURL: gymTrainers2, sizeGroup: 'size4', ...}],
   'adSizes': {'size1': {width: '100', height: '100'},
               'size2': {width: '100', height: '200'},
               'size3': {width: '75', height: '25'},
@@ -732,7 +732,7 @@ The output of `generateBid()` contains the following fields:
     * size: A dictionary containing `width` and `height` fields, describing the creative's size (see the interest group declaration above). When the ad is loaded in a fenced frame, the fenced frame's inner frame (i.e. the size visible to the ad creative) will be frozen to this size, and it will be unable to see changes to the frame size made by the embedder.
     
     Optionally, if you don't want to hook into interest group size declarations (e.g., if you don't want to use size macros), you can have `render` be just the URL, rather than a dictionary with `url` and `size`.
-*   adComponents: (optional) A list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match one of `interestGroup`'s `adComponent`'s `renderUrl` and sizes exactly. This field must not be present if `interestGroup` has no `adComponent` field. It is valid for this field not to be present even when `adComponents` is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
+*   adComponents: (optional) A list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match one of `interestGroup`'s `adComponent`'s `renderURL` and sizes exactly. This field must not be present if `interestGroup` has no `adComponent` field. It is valid for this field not to be present even when `adComponents` is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
 *   allowComponentAuction: If this buyer is taking part of a component auction, this value must be present and true, or the bid is ignored. This value is ignored (and may be absent) if the buyer is part of a top-level auction.
 * modelingSignals: A 0-4095 integer (12-bits) passed to `reportWin()`, with noising, as described in the [noising and bucketing scheme](#521-noised-and-bucketed-signals). Invalid values, such as negative, infinite, and NaN values, will be ignored and not passed. Only the lowest 12 bits will be passed.
 
