@@ -652,8 +652,10 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |generateBidResults| be a new [=list=] of [=generate bid results=].
 1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
   null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|, and |generateBidResults|.
-1. Let |auctionReportInfo| be the result of running [=collect forDebuggingOnly reports=] with
-  |generateBidResults| and |winnerInfo|.
+1. Let |auctionReportInfo| be a new [=auction report info=].
+1. If |winnerInfo| is not failure:
+  1. Set |auctionReportInfo| to the result of running [=collect forDebuggingOnly reports=] with
+    |generateBidResults|, |auctionConfig|'s [=auction config/seller=], and |winnerInfo|.
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. If |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
@@ -1476,7 +1478,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Let |expectedCurrency| be the result of [=looking up per-buyer currency=] with |auctionConfig|
     and |buyer|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}"]
-    to the result of running [=is debugging only in cooldown or lockout=] with |buyer|.
+    to the result of running [=check debugging only in cooldown or lockout=] with |buyer|.
   1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perBuyerGenerator|:
     1. Let |keys| be a new [=ordered set=].
     1. Let |igNames| be a new [=ordered set=].
@@ -1692,7 +1694,7 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     <dt>{{ScoringBrowserSignals/adComponents}}
     <dd>|generatedBid|'s [=generated bid/ad component descriptors=] [=converted to a string sequence=]
     <dt>{{ScoringBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}
-    <dd>The result of running [=is debugging only in cooldown or lockout=] with |seller|
+    <dd>The result of running [=check debugging only in cooldown or lockout=] with |seller|
   </dl>
 
 1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl| » be the result of
@@ -2291,50 +2293,55 @@ for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losing bids.
     [=forDebuggingOnly reports|forDebuggingOnly reporting=] APIs, instead of using the following
     steps to downsample it.
 
-  1. If |reportUrl| is null, or the result of running [=is debugging only in cooldown or lockout=]
+  1. If |reportUrl| is null, or the result of running [=check debugging only in cooldown or lockout=]
     with |invokingOrigin| is true, then return.
   1. If the result of running [=sample a debug report=] with |invokingOrigin| is true, then
-    [=list/append=] it to |debugReportUrls|.
+    [=list/append=] |reportUrl| to |debugReportUrls|.
 </div>
 
 <div algorithm>
-  To <dfn>collect forDebuggingOnly reports</dfn> given a [=generate bid result=] |generateBidResult|,
-  an [=origin=] |seller|, an [=auction report info=] |auctionReportInfo|, and a [=string=] |winOrLoss|:
+  To <dfn>collect forDebuggingOnly reports</dfn> given a [=list=] of [=generate bid results=]
+  |generateBidResults|, [=origin=] |seller|, and [=leading bid info=]-or-null |winnerInfo|:
 
-  1. If |winOrLoss| is "win":
-    1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
-      [=generate bid result/bidder debug win report url=], |generateBidResult|'s
-      [=generate bid result/buyer=], and |auctionReportInfo|'s
-      [=auction report info/debug win report urls=].
-    1. If |generateBidResult|'s [=generate bid result/component seller=] is null:
+  1. Let |auctionReportInfo| be a new [=auction report info=].
+  1. [=list/For each=] |generateBidResult| of |generateBidResults|:
+    1. If |winnerInfo| is a [=leading bid info=] and
+      |generateBidResult|'s [=generate bid result/generated bid=] is |winnerInfo|'s
+      [=leading bid info/leading bid=]:
       1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
-        [=generate bid result/seller debug win report url=], |seller|, and
-        |auctionReportInfo|'s [=auction report info/debug win report urls=].
-    1. Otherwise:
-      1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
-        [=generate bid result/seller debug win report url=], |generateBidResult|'s
-        [=generate bid result/component seller=], |auctionReportInfo|'s
+        [=generate bid result/bidder debug win report url=], |generateBidResult|'s
+        [=generate bid result/buyer=], and |auctionReportInfo|'s
         [=auction report info/debug win report urls=].
-      1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
-        [=generate bid result/top level seller debug win report url=], |seller|, and
-        |auctionReportInfo|'s [=auction report info/debug win report urls=].
-  1. Otherwise:
-    1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
-      [=generate bid result/bidder debug loss report url=], |generateBidResult|'s
-      [=generate bid result/buyer=], and |auctionReportInfo|'s
-      [=auction report info/debug loss report urls=].
-    1. If |generateBidResult|'s [=generate bid result/component seller=] is null:
-      1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
-        [=generate bid result/seller debug loss report url=], |seller|, and
-        |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+      1. If |generateBidResult|'s [=generate bid result/component seller=] is null:
+        1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
+          [=generate bid result/seller debug win report url=], |seller|, and
+          |auctionReportInfo|'s [=auction report info/debug win report urls=].
+      1. Otherwise:
+        1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
+          [=generate bid result/seller debug win report url=], |generateBidResult|'s
+          [=generate bid result/component seller=], |auctionReportInfo|'s
+          [=auction report info/debug win report urls=].
+        1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
+          [=generate bid result/top level seller debug win report url=], |seller|, and
+          |auctionReportInfo|'s [=auction report info/debug win report urls=].
     1. Otherwise:
       1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
-        [=generate bid result/seller debug loss report url=], |generateBidResult|'s
-        [=generate bid result/component seller=], |auctionReportInfo|'s
+        [=generate bid result/bidder debug loss report url=], |generateBidResult|'s
+        [=generate bid result/buyer=], and |auctionReportInfo|'s
         [=auction report info/debug loss report urls=].
-      1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
-        [=generate bid result/top level seller debug loss report url=], |seller|, and
-        |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+      1. If |generateBidResult|'s [=generate bid result/component seller=] is null:
+        1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
+          [=generate bid result/seller debug loss report url=], |seller|, and
+          |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+      1. Otherwise:
+        1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
+          [=generate bid result/seller debug loss report url=], |generateBidResult|'s
+          [=generate bid result/component seller=], |auctionReportInfo|'s
+          [=auction report info/debug loss report urls=].
+        1. [=Collect a single forDebuggingOnly report=] with |generateBidResult|'s
+          [=generate bid result/top level seller debug loss report url=], |seller|, and
+          |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+  1. Return |auctionReportInfo|.
 </div>
 
 ### Downsampling ### {#downsampling-header}
@@ -2351,15 +2358,15 @@ The design of downsampling [=forDebuggingOnly reports=] has two main goals:
 
 * Prevent adtechs who accidentally (e.g. due to a bug in their code) call the API repeatedly for all
   users, from locking themselves out of sending any more reports for years. This is accomplished by
-  90% of the time putting that adtech in a 2 week cooldown period, and only 10% of the time putting
+  90% of the time putting that adtech in a two-week cooldown period, and only 10% of the time putting
   that adtech in a 1 year cooldown period.
 
 The [=user agent=] has a <dfn>debug report lockout until</dfn>, which is null or a [=moment=], and
-a <dfn>debug report cooldown</dfn>, which is a [=map=] whose [=map/keys=] are [=origins=] and
+a <dfn>debug report cooldown</dfn>, which is null or a [=map=] whose [=map/keys=] are [=origins=] and
 [=map/values=] are [=moments=] at which the cooldown would expire.
 
 <div algorithm>
-  To <dfn>is debugging only in cooldown or lockout</dfn> given an [=origin=] |origin|:
+  To <dfn>check debugging only in cooldown or lockout</dfn> given an [=origin=] |origin|:
 
   1. If [=user agent=]'s [=debug report lockout until=] is not null, and [=current wall time=] is
     less than [=user agent=]'s [=debug report lockout until=], return true.
@@ -2371,25 +2378,16 @@ a <dfn>debug report cooldown</dfn>, which is a [=map=] whose [=map/keys=] are [=
 </div>
 
 <div algorithm>
-  To <dfn>sample a debug report</dfn> given an [=origin=] |origin|...:
+  To <dfn>sample a debug report</dfn> given an [=origin=] |origin|:
 
   1. Let |canSendAfterSampled| be false.
-  1. Let |sampleRand| be a random {{long}} &ge; 0 and &le; |sampleRandMax|.
-
-    Note: |sampleRandMax| &lt; 2<sup>127</sup>
-  1. If |sampleRandMax| is not 2<sup>127</sup>-1 and |sampleRand| is 0:
+  1. Let |sampleRand| be a random {{long}} &ge; 0 and &lt; 1000.
+  1. If |sampleRand| is 0:
     1. Set |canSendAfterSampled| to true.
     1. Set [=user agent=]'s [=debug report lockout until=] to [=current wall time=] plus 3 years.
-
-      Note: 3 years.
-  1. Let |cooldownRand| be a random {{long}} &ge; 0 and &le; |cooldownRandMax|.
-
-    Note: |cooldownRandMax| &lt; 2<sup>127</sup>
-  1. Let |cooldownLength| be 1 year if |cooldownRand| is not 2<sup>127</sup>-1 and |cooldownRand| is
-    0, otherwise 14 days.
-
-    Note: xxx
-  1. Set [=user agent=]'s [=debug report cooldown=][|origin|] to |cooldownLength|.
+  1. Let |cooldownRand| be a random {{long}} &ge; 0 and &lt; 10.
+  1. Set [=user agent=]'s [=debug report cooldown=][|origin|] to 1 year if |cooldownRand| is 0,
+    otherwise 14 days.
   1. Return |canSendAfterSampled|.
 </div>
 
