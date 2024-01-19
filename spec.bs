@@ -4463,7 +4463,7 @@ An <dfn>auction config</dfn> is a [=struct=] with the following items:
 <dl dfn-for="auction config">
   : <dfn>seller</dfn>
   :: An [=origin=].
-    The origin of the seller running the ad auction. The [=origin/scheme=] must be "<code>https</code>".
+    The origin of the seller running the ad auction. The [=origin/scheme=] must be "`https`".
   : <dfn>decision logic url</dfn>
   :: A [=URL=].
     The URL to fetch the seller's JavaScript from.
@@ -4473,16 +4473,17 @@ An <dfn>auction config</dfn> is a [=struct=] with the following items:
     </p>
   : <dfn>trusted scoring signals url</dfn>
   :: Null or a [=URL=].
-    Provide a mechanism for making real-time data (information about a specific [=ad creative=]) available
-    for use at scoring time, e.g. the results of some ad scanning system.
+    Provide a mechanism for making real-time data (information about a specific [=ad creative=])
+    available for use at [=evaluate a scoring script|scoring=] time, e.g. the results of some ad
+    scanning system.
     <p class="note">
       When non-null, the [=auction config/trusted scoring signals url=]'s [=origin=] will always be
       [=same origin=] with [=auction config/seller=].
     </p>
   : <dfn>interest group buyers</dfn>
   :: Null or a [=list=] of [=origins=].
-    Owners of interest groups allowed to participate in the auction. Each [=origin's=] [=origin/scheme=]
-    must be "<code>https</code>".
+    Owners of interest groups allowed to participate in the auction. Each [=origin's=]
+    [=origin/scheme=] must be "`https`".
   : <dfn>auction signals</dfn>
   :: Null, a [=string=], a {{Promise}}, or failure.
     Opaque JSON data passed to both sellers' and buyers' [=script runners=].
@@ -4502,14 +4503,14 @@ An <dfn>auction config</dfn> is a [=struct=] with the following items:
   : <dfn>per buyer signals</dfn>
   :: Null, a {{Promise}}, failure, or an [=ordered map=] whose [=map/keys=] are [=origins=] and
     whose [=map/values=] are [=strings=].
-    [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are opaque JSON data
-    passed to corresponding buyer's [=script runner=].
+    [=map/Keys=] are buyers whose [=origin/schemes=] must be "`https`". [=map/Values=] are
+    opaque JSON data passed to corresponding buyer's [=script runner=].
   : <dfn>per buyer timeouts</dfn>
   :: Null, a {{Promise}}, failure, or an [=ordered map=] whose [=map/keys=] are [=origins=] and
     whose [=map/values=] are [=durations=] in milliseconds.
-    [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] restrict the runtime of
-    corresponding buyer's `generateBid()` script. If the timeout expires, only the bid submitted
-    via `setBid()` is considered.
+    [=map/Keys=] are buyers whose [=origin/schemes=] must be "`https`". [=map/Values=] restrict the
+    runtime of corresponding buyer's `generateBid()` script. If the timeout expires, only the bid
+    submitted via `setBid()` is considered.
   : <dfn>all buyers timeout</dfn>
   :: A [=duration=] in milliseconds, initially 50 milliseconds.
     Restricts the `generateBid()` script's runtime for all buyers without a timeout specified in
@@ -4518,7 +4519,7 @@ An <dfn>auction config</dfn> is a [=struct=] with the following items:
   : <dfn>per buyer cumulative timeouts</dfn>
   :: Null, a {{Promise}}, failure, or an [=ordered map=] whose [=map/keys=] are [=origins=] and
     whose [=map/values=] are [=durations=] in milliseconds.
-    [=map/Keys=] are buyers and must be valid HTTPS [=origins=]. [=map/Values=] are collective
+    [=map/Keys=] are buyers whose [=origin/schemes=] must be "`https`". [=map/Values=] are collective
     timeouts for all interest groups of the buyer represented by the [=map/key=]. Includes the time of
     loading scripts and signals, and running the `generateBid()` functions. Once the timer expires,
     the affected buyer's interest groups may no longer generate any bids. All bids generated before
@@ -4565,8 +4566,8 @@ An <dfn>auction config</dfn> is a [=struct=] with the following items:
   : <dfn>per buyer experiment group ids</dfn>
   :: An [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
     {{unsigned short}}s.
-    [=map/Keys=] are buyers and must be valid HTTPS origins. [=map/Values=] are identifiers for
-    experiment groups, to support coordinated experiments with buyers' trusted servers.
+    [=map/Keys=] are buyers whose [=origin/schemes=] must be "`https`". [=map/Values=] are
+    identifiers for experiment groups, to support coordinated experiments with buyers' trusted servers.
   : <dfn>all buyer experiment group id</dfn>
   :: Null or an {{unsigned short}}, initially null.
     Optional identifier for an experiment group to support coordinated experiments with buyers'
@@ -4576,8 +4577,8 @@ An <dfn>auction config</dfn> is a [=struct=] with the following items:
     everything. It includes waiting for {{Promise}}s [=auction config/auction signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
     [=auction config/per buyer timeouts=], [=auction config/direct from seller signals header ad slot=],
-    [=auction config/seller signals=], or {{AuctionAdConfig/additionalBids}} whose {{Promise}}s are not
-    yet resolved.
+    [=auction config/seller signals=], or {{AuctionAdConfig/additionalBids}} whose {{Promise}}s are
+    not yet resolved.
   : <dfn>config idl</dfn>
   :: {{AuctionAdConfig}}.
   : <dfn>resolve to config</dfn>
@@ -4592,19 +4593,19 @@ An <dfn>auction config</dfn> is a [=struct=] with the following items:
     `scoreAd()` in component auctions are expected to use. The initial value is an empty map.
   : <dfn>all buyers currency</dfn>
   :: A [=currency tag=]. Specifies the currency bids returned by `generateBid()` or `scoreAd()` in
-    component auctions are expected to use if [=auction config/per buyer currencies=] does not specify
-    a particular value.
+    component auctions are expected to use if [=auction config/per buyer currencies=] does not
+    specify a particular value.
   : <dfn>direct from seller signals header ad slot</dfn>
   :: Null, a [=string=], a {{Promise}}, or failure. Initially null.
   : <dfn>auction nonce</dfn>
   :: Null or a [=version 4 UUID=], initially null.
     A unique identifier associated with this and only this invocation of
-    {{Window/navigator}}.{{Navigator/runAdAuction()}}. For
-    multi-seller auctions, this ID is uniquely associated with all {{AuctionAdConfig/componentAuctions}}.
-    This must come from a prior call to {{Window/navigator}}.{{Navigator/createAuctionNonce()}}. This
-    is only required for auctions that provide additional bids, and each of those additional bids must
-    use the same auction nonce to ensure that each of those additional bids was intended for this and
-    only this auction.
+    {{Window/navigator}}.{{Navigator/runAdAuction()}}. For multi-seller auctions, this ID is
+    uniquely associated with all {{AuctionAdConfig/componentAuctions}}.
+    This must come from a prior call to {{Window/navigator}}.{{Navigator/createAuctionNonce()}}.
+    This is only required for auctions that provide [=additional bids=], and each of those
+    [=additional bids=] must use the same auction nonce to ensure that each of them was intended for
+    this and only this auction.
   : <dfn>expects additional bids</dfn>
   :: A [=boolean=] or failure, initially false.
     Specifies whether some bids will be provided as signed exchanges. Sets to failure if the
