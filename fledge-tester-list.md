@@ -75,6 +75,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Wirtualna Polska Media | Publisher & SSP | Running Protected Audience API tests since July 2023 | https://github.com/grupawp/PAapi | privacysandbox@grupawp.pl |
 | Appier Inc | DSP | 2023 Q1 - ongoing | | privacy-sandbox@appier.com |
 | Flashtalking | Ad Server & DCO | Testing in progress | | privacysandbox@mediaocean.com |
+| MediaMath | DSP | 2024 Q1 - | | privacysandbox@infillion.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
