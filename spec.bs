@@ -1707,6 +1707,8 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
 1. Otherwise, set |generatedBid|'s [=generated bid/seller debug loss report url=] to
   |debugLossReportUrl|.
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
+1. If |auctionLevel| is "component-auction", then set |generatedBid|'s
+  [=generated bid/component seller=] to |seller|.
 1. Return if any of the following conditions hold:
   * |scoreAdOutput| is failure;
   * auctionLevel| is not "single-level-auction", and |scoreAdOutput|
@@ -2309,9 +2311,9 @@ for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losing bids.
     1. If |winningBid| is not null and |generatedBid| is |winningBid|:
       1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
         [=generated bid/bidder debug win report url=], |generatedBid|'s
-        [=generated bid/buyer=], and |auctionReportInfo|'s
+        [=generated bid/interest group=]'s [=interest group/owner=], and |auctionReportInfo|'s
         [=auction report info/debug win report urls=].
-      1. If |generateBid|'s [=generated bid/component seller=] is null:
+      1. If |generatedBid|'s [=generated bid/component seller=] is null:
         1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
           [=generated bid/seller debug win report url=], |seller|, and
           |auctionReportInfo|'s [=auction report info/debug win report urls=].
@@ -2326,7 +2328,7 @@ for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losing bids.
     1. Otherwise:
       1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
         [=generated bid/bidder debug loss report url=], |generatedBid|'s
-        [=generated bid/buyer=], and |auctionReportInfo|'s
+        [=generated bid/interest group=]'s [=interest group/owner=], and |auctionReportInfo|'s
         [=auction report info/debug loss report urls=].
       1. If |generatedBid|'s [=generated bid/component seller=] is null:
         1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
@@ -3110,6 +3112,8 @@ of the following global objects:
       1. Set |generatedBid| to a new [=generated bid=] with the following [=struct/items=]:
         : [=generated bid/no bid=]
         :: true
+        : [generated bid/interest group=]
+        :: |ig|
         : [=generated bid/bidder debug loss report url=]
         :: |debugLossReportUrl|
     1. Return |generatedBid|.
@@ -4831,8 +4835,7 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
 <dl dfn-for="generated bid">
   : <dfn>no bid</dfn>
   :: A [=boolean=], initially false. True if there was a failure generating a bid, or the bidder
-    chose not to bid. When true, all other fields of [=generated bid=] would be ignored, except
-    debug loss report fields.
+    chose not to bid. When true, [=generated bid/bidder debug loss report url=] is still considered.
   : <dfn>bid</dfn>
   :: A [=bid with currency=]. If the [=bid with currency/value=] is zero or negative, then this
     [=interest group=] will not participate in the auction.
@@ -4869,12 +4872,9 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   :: A [=duration=] in milliseconds. How long it took to run `generateBid()`.
   : <dfn>provided as additional bid</dfn>
   :: A [=boolean=], initially false.
-
   : <dfn>component seller</dfn>
-  :: Null or an [=origin=]. Seller in component auction which generated the
-    [=generated bid/seller debug win report url=] and
-    [=generated bid/seller debug loss report url=]. Only set for the component auctions when
-    at least one of the two report URLs are not null, null otherwise.
+  :: Null or an [=origin=]. Seller in component auction which the [=generated bid/interest group=]
+    is participating. Only set for component auctions, null otherwise.
   : <dfn>bidder debug win report url</dfn>
   :: Null or a [=URL=], initially null. Set by `generateBid()`'s
     [{{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}].{{ForDebuggingOnly/reportAdAuctionWin(url)}}.
