@@ -359,11 +359,7 @@ const auctionConfig = {
   }
 
   // Additional parameter for configuring the debug mode
-  'auctionReportBuyerDebugModeConfigs': [
-    { 'enabled': true, debugKey: 1234n }, // config for buyer1.com
-    { 'enabled': false },                 // config for buyer2.com
-    ...
-  ],
+  'auctionReportBuyerDebugModeConfig': { 'enabled': true, debugKey: 1234n },
 }
 ```
 
