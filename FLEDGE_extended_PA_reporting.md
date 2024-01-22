@@ -367,10 +367,15 @@ const auctionConfig = {
 }
 ```
 
+Note that `enabled` defaults to false if not provided. Also, as with
+`privateAggregation.enableDebugMode()`, `debugKey` is an optional unsigned
+64-bit integer that allows sites to associate reports with the contexts that
+triggered them. 
+
 Otherwise, the details of this debug mode are the same as other uses of Private
-Aggregation. For example, as with `privateAggregation.enableDebugMode()`,
-`debugKey` is an optional unsigned 64-bit integer that allows sites to associate
-reports with the contexts that triggered them.
+Aggregation. For example, this debug mode is generally only available to callers
+eligibile to set third-party cookies and will automatically become deprecated
+when third-party cookies are.
 
 ## Data Volume
 
