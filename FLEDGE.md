@@ -754,13 +754,13 @@ The [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PR
 
 Initially, the limit on number of components was 20, but it's in process of being increased to 40 starting from Chrome M122. Implementations of `generateBid` can determine the currently active limit as follows:
 ```
-let maxAdComponents = browserSignals.adComponentsLimit ?
-                      browserSignals.adComponentsLimit : 20;
+const maxAdComponents = browserSignals.adComponentsLimit ?
+                        browserSignals.adComponentsLimit : 20;
 ```
 
 In the web page, the limit can also be queried:
 ```
-let maxAdComponents = navigator.protectedAudience ?
+const maxAdComponents = navigator.protectedAudience ?
     navigator.protectedAudience.queryFeatureSupport("adComponentsLimit") : 20;
 ```
 
