@@ -2349,18 +2349,31 @@ for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losing bids.
 
 *This first introductory paragraph is non-normative.*
 
-The design of downsampling [=forDebuggingOnly reports=] has two main goals:
-* Prevent sending reports very often to protect user privacy. This is accomplished by three mechanisms:
+Implementations may define their own values for the below constants based on their privacy goal,
+however we supply the below values as a starting point, inspired by what the initial implementation
+of this specification uses:
+  * <dfn>sampling rate</dfn> is 1/1000, which means only sending reports 1/1000 times the fDO API is
+    called.
+  * <dfn>lockout period</dfn> is 3 years.
+  * <dfn>long cooldown rate</dfn> is 1/10, which means 10% of the time putting an adtech in a long
+    cooldown period if the adtech calls the API.
+  * <dfn>long cooldown period</dfn> is 1 year.
+  * <dfn>short cooldown period</dfn> is 2 weeks.
 
-  * Only sending reports 1/1000 times the API is called;
-  * if a report is sent, “lock-out” all adtechs out of sending a report of a user for 3 years;
-  * if an adtech calls the API, put them in a long “cool-down” period where calls to the API are not
-    able to send reports.
+The design of downsampling [=forDebuggingOnly reports=] has two main goals:
+* Prevent sending reports very often to protect user privacy. This is accomplished by three
+  mechanisms:
+
+  * Only sending reports [=sampling rate=] times the API is called;
+  * if a report is sent, “lock-out” all adtechs out of sending a report of a user for
+    [=lockout period=];
+  * if an adtech calls the API, put them in a cooldown period where calls to the API are not able to
+    send reports.
 
 * Prevent adtechs who accidentally (e.g. due to a bug in their code) call the API repeatedly for all
   users, from locking themselves out of sending any more reports for years. This is accomplished by
-  90% of the time putting that adtech in a two-week cooldown period, and only 10% of the time putting
-  that adtech in a 1 year cooldown period.
+  only [=long cooldown rate=] of the time putting that adtech in a [=long cooldown period=], and
+  rest of the time putting that adtech in a [=short cooldown period=].
 
 The [=user agent=] has a <dfn>debug report lockout until</dfn>, which is null or a [=moment=], and
 a <dfn>debug report cooldown</dfn>, which is null or a [=map=] whose [=map/keys=] are [=origins=] and
@@ -2382,13 +2395,18 @@ a <dfn>debug report cooldown</dfn>, which is null or a [=map=] whose [=map/keys=
   To <dfn>sample a debug report</dfn> given an [=origin=] |origin|:
 
   1. Let |canSendAfterSampled| be false.
-  1. Let |sampleRand| be a random {{long}} &ge; 0 and &lt; 1000.
+  1. Let |sampleRand| be a random {{long}} &ge; 0 and &lt; 1000, which corresponds to
+    [=sampling rate=].
   1. If |sampleRand| is 0:
     1. Set |canSendAfterSampled| to true.
-    1. Set [=user agent=]'s [=debug report lockout until=] to [=current wall time=] plus 3 years.
-  1. Let |cooldownRand| be a random {{long}} &ge; 0 and &lt; 10.
-  1. Set [=user agent=]'s [=debug report cooldown=][|origin|] to 1 year if |cooldownRand| is 0,
-    otherwise 14 days.
+    1. Set [=user agent=]'s [=debug report lockout until=] to [=current wall time=] plus
+      [=lockout period=].
+  1. Let |cooldownRand| be a random {{long}} &ge; 0 and &lt; 10,  which corresponds to
+    [=long cooldown rate=].
+  1. Let |cooldownPeriod| be [=long cooldown period=] if |cooldownRand| is 0,
+    [=short cooldown period=] otherwise.
+  1. Set [=user agent=]'s [=debug report cooldown=][|origin|] to [=current wall time=] plus
+    |cooldownPeriod|.
   1. Return |canSendAfterSampled|.
 </div>
 
