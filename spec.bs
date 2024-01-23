@@ -1554,7 +1554,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
           1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
             by |generateBidDuration|.
-          1. If |generatedBid|'s [=generated bid/no bid=] is true, then [=iteration/continue=].
         1. [=list/Insert=] |generatedBid|'s [=generated bid/interest group=] in |bidIgs|.
         1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
           |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
@@ -1698,10 +1697,14 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   |bidValue|'s [=bid with currency/value=], |auctionConfig|'s [=auction config/config idl=],
   |trustedScoringSignals|, |browserSignals|, |directFromSellerSignalsForSeller|, and
   |auctionConfig|'s [=auction config/seller timeout=].
-1. If |auctionLevel| is "top-level-auction", then set |generatedBid|'s
-  [=generated bid/top level seller debug loss report url=] to |debugLossReportUrl|.
-1. Otherwise, set |generatedBid|'s [=generated bid/seller debug loss report url=] to
-  |debugLossReportUrl|.
+1. If |auctionLevel| is "top-level-auction":
+  1. Set |generatedBid|'s [=generated bid/top level seller debug loss report url=] to
+    |debugLossReportUrl|.
+  1. Set |generatedBid|'s [=generated bid/top level seller debug win report url=] to
+    |debugWinReportUrl|.
+1. Otherwise:
+  1. Set |generatedBid|'s [=generated bid/seller debug loss report url=] to |debugLossReportUrl|.
+  1. Set |generatedBid|'s [=generated bid/seller debug win report url=] to |debugWinReportUrl|.
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
 1. Return if any of the following conditions hold:
   * |scoreAdOutput| is failure;
@@ -1735,10 +1738,6 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   1. Otherwise if |scoreAdOutput|["{{ScoreAdOutput/incomingBidInSellerCurrency}}"] [=map/ exists=],
     then set |generatedBid|'s [=generated bid/bid in seller currency=] to
     |scoreAdOutput|["{{ScoreAdOutput/incomingBidInSellerCurrency}}"].
-1. If |auctionLevel| is "top-level-auction", then set |generatedBid|'s
-  [=generated bid/top level seller debug win report url=] to |debugWinReportUrl|.
-1. Otherwise, set |generatedBid|'s [=generated bid/seller debug win report url=] to
-  |debugWinReportUrl|.
 1. Let |score| be |scoreAdOutput|["{{ScoreAdOutput/desirability}}"].
 1. Let |updateLeadingBid| be false.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, or |score| is greater than
@@ -3014,15 +3013,15 @@ of the following global objects:
     1. Let |debugLossReportUrl| be |global|'s
       [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] if it's not
       failure, null otherwise.
-    1. Let |debugWinReportUrl| be null.
     1. If |generatedBid| is a [=generated bid=] and |generatedBid|'s [=generated bid/bid=]'s
       [=bid with currency/value=] &le; 0, then set |generatedBid| to null.
     1. If |generatedBid| is a [=generated bid=]:
-      1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|.
-      1. Set |generatedBid|'s [=generated bid/interest group=] to |ig|.
-      1. Set |debugWinReportUrl| to |global|'s
+      1. Let |debugWinReportUrl| be |global|'s
         [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] if it's not
         failure, null otherwise.
+      1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|,
+        [=generated bid/interest group=] to |ig|, [=generated bid/bidder debug loss report url=] to
+        |debugLossReportUrl|, [=generated bid/bidder debug win report url=] to |debugWinReportUrl|.
     1. Otherwise:
       1. Set |generatedBid| to a new [=generated bid=] with the following [=struct/items=]:
         : [=generated bid/no bid=]
@@ -3460,13 +3459,13 @@ available in [=report win=], but not [=report result=].
 Each {{InterestGroupReportingScriptRunnerGlobalScope}} has a
 <dl dfn-for="InterestGroupReportingScriptRunnerGlobalScope">
 : <dfn>report url</dfn>
-:: Null, failure, or a [=URL=] whose [=url/scheme=] is "`https`". Defaulting to null.
+:: Null, failure, or a [=URL=] whose [=url/scheme=] is "`https`". Initially null.
 : <dfn>reporting beacon map</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
-  [=URLs=] whose [=url/schemes=] are "`https`". Defaulting to null.
+  [=URLs=] whose [=url/schemes=] are "`https`". Initially null.
 : <dfn>reporting macro map</dfn>
 :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
-  [=strings=]. Defaulting to null.
+  [=strings=]. Initially null.
 
 </dl>
 
