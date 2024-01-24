@@ -1425,6 +1425,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     |decisionLogicScript|, null, |auctionLevel|, |componentAuctionExpectedCurrency|, and
     |topLevelOrigin|.
   1. Decrement |pendingAdditionalBids| by 1.
+1. Let |settings| be |global|'s [=relevant settings object=].
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
   1. Let |perBuyerCumulativeTimeout| be |auctionConfig|'s
@@ -1491,9 +1492,13 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
         1. Let |generateBidStartTime| be |settings|'s
           [=environment settings object/current monotonic time=].
+        1. Let |directFromSellerSignalsForBuyer| be the result of running
+          [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and |ig|'s
+          [=interest group/owner=].
         1. Let |generatedBid| be the result of [=generate a bid=] given |allTrustedBiddingSignals|,
           |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
-          |perBuyerTimeout|, |expectedCurrency|, |ig|, and |auctionStartTime|.
+          |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|, |ig|, and
+          |auctionStartTime|.
         1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
           [=environment settings object/current monotonic time=], in milliseconds.
         1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
@@ -1531,8 +1536,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             [=environment settings object/current monotonic time=].
           1. Set |generatedBid| to the result of [=generate a bid=] given
             |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
-            |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
-            and |ig|.
+            |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
+            |expectedCurrency|, |ig|, and |auctionStartTime|.
           1. Set |ig|'s [=interest group/ads=] to |originalAds|.
           1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
