@@ -159,7 +159,7 @@ advertisement relevant to this interest to this user in the future. The [=user a
 <dfn>interest group set</dfn>, a [=list=] of [=interest groups=] in which
 [=interest group/owner=] / [=interest group/name=] pairs are unique.
 
-<h3 id="join-ad-interest-groups">navigator.joinAdInterestGroup()</h3>
+<h3 id="join-ad-interest-groups">joinAdInterestGroup()</h3>
 
 <xmp class="idl">
 [SecureContext]
@@ -252,8 +252,9 @@ This is detectable because it can change the set of fields that are read from th
   1. If |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"] [=map/exists=], then set
     |interestGroup|'s [=interest group/priority signals overrides=] to
     |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"].
-  1. Set |interestGroup|'s [=interest group/execution mode=] to
-    |group|["{{GenerateBidInterestGroup/executionMode}}"].
+  1. If |group|["{{GenerateBidInterestGroup/executionMode}}"] is "`compatibility`",
+    "`frozen-context`", or "`group-by-origin`", then set |interestGroup|'s
+    [=interest group/execution mode=] to it.
   1. For each |groupMember| and |interestGroupField| in the following table
     <table class="data">
       <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
@@ -3493,9 +3494,9 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
 
         <dt>"`executionMode`"
         <dd>
-        1. If |value| is "`compatibility`", "`frozen-context`", or "`group-by-origin`",
-          set |ig|'s [=interest group/execution mode=] to |value|.
-        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+        1. If |value| is "`compatibility`", "`frozen-context`", or "`group-by-origin`", set |ig|'s
+          [=interest group/execution mode=] to |value|.
+        1. Otherwise, set |ig|'s [=interest group/execution mode=] to "`compatibility`".
 
         <dt>"`biddingLogicURL`"
         <dt>"`biddingWasmHelperURL`"
@@ -3626,7 +3627,9 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   [=interest group/owner=].
 1. The [=string/length=] of |ig|'s [=interest group/name=].
 1. 8, which is the size of |ig|'s [=interest group/priority=].
-1. The [=string/length=] of |ig|'s [=interest group/execution mode=].
+1. 4, which is the size of |ig|'s [=interest group/execution mode=].
+
+  Note: Each of [=interest group/execution mode=]'s value reprensents a {{long}} integer, so 4 bytes.
 1. 2, which is the size of |ig|'s [=interest group/enable bidding signals prioritization=].
 1. If |ig|'s [=interest group/priority vector=] is not null, [=map/for each=] |key| → |value| of
   [=interest group/priority vector=]:
@@ -4252,7 +4255,8 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
   :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
     {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
   : <dfn>execution mode</dfn>
-  :: "`compatibility`", "`frozen-context`", or "`group-by-origin`".
+  :: One of three possible values: "`compatibility`", "`frozen-context`", or "`group-by-origin`".
+    Initially "`compatibility`".
     TODO: Define spec for these execution modes, link to it from here and explain these modes.
   : <dfn>bidding url</dfn>
   :: Null or a [=URL=]. The URL to fetch the buyer's JavaScript from.
@@ -4352,7 +4356,7 @@ An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/item
 </dl>
 
 A <dfn>previous win</dfn> is the [=interest group=]'s auction win history, to allow on-device
-frequency capping.
+frequency capping. It's a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="previous win">
   : <dfn>time</dfn>
@@ -4391,7 +4395,7 @@ value is used to denote that the currency is unspecified.
 
 <h3 id=auction-config-header>Auction config</h3>
 
-An <dfn>auction config</dfn> is a [=struct=] with the following items:
+An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="auction config">
   : <dfn>seller</dfn>
@@ -4609,7 +4613,7 @@ representing [=interest group/joining origins=], and whose [=map/values=] are [=
 
 A <dfn>generated bid</dfn> is a bid that needs to be scored by the seller. The bid is either the
 result of [=evaluating a bidding script=], or an [=additional bid=] provided by the
-[:Ad-Auction-Additional-Bid:] response headers.
+[:Ad-Auction-Additional-Bid:] response headers. It's a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="generated bid">
   : <dfn>bid</dfn>
@@ -4650,7 +4654,7 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   :: A [=boolean=], initially false.
 </dl>
 
-A <dfn>bid with currency</dfn> is a numeric value of a bid and the currency it is in.
+A <dfn>bid with currency</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="bid with currency">
   : <dfn>value</dfn>
@@ -4659,7 +4663,7 @@ A <dfn>bid with currency</dfn> is a numeric value of a bid and the currency it i
   :: A [=currency tag=]. The currency the bid is in.
 </dl>
 
-An <dfn>ad descriptor</dfn> is the render URL and size of an ad.
+An <dfn>ad descriptor</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="ad descriptor">
   : <dfn>url</dfn>
@@ -4668,7 +4672,7 @@ An <dfn>ad descriptor</dfn> is the render URL and size of an ad.
   :: Null or an [=ad size=], initially null.
 </dl>
 
-An <dfn>ad size</dfn> is the width and height of an ad.
+An <dfn>ad size</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="ad size">
   : <dfn>width</dfn>
@@ -4769,7 +4773,7 @@ To <dfn>process scoreAd output</dfn> given an [=ECMAScript/Completion Record=] |
 <h3 id=leading-bid-info-header>Leading bid info</h3>
 
 A <dfn>leading bid info</dfn> is the information of the auction's leading bid so far when ranking
-scored bids.
+scored bids. It's a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="leading bid info">
   : <dfn>top score</dfn>
