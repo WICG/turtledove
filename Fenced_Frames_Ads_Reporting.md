@@ -218,7 +218,9 @@ window.fence.setReportEventDataForAutomaticBeacons({
 
 If `setReportEventDataForAutomaticBeacons` is invoked, the browser will send an automatic beacon to all URLs registered via registerAdBeacon for the given event, but it will only send an event data body (the information in eventData) with the HTTP request to destinations specified in the destination field. This means that invoking setReportEventDataForAutomaticBeacons acts as an opt-in by the fenced frame document to allow sending the beacon to all registered URLs, aligning with cross-origin security principles.
 
-If `setReportEventDataForAutomaticBeacons` is not invoked, the browser will not send an automatic beacon to any registered URLs.
+If `setReportEventDataForAutomaticBeacons` is not invoked and the ad frame's page was not served with the response header `Allow-Fenced-Frame-Automatic-Beacons: true`, the browser will not send an automatic beacon to any registered URLs.
+
+If the ad frame's page was not served with the response header `Allow-Fenced-Frame-Automatic-Beacons: true` but `setReportEventDataForAutomaticBeacons` is not invoked, the browser will send an automatic beacon to any registered URLs, but the beacons will not contain any data.
 
 Currently, the only `eventType`s that `setReportEventDataForAutomaticBeacons` allows are `'reserved.top_navigation_start'` and `'reserved.top_navigation_commit'`. Note that the script invoking this API can volunteer this information to a given destination type or not, similar to `reportEvent`, using the `destination` field.
 
