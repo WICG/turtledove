@@ -46,7 +46,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
       - [6.2.3 Additional Bid Keys](#623-additional-bid-keys)
     - [6.3 HTTP Response Headers](#63-http-response-headers)
     - [6.4 Reporting Additional Bid Wins](#64-reporting-additional-bid-wins)
-  - [7 Temporary Debugging Extensions](#7-temporary-debugging-extensions)
+  - [7. Temporary Debugging Extensions](#7-temporary-debugging-extensions)
     - [7.1 forDebuggingOnly (fDO) APIs](#71-fdo-apis)
       - [7.1.1 Post Auction Signals](#711-post-auction-signals)
     - [7.2 deprecatedReplaceInURN()](#72-deprecated-replace-in-urn)
