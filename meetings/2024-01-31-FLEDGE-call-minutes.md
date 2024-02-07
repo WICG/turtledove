@@ -107,7 +107,9 @@ If you want to participate in the call, please make sure you join the WICG: http
 
 ## Orr’s creative scanning proposal API
 
-Document is at https://docs.google.com/document/d/1s0tTN25AiPwl3ocCFYOLqeKhetZCt\_YFIYQEQ7wzHqI/edit?tab=t.0#heading=h.ks5r5lrrb2h0 
+Slides presented: https://github.com/WICG/turtledove/blob/main/meetings/2024-01-31-FLEDGE-call-slides-creative-scanning.pdf
+
+Document is at https://docs.google.com/document/d/1s0tTN25AiPwl3ocCFYOLqeKhetZCt_YFIYQEQ7wzHqI
 
 Presentation and discussion 
 
