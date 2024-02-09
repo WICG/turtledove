@@ -1207,9 +1207,9 @@ generateBid(interestGroup, auctionSignals, perBuyerSignals,
 
 In a multi-seller auction, the following forDebuggingOnly win reports may be sent:
 *   forDebuggingOnly *win* report from `generateBid()` of the buyer that wins the whole auction (both the component auction and top level auction).
-*   forDebuggingOnly *win* report from `scoreAd()` of the component seller for the buyer that wins the whole auction.
-*   forDebuggingOnly *win* report from `scoreAd()` of the top level seller for the winning component seller (who is on behalf of its winning buyer).
-*   forDebuggingOnly *loss* report from all other `generateBid()` and `scoreAd()`.
+*   forDebuggingOnly *win* report from `scoreAd()` of the component seller when scoring the bid that wins the whole auction.
+*   forDebuggingOnly *win* report from `scoreAd()` of the top-level seller when scoring the bid from the component auction that wins the whole auction.
+*   forDebuggingOnly *loss* report from all other `generateBid()` and `scoreAd()` invocations.
 
 
 ##### 7.1.1 Post Auction Signals   
@@ -1218,14 +1218,14 @@ A post auction signal is a signal which is only available after the auction comp
 
 *   “${winningBid}” - The value of the winning bid. In component auctions, this value comes from the component auction and not the top-level auction.
 *   “${winningBidCurrency}” - If the auction has a `sellerCurrency` configured, this will be its currency tag; otherwise it is `'???'` to denote that it's in the bidder's original currency.
-*   “${madeWinningBid}” - A boolean value representing whether the owner of this interest group made the winning bid, either via this interest group, or another interest group with the same owner. In component auctions, this value comes from the component auction and not the top-level auction.
+*   “${madeWinningBid}” - A [Boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) value representing whether the owner of this interest group made the winning bid, either via this interest group, or another interest group with the same owner. In component auctions, this value comes from the component auction and not the top-level auction.
 *   “${highestScoringOtherBid}” - The value of the bid that was scored as second highest by the seller’s scoreAd script. Note that this may not be the second highest bid value, since scores and bids may be independent. This value comes from and is only reported in component auctions but not top-level auctions, and is not reported to losing bidders.
 *   “${highestScoringOtherBidCurrency}” - The currency `highestScoringOtherBid` is in. If the auction has a `sellerCurrency` configured, this will be its currency tag; otherwise it is `'???'` to denote that it's in the bidder's original currency.
-*   “${madeHighestScoringOtherBid}” - A boolean value representing whether the owner of this interest group made the ${highestScoringOtherBid} bid, either via this interest group, or another interest group with the same owner. This value comes from and is only reported in component auctions but not top-level auctions, and is not reported to losing bidders. If there’s a tie for ${highestScoringOtherBid} from more than one owner, this is false for all.
+*   “${madeHighestScoringOtherBid}” - A [Boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) value representing whether the owner of this interest group made the ${highestScoringOtherBid} bid, either via this interest group, or another interest group with the same owner. This value comes from and is only reported in component auctions but not top-level auctions, and is not reported to losing bidders. If there’s a tie for ${highestScoringOtherBid} from more than one owner, this is false for all.
 *   “${topLevelWinningBid}” - The value of the bid that won the top-level auction. This value is only reported to component sellers.
 *   “${topLevelWinningBidCurrency}” - The currency `topLevelWinningBid` is in.
 If the top-level auction has a `sellerCurrency` configured, this will be its currency tag; otherwise it is `'???'` to denote that it's in whatever currency the component auction made the bid in.
-* `${rejectReason}` - The seller can optionally add a `rejectReason` field to its `scoreAd()` return object to convey to the bidder a more detailed reason why the bid was rejected. A component auction's bidders only get reject reasons from its component seller, but not reject reasons from the top-level seller. The reject reason returned by `scoreAd()` should be one of:
+* `${rejectReason}` - The seller can optionally add a `rejectReason` field to its `scoreAd()` return object to convey to the bidder a more detailed reason why the bid was rejected. A component auction's bidders only get reject reasons from its component seller, but not reject reasons from the top-level seller. The reject reason returned by `scoreAd()` must be one of:
     *   "not-available", which is the default value, when a bid
         *    was not rejected
         *    was rejected but the seller didn’t provide a reject reason
@@ -1239,7 +1239,7 @@ If the top-level auction has a `sellerCurrency` configured, this will be its cur
     *   "category-exclusions"
 
 #### 7.2 navigator.deprecatedReplaceInURN()
-To help with ease of adoption, [until at least 2026](https://github.com/WICG/turtledove/issues/286#issuecomment-1682842636) we will support the API `navigator.deprecatedReplaceInURN()`.
+To help with ease of adoption, [until at least 2026](https://github.com/WICG/turtledove/issues/286#issuecomment-1682842636) Protected Audience will support the `navigator.deprecatedReplaceInURN()` API.
 It takes two parameters:
 *   The return value from `runAdAuction()`, which is either a `urn:uuid` string, or a [`FencedFrameConfig`](https://github.com/WICG/fenced-frame/blob/master/explainer/fenced_frame_config.md) object.
 *   A mapping from strings to strings. The keys are strings to be replaced, which must start and end with either "${" and "}" or "%%" and "%%". The values are strings to substitute the keys.
