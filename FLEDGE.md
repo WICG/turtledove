@@ -1203,4 +1203,6 @@ If a report is sent, “lock-out” all adtechs out of sending a report for 3 ye
 If an adtech calls the API, put them in a  “cool-down” period where calls to the API by that given adtech are not able to send reports.
 *  Prevent adtechs who accidentally (e.g. due to a bug in their code) call the API repeatedly for all users, from locking themselves out of sending any more reports for years. This is accomplished by 90% of the time putting that adtech in a 2 week “cooldown” period, and only 10% of the time putting that adtech in a 1 year cooldown period.
 
+See [issue 632](https://github.com/WICG/turtledove/issues/632) for more information.
+
 Both `generateBid()` and `scoreAd()`’s `browserSignals` have a new boolean field `forDebuggingOnlyInCooldownOrLockout`. It’s true when adtechs are in “lock-out” period, or when the buyer (or seller of `scoreAd()`) is in “cool-down” period.
