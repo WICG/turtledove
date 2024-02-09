@@ -1190,6 +1190,10 @@ For additional bids that win the auction, event-level win reporting is supported
 
 ### 7. Debugging Extensions
 
+#### 7.1 forDebuggingOnly (fDO) APIs
+
+In order to accomplish our dual goals of helping with adoption and preserving user privacy, we plan to keep the forDebuggingOnly APIs available post third-party cookie deprecation, albeit in a heavily downsampled fashion (as described in [section 7.1.1](#711-downsampling)) to address the re-identification risk.  While third-party cookies are available, they will remain unsampled to help with adoption, and instead will have a label, exposed in `generateBid()`'s `browserSignals.forDebuggingOnlyInCooldownOrLockout`, to indicate whether the particular report would have been downsampled.
+
 #### 7.1.1 Downsampling
 
 This design has two main goals:
