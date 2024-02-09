@@ -1308,6 +1308,7 @@ and a [=moment=] |auctionStartTime|:
     minus |ig|'s [=interest group/join time=], in milliseconds.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/bidCount}}"] to the sum of |ig|'s
      [=interest group/bid counts=] for all days within the last 30 days.
+  1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/adComponentsLimit}}"] to 40.
   1. Let |prevWins| be a new <code>[=sequence=]<{{PreviousWin}}></code>.
   1. [=list/For each=] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
     the last 30 days:
@@ -3243,7 +3244,7 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
     1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponents}}"].
     1. Return failure if any of the following conditions hold:
       * |groupHasAdComponents| is false;
-      * |adComponents|'s size is greater than 20.
+      * |adComponents|'s size is greater than 40.
     1. Let |adComponentDescriptors| be a new [=list=] of [=ad descriptors=].
     1. For |component| in |adComponents|:
       1. Let |componentDescriptor| be a new [=ad descriptor=].
@@ -3690,6 +3691,29 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
 
 </div>
 
+# Feature Detection # {#feature-detection}
+
+The {{ProtectedAudience/queryFeatureSupport()}} method permits checking what functionality is available in the current implementation, in order to help deploy new features.  The return values specified in this specification are for an implementation that fully implements it.
+
+<xmp class="idl">
+[SecureContext]
+partial interface Navigator {
+  [SameObject] readonly attribute ProtectedAudience protectedAudience;
+};
+
+[SecureContext, Exposed=Window]
+interface ProtectedAudience {
+  any queryFeatureSupport(DOMString feature);
+};
+</xmp>
+
+<div algorithm>
+
+The <dfn for=ProtectedAudience method>queryFeatureSupport(feature)</dfn> method steps are:
+1. If feature is "adComponentsLimit", return 40.
+2. Return `undefined`.
+
+</div>
 
 # Common Algorithms # {#common-algorithms}
 
@@ -4139,6 +4163,7 @@ dictionary BiddingBrowserSignals {
   required long joinCount;
   required long bidCount;
   required long recency;
+  required long adComponentsLimit;
 
   USVString topLevelSeller;
   sequence<PreviousWin> prevWinsMs;
@@ -4708,7 +4733,7 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   :: An [=ad descriptor=]. Render URL and size of the bid's ad.
   : <dfn>ad component descriptors</dfn>
   :: Null or a [=list=] of [=ad descriptors=]. Ad components associated with bid, if any. May have at
-    most 20 [=list/items=]. Must be null if the interest group making this bid has a null
+    most 40 [=list/items=]. Must be null if the interest group making this bid has a null
     [=interest group/ad components=] field.
   : <dfn>ad cost</dfn>
   :: Null or a {{double}}. Advertiser click or conversion cost passed from `generateBid()` to
