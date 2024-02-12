@@ -12,6 +12,7 @@ An ID provided to runAdAuction to identify a contextual query/ad cannot be passe
 
 From a privacy perspective, it is also important to note that the additional information (from what the worklet already knows) that the fenced frame is sending to the browser and eventually to the ad-tech server, cannot contribute to identifying the user since the fenced frame does not have access to cookies/unpartitioned storage.
 
+While Protected Audience supports rendering ads in iframes, the features outlined in this document will also apply to iframes created using the Protected Audience API.
 
 # Design
 
@@ -218,9 +219,14 @@ window.fence.setReportEventDataForAutomaticBeacons({
 
 If `setReportEventDataForAutomaticBeacons` is invoked, the browser will send an automatic beacon to all URLs registered via registerAdBeacon for the given event, but it will only send an event data body (the information in eventData) with the HTTP request to destinations specified in the destination field. This means that invoking setReportEventDataForAutomaticBeacons acts as an opt-in by the fenced frame document to allow sending the beacon to all registered URLs, aligning with cross-origin security principles.
 
-If `setReportEventDataForAutomaticBeacons` is not invoked and the ad frame's page was not served with the response header `Allow-Fenced-Frame-Automatic-Beacons: true`, the browser will not send an automatic beacon to any registered URLs.
+The ad frame's page can also opt in to sending automatic beacons by being served with a new `Allow-Fenced-Frame-Automatic-Beacons` response header. When set to `true`, automatic beacons will be sent to all registered destinations, but will not include any event data with it.
 
-If the ad frame's page was not served with the response header `Allow-Fenced-Frame-Automatic-Beacons: true` but `setReportEventDataForAutomaticBeacons` is not invoked, the browser will send an automatic beacon to any registered URLs, but the beacons will not contain any data.
+This table shows the relationship between `setReportEventDataForAutomaticBeacons` and `Allow-Fenced-Frame-Automatic-Beacons` and how automatic beacons are sent out:
+
+|                                  | No ` setReportEvent...()` | `  setReportEvent... ()` |
+|---------------------------------:|---------------------------|--------------------------|
+| **No `Allow-...-Beacons: true`** | none                      | Beacon sent with data    |
+| **`Allow-...-Beacons: true`**    | Beacon sent - no data     | Beacon sent with data    |
 
 Currently, the only `eventType`s that `setReportEventDataForAutomaticBeacons` allows are `'reserved.top_navigation_start'` and `'reserved.top_navigation_commit'`. Note that the script invoking this API can volunteer this information to a given destination type or not, similar to `reportEvent`, using the `destination` field.
 
