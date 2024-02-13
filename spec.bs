@@ -1500,7 +1500,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|].
   1. Let |expectedCurrency| be the result of [=looking up per-buyer currency=] with |auctionConfig| and |buyer|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}"]
-    to the result of running [=check debugging only in cooldown or lockout=] with |buyer|.
+    to the result of running [=is debugging only in cooldown or lockout=] with |buyer|.
   1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perSlotSizeQueryParam|:
     1. [=map/For each=] |slotSizeQueryParam| → |perSlotSizeQueryParam| of |perBuyerGenerator|:
       1. Let |keys| be a new [=ordered set=].
@@ -1724,7 +1724,7 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     <dt>{{ScoringBrowserSignals/adComponents}}
     <dd>|generatedBid|'s [=generated bid/ad component descriptors=] [=converted to a string sequence=]
     <dt>{{ScoringBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}
-    <dd>The result of running [=check debugging only in cooldown or lockout=] with |seller|
+    <dd>The result of running [=is debugging only in cooldown or lockout=] with |seller|
   </dl>
 
 1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl| » be the result of
@@ -2376,7 +2376,7 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
     [=forDebuggingOnly reports|forDebuggingOnly reporting=] APIs, instead of using the following
     steps to downsample it.
 
-  1. If |reportUrl| is null, or the result of running [=check debugging only in cooldown or lockout=]
+  1. If |reportUrl| is null, or the result of running [=is debugging only in cooldown or lockout=]
     with |invokingOrigin| is true, then return.
   1. If the result of running [=sample a debug report=] with |invokingOrigin| is true, then
     [=list/append=] |reportUrl| to |debugReportUrls|.
@@ -2466,7 +2466,7 @@ a <dfn>debug report cooldown</dfn>, which is null or a [=map=] whose [=map/keys=
 [=map/values=] are [=moments=] at which the cooldown would expire.
 
 <div algorithm>
-  To <dfn>check debugging only in cooldown or lockout</dfn> given an [=origin=] |origin|:
+  To <dfn>is debugging only in cooldown or lockout</dfn> given an [=origin=] |origin|:
 
   1. If [=user agent=]'s [=debug report lockout until=] is not null, and [=current wall time=] is
     less than [=user agent=]'s [=debug report lockout until=], return true.
@@ -2481,8 +2481,8 @@ a <dfn>debug report cooldown</dfn>, which is null or a [=map=] whose [=map/keys=
   To <dfn>sample a debug report</dfn> given an [=origin=] |origin|:
 
   1. Let |canSendAfterSampled| be false.
-  1. Let |sampleRand| be a random {{long}} &ge; 0 and &lt; 1000, which corresponds to
-    [=sampling rate=].
+  1. Let |sampleRand| be a random {{long}} &ge; 0 and &lt; 1000, so each possible long would be
+    chosen the a probability equal to [=sampling rate=].
   1. If |sampleRand| is 0:
     1. Set |canSendAfterSampled| to true.
     1. Set [=user agent=]'s [=debug report lockout until=] to [=current wall time=] plus
