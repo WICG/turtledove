@@ -2371,10 +2371,10 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
   To <dfn>collect a single forDebuggingOnly report</dfn> given a [=URL=] |reportUrl|, an [=origin=]
   |invokingOrigin|, and a [=list=] |debugReportUrls|:
 
-  Note: While the browser is experimenting with Protected Audience (e.g., before third party cookies
-    are deprecated) it <span class="allow-2119">would</span> be useful to always enable
-    [=forDebuggingOnly reports|forDebuggingOnly reporting=] APIs, instead of using the following
-    steps to downsample it.
+  Note: While the browser is experimenting with third party cookie deprecation (before they have
+  been fully removed), the {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}
+  reporting APIs supply temporary labels indicating when a particular instance would have been
+  downsampled instead of using the following steps to downsample it.
 
   1. If |reportUrl| is null, or the result of running [=is debugging only in cooldown or lockout=]
     with |invokingOrigin| is true, then return.
@@ -2435,8 +2435,8 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
 Implementations may define their own values for the below constants based on their privacy goal,
 however we supply the below values as a starting point, inspired by what the initial implementation
 of this specification uses:
-  * <dfn>sampling rate</dfn> is 1/1000, which means only sending reports 1/1000 times the fDO API is
-    called.
+  * <dfn>sampling rate</dfn> is 1/1000, which means only sending reports 1/1000 times the
+    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}} API is called.
   * <dfn>lockout period</dfn> is 3 years.
   * <dfn>long cooldown rate</dfn> is 1/10, which means 10% of the time putting an adtech in a long
     cooldown period if the adtech calls the API.
@@ -2463,15 +2463,14 @@ The design of downsampling [=forDebuggingOnly reports=] has two main goals:
   rest of the time putting that adtech in a [=short cooldown period=].
 
 The [=user agent=] has a <dfn>debug report lockout until</dfn>, which is null or a [=moment=], and
-a <dfn>debug report cooldown</dfn>, which is null or a [=map=] whose [=map/keys=] are [=origins=] and
-[=map/values=] are [=moments=] at which the cooldown would expire.
+a <dfn>debug report cooldown</dfn>, which is null or a [=map=] whose [=map/keys=] are [=origins=]
+and [=map/values=] are [=moments=] at which the cool down for the origin key expires.
 
 <div algorithm>
   To <dfn>is debugging only in cooldown or lockout</dfn> given an [=origin=] |origin|:
 
   1. If [=user agent=]'s [=debug report lockout until=] is not null, and [=current wall time=] is
-    less than [=user agent=]'s [=debug report lockout until=], return true.
-
+    less than [=user agent=]'s [=debug report lockout until=], return true. 
   1. If [=user agent=]'s [=debug report cooldown=] is null, then return false.
   1. If [=user agent=]'s [=debug report cooldown=][|origin|] [=map/exists=] and [=current wall time=]
     is less than [=user agent=]'s [=debug report cooldown=][|origin|], then return true.
@@ -5282,11 +5281,10 @@ An <dfn>auction report info</dfn> is a [=struct=] with the following [=struct/it
   :: A [=list=] of [=strings=] whose [=url/schemes=] must be "`https`". Losing bid's
     [=generated bid=]'s debug loss report URLs.
 
-    Note: While the browser is experimenting with Protected Audience (e.g., before third party
-    cookies are deprecated) it <span class="allow-2119">would</span> be useful to always enable
-    [=forDebuggingOnly reports|forDebuggingOnly reporting=] APIs. Once
-    [downsampling debug reports](#downsampling-header) takes effect, the two lists can be changed to
-    a single URL since no more than one debug reports can be sent at that time.
+    Issue: TODO:  Change the two lists to a single URL since no more than one debug reports can be
+    sent after [downsampling debug reports](#downsampling-header). While the browser is
+    experimenting with third party cookie deprecation (before they have been fully removed), the
+    `forDebuggingOnly` reporting APIs are not downsampled, so they are still lists.
 
 </dl>
 
