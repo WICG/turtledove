@@ -77,6 +77,8 @@ The usefulness of this page depends on testers sharing information and updates.
 | Flashtalking | Ad Server & DCO | Testing in progress | | privacysandbox@mediaocean.com |
 | MediaMath | DSP | 2024 Q1 - | | privacysandbox@infillion.com |
 | Sharethrough | SSP | March 2024 | | privacysandbox@sharethrough.com |
+| adstir | SSP | 2024 Q2 - | | privacysandbox@united.jp  |
+| Bypass | DSP | 2024 Q2 - | | privacysandbox@united.jp  |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
