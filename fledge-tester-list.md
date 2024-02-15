@@ -59,7 +59,8 @@ The usefulness of this page depends on testers sharing information and updates.
 | Adlook (subsidiary of RTB House) | DSP | Continuous testing ongoing; long term commitment. | | privacysandbox@adlook.com |
 | PrimeAudience (subsidiary of RTB House) | Ad Network | Continuous testing ongoing; long term commitment. | | contact@primeaudience.com |
 | Microsoft (Xandr, MSAN) | SSP + DSP(s) | Testing | | privacy_sandbox@microsoft.com |
-| Nexxen (Unruly/Tremor/Amobee) | SSP & DSP| 2023-2024 | coming soon | privacysandbox@nexxen.com |
+| Nexxen (Unruly/Tremor/Amobee) | SSP | Feb 1st 2024 - May 15th 2024 | coming soon | privacysandbox@nexxen.com |
+| Nexxen (Unruly/Tremor/Amobee) | DSP | Q2-Q3 2024 | coming soon | privacysandbox@nexxen.com |
 | Triplelift | SSP | Jan 2024 | | prod-privacysandbox@triplelift.com |
 | Seedtag | SSP | January 15th 2024 - April 15th 2024 | coming soon | privacysandbox@seedtag.com |
 | Index Exchange | SSP | By January 31, 2024 | | privacy-sandbox-support@indexexchange.com |
@@ -73,6 +74,11 @@ The usefulness of this page depends on testers sharing information and updates.
 | Jivox | Ad Server (DCO) | Testing in progress | | jvx-google-privacy-sandbox-team@jivox.com |
 | Wirtualna Polska Media | Publisher & SSP | Running Protected Audience API tests since July 2023 | https://github.com/grupawp/PAapi | privacysandbox@grupawp.pl |
 | Appier Inc | DSP | 2023 Q1 - ongoing | | privacy-sandbox@appier.com |
+| Flashtalking | Ad Server & DCO | Testing in progress | | privacysandbox@mediaocean.com |
+| MediaMath | DSP | 2024 Q1 - | | privacysandbox@infillion.com |
+| Sharethrough | SSP | March 2024 | | privacysandbox@sharethrough.com |
+| adstir | SSP | 2024 Q2 - | | privacysandbox@united.jp  |
+| Bypass | DSP | 2024 Q2 - | | privacysandbox@united.jp  |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
@@ -87,4 +93,5 @@ Companies who may be interested in participating in tests and early adoption opp
 | OLX Brasil | Publisher | | adtech@olxbr.com |
 | Globo | Publisher | | adtech-delivery@g.globo|
 | A Gazeta | Publisher | | cdutra@redegazeta.com.br |
+| TNL Mediagene | Publisher | | privacysandbox@tnlmediagene.com |
 
