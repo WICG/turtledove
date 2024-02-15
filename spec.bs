@@ -1262,14 +1262,13 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
   <div class="note"> This algorithm builds an [=ordered map=] with:
     * key: An [=origin=], which is a buyer of [=auction config/interest group buyers=]
     * value: A [=per buyer bid generator=], which is an [=ordered map=] with
-      * key: An [=URL=], which is [=interest group/trusted bidding signals url=]
-      * value: 
-        * key: 
-        * value: A [=per signals url bid generator=], which is an [=ordered map=] with
-          * key: An [=origin=], which is [=interest group/joining origin=]
-          * value: A [=per bidding url bid generator=], which is an [=ordered map=] with
-            * key: A [=URL=], which is [=interest group/bidding url=]
-            * value: A [=list=] of [=interest groups=]
+      * key: A tuple consisting of a [=URL=], which is [=interest group/trusted bidding signals url=],
+        and a [=string=], which is the ad slot size query param.
+      * value: A [=per signals url bid generator=], which is an [=ordered map=] with
+        * key: An [=origin=], which is [=interest group/joining origin=]
+        * value: A [=per bidding url bid generator=], which is an [=ordered map=] with
+          * key: A [=URL=], which is [=interest group/bidding url=]
+          * value: A [=list=] of [=interest groups=]
   </div>
 1. Let |bidGenerators| be a new [=ordered map=] whose [=map/keys=] are [=origins=] and whose
   [=map/values=] are [=per buyer bid generators=].
@@ -1295,30 +1294,27 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
       1. Let |perBiddingUrlGenerator| be a new [=per bidding url bid generator=].
       1. [=map/Set=] |perBiddingUrlGenerator|[|biddingUrl|] to « |ig| ».
       1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to |perBiddingUrlGenerator|.
-      1. [=map/Set=] |perBuyerGenerator|[|signalsUrl|] to |perSignalsUrlGenerator|.
+      1. [=map/Set=] |perBuyerGenerator|[(|signalsUrl|, |slotSizeQueryParam|)] to
+        |perSignalsUrlGenerator|.
       1. [=map/Set=] |bidGenerators|[|buyer|] to |perBuyerGenerator|.
     1. Otherwise:
       1. Let |perBuyerGenerator| be |bidGenerators|[|buyer|].
-      1. If |perBuyerGenerator| does not [=map/contain=] |signalsUrl|:
+      1. If |perBuyerGenerator| does not [=map/contain=] (|signalsUrl|, |slotSizeQueryParam|):
         1. Let |perSignalsUrlGenerator| be a new [=per signals url bid generator=].
-        1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to « |ig| ».
-        1. [=map/Set=] |perSlotSizeQueryParam|[|slotSizeQueryParam|] to |perSignalsUrlGenerator|.
-        1. [=map/Set=] |perBuyerGenerator|[|signalsUrl|] to |perSlotSizeQueryParam|.
+        1. Let |perBiddingUrlGenerator| be a new [=per bidding url bid generator=].
+        1. [=map/Set=] |perBiddingUrlGenerator|[|biddingUrl|] to « |ig| ».
+        1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to |perBiddingUrlGenerator|.
+        1. [=map/Set=] |perBuyerGenerator|[(|signalsUrl|, |slotSizeQueryParam|)] to
+          |perSignalsUrlGenerator|.
       1. Otherwise:
-        1. Let |perSlotSizeQueryParam| be |perBuyerGenerator|[|signalsUrl|].
-        1. If |perSlotSizeQueryParam| does not [=map/contain=] |slotSizeQueryParam|:       
-          1. Let |perSignalsUrlGenerator| be a new [=per signals url bid generator=].
-          1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to « |ig| ».
-          1. [=map/Set=] |perSlotSizeQueryParam|[|slotSizeQueryParam|] to |perSignalsUrlGenerator|.
+        1. Let |perSignalsUrlGenerator| be |perBuyerGenerator|[(|signalsUrl|, |slotSizeQueryParam|)].
+        1. If |perSignalsUrlGenerator| does not [=map/contain=] |joiningOrigin|:
+          1. Let |perBiddingUrlGenerator| be a new [=per bidding url bid generator=].
+          1. [=map/Set=] |perBiddingUrlGenerator|[|biddingUrl|] to « |ig| ».
+          1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to |perBiddingUrlGenerator|.
         1. Otherwise:
-          1. Let |perSignalsUrlGenerator| be |perSlotSizeQueryParam|[|slotSizeQueryParam|].
-          1. If |perSignalsUrlGenerator| does not [=map/contain=] |joiningOrigin|:
-            1. Let |perBiddingUrlGenerator| be a new [=per bidding url bid generator=].
-            1. [=map/Set=] |perBiddingUrlGenerator|[|biddingUrl|] to « |ig| ».
-            1. [=map/Set=] |perSignalsUrlGenerator|[|joiningOrigin|] to |perBiddingUrlGenerator|.
-          1. Otherwise:
-            1. Let |perBiddingUrlGenerator| be |perSignalsUrlGenerator|[|joiningOrigin|].
-            1. [=list/Append=] |ig| to ||perBiddingUrlGenerator||[|biddingUrl|].      
+          1. Let |perBiddingUrlGenerator| be |perSignalsUrlGenerator|[|joiningOrigin|].
+          1. [=list/Append=] |ig| to ||perBiddingUrlGenerator||[|biddingUrl|].      
 1. Return « |bidGenerators|, |negativeTargetInfo| ».
 
 </div>
