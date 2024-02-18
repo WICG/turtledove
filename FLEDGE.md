@@ -419,7 +419,13 @@ The values of some signals (those configured by fields `auctionSignals`, `seller
 
 #### 2.2 Auction Participants
 
-Each interest group the browser has joined and whose owner is in the list of `interestGroupBuyers` will have an opportunity to bid in the auction.  See the "Buyers Provide Ads and Bidding Functions" section, below, for how interest groups bid.
+Each interest group the browser has joined with: 
+* `owner`in the list of `interestGroupBuyers`.
+*  Non null `biddingLogicUrl`.
+*  At least one registered creative in the `ads` element.
+*  Priority, as stated by `priority` or calculated via `priorityVector`, is greater than or equal to 0.
+
+will have an opportunity to bid in the auction.  See the "Buyers Provide Ads and Bidding Functions" section, below, for how interest groups bid.
 
 
 #### 2.3 Scoring Bids
