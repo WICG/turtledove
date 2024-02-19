@@ -1255,24 +1255,23 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 
 </div>
 
-<div algorithm>
+<div algorithm="build bid generators map">
 
 To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfig|:
 
   <div class="note"> This algorithm builds an [=ordered map=] with:
     * key: An [=origin=], which is a buyer of [=auction config/interest group buyers=]
     * value: A [=per buyer bid generator=], which is an [=ordered map=] with
-      * key: A tuple consisting of a [=URL=], which is [=interest group/trusted bidding signals url=],
-        and a [=string=], which is the ad slot size query param.
-      * value: A [=per signals url bid generator=], which is an [=ordered map=] with
-        * key: An [=origin=], which is [=interest group/joining origin=]
-        * value: A [=per bidding url bid generator=], which is an [=ordered map=] with
-          * key: A [=URL=], which is [=interest group/bidding url=]
-          * value: A [=list=] of [=interest groups=]
+      * key: A [=script runner key=], which is ...
+      * value: A [=list=] of [=tuples=]
+        ([=interest groups=], [=tuples=] ({{double}} for priority, [=origin=] for
+         [=interest group/joining origin=], [=string=] for [=interest group/execution mode=]).
   </div>
 1. Let |bidGenerators| be a new [=ordered map=] whose [=map/keys=] are [=origins=] and whose
   [=map/values=] are [=per buyer bid generators=].
 1. Let |negativeTargetInfo| be a new [=negative target info=].
+1. Let |igs| to be a [=list=] of [=tuples=] ([=interest groups=], [=tuples=] ({{double}} for priority,
+  [=origin=] for [=interest group/joining origin=], [=string=] for [=interest group/execution mode=]).
 1. [=list/For each=] |buyer| in |auctionConfig|'s [=auction config/interest group buyers=]:
   1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=] whose
     [=interest group/owner=] is |buyer|:
@@ -1284,6 +1283,39 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
     1. [=iteration/Continue=] if any of the following conditions hold:
       * |biddingUrl| is null;
       * |ig|'s [=interest group/ads=] is null, or [=list/is empty=].
+    1. [=list/Append=] ([|ig|, (|ig|'s [=interest group/priority=], |ig|'s
+      [=interest group/joining origin=], |ig|'s [=interest group/execution mode=])) to |igs|.
+
+      Issue: TODO: Calculate priority from [=interest group/priority vector=]
+      (<a href="https://github.com/WICG/turtledove/issues/1041">WICG/turtledove#1041</a>).
+
+  1. <dfn>Apply interest groups limits to prioritized list</dfn>:
+    1. Let |buyerGroupLimit| be |auctionConfig|'s [=auction config/all buyers group limit=].
+    1. Let |perBuyerGroupLimits| be |auctionConfig|'s [=auction config/per buyer group limits=].
+    1. If |perBuyerGroupLimits| is not null and |perBuyerGroupLimits|[|buyer|] [=map/exists=], then
+      set |buyerGroupLimit| to |perBuyerGroupLimits|[|buyer|].
+    1. If |igs|'s [=list/size=] &lt; |buyerGroupLimit|, then set |buyerGroupLimit| to |igs|'s
+      [=list/size=].
+    1. If |perBuyerGroupLimits| is 0, then return « |bidGenerators|, |negativeTargetInfo| ».
+    1. [=list/Sort in descending order|Sort=] |igs| in descending order, with |a| being less than
+      |b| if |a|[1] is less than |b|[1].
+    1. Let |igsToKeep| be a new [=list=] of [=interest groups=].
+    1. Let |igsToKeepWithLowestPriority| be a new [=list=] of [=interest groups=].
+    1. Let |minPriority| be |igs|[|buyerGroupLimit|-1][1][0].
+    1. [=list/For each=] |igWithInfo| of |igs|:
+      1. If |igWithInfo|[1][0] &gt; |minPriority|, then [=list/append=] |igWithInfo| to |igsToKeep|.
+      1. If |igWithInfo|[1][0] &eq; |minPriority|, then [=list/append=] |igWithInfo| to
+        |igsToKeepWithLowestPriority|.
+      1. If |igWithInfo|[1][0] &lt; |minPriority|, then [=iteration/break=];
+    1. Randomize the order of [=list/items=] of |igsToKeepWithLowestPriority|.
+    1. [=map/Remove=] all except the first `|buyerGroupLimit| minus |igsToKeep|'s [=list/size=]`
+      [=list/items=] from |igsToKeepWithLowestPriority|.
+    1. [=list/Sort in descending order|Sort=] |igsToKeepWithLowestPriority| in descending order,
+      with |a| being less than |b| if |a|[1] is less than |b|[1], to restore the original grouping.
+    1. [=list/Extend=] |igsToKeep| with |igsToKeepWithLowestPriority|.
+
+  1. [=list/For each=] |igWithInfo| of |igsToKeep|:
+    1. Let |ig| be |igWithInfo|[0].
     1. Let |signalsUrl| be |ig|'s [=interest group/trusted bidding signals url=].
     1. Let |slotSizeQueryParam| be the result of [=calculating the ad slot size query param=]
       given |ig| and |auctionConfig|.
@@ -1442,7 +1474,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   then return failure.
 1. Let |allBuyersExperimentGroupId| be |auctionConfig|'s
   [=auction config/all buyer experiment group id=].
-1. Let |allBuyersGroupLimit| be |auctionConfig|'s [=auction config/all buyers group limit=].
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
 1. Let |directFromSellerSignals| be the result of running [=get direct from seller signals=] given
   |auctionConfig|'s [=auction config/seller=], |auctionConfig|'s
@@ -1486,24 +1517,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     [=auction config/per buyer experiment group ids=].
   1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|]
     [=map/exists=], then set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
-  1. <dfn>Apply interest groups limits to prioritized list</dfn>:
-    1. Let |buyerGroupLimit| be |allBuyersGroupLimit|.
-    1. Let |perBuyerGroupLimits| be |auctionConfig|'s
-      [=auction config/per buyer group limits=].
-    1. If |perBuyerGroupLimits| is not null and |perBuyerGroupLimits|[|buyer|] [=map/exists=], then
-      set |buyerGroupLimit| to |perBuyerGroupLimits|[|buyer|].
-    1. Let |igs| be a new [=list=] of [=interest groups=].
-    1. [=map/For each=] signalsUrl → |perSlotSizeQueryParam| of |perBuyerGenerator|:
-      1. [=map/For each=] slotSizeQueryParam → |perSignalsUrlGenerator| of |perSlotSizeQueryParam|:
-        1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
-          1. [=list/Extend=] |igs| with |groups|.
-    1. [=list/Sort in descending order=] |igs|, with |a| being less than |b| if |a|'s
-      [=interest group/priority=] is less than |b|'s [=interest group/priority=].
-    1. [=list/Remove=] the first |buyerGroupLimit| items from |igs|.
-    1. [=map/For each=] signalsUrl → |perSlotSizeQueryParam| of |perBuyerGenerator|:
-      1. [=map/For each=] slotSizeQueryParam → |perSignalsUrlGenerator| of |perSlotSizeQueryParam|:
-        1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
-          1. [=list/Remove=] from |groups| any [=interest group=] [=list/contained=] in |igs|.
   1. Let |perBuyerSignals| be null.
   1. If |auctionConfig|'s [=auction config/per buyer signals=] is not null and
     [=auction config/per buyer signals=][|buyer|] [=map/exists=], then set |perBuyerSignals| to
@@ -4902,21 +4915,24 @@ To <dfn>look up per-buyer currency</dfn> given an [=auction config=] |auctionCon
 
 <h3 id=bid-generators>Bid generator</h3>
 
-A <dfn>per buyer bid generator</dfn> is an [=ordered map=] whose
-  * [=map/keys=] are tuples consisting of [=URLs=] representing 
-    [=interest group/trusted bidding signals urls=], and [=strings=] representing ad slot size query
-    params;
-  * [=map/values=] are [=per signals url bid generators=].
+A <dfn>per buyer bid generator</dfn> is an [=ordered map=] whose [=map/keys=] are
+[=script runner keys=], and [=map/values=] are [=lists=] of [=tuples=]
+        ([=interest groups=], [=tuples=] ({{double}} for priority, [=origin=] for
+         [=interest group/joining origin=], [=string=] for [=interest group/execution mode=]).
 
-A <dfn>per signals url bid generator</dfn> is an [=ordered map=] whose [=map/keys=] are [=origins=]
-representing [=interest group/joining origins=], and whose [=map/values=] are
-[=per bidding url bid generators=].
+a <dfn>script runner key</dfn> is a [=struct=] that contains enough information to uniquely
+identify a [=script runner=]. It has following [=struct/items=]:
 
-
-
-A <dfn>per bidding url bid generator</dfn> is an [=ordered map=] whose [=map/keys=] are [=URLs=]
-representing [=interest group/bidding urls=], and whose [=map/values=] are [=lists=] of
-[=interest groups=].
+<dl dfn-for="script runner key">
+  : <dfn>script url</dfn>
+  :: A [=URL=]. The URL to fetch the JavaScript from.
+  : <dfn>signals url</dfn>
+  :: Null or a [=URL=]. The URL to fetch the trusted bidding/scoring signals from.
+  : <dfn>experiment group id</dfn>
+  :: Null or a {{unsigned short}}.
+  : <dfn>trusted bidding signals slot size param</dfn>
+  :: A [=string=].
+</dl>
 
 A <dfn>generated bid</dfn> is a bid that needs to be scored by the seller. The bid is either the
 result of [=evaluating a bidding script=], or an [=additional bid=] provided by the
