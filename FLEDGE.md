@@ -1260,7 +1260,7 @@ If the top-level auction has a `sellerCurrency` configured, this will be its cur
 #### 7.1.2 Downsampling
 
 This design has three main goals:
-*   Prevent sending fDO reports very often to protect user privacy:
+* Prevent sending fDO reports very often to protect user privacy:
   * Only sending reports 1/1000 times the forDebuggingOnly API is called, and
   * If a report is sent, "lock-out" all adtechs out of sending a report for 3 years, and
   * If an adtech calls the API, put them in a "cool-down" period where calls to the API by that given adtech are not able to send reports.
