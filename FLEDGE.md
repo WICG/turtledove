@@ -708,11 +708,12 @@ The arguments to `generateBid()` are:
       'joinCount': 3,
       'recency': 3600000,
       'bidCount': 17,
-      'prevWinsMs': [[timeDeltaMs1,ad1],[timeDeltaMs2,ad2],...] /* List of this interest group's previous wins. */
+      'prevWinsMs': [[timeDeltaMs1,ad1],[timeDeltaMs2,ad2],...], /* List of this interest group's previous wins. */
           /* Each element is milliseconds since win and the entry from the interest group's 'ads' list
              corresponding to the ad that won though with only the 'renderURL' and 'metadata' fields. */
-      'wasmHelper': ... /* a WebAssembly.Module object based on interest group's biddingWasmHelperURL */
+      'wasmHelper': ..., /* a WebAssembly.Module object based on interest group's biddingWasmHelperURL */
       'dataVersion': 1, /* Data-Version value from the trusted bidding signals server's response(s) */
+      'adComponentsLimit': 40, /* Maximum number of ad components generateBid() may return */
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
@@ -732,7 +733,7 @@ The output of `generateBid()` contains the following fields:
     * size: A dictionary containing `width` and `height` fields, describing the creative's size (see the interest group declaration above). When the ad is loaded in a fenced frame, the fenced frame's inner frame (i.e. the size visible to the ad creative) will be frozen to this size, and it will be unable to see changes to the frame size made by the embedder.
     
     Optionally, if you don't want to hook into interest group size declarations (e.g., if you don't want to use size macros), you can have `render` be just the URL, rather than a dictionary with `url` and `size`.
-*   adComponents: (optional) A list of up to 20 adComponent strings from the InterestGroup's adComponents field. Each value must match one of `interestGroup`'s `adComponent`'s `renderURL` and sizes exactly. This field must not be present if `interestGroup` has no `adComponent` field. It is valid for this field not to be present even when `adComponents` is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
+*   adComponents: (optional) A list of up to 20 (in process of being increased to 40 starting from M122) adComponent strings from the InterestGroup's adComponents field. Each value must match one of `interestGroup`'s `adComponent`'s `renderURL` and sizes exactly. This field must not be present if `interestGroup` has no `adComponent` field. It is valid for this field not to be present even when `adComponents` is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
 *   allowComponentAuction: If this buyer is taking part of a component auction, this value must be present and true, or the bid is ignored. This value is ignored (and may be absent) if the buyer is part of a top-level auction.
 * modelingSignals: A 0-4095 integer (12-bits) passed to `reportWin()`, with noising, as described in the [noising and bucketing scheme](#521-noised-and-bucketed-signals). Invalid values, such as negative, infinite, and NaN values, will be ignored and not passed. Only the lowest 12 bits will be passed.
 
@@ -752,7 +753,19 @@ If `generateBid()` picks an ad whose rendering URL is not yet above the browser-
 
 The [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md) proposal describes a use case in which the rendered ad is composed of multiple pieces — a top-level ad template "container" which includes some slots that can be filled in with specific "products".  This is useful because the browser's microtargeting threshold can be applied to each individual component of the ad without compromising on tracking protections.
 
-The output of `generateBid()` can use the on-device ad composition flow through an optional adComponents field, listing additional URLs made available to the fenced frame the container URL is loaded in. The component URLs may be retrieved by calling `navigator.adAuctionComponents(numComponents)`, where numComponents is at most 20. To prevent bidder worklets from using this as a sidechannel to leak additional data to the fenced frame, exactly numComponents obfuscated URLs will be returned by this method, regardless of how many adComponent URLs were actually in the bid, even if the bid contained no adComponents, and the Interest Group itself had no adComponents either.
+Initially, the limit on number of components was 20, but it's in process of being increased to 40 starting from Chrome M122. Implementations of `generateBid` can determine the currently active limit as follows:
+```
+const maxAdComponents = browserSignals.adComponentsLimit ?
+                        browserSignals.adComponentsLimit : 20;
+```
+
+In the web page, the limit can also be queried:
+```
+const maxAdComponents = navigator.protectedAudience ?
+    navigator.protectedAudience.queryFeatureSupport("adComponentsLimit") : 20;
+```
+
+The output of `generateBid()` can use the on-device ad composition flow through an optional adComponents field, listing additional URLs made available to the fenced frame the container URL is loaded in. The component URLs may be retrieved by calling `navigator.adAuctionComponents(numComponents)`, where numComponents will be capped to the maximum permitted value. To prevent bidder worklets from using this as a sidechannel to leak additional data to the fenced frame, exactly numComponents obfuscated URLs will be returned by this method, regardless of how many adComponent URLs were actually in the bid, even if the bid contained no adComponents, and the Interest Group itself had no adComponents either.
 
 
 #### 3.5 Filtering and Prioritizing Interest Groups
