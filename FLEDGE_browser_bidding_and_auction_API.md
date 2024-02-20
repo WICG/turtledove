@@ -109,10 +109,10 @@ const myAuctionConfig = {
            'interestGroupBuyers': ...,
       ...},
         { // B&A auction
-  'seller': 'https://www.example-ssp.com',
-  'interestGroupBuyers': ['https://www.example-dsp.com'],
-  'requestId': requestId,
-  'serverResponse': response_blob
+          'seller': 'https://www.example-ssp.com',
+          'interestGroupBuyers': ['https://www.example-dsp.com'],
+          'requestId': requestId,
+          'serverResponse': response_blob
         },
     ...
   }
