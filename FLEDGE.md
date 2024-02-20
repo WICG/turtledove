@@ -123,14 +123,14 @@ const myGroup = {
   'trustedBiddingSignalsKeys': ['key1', 'key2'],
   'trustedBiddingSignalsSlotSizeMode' : 'slot-size',
   'userBiddingSignals': {...},
-  'ads': [{renderUrl: shoesAd1, sizeGroup: 'group1', ...},
-          {renderUrl: shoesAd2, sizeGroup: 'group2', ...},
-          {renderUrl: shoesAd3, sizeGroup: 'size3', ...}],
-  'adComponents': [{renderUrl: runningShoes1, sizeGroup: 'group2', ...},
-                   {renderUrl: runningShoes2, sizeGroup: 'group2', ...},
-                   {renderUrl: gymShoes, sizeGroup; 'group2', ...},
-                   {renderUrl: gymTrainers1, sizeGroup: 'size4', ...},
-                   {renderUrl: gymTrainers2, sizeGroup: 'size4', ...}],
+  'ads': [{renderURL: shoesAd1, sizeGroup: 'group1', ...},
+          {renderURL: shoesAd2, sizeGroup: 'group2', ...},
+          {renderURL: shoesAd3, sizeGroup: 'size3', ...}],
+  'adComponents': [{renderURL: runningShoes1, sizeGroup: 'group2', ...},
+                   {renderURL: runningShoes2, sizeGroup: 'group2', ...},
+                   {renderURL: gymShoes, sizeGroup; 'group2', ...},
+                   {renderURL: gymTrainers1, sizeGroup: 'size4', ...},
+                   {renderURL: gymTrainers2, sizeGroup: 'size4', ...}],
   'adSizes': {'size1': {width: '100', height: '100'},
               'size2': {width: '100', height: '200'},
               'size3': {width: '75', height: '25'},
@@ -634,7 +634,7 @@ The value of each key that an interest group has in its `trustedBiddingSignalsKe
 
 The `perInterestGroupData` dictionary contains optional data for interest groups whose names were included in the request URL. The `priorityVector` will be used to calculate the final priority for an interest group, if that interest group has `enableBiddingSignalsPrioritization` set to true in its definition. Otherwise, it's only used to filter out interest groups, if the dot product with `prioritySignals` is negative. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
 
-Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsURL` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderURLs=url1,url2,..." and "adComponentRenderURLs=url1,url2,..." for the main and adComponent renderURLs bids offered in the auction. It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
+Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsURL` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderURLs bids offered in the auction. Note that the query params use "Urls" instead of "URLs". It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
 
 ```
 { 'renderURLs': {
