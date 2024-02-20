@@ -105,8 +105,8 @@ const myAuctionConfig = {
   'componentAuctions': {
         { // On-device auction
           'seller': 'https://www.some-other-ssp.com',
-         'decisionLogicURL': ...,
-         'interestGroupBuyers': ...,
+           'decisionLogicURL': ...,
+           'interestGroupBuyers': ...,
       ...},
         { // B&A auction
   'seller': 'https://www.example-ssp.com',
