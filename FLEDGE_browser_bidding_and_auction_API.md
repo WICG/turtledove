@@ -94,7 +94,7 @@ The browser verifies it witnessed a Fetch request to the `seller`’s origin wit
 ## Device Orchestrated Multi-Seller Auctions
 
 Auctions run using the Bidding and Auction servers can be mixed with on-device
-auctions using "component auctions". The top-level scoring script will decide
+auctions using [component auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#24-scoring-bids-in-component-auctions:~:text=In%20some%20cases,seller%27s%20%22component%20auction%22). The top-level scoring script will decide
 between the top scoring bidders from the component auctions.
 
 ```javascript
