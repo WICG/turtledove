@@ -1218,8 +1218,8 @@ If the bid being generated or scored loses the auction, the URL will be fetched.
 generateBid(interestGroup, auctionSignals, perBuyerSignals,
     trustedBiddingSignals, browserSignals, directFromSellerSignals) {
   …
-  forDebuggingOnly.reportAdAuctionLoss(“https://buyer.com/debug_loss_report”);
-  forDebuggingOnly.reportAdAuctionWin(“https://buyer.com/debug_win_report?winningBid={winningBid}”);
+  forDebuggingOnly.reportAdAuctionLoss("https://buyer.com/debug_loss_report");
+  forDebuggingOnly.reportAdAuctionWin("https://buyer.com/debug_win_report?winningBid={winningBid}");
 
 ```
 
@@ -1229,20 +1229,20 @@ In a multi-seller auction, the following forDebuggingOnly win reports may be sen
 *   forDebuggingOnly *win* report from `scoreAd()` of the top-level seller when scoring the bid from the component auction that wins the whole auction.
 *   forDebuggingOnly *loss* report from all other `generateBid()` and `scoreAd()` invocations.
 
-In order to accomplish our dual goals of helping with adoption and preserving user privacy, we plan to keep the forDebuggingOnly APIs available post third-party cookie deprecation, albeit in a heavily downsampled fashion (as described in [section 7.1.2](#712-downsampling)) to address the re-identification risk.  While third-party cookies are available, they will remain unsampled to help with adoption, and instead will have a label, exposed in `generateBid()`'s `browserSignals.forDebuggingOnlyInCooldownOrLockout`, to indicate whether the particular report would have been downsampled.
+In order to accomplish our dual goals of helping with adoption and preserving user privacy, we plan to keep the forDebuggingOnly APIs available post third-party cookie deprecation, albeit in a heavily downsampled fashion (as described in [section 7.1.2](#712-downsampling)) to address the re-identification risk. While third-party cookies are available, they will remain unsampled to help with adoption, and instead will have a label, exposed in `generateBid()`'s `browserSignals.forDebuggingOnlyInCooldownOrLockout`, to indicate whether the particular report would have been downsampled.
 
 ##### 7.1.1 Post Auction Signals   
 
 A post auction signal is a signal which is only available after the auction completes, such as the highest scoring other bid. The forDebuggingOnly APIs support the text placeholders below, which will be replaced with the corresponding value from the auction when found in the reporting URL's query parameters.
 
-*   “${winningBid}” - The value of the winning bid. In component auctions, this value comes from the component auction and not the top-level auction.
-*   “${winningBidCurrency}” - If the auction has a `sellerCurrency` configured, this will be its currency tag; otherwise it is `'???'` to denote that it's in the bidder's original currency.
-*   “${madeWinningBid}” - A [Boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) value representing whether the owner of this interest group made the winning bid, either via this interest group, or another interest group with the same owner. In component auctions, this value comes from the component auction and not the top-level auction.
-*   “${highestScoringOtherBid}” - The value of the bid that was scored as second highest by the seller’s scoreAd script. Note that this may not be the second highest bid value, since scores and bids may be independent. This value comes from and is only reported in component auctions but not top-level auctions, and is not reported to losing bidders.
-*   “${highestScoringOtherBidCurrency}” - The currency `highestScoringOtherBid` is in. If the auction has a `sellerCurrency` configured, this will be its currency tag; otherwise it is `'???'` to denote that it's in the bidder's original currency.
-*   “${madeHighestScoringOtherBid}” - A [Boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) value representing whether the owner of this interest group made the ${highestScoringOtherBid} bid, either via this interest group, or another interest group with the same owner. This value comes from and is only reported in component auctions but not top-level auctions, and is not reported to losing bidders. If there’s a tie for ${highestScoringOtherBid} from more than one owner, this is false for all.
-*   “${topLevelWinningBid}” - The value of the bid that won the top-level auction. This value is only reported to component sellers.
-*   “${topLevelWinningBidCurrency}” - The currency `topLevelWinningBid` is in.
+*   "${winningBid}" - The value of the winning bid. In component auctions, this value comes from the component auction and not the top-level auction.
+*   "${winningBidCurrency}" - If the auction has a `sellerCurrency` configured, this will be its currency tag; otherwise it is `'???'` to denote that it's in the bidder's original currency.
+*   "${madeWinningBid}" - A [Boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) value representing whether the owner of this interest group made the winning bid, either via this interest group, or another interest group with the same owner. In component auctions, this value comes from the component auction and not the top-level auction.
+*   "${highestScoringOtherBid}" - The value of the bid that was scored as second highest by the seller’s scoreAd script. Note that this may not be the second highest bid value, since scores and bids may be independent. This value comes from and is only reported in component auctions but not top-level auctions, and is not reported to losing bidders.
+*   "${highestScoringOtherBidCurrency}" - The currency `highestScoringOtherBid` is in. If the auction has a `sellerCurrency` configured, this will be its currency tag; otherwise it is `'???'` to denote that it's in the bidder's original currency.
+*   "${madeHighestScoringOtherBid}" - A [Boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) value representing whether the owner of this interest group made the ${highestScoringOtherBid} bid, either via this interest group, or another interest group with the same owner. This value comes from and is only reported in component auctions but not top-level auctions, and is not reported to losing bidders. If there’s a tie for ${highestScoringOtherBid} from more than one owner, this is false for all.
+*   "${topLevelWinningBid}" - The value of the bid that won the top-level auction. This value is only reported to component sellers.
+*   "${topLevelWinningBidCurrency}" - The currency `topLevelWinningBid` is in.
 If the top-level auction has a `sellerCurrency` configured, this will be its currency tag; otherwise it is `'???'` to denote that it's in whatever currency the component auction made the bid in.
 * `${rejectReason}` - The seller can optionally add a `rejectReason` field to its `scoreAd()` return object to convey to the bidder a more detailed reason why the bid was rejected. A component auction's bidders only get reject reasons from its component seller, but not reject reasons from the top-level seller. The reject reason returned by `scoreAd()` must be one of:
     *   "not-available", which is the default value, when a bid
@@ -1262,14 +1262,14 @@ If the top-level auction has a `sellerCurrency` configured, this will be its cur
 This design has three main goals:
 *   Prevent sending fDO reports very often to protect user privacy:
   * Only sending reports 1/1000 times the forDebuggingOnly API is called, and
-  * If a report is sent, “lock-out” all adtechs out of sending a report for 3 years, and
-  * If an adtech calls the API, put them in a  “cool-down” period where calls to the API by that given adtech are not able to send reports.
-*  Prevent one adtech from substantially compromising a different adtech's access to debugging information.  The "cooldown" period means that any particular adtech can only cause a very small fraction of people to send debug reports and be removed from the potential debugging pool.
+  * If a report is sent, "lock-out" all adtechs out of sending a report for 3 years, and
+  * If an adtech calls the API, put them in a "cool-down" period where calls to the API by that given adtech are not able to send reports.
+*  Prevent one adtech from substantially compromising a different adtech's access to debugging information. The "cooldown" period means that any particular adtech can only cause a very small fraction of people to send debug reports and be removed from the potential debugging pool.
 *  Prevent adtechs who accidentally (e.g. due to a bug in their code) call the API repeatedly for all users, from locking themselves out of sending any more reports for years. This is accomplished by 90% of the time putting that adtech in a 2 week cooldown period, and only 10% of the time putting that adtech in a 1 year cooldown period.
 
 See [issue 632](https://github.com/WICG/turtledove/issues/632) for more information.
 
-Both `generateBid()` and `scoreAd()`’s `browserSignals` have a new boolean field `forDebuggingOnlyInCooldownOrLockout`. It’s true when the API is in the global “lock-out” period, or when this particular buyer or seller, respectively, is in “cool-down” period.
+Both `generateBid()` and `scoreAd()`’s `browserSignals` have a new boolean field `forDebuggingOnlyInCooldownOrLockout`. It’s true when the API is in the global "lock-out" period, or when this particular buyer or seller, respectively, is in "cool-down" period.
 
 #### 7.2 navigator.deprecatedReplaceInURN()
 To help with ease of adoption, [until at least 2026](https://github.com/WICG/turtledove/issues/286#issuecomment-1682842636) Protected Audience will support the `navigator.deprecatedReplaceInURN()` API.
