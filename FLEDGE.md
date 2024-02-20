@@ -1259,16 +1259,17 @@ If the top-level auction has a `sellerCurrency` configured, this will be its cur
 
 #### 7.1.2 Downsampling
 
-This design has two main goals:
+This design has three main goals:
 *   Prevent sending fDO reports very often to protect user privacy:
-Only sending reports 1/1000 times the forDebuggingOnly API is called, and
-If a report is sent, “lock-out” all adtechs out of sending a report for 3 years, and
-If an adtech calls the API, put them in a  “cool-down” period where calls to the API by that given adtech are not able to send reports.
-*  Prevent adtechs who accidentally (e.g. due to a bug in their code) call the API repeatedly for all users, from locking themselves out of sending any more reports for years. This is accomplished by 90% of the time putting that adtech in a 2 week “cooldown” period, and only 10% of the time putting that adtech in a 1 year cooldown period.
+  * Only sending reports 1/1000 times the forDebuggingOnly API is called, and
+  * If a report is sent, “lock-out” all adtechs out of sending a report for 3 years, and
+  * If an adtech calls the API, put them in a  “cool-down” period where calls to the API by that given adtech are not able to send reports.
+*  Prevent one adtech from substantially compromising a different adtech's access to debugging information.  The "cooldown" period means that any particular adtech can only cause a very small fraction of people to send debug reports and be removed from the potential debugging pool.
+*  Prevent adtechs who accidentally (e.g. due to a bug in their code) call the API repeatedly for all users, from locking themselves out of sending any more reports for years. This is accomplished by 90% of the time putting that adtech in a 2 week cooldown period, and only 10% of the time putting that adtech in a 1 year cooldown period.
 
 See [issue 632](https://github.com/WICG/turtledove/issues/632) for more information.
 
-Both `generateBid()` and `scoreAd()`’s `browserSignals` have a new boolean field `forDebuggingOnlyInCooldownOrLockout`. It’s true when adtechs are in “lock-out” period, or when the buyer (or seller of `scoreAd()`) is in “cool-down” period.
+Both `generateBid()` and `scoreAd()`’s `browserSignals` have a new boolean field `forDebuggingOnlyInCooldownOrLockout`. It’s true when the API is in the global “lock-out” period, or when this particular buyer or seller, respectively, is in “cool-down” period.
 
 #### 7.2 navigator.deprecatedReplaceInURN()
 To help with ease of adoption, [until at least 2026](https://github.com/WICG/turtledove/issues/286#issuecomment-1682842636) Protected Audience will support the `navigator.deprecatedReplaceInURN()` API.
