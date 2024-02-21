@@ -789,16 +789,11 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
   1. Let |k| be |replacement|'s [=ad keyword replacement/match=].
   1. Let |v| be |replacement|'s [=ad keyword replacement/replacement=].
   1. [=map/Set=] |replacements|[|k|] to |v|.
-1. Set |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] to the result of
+1. Let |replacedAdURL| be the result of
   running [=fencedframeutil/substitute macros=] with |replacements| and |winningBid|'s 
   [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-1. If |winningBid|'s [=generated bid/ad component descriptors=] is not null:
-  1. [=list/For each=] |adDescriptor| of |winningBid|'s 
-    [=generated bid/ad component descriptors=]:
-    1. Set |adDescriptor|'s [=ad descriptor/url=] to the result of running [=fencedframeutil/substitute macros=] with
-      |replacements| and |adDescriptor|'s [=ad descriptor/url=].
 1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
-   |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+   |replacedAdURL|.
 1. Let |adSize| be |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/size=].
 1. If |adSize| is not null:
    1. Set |pendingConfig|'s [=fenced frame config/content size=] to a [=struct=] with the following
@@ -841,9 +836,19 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
       [=fenced frame reporting metadata/value=]'s
       [=fenced frame reporting metadata/fenced frame reporting map=], |winningBidInfo| and
       |auctionReportInfo|.
+1. Let |adComponentDescriptorsWithReplacements| be a new [=list=] of [=ad descriptors=].
+1. If |winningBid|'s [=generated bid/ad component descriptors=] is not null: 
+  1. [=list/For each=] |adComponentDescriptor| of |winningBid|'s 
+    [=generated bid/ad component descriptors=]:
+    1. Let |descriptorWithReplacement| be a new [=ad descriptor=].
+    1. Set |descriptorWithReplacement|'s [=ad descriptor/size=] to 
+      |adComponentDescriptor|'s [=ad descriptor/size=].
+    1. Set |descriptorWithReplacement|'s [=ad descriptor/url=] to the result of running
+      [=fencedframeutil/substitute macros=] with |replacements| and |adComponentDescriptor|'s
+      [=ad descriptor/url=].
+    1. [=list/Append=] |descriptorWithReplacement| to |adComponentDescriptorsWithReplacements|.
 1. Set |pendingConfig|'s [=fenced frame config/nested configs=]'s [=nested configs/value=] to
-   the result of running [=create nested configs=] with |winningBid|'s
-   [=generated bid/ad component descriptors=].
+   the result of running [=create nested configs=] with |adComponentDescriptorsWithReplacements|.
 1. Return |pendingConfig|.
 
 </div>
@@ -1122,6 +1127,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       1. [=list/For each=] |replacement| in |result|:
         1. If [=validate a url macro=] with |replacement|'s [=ad keyword replacement/match=] 
           returns false, then [=exception/throw=] a {{TypeError}}.
+        1. If [=validate a url macro=] with |replacement|'s [=ad keyword replacement/match=] 
+          returns false, then [=exception/throw=] a {{TypeError}}.
         1. Otherwise, [=list/append=] |replacement| to |renderUrlReplacements|.
       1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to 
         |renderUrlReplacements|.
@@ -1257,6 +1264,10 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 <div algorithm>
 
   To <dfn>validate a url macro</dfn> given a [=string=] |macro|:
+  1. Return true if any of the following conditions hold:
+    * |macro| [=string/starts with=] "'${'" and [=string/ends with=] "'}'";
+    * |macro| [=string/starts with=] "'%%'" and [=string/ends with=] "'%%'".
+  1. Otherwise, return false.
   1. Return true if any of the following conditions hold:
     * |macro| [=string/starts with=] "'${'" and [=string/ends with=] "'}'";
     * |macro| [=string/starts with=] "'%%'" and [=string/ends with=] "'%%'".
