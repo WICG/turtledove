@@ -607,6 +607,7 @@ dictionary AuctionAdConfig {
   sequence<record<DOMString, DOMString>> allSlotsRequestedSizes;
   Promise<any> sellerSignals;
   Promise<DOMString> directFromSellerSignalsHeaderAdSlot;
+  Promise<record<USVString, USVString>> deprecatedRenderURLReplacements;
   unsigned long long sellerTimeout;
   unsigned short sellerExperimentGroupId;
   USVString sellerCurrency;
@@ -1096,6 +1097,14 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     * To handle an error:
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
         failure.
+1. If |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"] [=map/exists=]:
+  1. Let |renderUrlReplacements| be a new empty [=list=].
+  1. [=list/For each=] |localReplacement| in |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"]:
+    1. Let |match| be the [=ad keyword replacement/match=] within |localReplacement|.
+    1. If [=validate a url macro=] with |match| returns false, then throw a {{TypeError}}.
+    1. Otherwise, [=list/Append=] |localReplacement| to |renderUrlReplacements|.
+  1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to |renderUrlReplacements|.
+
 1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
   [=auction config/seller timeout=] to |config|["{{AuctionAdConfig/sellerTimeout}}"] in milliseconds
   or 500 milliseconds, whichever is smaller.
@@ -1216,6 +1225,22 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
      |resolveToConfig|, set |auctionConfig|'s [=auction config/resolve to config=] to
      |resolveToConfig|.
 1. Return |auctionConfig|.
+
+</div>
+
+<div algorithm>
+
+  To <dfn>validate a url macro</dfn> given a [=string=] |macro|:
+  1. If |macro| [=string/starts with=] "'${'":
+    1. If |macro| [=string/ends with=] "'}'":
+      1. Return true
+    1. Otherwise:
+      1. Return false
+  1. If |macro| [=string/starts with=] "'%%'":
+    1. If |macro| [=string/ends with=] "'%%'":
+      1. Return true
+    1. Otherwise:
+      1. Return false
 
 </div>
 
@@ -4862,6 +4887,13 @@ An <dfn>auction config</dfn> is a [=struct=] with the following items:
   :: A [=list=] of [=auction config=]s.
     Nested auctions whose results will also participate in a top level auction. Only the top level
     [=auction config=] can have component auctions.
+
+  : <dfn>deprecated render url replacements</dfn>
+  :: Null, a {{Promise}}, failure, or a [=list=] of [=ad keyword replacement=]s, each containing a 
+    single [=ad keyword replacement/match=] and [=ad keyword replacement/replacement=]. Render url 
+    replacements can only happen within the top level [=auction config=] or
+    within the component [=auction config=]s, but not both simultaneously. 
+    
   : <dfn>seller experiment group id</dfn>
   :: Null or an {{unsigned short}}, initially null.
     Optional identifier for an experiment group to support coordinated experiments with the seller's
@@ -4922,12 +4954,12 @@ To <dfn>wait until configuration input promises resolve</dfn> given an [=auction
   1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
   1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], and
+    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], [=auction config/deprecated render url replacements=], and
     [=auction config/direct from seller signals header ad slot=] are not {{Promise}}s, and
     [=auction config/expects additional bids=] is false.
   1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], or
+    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], [=auction config/deprecated render url replacements=], or
     [=auction config/direct from seller signals header ad slot=] is failure, return failure.
   1. Return.
 </div>
@@ -5107,6 +5139,15 @@ An <dfn>ad size</dfn> is the width and height of an ad.
     [=ad size/height=] to |height|, [=ad size/height units=] to |heightUnit|.
   1. Return |adSize|.
 </div>
+
+An <dfn>ad keyword replacement</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="ad keyword replacement">
+  : <dfn>match</dfn>
+  :: A [=string=], meant to match part of a {{AuctionAd/renderURL}}. must be in the format `${<match>}` or `%%<match>%%`
+  : <dfn>replacement</dfn>
+  :: A [=string=], meant to replace [=ad keyword replacement/match=] within a {{AuctionAd/renderURL}}.
+</dl>
 
 <h3 id=direct-from-seller-signals-section>Direct from seller signals</h3>
 
