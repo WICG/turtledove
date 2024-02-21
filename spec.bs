@@ -1098,12 +1098,22 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
         failure.
 1. If |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"] [=map/exists=]:
-  1. Let |renderUrlReplacements| be a new empty [=list=].
-  1. [=list/For each=] |replacement| in |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"]:
-    1. Let |match| be the [=ad keyword replacement/match=] within |replacement|.
-    1. If [=validate a url macro=] with |match| returns false, then throw a {{TypeError}}.
-    1. Otherwise, [=list/Append=] |replacement| to |renderUrlReplacements|.
-  1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to |renderUrlReplacements|.
+  1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to 
+    |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"].
+  1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
+      [=auction config/deprecated render url replacements=]:
+      * To parse the value |result|:
+        1. Let |renderUrlReplacements| be a new empty [=list=].
+        1. [=list/For each=] |replacement| in |result|:
+          1. Let |match| be the [=ad keyword replacement/match=] within |replacement|.
+          1. If [=validate a url macro=] with |match| returns false, then [=exception/throw=] a
+            {{TypeError}}.
+          1. Otherwise, [=list/append=] |replacement| to |renderUrlReplacements|.
+        1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to 
+          |renderUrlReplacements|.
+      * To handle an error, set |auctionConfig|'s 
+        [=auction config/deprecated render url replacements=] to failure.
+      
 
 1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
   [=auction config/seller timeout=] to |config|["{{AuctionAdConfig/sellerTimeout}}"] in milliseconds
@@ -1210,6 +1220,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. If |config|["{{AuctionAdConfig/componentAuctions}}"] is not [=list/empty=]:
   1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=] and is not [=list/empty=],
     then return failure.
+  1. If |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"] [=map/exists=] and is not [=list/empty=],
+    then return failure.
 1. [=list/For each=] |component| in |config|["{{AuctionAdConfig/componentAuctions}}"]:
   1. If |isTopLevel| is false, then return failure.
   1. Let |componentAuction| be the result of running [=validate and convert auction ad config=] with
@@ -1232,15 +1244,9 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 
   To <dfn>validate a url macro</dfn> given a [=string=] |macro|:
   1. If |macro| [=string/starts with=] "'${'":
-    1. If |macro| [=string/ends with=] "'}'":
-      1. Return true
-    1. Otherwise:
-      1. Return false
+    1. If |macro| [=string/ends with=] "'}'", then return true, otherwise return false.
   1. If |macro| [=string/starts with=] "'%%'":
-    1. If |macro| [=string/ends with=] "'%%'":
-      1. Return true
-    1. Otherwise:
-      1. Return false
+    1. If |macro| [=string/ends with=] "'%%'", then return true, otherwise return false.
 
 </div>
 
