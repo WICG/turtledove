@@ -782,6 +782,21 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 |pendingConfig|, [=auction config=] |auctionConfig|, [=leading bid info=] |winningBidInfo|, and
 [=auction report info=] |auctionReportInfo|:
 1. Let |winningBid| be |winningBidInfo|'s [=leading bid info/leading bid=].
+1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose 
+  [=map/values=] are [=strings=].
+1. [=list/For each=] |replacement| in |auctionConfig|'s 
+  [=auction config/deprecated render url replacements=]:
+  1. Let |k| be |replacement|'s [=ad keyword replacement/match=].
+  1. Let |v| be |replacement|'s [=ad keyword replacement/replacement=].
+  1. [=map/Set=] |replacements|[|k|] to |v|.
+1. Set |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] to the result of
+  running [=fencedframeutil/substitute macros=] with |replacements| and |winningBid|'s 
+  [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+1. If |winningBid|'s [=generated bid/ad component descriptors=] is not null:
+  1. [=list/For each=] |adDescriptor| of |winningBid|'s 
+    [=generated bid/ad component descriptors=]:
+    1. Set |adDescriptor|'s [=ad descriptor/url=] to the result of running [=fencedframeutil/substitute macros=] with
+      |replacements| and |adDescriptor|'s [=ad descriptor/url=].
 1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
    |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
 1. Let |adSize| be |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/size=].
@@ -1105,9 +1120,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     * To parse the value |result|:
       1. Let |renderUrlReplacements| be a new empty [=list=] of [=ad keyword replacement=]s.
       1. [=list/For each=] |replacement| in |result|:
-        1. Let |match| be the [=ad keyword replacement/match=] within |replacement|.
-        1. If [=validate a url macro=] with |match| returns false, then [=exception/throw=] a
-          {{TypeError}}.
+        1. If [=validate a url macro=] with |replacement|'s [=ad keyword replacement/match=] 
+          returns false, then [=exception/throw=] a {{TypeError}}.
         1. Otherwise, [=list/append=] |replacement| to |renderUrlReplacements|.
       1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to 
         |renderUrlReplacements|.
@@ -1243,10 +1257,10 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 <div algorithm>
 
   To <dfn>validate a url macro</dfn> given a [=string=] |macro|:
-  1. If |macro| [=string/starts with=] "'${'":
-    1. If |macro| [=string/ends with=] "'}'", then return true, otherwise return false.
-  1. If |macro| [=string/starts with=] "'%%'":
-    1. If |macro| [=string/ends with=] "'%%'", then return true, otherwise return false.
+  1. Return true if any of the following conditions hold:
+    * |macro| [=string/starts with=] "'${'" and [=string/ends with=] "'}'";
+    * |macro| [=string/starts with=] "'%%'" and [=string/ends with=] "'%%'".
+  1. Otherwise, return false.
 
 </div>
 
@@ -4907,8 +4921,8 @@ An <dfn>auction config</dfn> is a [=struct=] with the following items:
   : <dfn>deprecated render url replacements</dfn>
   :: Null, a {{Promise}}, failure, or a [=list=] of [=ad keyword replacement=]s, each containing a 
     single [=ad keyword replacement/match=] and [=ad keyword replacement/replacement=]. Render url 
-    replacements can only happen within the top level [=auction config=] or
-    within the component [=auction config=]s, but not both simultaneously. 
+    replacements can only happen within a single seller [=auction config=] or
+    within the component [=auction config=]s. 
     
   : <dfn>seller experiment group id</dfn>
   :: Null or an {{unsigned short}}, initially null.
