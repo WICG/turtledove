@@ -722,7 +722,8 @@ The arguments to `generateBid()` are:
              corresponding to the ad that won though with only the 'renderURL' and 'metadata' fields. */
       'wasmHelper': ..., /* a WebAssembly.Module object based on interest group's biddingWasmHelperURL */
       'dataVersion': 1, /* Data-Version value from the trusted bidding signals server's response(s) */
-      'adComponentsLimit': 40, /* Maximum number of ad components generateBid() may return */
+      'adComponentsLimit': 40, /* Maximum number of ad components generateBid() may return */,
+      'multiBidLimit': 5, /* If set, maximum number of bids that can be returned at once */
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
@@ -745,6 +746,15 @@ The output of `generateBid()` contains the following fields:
 *   adComponents: (optional) A list of up to 20 (in process of being increased to 40 starting from M122) adComponent strings from the InterestGroup's adComponents field. Each value must match one of `interestGroup`'s `adComponent`'s `renderURL` and sizes exactly. This field must not be present if `interestGroup` has no `adComponent` field. It is valid for this field not to be present even when `adComponents` is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
 *   allowComponentAuction: If this buyer is taking part of a component auction, this value must be present and true, or the bid is ignored. This value is ignored (and may be absent) if the buyer is part of a top-level auction.
 * modelingSignals: A 0-4095 integer (12-bits) passed to `reportWin()`, with noising, as described in the [noising and bucketing scheme](#521-noised-and-bucketed-signals). Invalid values, such as negative, infinite, and NaN values, will be ignored and not passed. Only the lowest 12 bits will be passed.
+
+In case returning multiple bids is supported by the implementation in use,
+`generateBid` may also return up to `browserSignals.multiBidLimit` valid bid
+objects of the format above in an array.
+
+If none of the returned bids pass the k-anonymity checks, `generateBid` will be
+re-run with the input `interestGroup` filtered to contain only k-anonymous ads
+and component ads. Such re-runs are limited to returning only a single bid,
+even if multiple bid support is otherwise on.
 
 `generateBid()` has access to the `setPrioritySignalsOverride(key, value)` method. This adds an entry to the current interest group's `prioritySignalsOverrides` dictionary with the specified `key` and `value`, overwriting the previous value, if there was already an entry with `key`. If `value` is null, the entry with the specified key is deleted, if it exists.
 
