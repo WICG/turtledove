@@ -355,6 +355,7 @@ const myAuctionConfig = {
   'perBuyerCurrencies': {'https://example.co.uk': 'GBP',
                          'https://example.fr': 'EUR',
                          '*': 'USD'},
+  'perBuyerMultiBidLimits': {'https://example.com': 10, '*': 5},
   'sellerCurrency:' : 'CAD',
   'componentAuctions': [
     {'seller': 'https://www.some-other-ssp.com',
@@ -723,7 +724,7 @@ The arguments to `generateBid()` are:
       'wasmHelper': ..., /* a WebAssembly.Module object based on interest group's biddingWasmHelperURL */
       'dataVersion': 1, /* Data-Version value from the trusted bidding signals server's response(s) */
       'adComponentsLimit': 40, /* Maximum number of ad components generateBid() may return */,
-      'multiBidLimit': 5, /* If set, maximum number of bids that can be returned at once */
+      'multiBidLimit': 5, /* If set, maximum number of bids that can be returned at once; see perBuyerMultiBidLimits */
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
@@ -754,7 +755,9 @@ objects of the format above in an array.
 If none of the returned bids pass the k-anonymity checks, `generateBid` will be
 re-run with the input `interestGroup` filtered to contain only k-anonymous ads
 and component ads. Such re-runs are limited to returning only a single bid,
-even if multiple bid support is otherwise on.
+even if multiple bid support is otherwise on, so they will have
+`browserSignals.multiBidLimit === 1`, regardless of the value of
+`perBuyerMultiBidLimits`.
 
 `generateBid()` has access to the `setPrioritySignalsOverride(key, value)` method. This adds an entry to the current interest group's `prioritySignalsOverrides` dictionary with the specified `key` and `value`, overwriting the previous value, if there was already an entry with `key`. If `value` is null, the entry with the specified key is deleted, if it exists.
 
