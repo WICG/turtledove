@@ -246,7 +246,7 @@ anywhere in the request where a plain `adRenderId` would have been sent (such as
 and `adComponents` fields as well as `prevWins`). Note that `include-full-ads` is not compatible
 with the auction server, so this mode is only for debugging.
 
-All fields that accept arbitrary metadata objects (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
+All fields that accept arbitrary metadata (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
 `biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must be
 same-origin with `owner` and must point to URLs whose responses include the HTTP
@@ -327,8 +327,8 @@ const myAuctionConfig = {
   'sellerSignals': {...},
   'sellerTimeout': 100,
   'sellerExperimentGroupId': 12345,
-  'perBuyerSignals': {'https://www.example-dsp.com': {...},
-                      'https://www.another-buyer.com': {...},
+  'perBuyerSignals': {'https://www.example-dsp.com': ...,
+                      'https://www.another-buyer.com': ...,
                       ...},
   'perBuyerTimeouts': {'https://www.example-dsp.com': 50,
                        'https://www.another-buyer.com': 200,
@@ -409,7 +409,7 @@ Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame eleme
 1. Only pass `resolveToConfig: true` in if you detect that `window.FencedFrameConfig != undefined`, or
 1. Unconditionally pass in `resolveToConfig: true` and check whether the auction result is a config or a URN.
 
-All fields that accept arbitrary metadata objects (`auctionSignals`, `sellerSignals`, and keys of `perBuyerSignals`) must be JSON-serializable.
+All fields that accept arbitrary metadata (`auctionSignals`, `sellerSignals`, and `perBuyerSignals` dictionary values) must be JSON-serializable.
 All fields that specify URLs for loading scripts or JSON (`decisionLogicURL` and
 `trustedScoringSignalsURL`) must be same-origin with `seller` and must point to
 URLs whose responses include the HTTP response header `Ad-Auction-Allowed: true` to
@@ -563,17 +563,17 @@ The value of the `Ad-Auction-Signals` header must be JSON formatted, with the fo
 ```json
 Ad-Auction-Signals=[{
   "adSlot": "adSlot/1",
-  "sellerSignals": /*...*/,
-  "auctionSignals": /*...*/,
-  "perBuyerSignals": {"https://buyer1.example": /*...*/, /*...*/}
+  "sellerSignals": ...,
+  "auctionSignals": ...,
+  "perBuyerSignals": {"https://buyer1.example": ..., ...}
 },
 {
   "adSlot": "adSlot/2",
-  "sellerSignals": /*...*/,
-  "auctionSignals": /*...*/,
-  "perBuyerSignals": {"https://buyer1.example": /*...*/, /*...*/}
+  "sellerSignals": ...,
+  "auctionSignals": ...,
+  "perBuyerSignals": {"https://buyer1.example": ..., ...}
 },
-/*...*/
+...
 ]
 ```
 
