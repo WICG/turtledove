@@ -266,16 +266,17 @@ This is detectable because it can change the set of fields that are read from th
 
         Note: For forward compatibility with new values, don't [=exception/throw=].
     1. If |sellerString| is "`*`", then set |interestGroup|'s
-      [=interest group/all seller capabilities=] to |sellerCapabilities|.
+      [=interest group/all sellers capabilities=] to |sellerCapabilities|.
     1. Otherwise:
       1. If |interestGroup|'s [=interest group/seller capabilities=] is null, then set
         |interestGroup|'s [=interest group/seller capabilities=] to a new [=ordered map=] whose
         [=map/keys=] are [=origins=] and whose [=map/values=] are [=sets=] of [=seller capabilities=].
-      1. Let |seller| be the result of running the [=URL parser=] on |sellerString|.
-      1. If |seller| is not failure, and |interestGroup|'s [=interest group/seller capabilities=]
-        does not [=map/contain=] |seller|, then [=map/set=] |interestGroup|'s
-        [=interest group/seller capabilities=][|seller|] to |sellerCapabilities|.
-
+      1. Let |sellerUrl| be the result of running the [=URL parser=] on |sellerString|.
+      1. If |sellerUrl| is not failure:
+        1. Let |seller| be |sellerUrl|'s [=url/origin=].
+        1. If |interestGroup|'s [=interest group/seller capabilities=] does not [=map/contain=]
+          |seller|, then [=map/set=] |interestGroup|'s
+          [=interest group/seller capabilities=][|seller|] to |sellerCapabilities|.
   1. Set |interestGroup|'s [=interest group/execution mode=] to
     |group|["{{GenerateBidInterestGroup/executionMode}}"].
   1. For each |groupMember| and |interestGroupField| in the following table
@@ -1205,7 +1206,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     |signals|.
 1. If |config|["{{AuctionAdConfig/requiredSellerCapabilities}}"] [=map/exists=]:
   1. Let |sellerCapabilities| be a new [=set=] of [=seller capabilities=].
-  1. [=list/For each=] |capabilityString| of |config|["{{AuctionAdConfig/requiredSellerCapabilities}}"]:
+  1. [=list/For each=] |capabilityString| of
+    |config|["{{AuctionAdConfig/requiredSellerCapabilities}}"]:
     1. If |capabilityString| is "`interest-group-counts`" or "`latency-stats`", then [=set/append=]
       |capabilityString| to |sellerCapabilities|.
 
@@ -1351,8 +1353,6 @@ To <dfn>check if required seller capabilities are permitted</dfn> given an [=auc
     * |ig|'s [=interest group/seller capabilities=][|seller|] [=map/exists=];
     * |requiredSellerCapabilities| is a [=set/subset=] of |ig|'s
       [=interest group/seller capabilities=][|seller|].
-  1. If |requiredSellerCapabilities| is a [=set/subset=] of |ig|'s
-    [=interest group/all seller capabilities=], then return true.
   1. Return false.
 </div>
 
@@ -3892,16 +3892,18 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
 
               Note: For forward compatibility with new values, don't [=exception/throw=].
 
-          1. If |sellerString| is "`*`", then set |ig|'s [=interest group/all seller capabilities=]
+          1. If |sellerString| is "`*`", then set |ig|'s [=interest group/all sellers capabilities=]
             to |sellerCapabilities|.
           1. Otherwise:
             1. If |ig|'s [=interest group/seller capabilities=] is null, then set |ig|'s
               [=interest group/seller capabilities=] to a new [=ordered map=] whose [=map/keys=] are
               [=origins=] and whose [=map/values=] are [=sets=] of [=seller capabilities=].
-            1. Let |seller| be the result of running the [=URL parser=] on |sellerString|.
-            1. If |seller| is not failure, and |ig|'s [=interest group/seller capabilities=] does
-              not [=map/contain=] |seller|, then [=map/set=] |ig|'s
-              [=interest group/seller capabilities=][|seller|] to |sellerCapabilities|.
+            1. Let |sellerUrl| be the result of running the [=URL parser=] on |sellerString|.
+            1. If |sellerUrl| is not failure:
+              1. Let |seller| be |sellerUrl|'s [=url/origin=].
+              1. If |ig|'s [=interest group/seller capabilities=] does not [=map/contain=] |seller|,
+                then [=map/set=] |ig|'s [=interest group/seller capabilities=][|seller|] to
+                |sellerCapabilities|.
         1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
         <dt>"`executionMode`"
@@ -4575,7 +4577,10 @@ dictionary ReportingBrowserSignals {
   <dt>{{ReportingBrowserSignals/componentSeller}}
   <dd>Copied from [=leading bid info/component seller=]
   <dt>{{ReportingBrowserSignals/buyerAndSellerReportingId}}
-  <dd>Set if the winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its listing in the interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with interest group owner, bidding script URL, and [=ad creative=] URL.
+  <dd>Set if the winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its
+    listing in the interest group, and that value was
+    [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with interest group owner,
+    bidding script URL, and [=ad creative=] URL.
 </dl>
 
 <xmp class="idl">
@@ -4701,7 +4706,7 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
   :: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
     [=sets=] of [=seller capabilities=].
     The [=seller capabilities=] this [=interest group=] grants to each seller.
-  : <dfn>all seller capabilities</dfn>
+  : <dfn>all sellers capabilities</dfn>
   :: Null or a [=set=] of [=seller capabilities=].
     The default [=seller capabilities=] granted to sellers not listed in
     [=interest group/seller capabilities=].
