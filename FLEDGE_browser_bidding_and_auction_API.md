@@ -91,6 +91,37 @@ const auctionResultPromise = navigator.runAdAuction({
 
 The browser verifies it witnessed a Fetch request to the `seller`’s origin with `"adAuctionHeaders: true"` that included an `Ad-Auction-Result` header with hash of `response_blob`. It also checks that the `response_blob` corresponds to the `navigator.getInterestGroupAdAuctionData()` request with the provided `requestId` that was sent from the same frame. Since the Fetch request required HTTPS which authenticates the seller’s origin, this verification authenticates that the seller produced the response blob. `runAdAuction()` then proceeds as if the auction happened on device. This specially configured auction configuration can be used for single seller auctions or as a component auction configuration for multi-seller auctions (in this case the `getInterestGroupAdAuctionData()` call must include a `top_level_seller` field that must later match the top-level seller passed to `runAdAuction()`). To facilitate parallelizing on-device and on-server auctions, the `serverResponse` could be a Promise that resolves to a `Uint8Array` containing the blob later.
 
+## Device Orchestrated Multi-Seller Auctions
+
+Auctions run using the Bidding and Auction servers can be mixed with on-device
+auctions using [component auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#24-scoring-bids-in-component-auctions:~:text=In%20some%20cases,seller%27s%20%22component%20auction%22). The top-level scoring script will decide
+between the top scoring bidders from the component auctions.
+
+```javascript
+const myAuctionConfig = {
+  'seller': 'https://www.example-ssp.com',
+  'decisionLogicURL': ...,
+  'trustedScoringSignalsURL': ...,
+  'componentAuctions': {
+        { // On-device auction
+          'seller': 'https://www.some-other-ssp.com',
+           'decisionLogicURL': ...,
+           'interestGroupBuyers': ...,
+      ...},
+        { // B&A auction
+          'seller': 'https://www.example-ssp.com',
+          'interestGroupBuyers': ['https://www.example-dsp.com'],
+          'requestId': requestId,
+          'serverResponse': response_blob
+        },
+    ...
+  }
+}
+```
+
+Note that since the `serverResponse` field in the config is a promise it is
+possible to run the on-device auction in parallel with the B&A auction.
+
 ## Privacy Considerations
 
 The blobs sent to and received from the B&A servers can contain data that could be used to re-identify the user across different web sites. To prevent this data from being used to join the user’s cross-site identities, the data is encrypted with public keys whose corresponding private keys are only shared with B&A server instances running in TEEs and running public open-source binaries known to prevent cross-site identity joins (e.g. by preventing logging or other activities which might permit such joins).
@@ -113,6 +144,19 @@ Exposing size of the blob is a temporary leak that we hope to mitigate in the fu
 1.  As TEEs become more prevalent and adtechs gain experience operating and deploying them, we can reconsider whether the server that the browser sends the blob to could in fact be a trusted one operating in a TEE.
 
 1.  The size of the encrypted blob may shrink considerably, where padding may become a more effective privacy prevention (e.g. imagine fixed size blobs) and may introduce little overhead. [We recently announced](https://github.com/WICG/turtledove/issues/361#issuecomment-1430069343) changes to the interest group update requirements that should facilitate significantly fewer interest groups. Having many fewer interest groups can greatly reduce the size of the encrypted blob. These same changes allow for more information to be stored in the real-time trusted bidding signals server and simply indexed with a small identifier kept in the interest group, again shrinking the interest groups.
+
+## Consented Debugging
+
+The Bidding and Auction API offers a special "Consented Debugging" Mode where
+logs related an individual request are made available on the server. A developer
+can opt-in to this mode in Chrome by going to `chrome://flags` and enabling the
+"Protected Audience Consented Debug Token" feature with the same value that is
+set in the Bidding and Auction Server's `consented_debug_token` configuration.
+Chrome will send this value to the server which will produce additional logging
+information related to the request when it finds the value in the request
+matches the server value. Note that you should use a unique value for the
+`consented_debug_token` to avoid subjecting other servers involved in handling
+the request to additional load from logging.
 
 # Appendix
 

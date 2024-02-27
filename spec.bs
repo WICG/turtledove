@@ -1364,6 +1364,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
   [=auction config/decision logic url=].
 1. If |decisionLogicScript| is failure, return null.
+1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. Let « |bidGenerators|, |negativeTargetInfo| » be the result of running
   [=build bid generators map=] with |auctionConfig|.
 1. Let |leadingBidInfo| be a new [=leading bid info=].
@@ -1385,9 +1386,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       failure, return failure.
     1. If |topLevelDirectFromSellerSignalsRetrieved| is false:
       1. Let |topLevelDirectFromSellerSignals| be the result of running
-        [=get direct from seller signals=] given |auctionConfig|'s [=auction config/seller=],
-        |auctionConfig|'s [=auction config/direct from seller signals header ad slot=], and
-        |capturedAuctionHeaders|.
+        [=get direct from seller signals=] given |seller|, |auctionConfig|'s
+        [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
       1. Let |topLevelDirectFromSellerSignalsForSeller| be the result of running
         [=get direct from seller signals for a seller=] given |topLevelDirectFromSellerSignals|.
       1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
@@ -1407,8 +1407,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     |winningComponentConfig|, and |global|.
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |winningComponentConfig|.
   1. Set |leadingBidInfo|'s [=leading bid info/component seller=] to null.
-  1. Set |leadingBidInfo|'s [=leading bid info/top level seller=] to |auctionConfig|'s
-    [=auction config/seller=].
+  1. Set |leadingBidInfo|'s [=leading bid info/top level seller=] to |seller|.
   1. Set |leadingBidInfo|'s [=leading bid info/top level seller signals=] to
     |topLevelSellerSignals|.
   1. Let |directFromSellerSignals| be the result of running [=get direct from seller signals=] given
@@ -1433,8 +1432,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |allBuyersGroupLimit| be |auctionConfig|'s [=auction config/all buyers group limit=].
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
 1. Let |directFromSellerSignals| be the result of running [=get direct from seller signals=] given
-  |auctionConfig|'s [=auction config/seller=], |auctionConfig|'s
-  [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
+  |seller|, |auctionConfig|'s [=auction config/direct from seller signals header ad slot=], and
+  |capturedAuctionHeaders|.
 1. Let |directFromSellerSignalsForSeller| be the result of running
   [=get direct from seller signals for a seller=] given |directFromSellerSignals|.
 1. Let |browserSignals| be a {{BiddingBrowserSignals}}.
@@ -1442,7 +1441,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   |topLevelOrigin|'s [=origin/host=].
 1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/topWindowHostname}}"] to |topLevelHost|.
 1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/seller}}"] to the [=serialization of an
-  origin|serialization=] of |auctionConfig|'s [=auction config/seller=].
+  origin|serialization=] of |seller|.
 1. Let |auctionLevel| be "single-level-auction".
 1. Let |componentAuctionExpectedCurrency| be null.
 1. If |topLevelAuctionConfig| is not null:
@@ -1451,7 +1450,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     [=auction config/seller=].
   1. Set |auctionLevel| to "component-auction".
   1. Set |componentAuctionExpectedCurrency| to the result of [=looking up per-buyer currency=] with
-    |topLevelAuctionConfig| and |auctionConfig|'s [=auction config/seller=].
+    |topLevelAuctionConfig| and |seller|.
 1. Let |pendingBuyers| be |bidGenerators|'s [=map/size=].
 1. Let |additionalBids| be the result of running [=validate and convert additional bids=] with
   |auctionConfig|, |topLevelAuctionConfig|, |negativeTargetInfo| and |global|.
@@ -1503,6 +1502,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|].
   1. Let |expectedCurrency| be the result of [=looking up per-buyer currency=] with |auctionConfig|
     and |buyer|.
+  1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}"]
+    to the result of running [=is debugging only in cooldown or lockout=] with |buyer|.
   1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perSlotSizeQueryParam|:
     1. [=map/For each=] |slotSizeQueryParam| → |perSlotSizeQueryParam| of |perBuyerGenerator|:
       1. Let |keys| be a new [=ordered set=].
@@ -1550,7 +1551,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             |generateBidDuration|.
           1. If |generatedBid|'s [=generated bid/no bid=] is true, [=iteration/continue=].
           1. If [=query generated bid k-anonymity count=] given |generatedBid| returns false:
-  
+
             Note: [=Generate a bid=] is now rerun with only k-anonymous [=interest group/ads=] to give
             the buyer a chance to [=generate a bid=] for k-anonymous [=interest group/ads=]. Allowing
             the buyer to first [=generate a bid=] for non-k-anonymous [=interest group/ads=] provides a
@@ -1710,6 +1711,7 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null, then set |bidValue| to
   |generatedBid|'s [=generated bid/modified bid=].
 1. Let |owner| be |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=].
+1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. Let |browserSignals| be a {{ScoringBrowserSignals}} with the following fields:
   <dl>
     <dt>{{ScoringBrowserSignals/topWindowHostname}}
@@ -1728,6 +1730,8 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     <dd>|scoringDataVersion| if it is not null, {{undefined}} otherwise
     <dt>{{ScoringBrowserSignals/adComponents}}
     <dd>|generatedBid|'s [=generated bid/ad component descriptors=] [=converted to a string sequence=]
+    <dt>{{ScoringBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}
+    <dd>The result of running [=is debugging only in cooldown or lockout=] with |seller|
   </dl>
 
 1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl| » be the result of
@@ -1744,6 +1748,8 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   1. Set |generatedBid|'s [=generated bid/seller debug loss report url=] to |debugLossReportUrl|.
   1. Set |generatedBid|'s [=generated bid/seller debug win report url=] to |debugWinReportUrl|.
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
+1. If |auctionLevel| is "component-auction", then set |generatedBid|'s
+  [=generated bid/component seller=] to |seller|.
 1. Return if any of the following conditions hold:
   * |scoreAdOutput| is failure;
   * auctionLevel| is not "single-level-auction", and |scoreAdOutput|
@@ -2037,7 +2043,7 @@ To <dfn>calculate the ad slot size query param</dfn> given an [=interest group=]
     <dt>"`none`"
     <dd>
     1. Return "".
-  
+
     <dt>"`slot-size`"
     <dd>
     1. If |config|'s [=auction config/requested size=] is null, then return "".
@@ -2045,7 +2051,7 @@ To <dfn>calculate the ad slot size query param</dfn> given an [=interest group=]
       1. Let |adSizeString| the result of running [=convert an ad size to a string=] on |config|'s
         [=auction config/requested size=].
       1. Return the result of [=string/concatenating=] « "&amp;slotSize=", |adSizeString| ».
-  
+
     <dt>"`all-slots-requested-sizes`"
     <dd>
     1. If |config|'s [=auction config/all slots requested sizes=] is null, then return "".
@@ -2275,7 +2281,6 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
    1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
      : [=reporting result/report url=]
      :: |reportUrl|
-
      : [=reporting result/reporting beacon map=]
      :: |reportingBeaconMap|
   1. If |leadingBidInfo|'s [=leading bid info/top level seller=] is null (i.e., if we are reporting
@@ -2365,13 +2370,28 @@ a {{ReportingBrowserSignals}} |browserSignals|, and a [=direct from seller signa
 *This first introductory paragraph is non-normative.*
 
 "`generateBid()`" and "`scoreAd()`" can call
-{{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionWin(url)}} and
-{{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionLoss(url)}}
-for event-level forDebuggingOnly reports for winning and losing bids.
+{{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}'s
+{{ForDebuggingOnly/reportAdAuctionWin(url)}} and {{ForDebuggingOnly/reportAdAuctionLoss(url)}}
+methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losing bids.
+
+<div algorithm>
+  To <dfn>collect a single forDebuggingOnly report</dfn> given a [=URL=] |reportUrl|, an [=origin=]
+  |invokingOrigin|, and a [=list=] |debugReportUrls|:
+
+  Note: While the browser is experimenting with third party cookie deprecation (before they have
+  been fully removed), the {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}
+  reporting APIs supply temporary labels indicating when a particular instance would have been
+  downsampled instead of using the following steps to downsample it.
+
+  1. If |reportUrl| is null, or the result of running [=is debugging only in cooldown or lockout=]
+    with |invokingOrigin| is true, then return.
+  1. If the result of running [=sample a debug report=] with |invokingOrigin| is true, then
+    [=list/append=] |reportUrl| to |debugReportUrls|.
+</div>
 
 <div algorithm>
   To <dfn>collect forDebuggingOnly reports</dfn> given a [=list=] of [=generated bids=]
-  |generatedBids|, and a [=leading bid info=]-or-null |winnerInfo|:
+  |generatedBids|, [=origin=] |seller|, and [=leading bid info=]-or-null |winnerInfo|:
 
   1. Let |auctionReportInfo| be a new [=auction report info=].
   1. Let |winningBid| be |winnerInfo|'s [=leading bid info/leading bid=] if |winnerInfo| is
@@ -2379,22 +2399,107 @@ for event-level forDebuggingOnly reports for winning and losing bids.
   1. [=list/For each=] |generatedBid| of |generatedBids|:
     1. If |winningBid| is not null and |generatedBid|'s [=generated bid/id=] is |winningBid|'s
       [=generated bid/id=]:
-      1. If |generatedBid|'s [=generated bid/bidder debug win report url=] is not null,
-        then [=list/append=] it to |auctionReportInfo|'s [=auction report info/debug win report urls=].
-      1. If |generatedBid|'s [=generated bid/seller debug win report url=] is not null,
-        then [=list/append=] it to |auctionReportInfo|'s [=auction report info/debug win report urls=].
-      1. If |generatedBid|'s [=generated bid/top level seller debug win report url=] is
-        not null, then [=list/append=] it to |auctionReportInfo|'s
+      1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
+        [=generated bid/bidder debug win report url=], |generatedBid|'s
+        [=generated bid/interest group=]'s [=interest group/owner=], and |auctionReportInfo|'s
         [=auction report info/debug win report urls=].
+      1. If |generatedBid|'s [=generated bid/component seller=] is null:
+        1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
+          [=generated bid/seller debug win report url=], |seller|, and
+          |auctionReportInfo|'s [=auction report info/debug win report urls=].
+      1. Otherwise:
+        1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
+          [=generated bid/seller debug win report url=], |generatedBid|'s
+          [=generated bid/component seller=], |auctionReportInfo|'s
+          [=auction report info/debug win report urls=].
+        1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
+          [=generated bid/top level seller debug win report url=], |seller|, and
+          |auctionReportInfo|'s [=auction report info/debug win report urls=].
     1. Otherwise:
-      1. If |generatedBid|'s [=generated bid/bidder debug loss report url=] is not null,
-        then [=list/append=] it to |auctionReportInfo|'s [=auction report info/debug loss report urls=].
-      1. If |generatedBid|'s [=generated bid/seller debug loss report url=] is not null,
-        then [=list/append=] it to |auctionReportInfo|'s [=auction report info/debug loss report urls=].
-      1. If |generatedBid|'s [=generated bid/top level seller debug loss report url=] is
-        not null, then [=list/append=] it to |auctionReportInfo|'s
+      1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
+        [=generated bid/bidder debug loss report url=], |generatedBid|'s
+        [=generated bid/interest group=]'s [=interest group/owner=], and |auctionReportInfo|'s
         [=auction report info/debug loss report urls=].
+      1. If |generatedBid|'s [=generated bid/component seller=] is null:
+        1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
+          [=generated bid/seller debug loss report url=], |seller|, and
+          |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+      1. Otherwise:
+        1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
+          [=generated bid/seller debug loss report url=], |generatedBid|'s
+          [=generated bid/component seller=], |auctionReportInfo|'s
+          [=auction report info/debug loss report urls=].
+        1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
+          [=generated bid/top level seller debug loss report url=], |seller|, and
+          |auctionReportInfo|'s [=auction report info/debug loss report urls=].
   1. Return |auctionReportInfo|.
+</div>
+
+### Downsampling ### {#downsampling-header}
+
+*This first introductory paragraph is non-normative.*
+
+Implementations may define their own values for the below constants based on their privacy goal,
+however we supply the below values as a starting point, inspired by what the initial implementation
+of this specification uses:
+  * <dfn>sampling rate</dfn> is 1/1000, which means only sending reports 1/1000 times the
+    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}} API is called.
+  * <dfn>lockout period</dfn> is 3 years.
+  * <dfn>long cooldown rate</dfn> is 1/10, which means 10% of the time putting an adtech in a long
+    cooldown period if the adtech calls the API.
+  * <dfn>long cooldown period</dfn> is 1 year.
+  * <dfn>short cooldown period</dfn> is 2 weeks.
+
+Note: More details of how these numbers are determined can be found in comments here:
+(<a href="https://github.com/WICG/turtledove/issues/632">WICG/turtledove#667</a>).
+
+The design of downsampling [=forDebuggingOnly reports=] has three main goals:
+* Prevent sending debug reports very often to protect user privacy:
+  * Only sending debug reports [=sampling rate=] times the forDebuggingOnly API is called;
+  * if a report is sent, "lock-out" all adtechs out of sending a report for [=lockout period=];
+  * if an adtech calls the API, put them in a "cool-down" period where calls to the API by that
+    given adtech are not able to send reports.
+* Prevent one adtech from substantially compromising a different adtech's access to debugging
+  information. The "cool-down" period means that any particular adtech can only cause a very small
+  fraction of people to send debug reports and be removed from the potential debugging pool.
+* Prevent adtechs who accidentally (e.g. due to a bug in their code) call the API repeatedly for all
+  users, from locking themselves out of sending any more reports for years. This is accomplished by
+  only [=long cooldown rate=] of the time putting that adtech in a [=long cooldown period=], and
+  rest of the time putting that adtech in a [=short cooldown period=].
+
+The [=user agent=] has a <dfn>debug report lockout until</dfn>, which is null or a [=moment=], and
+a <dfn>debug report cooldown</dfn>, which is null or a [=map=] whose [=map/keys=] are [=origins=]
+and [=map/values=] are [=moments=] at which the cool down for the origin key expires.
+
+<div algorithm>
+  To <dfn>is debugging only in cooldown or lockout</dfn> given an [=origin=] |origin|:
+
+  1. If [=user agent=]'s [=debug report lockout until=] is not null, and [=current wall time=] is
+    less than [=user agent=]'s [=debug report lockout until=], return true. 
+  1. If [=user agent=]'s [=debug report cooldown=] is null, then return false.
+  1. If [=user agent=]'s [=debug report cooldown=][|origin|] [=map/exists=] and [=current wall time=]
+    is less than [=user agent=]'s [=debug report cooldown=][|origin|], then return true.
+  1. Return false.
+</div>
+
+<div algorithm>
+  To <dfn>sample a debug report</dfn> given an [=origin=] |origin|:
+
+  1. Let |canSendAfterSampled| be false.
+  1. Let |sampleRand| be a random {{long}}, 0 &le; |sampleRand| &lt; 1000, so each possible long would be
+    chosen with a probability equal to [=sampling rate=].
+  1. If |sampleRand| is 0:
+    1. Set |canSendAfterSampled| to true.
+    1. Set [=user agent=]'s [=debug report lockout until=] to [=current wall time=] plus
+      [=lockout period=].
+  1. Let |cooldownRand| be a random {{long}} &ge; 0 and &lt; 10, which corresponds to
+
+    [=long cooldown rate=].
+  1. Let |cooldownPeriod| be [=long cooldown period=] if |cooldownRand| is 0,
+    [=short cooldown period=] otherwise.
+  1. Set [=user agent=]'s [=debug report cooldown=][|origin|] to [=current wall time=] plus
+    |cooldownPeriod|.
+  1. Return |canSendAfterSampled|.
 </div>
 
 # Additional Bids and Negative Targeting # {#additional-bids-and-negative-targeting}
@@ -3117,6 +3222,8 @@ of the following global objects:
       1. Set |generatedBid| to a new [=generated bid=] with the following [=struct/items=]:
         : [=generated bid/no bid=]
         :: true
+        : [generated bid/interest group=]
+        :: |ig|
         : [=generated bid/bidder debug loss report url=]
         :: |debugLossReportUrl|
     1. Return |generatedBid|.
@@ -3935,7 +4042,7 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
     [=interest group ad/render url=].
   1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
 1. If |ig|'s [=interest group/additional bid key=] is not null:
-  1. 32, which is its size (number of bytes). 
+  1. 32, which is its size (number of bytes).
 
 </div>
 
@@ -4341,6 +4448,7 @@ dictionary BiddingBrowserSignals {
   sequence<PreviousWin> prevWinsMs;
   object wasmHelper;
   unsigned long dataVersion;
+  boolean forDebuggingOnlyInCooldownOrLockout = false;
 };
 
 dictionary ScoringBrowserSignals {
@@ -4352,6 +4460,7 @@ dictionary ScoringBrowserSignals {
 
   unsigned long dataVersion;
   sequence<USVString> adComponents;
+  boolean forDebuggingOnlyInCooldownOrLockout = false;
 };
 </xmp>
 
@@ -4934,29 +5043,37 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   :: A [=duration=] in milliseconds. How long it took to run `generateBid()`.
   : <dfn>provided as additional bid</dfn>
   :: A [=boolean=], initially false.
-
+  : <dfn>component seller</dfn>
+  :: Null or an [=origin=]. Seller in component auction which the [=generated bid/interest group=]
+    is participating. Only set for component auctions, null otherwise.
   : <dfn>bidder debug win report url</dfn>
   :: Null or a [=URL=], initially null. Set by `generateBid()`'s
-    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionWin(url)}}.
+    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}'s
+    {{ForDebuggingOnly/reportAdAuctionWin(url)}}.
   : <dfn>bidder debug loss report url</dfn>
   :: Null or a [=URL=], initially null. Set by `generateBid()`'s
-    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionLoss(url)}}.
+    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}'s
+    {{ForDebuggingOnly/reportAdAuctionLoss(url)}}.
   : <dfn>seller debug win report url</dfn>
   :: Null or a [=URL=], initially null. In the case of a component auction, these are the values
     from component seller that the scored ad was created in. Set by `scoreAd()`'s
-    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionWin(url)}}.
+    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}'s
+    {{ForDebuggingOnly/reportAdAuctionWin(url)}}.
   : <dfn>seller debug loss report url</dfn>
   :: Null or a [=URL=], initially null. In the case of a component auction, these are the values
     from component seller that the scored ad was created in. Set by `scoreAd()`'s
-    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionLoss(url)}}.
+    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}'s
+    {{ForDebuggingOnly/reportAdAuctionLoss(url)}}.
   : <dfn>top level seller debug win report url</dfn>
   :: Null or a [=URL=], initially null. Set in the case this bid was made in a component auction,
     won it, and was then scored by the top-level seller. Set by top-level seller's `scoreAd()`'s
-    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionWin(url)}}.
+    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}'s
+    {{ForDebuggingOnly/reportAdAuctionWin(url)}}.
   : <dfn>top level seller debug loss report url</dfn>
   :: Null or a [=URL=], initially null. Set in the case this bid was made in a component auction,
     won it, and was then scored by the top-level seller. Set by top-level seller's `scoreAd()`'s
-    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}.{{ForDebuggingOnly/reportAdAuctionLoss(url)}}.
+    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}'s
+    {{ForDebuggingOnly/reportAdAuctionLoss(url)}}.
 </dl>
 
 A <dfn>bid with currency</dfn> is a [=struct=] with the following [=struct/items=]:
@@ -5121,15 +5238,15 @@ scored bids. It's a [=struct=] with the following [=struct/items=]:
     `second highest score`. Set to null if there are more than one owners made bids with the
     `second highest score`.
   : <dfn>top level seller</dfn>
-  :: Null or a [=string=]. The seller in the top level auction.  Only set for component auctions,
+  :: Null or an [=origin=]. The seller in the top level auction. Only set for component auctions,
     null otherwise.
   : <dfn>top level seller signals</dfn>
   :: Null or a [=string=]. Signals from the seller in the top level auction, produced as the output
-    of the top-level seller's `reportResult()` method.  Only set for component auctions,
-    null otherwise.
+    of the top-level seller's `reportResult()` method. Only set for component auctions, null
+    otherwise.
   : <dfn>component seller</dfn>
-  :: Null or a [=string=]. Seller in component auction which generated this
-    [=leading bid info/leading bid=]. Only set the top level auction when component auctions are
+  :: Null or an [=origin=]. Seller in component auction which generated this
+    [=leading bid info/leading bid=]. Only set for the top level auction when component auctions are
     present, null otherwise.
   : <dfn>bidding data version</dfn>
   :: Null or an {{unsigned long}}.
@@ -5176,6 +5293,12 @@ An <dfn>auction report info</dfn> is a [=struct=] with the following [=struct/it
   : <dfn>debug loss report urls</dfn>
   :: A [=list=] of [=strings=] whose [=url/schemes=] must be "`https`". Losing bid's
     [=generated bid=]'s debug loss report URLs.
+
+    Issue: TODO:  Change the two lists to a single URL since no more than one debug reports can be
+    sent after [downsampling debug reports](#downsampling-header). While the browser is
+    experimenting with third party cookie deprecation (before they have been fully removed), the
+    `forDebuggingOnly` reporting APIs are not downsampled, so they are still lists.
+
 </dl>
 
 # Privacy Considerations # {#privacy-considerations}
