@@ -80,6 +80,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | adstir | SSP | 2024 Q2 - | | privacysandbox@united.jp  |
 | Bypass | DSP | 2024 Q2 - | | privacysandbox@united.jp  |
 | Anonymised | Ad Network | Testing in progress | | privacysandbox@anonymised.io |
+| Equativ | SSP & DSP | Testing in progress | | privacysandbox@equativ.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
