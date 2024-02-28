@@ -1256,6 +1256,7 @@ If the top-level auction has a `sellerCurrency` configured, this will be its cur
     *   "blocked-by-publisher"
     *   "language-exclusions"
     *   "category-exclusions"
+
   Some rejection reasons are generated automatically (and may not be set manually):
     *   "below-kanon-threshold"
     *   "wrong-generate-bid-currency"
