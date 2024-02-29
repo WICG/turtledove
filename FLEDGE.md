@@ -50,7 +50,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [7.1 forDebuggingOnly (fDO) APIs](#71-fdo-apis)
       - [7.1.1 Post Auction Signals](#711-post-auction-signals)
       - [7.1.2 Downsampling](#712-downsampling)
-    - [7.2 deprecatedReplaceInURN()](#72-deprecated-replace-in-urn)
+    - [7.2 deprecatedReplaceInURN()](#72-navigatordeprecatedreplaceinurn)
 
 
 ## Summary

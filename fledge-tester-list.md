@@ -49,9 +49,9 @@ The usefulness of this page depends on testers sharing information and updates.
 | NextRoll | DSP | 2024-01-30 | coming soon | privacysandbox@nextroll.com |
 | OpenX | SSP | Limited testing in progress | | joel.meyer@openx.com |
 | RTB House | DSP | Continuous testing ongoing; long term commitment. | https://blog.rtbhouse.com/whitepaper-deep-insights-from-early-fledge-experiments/ | privacysandbox@rtbhouse.com |
-| SMN | DSP | no later than January 31, 2024 | | privacy-sandbox-testing@so-netmedia.jp |
+| SMN | DSP | February 1st 2024 - April 30th 2024 | | privacy-sandbox-testing@so-netmedia.jp |
 | Raptive | Testing as DSP & SSP & Ad management service | ongoing | | dmarti@cafemedia.com |
-| CyberAgent(Dynalyst) | DSP | No later than January 31, 2024 | | privacysandbox@cyberagent.co.jp |
+| CyberAgent(Dynalyst) | DSP | March 15th 2024 - June 15th 2024 | | privacysandbox@cyberagent.co.jp |
 | Google Ad Manager + AdSense (including with Authorized Buyers) | SSP | Testing ongoing | [Publishers (Ad Manager)](https://support.google.com/admanager/answer/12052605?hl=en) <br/> [Publishers (AdSense)](https://support.google.com/adsense/answer/12570693)  <br/> [Authorized Buyers (DSPs)](https://developers.google.com/authorized-buyers/rtb/fledge-origin-trial#onboarding) <br/> [Multi-seller auction support](https://github.com/google/ads-privacy/tree/master/proposals/fledge-multiple-seller-testing) | Publishers with questions should reach out via their account manager directly, or via our [support channels](https://support.google.com/admanager/gethelp).<br/><br/>Authorized Buyers (DSPs) interested in testing should follow the steps listed in the [onboarding guide](https://developers.google.com/authorized-buyers/rtb/fledge-origin-trial#onboarding).<br/><br/>For technical questions on the experimental GPT API for multi-seller auctions, reach out via the “send feedback” button on the [GPT developer site](https://developers.google.com/publisher-tag/reference).| 
 | Google Ads + Display & Video 360 | DSP | Testing in progress | [Help Center Article](https://support.google.com/google-ads/answer/13626996?hl=en&ref_topic=13627218&sjid=16039190573195292133-NA) <br/> [Integration Guide for SSPs](https://developers.google.com/display-video/protected-audience/ssp-guide) <br/>   | Advertisers with questions can reach out via their account manager, or directly via this [form](https://docs.google.com/forms/d/1es8wVNYKD2PStYzE8atqZv4OJr3tuavWNMkmVcWRFQI/viewform?ts=63570235&edit_requested=true).| 
 | MicroAd | SSP & DSP | | | privacysandbox@microad.co.jp |
@@ -80,6 +80,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | adstir | SSP | 2024 Q2 - | | privacysandbox@united.jp  |
 | Bypass | DSP | 2024 Q2 - | | privacysandbox@united.jp  |
 | Anonymised | Ad Network | Testing in progress | | privacysandbox@anonymised.io |
+| Equativ | SSP & DSP | Testing in progress | | privacysandbox@equativ.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
