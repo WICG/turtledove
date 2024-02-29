@@ -752,7 +752,7 @@ In case returning multiple bids is supported by the implementation in use,
 `generateBid` may also return up to `browserSignals.multiBidLimit` valid bid
 objects of the format above in an array.
 
-If none of the returned bids pass the k-anonymity checks, `generateBid` will be
+If none of the produced bids pass the k-anonymity checks, `generateBid` will be
 re-run with the input `interestGroup` filtered to contain only k-anonymous ads
 and component ads. Such re-runs are limited to returning only a single bid,
 even if multiple bid support is otherwise on, so they will have
@@ -761,6 +761,12 @@ even if multiple bid support is otherwise on, so they will have
 
 `generateBid()` has access to the `setPrioritySignalsOverride(key, value)` method. This adds an entry to the current interest group's `prioritySignalsOverrides` dictionary with the specified `key` and `value`, overwriting the previous value, if there was already an entry with `key`. If `value` is null, the entry with the specified key is deleted, if it exists.
 
+`generateBid()` has access to the `setBid(bids)` method. That takes the
+exact same types as the return values do, and is used as a fallback value in
+case `generateBid()` throws an exception.  Each call will overwrite the
+previously set value; if there is something wrong with the provided `bids` it
+will throw an exception and clear the fallback bid.  In implementations
+supporting returning multiple bids, an array can be passed here as well.
 
 #### 3.3 Metadata with the Ad Bid
 
