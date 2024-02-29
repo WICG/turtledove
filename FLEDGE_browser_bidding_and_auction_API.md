@@ -22,8 +22,38 @@ const auctionBlob = navigator.getInterestGroupAdAuctionData({
   // required.
   'coordinatorOrigin':
     'https://publickeyservice.gcp.privacysandboxservices.com',
+  // 'requestSize' the maximum size of the returned request (optional). If not
+  // specified the returned blob is padded to one of 7 specific sizes. If
+  // perBuyerConfig options are provided, then this will also be the minimum
+  // size. If not specified when perBuyerConfig is provided, the sum of the
+  // 'targetSize' for the perBuyerConfigs will be used.
+  'requestSize': 51200,
+  // 'perBuyerConfig' specifies per-buyer options for size optimizations when
+  // constructing the blob.
+  'perBuyerConfig': {'https://buyer1.origin.example.com': {
+      // 'targetSize' specifies the size of the blob to devote to this buyer.
+      "targetSize": 8192,
+    },
+    'https://buyer2.origin.example.com': {}
+  }
 });
 ```
+
+The `seller` field will be checked to ensure it matches the `seller` specified
+in the AuctionConfig passed to `runAdAuction()` with the response. The
+`coordinatorOrigin` selects which set of TEE keys should be used to encrypt this
+request. The `coordinatorOrigin` must be a coordinator that is known to Chrome.
+The `requestSize` and `perBuyerConfig` fields allow some control over how the
+request blob is constructed. The `requestSize` field specifies a maximum size
+for the returned blob. If the `perBuyerConfig` does not specify any buyers then
+the returned blob will either be one of the 7 specific size buckets or the
+`requestSize`, whichever is smaller. If the `perBuyerConfig` is specified then
+the blob will only include the interest groups for the buyers specifically
+listed and the returned blob will always be `requestSize` in size, or the sum
+of the `targetSize` of each buyer if the `requestSize` is not specified. Entries
+in the `perBuyerConfig` that do not specify the `targetSize` will be equally
+allocated any remaining space in the request.
+
 The returned `auctionBlob` is a Promise that will resolve to an `AdAuctionData` object. This object contains `requestId` and `request` fields.
 The `requestId` contains a UUID that needs to be presented to `runAdAuction()` along with the response.
 The `request` field is a `Uint8Array` containing the information needed for the [ProtectedAudienceInput](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#protectedaudienceinput) in a `SelectAd` B&A call,
