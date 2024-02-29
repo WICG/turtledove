@@ -356,6 +356,8 @@ const myAuctionConfig = {
                          'https://example.fr': 'EUR',
                          '*': 'USD'},
   'sellerCurrency:' : 'CAD',
+  'deprecatedRenderURLReplacements':{{'${SELLER1}':'ssp1'},
+                                    {'%%SELLER2%%':'ssp2'}},
   'componentAuctions': [
     {'seller': 'https://www.some-other-ssp.com',
       'decisionLogicURL': ...,
@@ -401,6 +403,8 @@ Optionally, `sellerExperimentGroupId` can be specified by the seller to support 
 Optionally, `perBuyerPrioritySignals` is an object mapping string keys to Javascript numbers that can be used to dynamically compute interest group priorities before `perBuyerGroupLimits` are applied. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
 
 Optionally, `perBuyerCurrencies` and `sellerCurrency` are used for [currency-checking](#36-currency-checking). `sellerCurrency` also affects how [currencies behave in reporting](#53-currencies-in-reporting).
+
+Optionally, `deprecatedRenderURLReplacements` can be specified to allow replacing macros within the renderURL. This works similar to [navigator.deprecatedReplaceInURN()](#72-navigatordeprecatedreplaceinurn), but within the auction config. This allows for replacements within top level seller auction configs where there are not any component seller auction configs, or component auction configs.
 
 Optionally, `resolveToConfig` is a boolean directing the promise returned from `runAdAuction()` to resolve to a `FencedFrameConfig` if true, for use in a `<fencedframe>`, or if false to an opaque `urn:uuid` URL, for use in an `<iframe>`.  If `resolveToConfig` is not set, it defaults to false.
 If the `window.FencedFrameConfig` interface is not exposed (because e.g., the script is running in an older version of Chrome that does not yet implement `FencedFrameConfig`, then the auction will _always_ yield a URN.
