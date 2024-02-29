@@ -16,9 +16,10 @@ To execute an on-server FLEDGE auction, sellers begin by calling `navigator.getI
 const auctionBlob = navigator.getInterestGroupAdAuctionData({
   // ‘seller’ works the same as for runAdAuction.
   'seller': 'https://www.example-ssp.com',
-  // TEE coordinator, defaults to
-  //'https://publickeyservice.gcp.privacysandboxservices.com' (for now). Will
-  // eventually be required.
+  // 'coordinatorOrigin' of the TEE coordinator, defaults to
+  //'https://publickeyservice.gcp.privacysandboxservices.com' (for now). Used to
+  // select which key to use for the encrypted blob. Will eventually be
+  // required.
   'coordinatorOrigin':
     'https://publickeyservice.gcp.privacysandboxservices.com',
 });
