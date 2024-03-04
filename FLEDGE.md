@@ -320,7 +320,7 @@ const myAuctionConfig = {
   'seller': 'https://www.example-ssp.com',
   'decisionLogicURL': ...,
   'trustedScoringSignalsURL': ...,
-  'maxTrustedScoringSignalsURLLength': 1000,
+  'maxTrustedScoringSignalsURLLength': 10000,
   'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
   'auctionSignals': {...},
   'requestedSize': {width: '100', height: '200'},
