@@ -612,7 +612,7 @@ Buyers have three basic jobs in the on-device ad auction:
 #### 3.1 Fetching Real-Time Data from a Trusted Server
 
 
-Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsURL`, `trustedBiddingSignalsKeys`, `maxTrustedBiddingSignalsURLLength`, and, optionally, `trustedBiddingSignalsSlotSizeMode` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
+Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsURL`, `trustedBiddingSignalsKeys`, and, optionally, `trustedBiddingSignalsSlotSizeMode` and `maxTrustedBiddingSignalsURLLength` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
 
     https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2&interestGroupNames=name1,name2&experimentGroupId=12345&slotSize=100,200
 
