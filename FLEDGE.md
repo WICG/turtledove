@@ -127,7 +127,7 @@ const myGroup = {
   'trustedBiddingSignalsURL': ...,
   'trustedBiddingSignalsKeys': ['key1', 'key2'],
   'trustedBiddingSignalsSlotSizeMode' : 'slot-size',
-  'maxTrustedBiddingSignalsURLLength' : 1000,
+  'maxTrustedBiddingSignalsURLLength' : 10000,
   'userBiddingSignals': {...},
   'ads': [{renderURL: shoesAd1, sizeGroup: 'group1', ...},
           {renderURL: shoesAd2, sizeGroup: 'group2', ...},
