@@ -296,11 +296,11 @@ This is detectable because it can change the set of fields that are read from th
   1. If |group|["{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}}"] [=map/exists=], then set
     |interestGroup|'s [=interest group/trusted bidding signals keys=] to
     |group|["{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}}"].
-  1. If |group|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"] [=map/exists=]
-    and |group|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"] &ge; 0, set
-    |interestGroup|'s [=interest group/max trusted bidding signals url length=] to
-    |group|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"], otherwise
-    [=exception/throw=] a {{TypeError}}.
+  1. If |group|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"] [=map/exists=]:
+    1. if |group|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"] &ge; 0, set
+      |interestGroup|'s [=interest group/max trusted bidding signals url length=] to
+      |group|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"], otherwise
+      [=exception/throw=] a {{TypeError}}.
   1. If |group|["{{GenerateBidInterestGroup/userBiddingSignals}}"] [=map/exists=]:
     1. Set |interestGroup|'s [=interest group/user bidding signals=] to the result of
       [=serializing a JavaScript value to a JSON string=], given
@@ -995,11 +995,11 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. [=Assert=]: |trustedScoringSignalsURL|'s [=url/scheme=] is "`https`".
   1. Set |auctionConfig|'s [=auction config/trusted scoring signals url=] to
     |trustedScoringSignalsURL|.
-1. If |config|["{{AuctionAdConfig/maxTrustedScoringSignalsURLLength}}"] [=map/exists=] and
-  |config|["{{AuctionAdConfig/maxTrustedScoringSignalsURLLength}}"] &ge; 0, set |auctionConfig|'s
-  [=auction config/max trusted scoring signals url length=] to
-  |config|["{{AuctionAdConfig/maxTrustedScoringSignalsURLLength}}"], otherwise [=exception/throw=]
-  a {{TypeError}}.
+1. If |config|["{{AuctionAdConfig/maxTrustedScoringSignalsURLLength}}"] [=map/exists=]:
+  1. if |config|["{{AuctionAdConfig/maxTrustedScoringSignalsURLLength}}"] &ge; 0, set |auctionConfig|'s
+    [=auction config/max trusted scoring signals url length=] to
+    |config|["{{AuctionAdConfig/maxTrustedScoringSignalsURLLength}}"], otherwise [=exception/throw=]
+    a {{TypeError}}.
 1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=]:
   1. Let |buyers| be a new empty [=list=].
   1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
@@ -1538,7 +1538,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
             |signalsUrl|, |putativeKeys|, |putativeIgNames|, |buyerExperimentGroupId|, |topLevelOrigin|, and
             |slotSizeQueryParam|.
-          1. If [=URL serializer|Serialized=] |biddingSignalsUrl|'s length &le; |putativeLengthLimit|:
+          1. If [=URL serializer|Serialized=] |biddingSignalsUrl|'s [=string/length=] &le; |putativeLengthLimit|:
               1. Set |putativeKeys| to |keys|.
               1. Set |putativeIgNames| to |igNames|.
               1. Set |putativeLengthLimit| to |lengthLimit|.
@@ -4076,8 +4076,8 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
     {{long}} integer, so 4 bytes.
 1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
   1. The [=string/length=] of |key|.
-1. 4, which is the size of |ig|'s [=interest group/max trusted bidding signals url length=],
-  if the field is not null.
+1. If |ig|'s [=interest group/max trusted bidding signals url length=] is not null:
+  1. 4, which is the size of |ig|'s [=interest group/max trusted bidding signals url length=].
 1. If |ig|'s [=interest group/additional bid key=] is not null:
 1. The [=string/length=] of |ig|'s [=interest group/user bidding signals=].
 1. If |ig|'s [=interest group/ads=] is not null, [=list/for each=] |ad| of it:
@@ -4727,7 +4727,7 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
     reprensents a {{long}} integer. See [=calculate the ad slot size query param=].
   : <dfn>max trusted bidding signals url length</dfn>
   :: A {{long}} integer, initially 0. Indicates the maximum trusted bidding signals fetch url length
-    for the interest group. 0 means infinite.
+    for the interest group. 0 means no limit.
   : <dfn>user bidding signals</dfn>
   :: Null or a [=string=]. Additional metadata that the owner can use during on-device bidding.
   : <dfn>ads</dfn>
@@ -4858,7 +4858,7 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
     </p>
   : <dfn>max trusted scoring signals url length</dfn>
   :: A {{long}} integer, initially 0. Indicates the maximum trusted scoring signals fetch url length
-    for the auction config. 0 means infinite.
+    for the auction config. 0 means no limit.
   : <dfn>interest group buyers</dfn>
   :: Null or a [=list=] of [=origins=].
     Owners of interest groups allowed to participate in the auction. Each [=origin's=]
