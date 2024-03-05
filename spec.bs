@@ -1524,17 +1524,17 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       1. Let |allTrustedBiddingSignals| be an [=ordered map=].
       1. Let |keys| be a new [=ordered set=].
       1. Let |igNames| be a new [=ordered set=].
-      1. Let |lengthLimit| be the maximum value of {{long}} interger.
+      1. Let |lengthLimit| be the maximum value that a {{long}} integer can hold.
       1. Let |fetchSignalStartTime| be |settings|'s [=environment settings object/current monotonic time=].
       1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
         1. [=list/For each=] |ig| of |groups|:
           1. Set |keys| to |putativeKeys|.
           1. Set |igNames| to |putativeIgNames|.
-          1. Set |lengthLimit| to |putativeLengthLimit|, if |lengthLimit| &le; |ig|'s
-            [=interest group/max trusted bidding signals url length=]. Otherwise, set
-            |ig|'s [=interest group/max trusted bidding signals url length=] to |putativeLengthLimit|.
-          1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |putativeKeys|.
-          1. [=set/Append=] |ig|'s [=interest group/name=] to |putativeIgNames|.
+          1. Set |putativeLengthLimit| to |lengthLimit|, if |lengthLimit| &le; |ig|'s
+            [=interest group/max trusted bidding signals url length=]. Otherwise, set |putativeLengthLimit| to
+            |ig|'s [=interest group/max trusted bidding signals url length=].
+          1. [=list/Extend=] |ig|'s [=interest group/trusted bidding signals keys=] to |putativeKeys|.
+          1. [=list/Extend=] |ig|'s [=interest group/name=] to |putativeIgNames|.
           1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
             |signalsUrl|, |putativeKeys|, |putativeIgNames|, |buyerExperimentGroupId|, |topLevelOrigin|, and
             |slotSizeQueryParam|.
@@ -1542,17 +1542,22 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               1. Set |putativeKeys| to |keys|.
               1. Set |putativeIgNames| to |igNames|.
               1. Set |putativeLengthLimit| to |lengthLimit|.
-              1. Continue.
           1. Otherwise:
             1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
               |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
             1. Let « |partialTrustedBiddingSignals|, |dataVersion| » be the result of [=fetching trusted signals=]
               with |biddingSignalsUrl| and true.
-            1. Merge |partialTrustedBiddingSignals| to |allTrustedBiddingSignals|.
-            1. [=list/Empty=] |keys| and [=set/append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
-            1. [=list/Empty=] |igNames| and [=set/append=] |ig|'s [=interest group/trusted bidding signals keys=] to |igNames|.
+            1. [=map/For each=] |key| -> |value| in |partialTrustedBiddingSignals|:
+              1. Set |allTrustedBiddingSignals|[|key|] to |value|.
+            1. [=list/Empty=] |keys| and [=list/extend=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
+            1. [=list/Empty=] |igNames| and [=list/extend=] |ig|'s [=interest group/trusted bidding signals keys=] to |igNames|.
             1. Set |ig|'s [=interest group/max trusted bidding signals url length=] to |lengthLimit|.
-            1. Continue.
+        1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
+          |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
+        1. Let « |partialTrustedBiddingSignals|, |dataVersion| » be the result of [=fetching trusted signals=]
+          with |biddingSignalsUrl| and true.
+        1. [=map/For each=] |key| -> |value| in |partialTrustedBiddingSignals|:
+          1. Set |allTrustedBiddingSignals|[|key|] to |value|.
       1. If |dataVersion| is not null, then [=map/set=]
         |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
       1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to |settings|'s
@@ -1726,7 +1731,7 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   from multiple invocations of [=score and rank a bid=] and passing them all to a single invocation
   of [=building trusted scoring signals url=] to get a |scoringSignalsUrl|. By employing this approach,
   the [=string/length=] of [=URL serializer|Serialized=] |scoringSignalsUrl| cannot exceed the
-  [=auction config/max trusted scoring siganls url length=]. The network response has to be parsed to
+  [=auction config/max trusted scoring signals url length=]. The network response has to be parsed to
   pull out the pieces relevant to each [=evaluating a scoring script|evaluation of a scoring script=].
 1. Let |trustedScoringSignals| be null.
 1. Let «|allTrustedScoringSignals|, |scoringDataVersion|» be the result of [=fetching trusted signals=]
@@ -3939,7 +3944,7 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
         1. Otherwise, set [=interest group/trusted bidding signals slot size mode=] to "none".
 
         <dt>"`maxTrustedBiddingSignalsURLLength`"
-        1. If |value| is non-negative interger, set |ig|'s [=interest group/max trusted bidding signals url length=] to |value|.
+        1. If |value| is a {{long}} and |value| &ge; 0, set |ig|'s [=interest group/max trusted bidding signals url length=] to |value|.
         1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
         <dt>"`userBiddingSignals`"
@@ -4080,7 +4085,6 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   1. The [=string/length=] of |key|.
 1. If |ig|'s [=interest group/max trusted bidding signals url length=] is not null:
   1. 4, which is the size of |ig|'s [=interest group/max trusted bidding signals url length=].
-1. If |ig|'s [=interest group/additional bid key=] is not null:
 1. The [=string/length=] of |ig|'s [=interest group/user bidding signals=].
 1. If |ig|'s [=interest group/ads=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
