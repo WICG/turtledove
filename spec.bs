@@ -713,16 +713,6 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     1. If |auctionConfig|'s [=auction config/resolve to config=] is false, then set |result| to |urn|.
     1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
        resolve |p| with |result|.
-    1. [=Increment ad k-anonymity count=] given |winner|'s [=generated bid/interest group=] and
-      |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-    1. If |winner|'s [=generated bid/ad component descriptors=] is not null:
-      1. [=set/For each=] |adComponentDescriptor| in |winner|'s
-        [=generated bid/ad component descriptors=]:
-        1. [=Increment component ad k-anonymity count=] given |adComponentDescriptor|'s
-          [=ad descriptor/url=].
-    1. [=Increment reporting ID k-anonymity count=] given |winner|'s
-      [=generated bid/interest group=] and |winner|'s [=generated bid/ad descriptor=]'s
-      [=ad descriptor/url=].
   1. Run [=interest group update=] with |auctionConfig|'s [=auction config/interest group buyers=].
   1. Run [=update bid counts=] with |bidIgs|.
   1. Run [=update previous wins=] with |winner|.
@@ -864,6 +854,17 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 To <dfn>asynchronously finish reporting</dfn> given a
 [=fencedframetype/fenced frame reporting map=] |reportingMap|, [=leading bid info=] |leadingBidInfo|,
 and [=auction report info=] |auctionReportInfo|.
+1. Let |winner| be |leadingBidInfo|'s [=leading bid info/leading bid=].
+1. [=Increment ad k-anonymity count=] given |winner|'s [=generated bid/interest group=] and
+  |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+1. If |winner|'s [=generated bid/ad component descriptors=] is not null:
+  1. [=set/For each=] |adComponentDescriptor| in |winner|'s
+    [=generated bid/ad component descriptors=]:
+    1. [=Increment component ad k-anonymity count=] given |adComponentDescriptor|'s
+      [=ad descriptor/url=].
+1. [=Increment reporting ID k-anonymity count=] given |winner|'s
+  [=generated bid/interest group=] and |winner|'s [=generated bid/ad descriptor=]'s
+  [=ad descriptor/url=].
 1. Let |buyerDone|, |sellerDone|, and |componentSellerDone| be [=booleans=], initially false.
 1. If |leadingBidInfo|'s [=leading bid info/component seller=] is null, set |componentSellerDone|
    to true.
@@ -1097,7 +1098,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     Note: The JavaScript code calling {{Navigator/runAdAuction()}} is responsible for *not*
       resolving |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"]
       until direct from seller signals have been retrieved from one or more [:Ad-Auction-Signals:]
-      headers, as resolving this Promise early would cause a race condition in which the worklet
+      headers, as resolving this Promise early would cause a race condition in which the [=script runners=]
       might run without the direct from seller signals that it needs. There are two ways that
       direct from seller signals can be retrieved. The first is for the JavaScript code to issue a
       [=request=] whose [=request/initiator type=] is `"fetch"` and whose
@@ -4280,9 +4281,9 @@ This section specifies a manner by which some data, including [=additional bids=
 their intended auction.
 
 Any {{Document}} in a [=traversable navigable=] may run a Protected Audience auction (with
-{{Window/navigator}}.{{Navigator/runAdAuction()}}) whose worklet functions receive signal objects
-derived from JSON from an [:Ad-Auction-Signals:] header, or [=additional bids=] derived from an
-[:Ad-Auction-Additional-Bid:] header, captured by a {{WindowOrWorkerGlobalScope/fetch()}} call
+{{Window/navigator}}.{{Navigator/runAdAuction()}}) whose [=script runners=] functions receive signal
+objects derived from JSON from an [:Ad-Auction-Signals:] header, or [=additional bids=] derived from
+an [:Ad-Auction-Additional-Bid:] header, captured by a {{WindowOrWorkerGlobalScope/fetch()}} call
 (using the {{RequestInit/adAuctionHeaders}} option) initiated by any *other* {{Document}} in the
 *same* [=traversable navigable=], or from an
 <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
