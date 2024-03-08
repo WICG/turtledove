@@ -1523,7 +1523,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. [=map/For each=] |slotSizeQueryParam| → |perSlotSizeQueryParam| of |perBuyerGenerator|:
       1. Let |allTrustedBiddingSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=],
         and [=map/values=] are [=strings=].
-
       1. Let |keys| be a new [=ordered set=].
       1. Let |igNames| be a new [=ordered set=].
       1. Let |lengthLimit| be the maximum value that a {{long}} integer can hold.
@@ -1535,11 +1534,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Let |putativeLengthLimit| be  |ig|'s [=interest group/max trusted bidding signals url length=].
           1. If |ig|'s [=interest group/max trusted bidding signals url length=] is 0 or `&gt;`
             |lengthLimit|, then set |putativeLengthLimit| to |lengthLimit|.
-
           1. [=list/Extend=] |putativeKeys| with |ig|'s [=interest group/trusted bidding signals keys=].
-
           1. [=list/Extend=] |putativeIgNames| with |ig|'s [=interest group/name=].
-
           1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
             |signalsUrl|, |putativeKeys|, |putativeIgNames|, |buyerExperimentGroupId|, |topLevelOrigin|, and
             |slotSizeQueryParam|.
@@ -1735,9 +1731,14 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   Implementations may batch requests by collecting render URLs and ad component render URLs
   from multiple invocations of [=score and rank a bid=] and passing them all to a single invocation
   of [=building trusted scoring signals url=] to get a |scoringSignalsUrl|. By employing this approach,
-  the [=string/length=] of [=URL serializer|Serialized=] |scoringSignalsUrl| cannot exceed the
-  [=auction config/max trusted scoring signals url length=]. The network response has to be parsed to
-  pull out the pieces relevant to each [=evaluating a scoring script|evaluation of a scoring script=].
+  the [=string/length=] of [=URL serializer|Serialized=] |scoringSignalsUrl| must not exceed the
+  [=auction config/max trusted scoring signals url length=] of the auction. In cases where the length
+  limit is exceeded, the request must be divided into smaller pieces to comply with the length restriction.
+  However, note that a single request is always considered valid, regardless of whether its length exceeds
+  the auction's [=auction config/max trusted scoring signals url length=]
+  
+  The network response has to be parsed to pull out the pieces relevant to each
+  [=evaluating a scoring script|evaluation of a scoring script=].
 1. Let |trustedScoringSignals| be null.
 1. Let «|allTrustedScoringSignals|, |scoringDataVersion|» be the result of [=fetching trusted signals=]
   with |fullSignalsUrl| and false.
