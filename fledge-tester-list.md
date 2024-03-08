@@ -65,7 +65,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Seedtag | SSP | January 15th 2024 - April 15th 2024 | coming soon | privacysandbox@seedtag.com |
 | Index Exchange | SSP | By January 31, 2024 | | privacy-sandbox-support@indexexchange.com |
 | PubMatic | SSP | Jan 2024 | | privacysandbox@pubmatic.com |
-| Adform | DSP | Beginning January 1, 2024 | | privacysandbox@adform.com |
+| Adform | DSP | March 12 - May 31, 2024 | | privacysandbox@adform.com |
 | Onetag | DSP & SSP | 2023-2024 | | privacysandbox@onetag.com |
 | Yahoo Inc | DSP | beginning 15 Jan 2024 | | googleprivacysandbox@yahooinc.com |
 | Magnite | SSP | January 2024 | | privacysandbox@magnite.com |
