@@ -29,6 +29,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [3.2 On-Device Bidding](#32-on-device-bidding)
     - [3.3 Metadata with the Ad Bid](#33-metadata-with-the-ad-bid)
     - [3.4 Ads Composed of Multiple Pieces](#34-ads-composed-of-multiple-pieces)
+      - [3.4.1 Flexible Component Ad Selection Considering k-anonymity](#341-target-num-component-ads)
     - [3.5 Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups)
     - [3.6 Currency Checking](#36-currency-checking)
   - [4. Browsers Render the Winning Ad](#4-browsers-render-the-winning-ad)
@@ -795,6 +796,33 @@ const maxAdComponents = navigator.protectedAudience ?
 
 The output of `generateBid()` can use the on-device ad composition flow through an optional adComponents field, listing additional URLs made available to the fenced frame the container URL is loaded in. The component URLs may be retrieved by calling `navigator.adAuctionComponents(numComponents)`, where numComponents will be capped to the maximum permitted value. To prevent bidder worklets from using this as a sidechannel to leak additional data to the fenced frame, exactly numComponents obfuscated URLs will be returned by this method, regardless of how many adComponent URLs were actually in the bid, even if the bid contained no adComponents, and the Interest Group itself had no adComponents either.
 
+##### 3.4.1 Flexible Component Ad Selection Considering k-anonymity
+
+Since an ad containing multiple pieces requires every piece to be k-anonymous to
+display, it may be difficult to make such bids successfully. To make this easier,
+`generateBid` can permit the browser to select a subset of returned component ads
+that pass the k-anonymity threshold.
+
+Note that feature detection for this in Chrome is the same as for multiple bid
+support --- presence of browserSignals.multiBidLimit; but if supported it can be
+used on single-bid returns as well; multiple-bid returns are affected per-bid.
+
+To use this functionality, set the `targetNumAdComponents` field of a
+returned bid to the desired number of component ads, and order them by
+decreasing desirability. The browser will scan the component ad list and use the
+first `targetNumAdComponents` that meet the k-anonymity requirements for the bid
+in the auction, if possible. A bid with the first `targetNumAdComponents` from
+those provided will also be considered for k-anonymity updates. It's an error to
+provide less component ads than a set `targetNumAdComponents`.
+
+When `targetNumAdComponents` is in use, the `adComponents` list in the bid
+can exceed the normal global limit (of 20 or 40), but `targetNumAdComponents`
+must still follow that limit.
+
+If particular ad components are especially critical, you can further set
+`numMandatoryAdComponents` to denote that the first `numMandatoryAdComponents`
+entries of `adComponents` must be included for the bid to be made. When that
+requirement is not met, the k-anonymity update candidate is still generated.
 
 #### 3.5 Filtering and Prioritizing Interest Groups
 
