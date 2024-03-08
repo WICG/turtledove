@@ -611,6 +611,7 @@ dictionary AuctionAdConfig {
   sequence<record<DOMString, DOMString>> allSlotsRequestedSizes;
   Promise<any> sellerSignals;
   Promise<DOMString> directFromSellerSignalsHeaderAdSlot;
+  Promise<record<USVString, USVString>> deprecatedRenderURLReplacements;
   unsigned long long sellerTimeout;
   unsigned short sellerExperimentGroupId;
   USVString sellerCurrency;
@@ -775,8 +776,18 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 |pendingConfig|, [=auction config=] |auctionConfig|, [=leading bid info=] |winningBidInfo|, and
 [=auction report info=] |auctionReportInfo|:
 1. Let |winningBid| be |winningBidInfo|'s [=leading bid info/leading bid=].
+1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose 
+  [=map/values=] are [=strings=].
+1. [=list/For each=] |replacement| in |auctionConfig|'s 
+  [=auction config/deprecated render url replacements=]:
+  1. Let |k| be |replacement|'s [=ad keyword replacement/match=].
+  1. Let |v| be |replacement|'s [=ad keyword replacement/replacement=].
+  1. [=map/Set=] |replacements|[|k|] to |v|.
+1. Let |replacedAdURL| be the result of
+  running [=fencedframeutil/substitute macros=] with |replacements| and |winningBid|'s 
+  [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
 1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
-   |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+   |replacedAdURL|.
 1. Let |adSize| be |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/size=].
 1. If |adSize| is not null:
    1. Set |pendingConfig|'s [=fenced frame config/content size=] to a [=struct=] with the following
@@ -819,9 +830,19 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
       [=fenced frame reporting metadata/value=]'s
       [=fenced frame reporting metadata/fenced frame reporting map=], |winningBidInfo| and
       |auctionReportInfo|.
+1. Let |adComponentDescriptorsWithReplacements| be a new [=list=] of [=ad descriptors=].
+1. If |winningBid|'s [=generated bid/ad component descriptors=] is not null: 
+  1. [=list/For each=] |adComponentDescriptor| of |winningBid|'s 
+    [=generated bid/ad component descriptors=]:
+    1. Let |descriptorWithReplacement| be a new [=ad descriptor=].
+    1. Set |descriptorWithReplacement|'s [=ad descriptor/size=] to 
+      |adComponentDescriptor|'s [=ad descriptor/size=].
+    1. Set |descriptorWithReplacement|'s [=ad descriptor/url=] to the result of running
+      [=fencedframeutil/substitute macros=] with |replacements| and |adComponentDescriptor|'s
+      [=ad descriptor/url=].
+    1. [=list/Append=] |descriptorWithReplacement| to |adComponentDescriptorsWithReplacements|.
 1. Set |pendingConfig|'s [=fenced frame config/nested configs=]'s [=nested configs/value=] to
-   the result of running [=create nested configs=] with |winningBid|'s
-   [=generated bid/ad component descriptors=].
+   the result of running [=create nested configs=] with |adComponentDescriptorsWithReplacements|.
 1. Return |pendingConfig|.
 
 </div>
@@ -1101,6 +1122,23 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     * To handle an error:
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
         failure.
+1. If |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"] [=map/exists=]:
+  1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to 
+    |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"].
+  1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
+      [=auction config/deprecated render url replacements=]:
+    * To parse the value |result|:
+      1. Let |renderUrlReplacements| be a new empty [=list=] of [=ad keyword replacement=]s.
+      1. [=list/For each=] |replacement| in |result|:
+        1. If [=validate a url macro=] with |replacement|'s [=ad keyword replacement/match=] 
+          returns false, then [=exception/throw=] a {{TypeError}}.
+        1. Otherwise, [=list/append=] |replacement| to |renderUrlReplacements|.
+      1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to 
+        |renderUrlReplacements|.
+    * To handle an error, set |auctionConfig|'s 
+      [=auction config/deprecated render url replacements=] to failure.
+      
+
 1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
   [=auction config/seller timeout=] to |config|["{{AuctionAdConfig/sellerTimeout}}"] in milliseconds
   or 500 milliseconds, whichever is smaller.
@@ -1206,6 +1244,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. If |config|["{{AuctionAdConfig/componentAuctions}}"] is not [=list/empty=]:
   1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=] and is not [=list/empty=],
     then return failure.
+  1. If |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"] [=map/exists=], then
+    [=exception/throw=] a {{TypeError}}.
 1. [=list/For each=] |component| in |config|["{{AuctionAdConfig/componentAuctions}}"]:
   1. If |isTopLevel| is false, then return failure.
   1. Let |componentAuction| be the result of running [=validate and convert auction ad config=] with
@@ -1221,6 +1261,16 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
      |resolveToConfig|, set |auctionConfig|'s [=auction config/resolve to config=] to
      |resolveToConfig|.
 1. Return |auctionConfig|.
+
+</div>
+
+<div algorithm>
+
+  To <dfn>validate a url macro</dfn> given a [=string=] |macro|:
+  1. Return true if any of the following conditions hold:
+    * |macro| [=string/starts with=] "'${'" and [=string/ends with=] "'}'";
+    * |macro| [=string/starts with=] "'%%'" and [=string/ends with=] "'%%'".
+  1. Otherwise, return false.
 
 </div>
 
@@ -1611,6 +1661,16 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       [=interest group/owner=].
   1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|, and
     |directFromSellerSignalsForWinner|.
+1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=]
+    are [=strings=].
+  1. [=list/For each=] [=ad keyword replacement=], |replacement|, within [=auction config/deprecated render url replacements=]:
+    1. Let |k| be |replacement|'s [=ad keyword replacement/match=].
+    1. Let |v| be |replacement|'s [=ad keyword replacement/replacement=].
+    1. [=map/Set=] |replacements|[|k|] to |v|.
+1. Set |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/ad descriptor=] to the result of [=fencedframeutil/substitute macros=] with |replacements| and [=leading bid info/leading bid=]'s [=generated bid/ad descriptor=].
+1. If |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/ad descriptors=] is not null:
+  1. [=list/For each=] [=generated bid/ad descriptor=], |adDescriptor|, within [=leading bid info/leading bid=]'s [=generated bid/ad descriptors=]:
+    1. Set |adDescriptor| to the result of [=fencedframeutil/substitute macros=] with |replacements| and |adDescriptor|.
 1. Return |leadingBidInfo|.
 
 </div>
@@ -4891,6 +4951,13 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
   :: A [=list=] of [=auction config=]s.
     Nested auctions whose results will also participate in a top level auction. Only the top level
     [=auction config=] can have component auctions.
+
+  : <dfn>deprecated render url replacements</dfn>
+  :: Null, a {{Promise}}, failure, or a [=list=] of [=ad keyword replacement=]s, each containing a 
+    single [=ad keyword replacement/match=] and [=ad keyword replacement/replacement=]. Render url 
+    replacements can only happen within a single seller [=auction config=] or
+    within the component [=auction config=]s. 
+    
   : <dfn>seller experiment group id</dfn>
   :: Null or an {{unsigned short}}, initially null.
     Optional identifier for an experiment group to support coordinated experiments with the seller's
@@ -4951,12 +5018,13 @@ To <dfn>wait until configuration input promises resolve</dfn> given an [=auction
   1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
   1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], and
-    [=auction config/direct from seller signals header ad slot=] are not {{Promise}}s, and
+    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], 
+    [=auction config/deprecated render url replacements=], and
+    [=auction config/direct from seller signals header ad slot=] are not {{Promise}}s, and 
     [=auction config/expects additional bids=] is false.
   1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], or
+    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], [=auction config/deprecated render url replacements=], or
     [=auction config/direct from seller signals header ad slot=] is failure, return failure.
   1. Return.
 </div>
@@ -5135,6 +5203,18 @@ An <dfn>ad size</dfn> is a [=struct=] with the following [=struct/items=]:
     [=ad size/height=] to |height|, [=ad size/height units=] to |heightUnit|.
   1. Return |adSize|.
 </div>
+
+An <dfn>ad keyword replacement</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="ad keyword replacement">
+  : <dfn>match</dfn>
+  :: A [=string=], represents the match within a {{AuctionAd/renderURL}}, that is going to be
+    replaced by [=ad keyword replacement/replacement=]. Must be in the format `${...}` or 
+    `%%...%%`.
+  : <dfn>replacement</dfn>
+  :: A [=string=], meant to replace [=ad keyword replacement/match=] within a 
+    {{AuctionAd/renderURL}}.
+</dl>
 
 <h3 id=direct-from-seller-signals-section>Direct from seller signals</h3>
 
