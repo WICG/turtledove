@@ -1270,6 +1270,11 @@ If the top-level auction has a `sellerCurrency` configured, this will be its cur
     *   "language-exclusions"
     *   "category-exclusions"
 
+  Some rejection reasons are generated automatically (and may not be set manually):
+    *   "below-kanon-threshold"
+    *   "wrong-generate-bid-currency"
+    *   "wrong-score-ad-currency"
+
 #### 7.1.2 Downsampling
 
 This design has three main goals:
