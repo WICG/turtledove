@@ -55,7 +55,7 @@ To be added to a Google Calendar invitation for this meeting, join the Google Gr
 32. Andrew Pascoe (NextRoll)
 33. Owen Ridolfi (Flashtalking)
 34. Becky Hatley (Flashtalking)
-35. (Jivox)
+35. Shankar Venkataraman (Jivox)
 36. Taranjit Singh (Jivox)
 37. Jon Foust (Google Privacy Sandbox)
 38. Zutao Zhu (Google)
