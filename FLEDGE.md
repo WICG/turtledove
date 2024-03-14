@@ -51,7 +51,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [7.1 forDebuggingOnly (fDO) APIs](#71-fdo-apis)
       - [7.1.1 Post Auction Signals](#711-post-auction-signals)
       - [7.1.2 Downsampling](#712-downsampling)
-    - [7.2 deprecatedReplaceInURN()](#72-deprecated-replace-in-urn)
+    - [7.2 deprecatedReplaceInURN()](#72-navigatordeprecatedreplaceinurn)
 
 
 ## Summary
@@ -396,7 +396,7 @@ Optionally, `perBuyerCumulativeTimeouts` is structured like `perBuyerTimeouts`, 
 
 Optionally, the `signal` field can be set to an [`AbortSignal`](https://dom.spec.whatwg.org/#interface-AbortSignal) object (generally from an [`AbortController`](https://dom.spec.whatwg.org/#interface-abortcontroller)'s [`signal`](https://dom.spec.whatwg.org/#dom-abortcontroller-signal) field) to permit aborting the execution of the auction.  When the [`abort()`](https://dom.spec.whatwg.org/#dom-abortcontroller-abort) method on the associated [`AbortController`](https://dom.spec.whatwg.org/#interface-abortcontroller) is called, an attempt to interrupt the auction will be made. Since the auction executes in parallel to the page, it's possible for this call to happen after the auction actually completed (perhaps unsuccessfully) but before this has been noticed by the caller of `runAdAuction`. In that case, the cancellation attempt is ignored. If the cancellation is successful, the promise is rejected, and no side effects of the whole auction (like reporting and bid statistics) occur, though priority adjustments still take place. Calling `abort()` after the promise from `runAdAuction` has resolved has no effect.
 
-Optionally, `perBuyerGroupLimits` can be specified to limit the number of of interest groups from a particular buyer that participate in the auction. A key of `'*'` in `perBuyerGroupLimits` is used to set a limit for unspecified buyers. For each buyer, interest groups will be selected to participate in the auction in order of decreasing `priority` (larger priorities are selected first) up to the specfied limit. The selection of interest groups occurs independently for each buyer, so the priorities do not need to be comparable between buyers and could have a buyer-specific meaning. The value of the limits provided should be able to be represented by a 16 bit unsigned integer.
+Optionally, `perBuyerGroupLimits` can be specified to limit the number of interest groups from a particular buyer that participate in the auction. A key of `'*'` in `perBuyerGroupLimits` is used to set a limit for unspecified buyers. For each buyer, interest groups will be selected to participate in the auction in order of decreasing `priority` (larger priorities are selected first) up to the specfied limit. The selection of interest groups occurs independently for each buyer, so the priorities do not need to be comparable between buyers and could have a buyer-specific meaning. The value of the limits provided should be representable by a 16 bit unsigned integer.
 
 Optionally, `sellerExperimentGroupId` can be specified by the seller to support coordinated experiments with the seller's trusted server. If specified, this must be an integer between zero and 65535 (16 bits). Optionally,`perBuyerExperimentGroupIds` can be specified to support coordinated experiments with buyers' trusted servers. If specified, this must also be an integer between zero and 65535 (16 bits).
 
@@ -742,7 +742,8 @@ The output of `generateBid()` contains the following fields:
 *   bidCurrency: (optional) The currency for the bid, used for [currency-checking](#36-currency-checking).
 *   render: A dictionary describing the creative that should be rendered if this bid wins the auction. This includes:
     * url: The creative's URL.
-    * size: A dictionary containing `width` and `height` fields, describing the creative's size (see the interest group declaration above). When the ad is loaded in a fenced frame, the fenced frame's inner frame (i.e. the size visible to the ad creative) will be frozen to this size, and it will be unable to see changes to the frame size made by the embedder.
+    * width: The creative's width. This size will be matched against the declaration in the interest group and substituted into any ad size macros present in the ad creative URL. When the ad is loaded in a fenced frame, the fenced frame's inner frame (i.e. the size visible to the ad creative) will be frozen to this size, and it will be unable to see changes to the rame size made by the embedder.
+    * height: The creative's height. See elaboration in `width` above.
     
     Optionally, if you don't want to hook into interest group size declarations (e.g., if you don't want to use size macros), you can have `render` be just the URL, rather than a dictionary with `url` and `size`.
 *   adComponents: (optional) A list of up to 20 (in process of being increased to 40 starting from M122) adComponent strings from the InterestGroup's adComponents field. Each value must match one of `interestGroup`'s `adComponent`'s `renderURL` and sizes exactly. This field must not be present if `interestGroup` has no `adComponent` field. It is valid for this field not to be present even when `adComponents` is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
