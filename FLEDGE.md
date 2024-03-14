@@ -128,6 +128,7 @@ const myGroup = {
   'trustedBiddingSignalsURL': ...,
   'trustedBiddingSignalsKeys': ['key1', 'key2'],
   'trustedBiddingSignalsSlotSizeMode' : 'slot-size',
+  'maxTrustedBiddingSignalsURLLength' : 10000,
   'userBiddingSignals': {...},
   'ads': [{renderURL: shoesAd1, sizeGroup: 'group1', ...},
           {renderURL: shoesAd2, sizeGroup: 'group2', ...},
@@ -320,6 +321,7 @@ const myAuctionConfig = {
   'seller': 'https://www.example-ssp.com',
   'decisionLogicURL': ...,
   'trustedScoringSignalsURL': ...,
+  'maxTrustedScoringSignalsURLLength': 10000,
   'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
   'auctionSignals': {...},
   'requestedSize': {width: '100', height: '200'},
@@ -358,6 +360,8 @@ const myAuctionConfig = {
                          '*': 'USD'},
   'perBuyerMultiBidLimits': {'https://example.com': 10, '*': 5},
   'sellerCurrency:' : 'CAD',
+  'deprecatedRenderURLReplacements':{{'${SELLER}':'exampleSSP'},
+                                    {'%%SELLER_ALT%%':'exampleSSP'}},
   'componentAuctions': [
     {'seller': 'https://www.some-other-ssp.com',
       'decisionLogicURL': ...,
@@ -404,6 +408,8 @@ Optionally, `perBuyerPrioritySignals` is an object mapping string keys to Javasc
 
 Optionally, `perBuyerCurrencies` and `sellerCurrency` are used for [currency-checking](#36-currency-checking). `sellerCurrency` also affects how [currencies behave in reporting](#53-currencies-in-reporting).
 
+Optionally, `deprecatedRenderURLReplacements` can be specified to allow replacing macros within the URN or `src` of the `FencedFrameConfig` returned by `runAdAuction`. These replacements must be in the format of `${...}` or `%%...%%`. The mapping specified here works similar to the second parameter of [navigator.deprecatedReplaceInURN()](#72-navigatordeprecatedreplaceinurn), but within the auction config. This allows for replacements within top level seller auction configs where there are no component seller auction configs, or within component auction configs.
+
 Optionally, `resolveToConfig` is a boolean directing the promise returned from `runAdAuction()` to resolve to a `FencedFrameConfig` if true, for use in a `<fencedframe>`, or if false to an opaque `urn:uuid` URL, for use in an `<iframe>`.  If `resolveToConfig` is not set, it defaults to false.
 If the `window.FencedFrameConfig` interface is not exposed (because e.g., the script is running in an older version of Chrome that does not yet implement `FencedFrameConfig`, then the auction will _always_ yield a URN.
 Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame element, you have two options:
@@ -423,7 +429,7 @@ In the case of a component auction, all `AuctionConfig` parameters for that comp
 
 ##### 2.1.1 Providing Signals Asynchronously
 
-The values of some signals (those configured by fields `auctionSignals`, `sellerSignals`, `perBuyerSignals`, `perBuyerTimeouts`, and `directFromSellerSignals`) can optionally be provided not as concrete values, but as [Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).  This permits some parts of the auction, such as loading of scripts and trusted signals, and launching of isolated worklet processes, to overlap the computation (or network retrieval) of those values.  The worklet scripts will only see the resolved values; if any such Promise rejects the auction will be aborted (unless it managed to fail already or get otherwise aborted anyway).
+The values of some signals (those configured by fields `auctionSignals`, `sellerSignals`, `perBuyerSignals`, `perBuyerTimeouts`, `deprecatedRenderURLReplacements`, and `directFromSellerSignals`) can optionally be provided not as concrete values, but as [Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).  This permits some parts of the auction, such as loading of scripts and trusted signals, and launching of isolated worklet processes, to overlap the computation (or network retrieval) of those values.  The worklet scripts will only see the resolved values; if any such Promise rejects the auction will be aborted (unless it managed to fail already or get otherwise aborted anyway).
 
 
 #### 2.2 Auction Participants
@@ -612,11 +618,13 @@ Buyers have three basic jobs in the on-device ad auction:
 #### 3.1 Fetching Real-Time Data from a Trusted Server
 
 
-Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsURL`, `trustedBiddingSignalsKeys`, and, optionally, `trustedBiddingSignalsSlotSizeMode` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
+Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsURL`, `trustedBiddingSignalsKeys`, and, optionally, `trustedBiddingSignalsSlotSizeMode` and `maxTrustedBiddingSignalsURLLength` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
 
     https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2&interestGroupNames=name1,name2&experimentGroupId=12345&slotSize=100,200
 
-The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsURL`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `experimentGroupId` comes from `perBuyerExperimentGroupIds` if provided, `keys` is a list of `trustedBiddingSignalsKeys` strings, and `interestGroupNames` is a list of the names of the interest groups that data is being fetched for.  `trustedBiddingSignalsSlotSizeMode` is one of `none` (which is the default), `slot-size`, and `all-slots-requested-sizes`.  In the second case, `&slotSize=<width>,<height>` is appended to the URL, where width and height are the normalized width and height from the `requestedSize` of the (component) auction's AuctionConfig.  "Normalized" means units are always appended, and trailing zeros are removed, so {width: "62.50sw", height: "10.0"} becomes "62.5sw,10px".  In the `all-slots-requested-sizes` case, `&allSlotsRequestedSizes=<width1>,<height1>,<width2>,<height2>,...` is appended, where all sizes are taken from the (component) auction's `allSlotsRequestedSizes` value.  If the corresponding value is not present in the auction configuration, no value is appended.  The requests may be coalesced (for efficiency) across any number of interest groups that share a `trustedBiddingSignalsURL` and `trustedBiddingSignalsSlotSizeMode` (which means they also share an owner).
+The base URL `https://www.kv-server.example/getvalues` comes from the interest group's `trustedBiddingSignalsURL`, the hostname of the top-level webpage where the ad will appear `publisher.com` is provided by the browser, `experimentGroupId` comes from `perBuyerExperimentGroupIds` if provided, `keys` is a list of `trustedBiddingSignalsKeys` strings, and `interestGroupNames` is a list of the names of the interest groups that data is being fetched for.  `trustedBiddingSignalsSlotSizeMode` is one of `none` (which is the default), `slot-size`, and `all-slots-requested-sizes`.  In the second case, `&slotSize=<width>,<height>` is appended to the URL, where width and height are the normalized width and height from the `requestedSize` of the (component) auction's AuctionConfig.  "Normalized" means units are always appended, and trailing zeros are removed, so {width: "62.50sw", height: "10.0"} becomes "62.5sw,10px".  In the `all-slots-requested-sizes` case, `&allSlotsRequestedSizes=<width1>,<height1>,<width2>,<height2>,...` is appended, where all sizes are taken from the (component) auction's `allSlotsRequestedSizes` value.  If the corresponding value is not present in the auction configuration, no value is appended.
+
+The requests may be coalesced (for efficiency) across a certain number of interest groups that share a `trustedBiddingSignalsURL` and `trustedBiddingSignalsSlotSizeMode` (which means they share an owner). The number of interest groups coalesced into a single request is limited by their `maxTrustedBiddingSignalsURLLength` fields. For instance, if an interest group has a `maxTrustedBiddingSignalsURLLength` of 1000, it means that the length of the trusted bidding signals request URL for this interest group cannot exceed 1000 characters. This prevents requests from being dropped by trusted signals servers due to oversized URLs. If an interest group wants an infinite length for the request URL, it can specify 0 for the `maxTrustedBiddingSignalsURLLength`.
 
 The response from the server should be a JSON object of the form:
 
@@ -643,7 +651,11 @@ The value of each key that an interest group has in its `trustedBiddingSignalsKe
 
 The `perInterestGroupData` dictionary contains optional data for interest groups whose names were included in the request URL. The `priorityVector` will be used to calculate the final priority for an interest group, if that interest group has `enableBiddingSignalsPrioritization` set to true in its definition. Otherwise, it's only used to filter out interest groups, if the dot product with `prioritySignals` is negative. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
 
-Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way, with the base URL coming from the `trustedScoringSignalsURL` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderURLs bids offered in the auction. Note that the query params use "Urls" instead of "URLs". It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.  The response to this request should be in the form:
+Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way as [`trustedBiddingSignalsURL`](#31-fetching-real-time-data-from-a-trusted-server), with the base URL coming from the `trustedScoringSignalsURL` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderURLs bids offered in the auction. Note that the query params use "Urls" instead of "URLs". It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders. 
+
+Similarly to `trustedBiddingSignalsURL`, scoring signals requests may also be coalesced across a certain number of bids that share a `trustedScoringSignalsURL`. The number of bids in a single request is limited by the auction configuration's `maxTrustedScoringSignalsURLLength` field. For example, if an auction configuration has a `maxTrustedScoringSignalsURLLength` of 1000, it means that the length of each trusted scoring signals request URL for this auction cannot exceed 1000 characters. If an auction configuration wants an infinite length for the request URL, it can specify 0 for the `maxTrustedScoringSignalsURLLength`.
+
+The response to this request should be in the form:
 
 ```
 { 'renderURLs': {
@@ -1304,6 +1316,11 @@ If the top-level auction has a `sellerCurrency` configured, this will be its cur
     *   "blocked-by-publisher"
     *   "language-exclusions"
     *   "category-exclusions"
+
+  Some rejection reasons are generated automatically (and may not be set manually):
+    *   "below-kanon-threshold"
+    *   "wrong-generate-bid-currency"
+    *   "wrong-score-ad-currency"
 
 #### 7.1.2 Downsampling
 
