@@ -830,7 +830,8 @@ provide less component ads than a set `targetNumAdComponents`.
 
 When `targetNumAdComponents` is in use, the `adComponents` list in the bid
 can exceed the normal global limit (of 20 or 40), but `targetNumAdComponents`
-must still follow that limit.
+must still follow that limit. Chrome also currently has a limitation of 100
+entries per sequence that still applies.
 
 If particular ad components are especially critical, you can further set
 `numMandatoryAdComponents` to denote that the first `numMandatoryAdComponents`
@@ -1321,6 +1322,7 @@ If the top-level auction has a `sellerCurrency` configured, this will be its cur
     *   "below-kanon-threshold"
     *   "wrong-generate-bid-currency"
     *   "wrong-score-ad-currency"
+    *   "multi-bid-limit-exceeded"
 
 #### 7.1.2 Downsampling
 
