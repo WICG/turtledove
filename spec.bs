@@ -1602,7 +1602,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
             |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
             |expectedCurrency|, |multiBidLimit|, |ig|, and |auctionStartTime|.
-          1. TODO: Make irrelevant. If |bidsBatch| is failure, [=iteration/continue=].
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
             [=environment settings object/current monotonic time=], in milliseconds.
           1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
@@ -1660,7 +1659,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. [=list/For each=] |generatedBid| of |bidsBatch|:
               1. [=Assert=] that [=query generated bid k-anonymity count=] given |generatedBid| returns true.
               1. [=list/Append=] |generatedBid| to |bidsToScore|.
-          1. [=Register a bid for forDebuggingOnly reports=] given |bidsToScore|, |bidDebugReportInfo|, and
+          1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |bidDebugReportInfo|, and
                |bidDebugReportInfoList|
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
@@ -2487,8 +2486,8 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
   1. Let |winningBid| be |winnerInfo|'s [=leading bid info/leading bid=] if |winnerInfo| is
     not null, null otherwise.
   1. [=list/For each=] |bidDebugReportInfo| of |bidDebugReportInfoList|:
-    1. If |winningBid| is not null and |bidDebugReportInfo|'s [=bid debug reporting info/id=] is |winningBid|'s
-      [=generated bid/id=]:
+    1. If |winningBid| is not null and |bidDebugReportInfo|'s [=bid debug reporting info/ids=]
+       [=set/contains=] |winningBid|'s [=generated bid/id=]:
       1. [=Assert=] that |winningBid|'s [=generated bid/id=] is not null.
       1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
         [=bid debug reporting info/bidder debug win report url=], |bidDebugReportInfo|'s
@@ -2527,12 +2526,17 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
 </div>
 
 <div>
-  To <dfn>register a bid for forDebuggingOnly reports</dfn> given a [=generated bid=]-or-null
-  |generatedBid|, [=bid debug reporting info=] |bidDebugReportInfo|, a [=list=] of [=bid debug reporting info=] |bidDebugReportInfoList|:
-  1. If |generatedBid| is not null:
-    1. Set |generatedBid|'s [=generated bid/id=] to |bidDebugReportInfoList|'s [=list/size=].
-    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/id=] to |bidDebugReportInfoList|'s [=list/size=]
+  To <dfn>register bids for forDebuggingOnly reports</dfn> given a [=list=] of
+  [=generated bids=] |generatedBids|, [=bid debug reporting info=] |bidDebugReportInfo|, a [=list=] of [=bid debug reporting info=] |bidDebugReportInfoList|:
+  1. Let |mainId| be |bidDebugReportInfoList|'s [=list/size=].
+  1. Let |subId| be 0.
   1. [=list/Append=] |bidDebugReportInfo| to |bidDebugReportInfoList|.
+  1. [=list/For each=] |generatedBid| of |generatedBids|:
+    1. If |generatedBid|'s 's [=generated bid/for k-anon auction=] is true:
+      1. Let |id| be (|mainId|, |subId|).
+      1. Set |subId| to |subId| + 1.
+      1. Set |generatedBid|'s [=generated bid/id=] to |id|.
+      1. [=set/Append=] |id| to |bidDebugReportInfo|'s [=bid debug reporting info/ids=].
 
   Issue: Instead of inserting to |bidDebugReportInfoList| in each component auction that runs in
   parallel, create a structure InterestGroupAuction that holds data for each auction
@@ -3324,6 +3328,8 @@ of the following global objects:
         1. Set |generatedBids| to the result of [=converting one or many GenerateBidOutputs to a list of generated bids=] with
           |generatedBidIDL|, |multiBidLimit|, |ig|, |expectedCurrency|, |isComponentAuction|,
           and |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=].
+    1. If |generatedBids| is not a [=list=] of [=generated bids=], set |generatedBids|
+       to a new [=list=] of [=generated bids=].
     1. Let |bidDebugReportInfo| be a new [=bid debug reporting info=].
     1. Set |bidDebugReportInfo|'s [=bid debug reporting info/interest group owner=] to
        |ig|'s [=interest group/owner=]
@@ -3331,7 +3337,7 @@ of the following global objects:
       [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] if it's not
       failure, null otherwise.
     1. Set |bidDebugReportInfo|'s [=bid debug reporting info/bidder debug loss report url=] to |debugLossReportUrl|.
-    1. If |generatedBids| is a non-[=list/empty=] [=list=] of [=generated bids=]:
+    1. If |generatedBids| is a not [=list/empty=]:
       1. Let |debugWinReportUrl| be |global|'s
         [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] if it's not
         failure, null otherwise.
@@ -3612,7 +3618,6 @@ To <dfn>convert a sequence of GenerateBidOutputs to a list of generated bids</df
     1. Let |bid| be the result of [=converting GenerateBidOutput to generated bid=] given |bidOutput|, |ig|, |expectedCurrency|, |isComponentAuction|, |groupHasAdComponents|.
     1. If |bid| is failure, return failure.
     1. If |bid| is null, [=iteration/continue=].
-    1. [=Assert=] that [=generated bid/no bid=] is false.
     1. [=list/Append=] |bid| to |bids|.
   1. Return |bids|
 </div>
@@ -5181,7 +5186,7 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
 
 <dl dfn-for="generated bid">
   : <dfn>id</dfn>
-  :: An {{unsigned long}}. Used to identify a [=generated bid=].
+  :: A pair of {{unsigned long}}s. Used to identify a [=generated bid=].
   : <dfn>for k-anon auction</dfn>
   :: A [=boolean=], initially true. If this is false, the bid is only used to determine the hypothetical
     winner with no k-anonymity constraints, which would be used to [=update k-anonymity counts=] only.
@@ -5229,10 +5234,10 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
 A <dfn>bid debug reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="bid debug reporting info">
-  : <dfn>id</dfn>
-  :: An {{unsigned long}}-or-null. Matches a [=generated bid/id=] of the [=generated bid=] corresponding to
-     this reporting information, or null if no bid was produced, in which case the debug loss URLs are
-     still relevant.
+  : <dfn>ids</dfn>
+  :: A [=set=] of pairs of {{unsigned long}}s. Includes all [=generated bid/id=] values
+    of the [=generated bid=]s which will want to use this debug reporting information
+    if they win an auction.
   : <dfn>component seller</dfn>
   ::  Null or an [=origin=]. Seller in component auction which was running to produce
     this debug information. Only set for component auctions, null otherwise.
