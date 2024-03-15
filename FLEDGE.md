@@ -433,16 +433,16 @@ The values of some signals (those configured by fields `auctionSignals`, `seller
 
 ##### 2.1.2 Seller Security Considerations
 
-While joinAdInterestGroup() has strict requirements about the calling origin
-matching the interest group’s owner (or a prescribed delegate), runAdAuction()
+While `joinAdInterestGroup()` has strict requirements about the calling origin
+matching the interest group’s owner (or a prescribed delegate), `runAdAuction()`
 does not require the calling origin matches the seller’s origin.  This means
-there can be times when runAdAuction() is not called from the seller’s origin,
+there can be times when `runAdAuction()` is not called from the seller’s origin,
 for example: 
 
-1. when a top-level seller calls runAdAuction() from the publisher’s site context,
+1. when a top-level seller calls `runAdAuction()` from the publisher’s site context,
    or
 1. when a component seller passes their auction config to a top-level seller to
-   pass to runAdAuction().
+   pass to `runAdAuction()`.
 
 In these instances sellers should be aware that other JavaScript running on the
 page may modify the auction config and should take one of these steps to ensure
@@ -451,12 +451,12 @@ this isn’t happening in unexpected ways:
 1. Passing signals via
    [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals)
    ensures that they come directly from the seller and are not modified.
-1. Verifying the auction config, passed as the third parameter to scoreAd(),
-   matches their expectations and is unmodified.  If [scoreAd()](#23-scoring-bids)
+1. Verifying the auction config, passed as the third parameter to [`scoreAd()`](#23-scoring-bids),
+   matches their expectations and is unmodified.  If `scoreAd()`
    determines some part of the auction config appears to have been modified
    unexpectedly, they may want to avoid participating in the auction, for example
    by scoring all bids zero.  Any creative URL replacements, from
-   deprecatedRenderURLReplacements, are especially worth verifying as they can
+   `deprecatedRenderURLReplacements`, are especially worth verifying as they can
    affect the ad rendered.
 
 It should go without saying that sellers should already be verifying the buyer
