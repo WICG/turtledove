@@ -18,6 +18,8 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [1.4 Buyer Security Considerations](#14-buyer-security-considerations)
   - [2. Sellers Run On-Device Auctions](#2-sellers-run-on-device-auctions)
     - [2.1 Initiating an On-Device Auction](#21-initiating-an-on-device-auction)
+      - [2.1.1 Providing Signals Asynchronously](#211-providing-signals-asynchronously)
+      - [2.1.2 Seller Security Considerations](#212-seller-security-considerations)
     - [2.2 Auction Participants](#22-auction-participants)
     - [2.3 Scoring Bids](#23-scoring-bids)
     - [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions)
@@ -429,6 +431,37 @@ In the case of a component auction, all `AuctionConfig` parameters for that comp
 
 The values of some signals (those configured by fields `auctionSignals`, `sellerSignals`, `perBuyerSignals`, `perBuyerTimeouts`, `deprecatedRenderURLReplacements`, and `directFromSellerSignals`) can optionally be provided not as concrete values, but as [Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).  This permits some parts of the auction, such as loading of scripts and trusted signals, and launching of isolated worklet processes, to overlap the computation (or network retrieval) of those values.  The worklet scripts will only see the resolved values; if any such Promise rejects the auction will be aborted (unless it managed to fail already or get otherwise aborted anyway).
 
+##### 2.1.2 Seller Security Considerations
+
+While joinAdInterestGroup() has strict requirements about the calling origin
+matching the interest group’s owner (or a prescribed delegate), runAdAuction()
+does not require the calling origin matches the seller’s origin.  This means
+there can be times when runAdAuction() is not called from the seller’s origin,
+for example: 
+
+1. when a top-level seller calls runAdAuction() from the publisher’s site context,
+   or
+1. when a component seller passes their auction config to a top-level seller to
+   pass to runAdAuction().
+
+In these instances sellers should be aware that other JavaScript running on the
+page may modify the auction config and should take one of these steps to ensure
+this isn’t happening in unexpected ways:
+
+1. Passing signals via
+   [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals)
+   ensures that they come directly from the seller and are not modified.
+1. Verifying the auction config, passed as the third parameter to scoreAd(),
+   matches their expectations and is unmodified.  If [scoreAd()](#23-scoring-bids)
+   determines some part of the auction config appears to have been modified
+   unexpectedly, they may want to avoid participating in the auction, for example
+   by scoring all bids zero.  Any creative URL replacements, from
+   deprecatedRenderURLReplacements, are especially worth verifying as they can
+   affect the ad rendered.
+
+It should go without saying that sellers should already be verifying the buyer
+submitting bids is someone the seller knows and works with if they are to give the
+bid a positive score.
 
 #### 2.2 Auction Participants
 
