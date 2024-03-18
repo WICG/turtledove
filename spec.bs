@@ -1700,7 +1700,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
                  |generatedBidsForDebuggingReports|.
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
-                [=list/insert=] |bidToScore|'s [=generated bid/interest group=] in |bidIgs|.
+                [=list/append=] |bidToScore|'s [=generated bid/interest group=] in |bidIgs|.
             1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
               |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
@@ -1914,8 +1914,17 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     |scoreAdOutput|["{{ScoreAdOutput/incomingBidInSellerCurrency}}"].
 1. Let |score| be |scoreAdOutput|["{{ScoreAdOutput/desirability}}"].
 1. If |generatedBid|'s [=generated bid/for k-anon auction=] is false:
+  1. Let |updateLeadingNonKAnonEnforcedBid| be false.
   1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
      is null, or |score| &gt; |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced score=]:
+    1. Set |updateLeadingNonKAnonEnforcedBid| to true.
+    1. Set |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced bids count=] to 1.
+  1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is not null and
+      |score| = |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced score=]:
+      1. Increment |leadingBidInfo|'s by [=leading bid info/top non-k-anon-enforced bids count=] 1.
+      1. Set |updateLeadingNonKAnonEnforcedBid| to true with 1 in |leadingBidInfo|'s
+        [=leading bid info/top non-k-anon-enforced bids count=] chance.
+  1. If |updateLeadingNonKAnonEnforcedBid| is true:
      1. Set |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced score=]
         to |score|.
      1. Set |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] to |generatedBid|.
@@ -5430,6 +5439,8 @@ scored bids. It's a [=struct=] with the following [=struct/items=]:
   :: A {{double}}, initially 0.0. The highest score so far when disregarding k-anonymity.
   : <dfn>top bids count</dfn>
   :: An integer, initially 0. The number of bids with the same `top score`.
+  : <dfn>top non-k-anon-enforced bids count</dfn>
+  :: Number of bids that are tied for leadership when disregarding k-anonymity thus far.
   : <dfn>at most one top bid owner</dfn>
   :: A [=boolean=], initially true. Whether all bids of `top score` are from the same interest
     group owner.
