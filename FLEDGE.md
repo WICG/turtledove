@@ -766,6 +766,8 @@ In case returning multiple bids is supported by the implementation in use,
 `generateBid` may also return up to `browserSignals.multiBidLimit` valid bid
 objects of the format above in an array.
 
+Note: Chrome currently imposes an internal limit of 100 for the length of returned bids sequences.
+
 If none of the produced bids pass the k-anonymity checks, `generateBid` will be
 re-run with the input `interestGroup` filtered to contain only k-anonymous ads
 and component ads. Such re-runs are limited to returning only a single bid,
