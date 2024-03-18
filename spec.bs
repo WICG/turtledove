@@ -191,6 +191,7 @@ dictionary GenerateBidInterestGroup {
   boolean enableBiddingSignalsPrioritization = false;
   record<DOMString, double> priorityVector;
 
+  record<USVString, sequence<DOMString>> sellerCapabilities;
   DOMString executionMode = "compatibility";
   USVString biddingLogicURL;
   USVString biddingWasmHelperURL;
@@ -261,6 +262,26 @@ This is detectable because it can change the set of fields that are read from th
   1. If |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"] [=map/exists=], then set
     |interestGroup|'s [=interest group/priority signals overrides=] to
     |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"].
+  1. If |group|["{{GenerateBidInterestGroup/sellerCapabilities}}"] [=map/exists=], [=map/for each=]
+    |sellerString| → |capabilities| of |group|["{{GenerateBidInterestGroup/sellerCapabilities}}"]:
+    1. Let |sellerCapabilities| be a new [=set=] of [=seller capabilities=].
+    1. [=list/For each=] |capabilityString| of |capabilities|:
+      1. If |capabilityString| is "`interest-group-counts`" or "`latency-stats`", then
+        [=set/append=] |capabilityString| to |sellerCapabilities|.
+
+        Note: For forward compatibility with new values, don't [=exception/throw=].
+    1. If |sellerString| is "`*`", then set |interestGroup|'s
+      [=interest group/all sellers capabilities=] to |sellerCapabilities|.
+    1. Otherwise:
+      1. If |interestGroup|'s [=interest group/seller capabilities=] is null, then set
+        |interestGroup|'s [=interest group/seller capabilities=] to a new [=ordered map=] whose
+        [=map/keys=] are [=origins=] and whose [=map/values=] are [=sets=] of [=seller capabilities=].
+      1. Let |sellerUrl| be the result of running the [=URL parser=] on |sellerString|.
+      1. If |sellerUrl| is not failure:
+        1. Let |seller| be |sellerUrl|'s [=url/origin=].
+        1. If |interestGroup|'s [=interest group/seller capabilities=] does not [=map/contain=]
+          |seller|, then [=map/set=] |interestGroup|'s
+          [=interest group/seller capabilities=][|seller|] to |sellerCapabilities|.
   1. If |group|["{{GenerateBidInterestGroup/executionMode}}"] is "`compatibility`",
     "`frozen-context`", or "`group-by-origin`", then set |interestGroup|'s
     [=interest group/execution mode=] to it.
@@ -611,29 +632,31 @@ partial interface Navigator {
 dictionary AuctionAdConfig {
   required USVString seller;
   required USVString decisionLogicURL;
+
   USVString trustedScoringSignalsURL;
   long maxTrustedScoringSignalsURLLength;
   sequence<USVString> interestGroupBuyers;
   Promise<any> auctionSignals;
-  record<DOMString, DOMString> requestedSize;
-  sequence<record<DOMString, DOMString>> allSlotsRequestedSizes;
   Promise<any> sellerSignals;
   Promise<DOMString> directFromSellerSignalsHeaderAdSlot;
   Promise<record<USVString, USVString>> deprecatedRenderURLReplacements;
   unsigned long long sellerTimeout;
   unsigned short sellerExperimentGroupId;
-  USVString sellerCurrency;
   Promise<record<USVString, any>> perBuyerSignals;
   Promise<record<USVString, unsigned long long>> perBuyerTimeouts;
   Promise<record<USVString, unsigned long long>> perBuyerCumulativeTimeouts;
+  USVString sellerCurrency;
+  Promise<record<USVString, USVString>> perBuyerCurrencies;
+  record<USVString, unsigned short> perBuyerMultiBidLimits;
   record<USVString, unsigned short> perBuyerGroupLimits;
   record<USVString, unsigned short> perBuyerExperimentGroupIds;
   record<USVString, record<USVString, double>> perBuyerPrioritySignals;
-  Promise<record<USVString, USVString>> perBuyerCurrencies;
-  record<USVString, unsigned short> perBuyerMultiBidLimits;
-  sequence<AuctionAdConfig> componentAuctions = [];
+  sequence<DOMString> requiredSellerCapabilities;
+  record<DOMString, DOMString> requestedSize;
+  sequence<record<DOMString, DOMString>> allSlotsRequestedSizes;
   Promise<undefined> additionalBids;
   DOMString auctionNonce;
+  sequence<AuctionAdConfig> componentAuctions = [];
   AbortSignal? signal;
   Promise<boolean> resolveToConfig;
 };
@@ -1240,6 +1263,16 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. If |buyer| is failure, then return failure.
   1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer priority signals=][|buyer|] to
     |signals|.
+1. If |config|["{{AuctionAdConfig/requiredSellerCapabilities}}"] [=map/exists=]:
+  1. Let |sellerCapabilities| be a new [=set=] of [=seller capabilities=].
+  1. [=list/For each=] |capabilityString| of
+    |config|["{{AuctionAdConfig/requiredSellerCapabilities}}"]:
+    1. If |capabilityString| is "`interest-group-counts`" or "`latency-stats`", then [=set/append=]
+      |capabilityString| to |sellerCapabilities|.
+
+      Note: For forward compatibility with new values, don't [=exception/throw=].
+
+  1. Set |auctionConfig|'s [=auction config/required seller capabilities=] to |sellerCapabilities|.
 1. If |config|["{{AuctionAdConfig/perBuyerCurrencies}}"] [=map/exists=]:
   1. Set |auctionConfig|'s [=auction config/per buyer currencies=] to
     |config|["{{AuctionAdConfig/perBuyerCurrencies}}"]
@@ -1341,7 +1374,9 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
         [=interest group/joining origin=], |ig|'s [=interest group/additional bid key=]).
     1. [=iteration/Continue=] if any of the following conditions hold:
       * |ig|'s [=interest group/bidding url=] is null;
-      * |ig|'s [=interest group/ads=] is null, or [=list/is empty=].
+      * |ig|'s [=interest group/ads=] is null, or [=list/is empty=];
+      * the result of running [=check if required seller capabilities are permitted=] with
+        |auctionConfig| and |ig| is false.
     1. Let |signalsUrl| be |ig|'s [=interest group/trusted bidding signals url=].
     1. Let |slotSizeQueryParam| be the result of [=calculating the ad slot size query param=]
       given |ig| and |auctionConfig|.
@@ -1375,6 +1410,21 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
           1. Otherwise, [=list/append=] |ig| to |perSignalsUrlGenerator|[|joiningOrigin|].
 1. Return « |bidGenerators|, |negativeTargetInfo| ».
 
+</div>
+
+<div algorithm>
+
+To <dfn>check if required seller capabilities are permitted</dfn> given an [=auction config=]
+|auctionConfig| and an [=interest group=] |ig|:
+  1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
+  1. Let |requiredSellerCapabilities| be |auctionConfig|'s
+    [=auction config/required seller capabilities=].
+  1. Return true if all of the following conditions hold:
+    * |ig|'s [=interest group/seller capabilities=] is not null;
+    * |ig|'s [=interest group/seller capabilities=][|seller|] [=map/exists=];
+    * |requiredSellerCapabilities| is a [=set/subset=] of |ig|'s
+      [=interest group/seller capabilities=][|seller|].
+  1. Return false.
 </div>
 
 <div algorithm="generate potentially multiple bids">
@@ -1922,8 +1972,18 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     |scoreAdOutput|["{{ScoreAdOutput/incomingBidInSellerCurrency}}"].
 1. Let |score| be |scoreAdOutput|["{{ScoreAdOutput/desirability}}"].
 1. If |generatedBid|'s [=generated bid/for k-anon auction=] is false:
+
+  1. Let |updateLeadingNonKAnonEnforcedBid| be false.
   1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
      is null, or |score| &gt; |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced score=]:
+    1. Set |updateLeadingNonKAnonEnforcedBid| to true.
+    1. Set |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced bids count=] to 1.
+  1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is not null and
+      |score| = |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced score=]:
+      1. Increment |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced bids count=] by 1.
+      1. Set |updateLeadingNonKAnonEnforcedBid| to true with 1 in |leadingBidInfo|'s
+        [=leading bid info/top non-k-anon-enforced bids count=] chance.
+  1. If |updateLeadingNonKAnonEnforcedBid| is true:
      1. Set |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced score=]
         to |score|.
      1. Set |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] to |generatedBid|.
@@ -4049,6 +4109,32 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
             1. Otherwise, [=map/set=] |ig|'s [=interest group/priority signals overrides=][|pvKey|] to |pvValue|.
         1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
+        <dt>"`sellerCapabilities`"
+        <dd>
+        1.  If |value| is an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
+          [=map/values=] are [=lists=] of [=strings=], [=map/for each=]
+          |sellerString| → |capabilities| of |value|:
+          1. Let |sellerCapabilities| be a new [=set=] of [=seller capabilities=].
+          1. [=list/For each=] |capabilityString| of |capabilities|:
+            1. If |capabilityString| is "`interest-group-counts`" or "`latency-stats`", then
+              [=set/append=] |capabilityString| to |sellerCapabilities|.
+
+              Note: For forward compatibility with new values, don't [=exception/throw=].
+
+          1. If |sellerString| is "`*`", then set |ig|'s [=interest group/all sellers capabilities=]
+            to |sellerCapabilities|.
+          1. Otherwise:
+            1. If |ig|'s [=interest group/seller capabilities=] is null, then set |ig|'s
+              [=interest group/seller capabilities=] to a new [=ordered map=] whose [=map/keys=] are
+              [=origins=] and whose [=map/values=] are [=sets=] of [=seller capabilities=].
+            1. Let |sellerUrl| be the result of running the [=URL parser=] on |sellerString|.
+            1. If |sellerUrl| is not failure:
+              1. Let |seller| be |sellerUrl|'s [=url/origin=].
+              1. If |ig|'s [=interest group/seller capabilities=] does not [=map/contain=] |seller|,
+                then [=map/set=] |ig|'s [=interest group/seller capabilities=][|seller|] to
+                |sellerCapabilities|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+
         <dt>"`executionMode`"
         <dd>
         1. If |value| is "`compatibility`", "`frozen-context`", or "`group-by-origin`", then set
@@ -4098,6 +4184,7 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
         1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
         <dt>"`trustedBiddingSignalsSlotSizeMode`"
+        <dd>
         1. If |value| is one of "none", "slot-size", or "all-slots-requested-sizes", set |ig|'s
            [=interest group/trusted bidding signals slot size mode=] to |value|.
         1. Otherwise, set [=interest group/trusted bidding signals slot size mode=] to "none".
@@ -4233,6 +4320,10 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   [=interest group/priority signals overrides=]:
   1. The [=string/length=] of |key|.
   1. 8, which is the size of |value|.
+1. If |ig|'s [=interest group/seller capabilities=] is not null, then [=map/for each=]
+  |seller| → |capabilities| of |ig|'s [=interest group/seller capabilities=]:
+  1. The [=string/length=] of the [=serialization of an origin|serialization=] of |seller|.
+  1. 4, which is |capabilities|'s underlying number of enum bytes.
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
   [=interest group/bidding url=], if the field is not null.
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
@@ -4858,6 +4949,14 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
   : <dfn>priority signals overrides</dfn>
   :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
     {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
+  : <dfn>seller capabilities</dfn>
+  :: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
+    [=sets=] of [=seller capabilities=].
+    The [=seller capabilities=] this [=interest group=] grants to each seller.
+  : <dfn>all sellers capabilities</dfn>
+  :: Null or a [=set=] of [=seller capabilities=].
+    The default [=seller capabilities=] granted to sellers not listed in
+    [=interest group/seller capabilities=].
   : <dfn>execution mode</dfn>
   :: One of three possible values: "`compatibility`", "`frozen-context`", or "`group-by-origin`".
     Initially "`compatibility`". Each value reprensents a {{long}} integer.
@@ -4974,6 +5073,13 @@ frequency capping. It's a [=struct=] with the following [=struct/items=]:
   : <dfn>ad json</dfn>
   :: A [=string=]. A JSON serialized object corresponding to the ad that won the auction.
 </dl>
+
+A <dfn>seller capability</dfn> is a permission granted by an [=interest group=] to sellers. It's
+"`interest-group-counts`" or "`latency-stats`". Each value represents a single bit in a 4-byte
+[=byte sequence=]. The 4-byte [=byte sequence=] can store no more than 32 capabilities.
+
+Note: More than 2 values, but probably not more than 32 values are planned, at least for a while.
+This way, there is not need to reserve more space for a while.
 
 <h3 dfn-type=dfn>Currency tag</h3>
 A currency tag is a [=string=] containing exactly 3 upper-case ASCII letters, or null. The null
@@ -5104,6 +5210,11 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
     priorities. In the case both have entries with the same key, the entry in
     `per_buyer_priority_signals` takes precedence. No signals key start with "browserSignals.", which
     is reserved for values coming from the browser.
+  : <dfn>required seller capabilities</dfn>
+  :: A [=set=] of [=seller capabilities=].
+    The [=seller capabilities=] that each [=interest group=] must declare to participate in the
+    auction. Interest groups that don't declare all these capabilities will not participate in the
+    auction.
   : <dfn>component auctions</dfn>
   :: A [=list=] of [=auction config=]s.
     Nested auctions whose results will also participate in a top level auction. Only the top level
@@ -5503,6 +5614,8 @@ scored bids. It's a [=struct=] with the following [=struct/items=]:
   :: A {{double}}, initially 0.0. The highest score so far when disregarding k-anonymity.
   : <dfn>top bids count</dfn>
   :: An integer, initially 0. The number of bids with the same `top score`.
+  : <dfn>top non-k-anon-enforced bids count</dfn>
+  :: Number of bids that are tied for leadership when disregarding k-anonymity thus far.
   : <dfn>at most one top bid owner</dfn>
   :: A [=boolean=], initially true. Whether all bids of `top score` are from the same interest
     group owner.

@@ -179,7 +179,7 @@ included within the URL. Note that the lifetime of an Interest Group is not affe
 
 The updates are done after auctions so as not to slow down
 the auctions themselves.  The updates are rate limited to running at most daily to
-conserve resources.  An update request only contains information from the single site
+conserve resources, and timeout after 30 seconds.  An update request only contains information from the single site
 where the user was added to the interest group.  At a later date we can consider
 potential side channel mitigations (e.g.
 [IP address privacy](https://github.com/GoogleChrome/ip-protection/) or a trusted
