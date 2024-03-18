@@ -696,12 +696,12 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       [=auction config/interest group buyers=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. Let |generatedBids| be a new [=list=] of [=generated bids=].
+  1. Let |generatedBidsForDebuggingReports| be a new [=list=] of [=generated bids=].
   1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
-    null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|, and |generatedBids|.
+    null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|, and |generatedBidsForDebuggingReports|.
   1. Let |auctionReportInfo| be a new [=auction report info=].
   1. If |winnerInfo| is not failure, then set |auctionReportInfo| to the result of running
-    [=collect forDebuggingOnly reports=] with |generatedBids| and |winnerInfo|.
+    [=collect forDebuggingOnly reports=] with |generatedBidsForDebuggingReports| and |winnerInfo|.
   1. If |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
     given |global|, to [=reject=] |p| with a "{{TypeError}}".
   1. Otherwise if |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null:
@@ -882,17 +882,12 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 To <dfn>asynchronously finish reporting</dfn> given a
 [=fencedframetype/fenced frame reporting map=] |reportingMap|, [=leading bid info=] |leadingBidInfo|,
 and [=auction report info=] |auctionReportInfo|.
-1. Let |winner| be |leadingBidInfo|'s [=leading bid info/leading bid=].
-1. [=Increment ad k-anonymity count=] given |winner|'s [=generated bid/interest group=] and
-  |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-1. If |winner|'s [=generated bid/ad component descriptors=] is not null:
-  1. [=set/For each=] |adComponentDescriptor| in |winner|'s
-    [=generated bid/ad component descriptors=]:
-    1. [=Increment component ad k-anonymity count=] given |adComponentDescriptor|'s
-      [=ad descriptor/url=].
-1. [=Increment reporting ID k-anonymity count=] given |winner|'s
-  [=generated bid/interest group=] and |winner|'s [=generated bid/ad descriptor=]'s
-  [=ad descriptor/url=].
+1. [=Increment a winning bid's k-anonymity count=] given |leadingBidInfo|'s [=leading bid info/leading bid=].
+1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is
+   not null, and |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/id=]
+   &ne; |leadingBidInfo|'s [=leading bid info/leading bid=]'s  [=generated bid/id=],
+   [=increment a winning bid's k-anonymity count=] given
+   |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=].
 1. Let |buyerDone|, |sellerDone|, and |componentSellerDone| be [=booleans=], initially false.
 1. If |leadingBidInfo|'s [=leading bid info/component seller=] is null, set |componentSellerDone|
    to true.
@@ -1474,7 +1469,7 @@ and a [=moment=] |auctionStartTime|:
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, an [=origin=]
 |topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=generated bids=]
-|generatedBids|:
+|generatedBidsForDebuggingReports|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
@@ -1496,7 +1491,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinnerInfo| be the result of running [=generate and score bids=] with |component|,
-      |auctionConfig|, |global|, |topLevelOrigin|, |bidIgs|, and |generatedBids|.
+      |auctionConfig|, |global|, |topLevelOrigin|, |bidIgs|, and |generatedBidsForDebuggingReports|.
     1. If |compWinnerInfo| is failure, return failure.
     1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns
       failure, return failure.
@@ -1509,8 +1504,13 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
     1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
       [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
-      [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicScript|, null,
-      "top-level-auction", null, and |topLevelOrigin|.
+      [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicScript|,
+      null, "top-level-auction", null, and |topLevelOrigin|.
+    1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
+      is not null, then run [=score and rank a bid=] with |auctionConfig|,
+      |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
+      |leadingBidInfo|, |decisionLogicScript|, null, "top-level-auction", null,
+      and |topLevelOrigin|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
   1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1684,18 +1684,27 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
             |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|, |ig|, and
             |auctionStartTime|.
-          1. Set |generatedBid|'s [=generated bid/id=] to |generatedBids|'s [=list/size=].
-          1. [=list/Append=] |generatedBid| to |generatedBids|.
-
-            Issue: Instead of inserting to |generatedBids| in each component auction that runs in
-            parallel, create a strucure InterestGroupAuction that holds data for each auction
-            separately (<a href="https://github.com/WICG/turtledove/issues/1021">WICG/turtledove#1021</a>).
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
             [=environment settings object/current monotonic time=], in milliseconds.
           1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
             |generateBidDuration|.
-          1. If |generatedBid|'s [=generated bid/no bid=] is true, [=iteration/continue=].
-          1. If [=query generated bid k-anonymity count=] given |generatedBid| returns false:
+          1. If |generatedBid|'s [=generated bid/no bid=] is true:
+            1. [=Register a bid for forDebuggingOnly reports=] given |generatedBid| and
+               |generatedBidsForDebuggingReports|.
+            1. [=iteration/continue=].
+          1. Let |bidsToScore| be a new [=list=] of [=generated bids=]
+          1. If [=query generated bid k-anonymity count=] given |generatedBid| returns true:
+            1. Let |bidCopy| be a clone of |generatedBid|.
+            1. Set |bidCopy|'s [=generated bid/for k-anon auction=] to false.
+            1. [=list/Append=] |bidCopy| to |bidsToScore|.
+            1. [=list/Append=] |generatedBid| to |bidsToScore|.
+
+            Note: Conceptually, a bid that's already k-anonymous is considered
+            for both the k-anonymous and non-enforcing-k-anonymity leadership.
+
+            1. [=Register a bid for forDebuggingOnly reports=] given |generatedBid| and
+               |generatedBidsForDebuggingReports|.
+          1. Otherwise:
 
             Note: [=Generate a bid=] is now rerun with only k-anonymous [=interest group/ads=] to give
             the buyer a chance to [=generate a bid=] for k-anonymous [=interest group/ads=]. Allowing
@@ -1703,10 +1712,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             mechanism to bootstrap the k-anonymity count, otherwise no [=interest group/ads=] would
             ever trigger [=increment k-anonymity count=] and all ads would fail
             [=query k-anonymity count=].
-            1. TODO: Run [=score and rank a bid=] on |generatedBid| to find the highest scoring bid
-              that isn't k-anonymous. After the auction, if the highest scoring bid that isn't
-              k-anonymous has a higher score than the highest scoring k-anonymous bid, then call
-              [=increment ad k-anonymity count=] on it.
+
+            1. Set |generatedBid|'s [=generated bid/for k-anon auction=] to false.
+            1. [=list/Append=] |generatedBid| to |bidsToScore|.
             1. Let |originalAds| be |ig|'s [=interest group/ads=].
             1. If |originalAds| is not null:
               1. Set |ig|'s [=interest group/ads=] to a new [=list=] of [=interest group ad=].
@@ -1735,11 +1743,17 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
             1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
               by |generateBidDuration|.
-            1. If |generatedBid| is failure, [=iteration/continue=].
-          1. [=list/Insert=] |generatedBid|'s [=generated bid/interest group=] in |bidIgs|.
-          1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
-            |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
-            |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
+            1. If |generatedBid| is not a failure:
+              1. [=Assert=] that [=query generated bid k-anonymity count=] given |generatedBid| returns true.
+              1. [=list/Append=] |generatedBid| to |bidsToScore|.
+              1. [=Register a bid for forDebuggingOnly reports=] given |generatedBid| and
+                 |generatedBidsForDebuggingReports|.
+          1. [=list/For each=] |bidToScore| of |bidsToScore|:
+            1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
+                [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
+            1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
+              |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
+              |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1949,8 +1963,24 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     then set |generatedBid|'s [=generated bid/bid in seller currency=] to
     |scoreAdOutput|["{{ScoreAdOutput/incomingBidInSellerCurrency}}"].
 1. Let |score| be |scoreAdOutput|["{{ScoreAdOutput/desirability}}"].
+1. If |generatedBid|'s [=generated bid/for k-anon auction=] is false:
+  1. Let |updateLeadingNonKAnonEnforcedBid| be false.
+  1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
+     is null, or |score| &gt; |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced score=]:
+    1. Set |updateLeadingNonKAnonEnforcedBid| to true.
+    1. Set |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced bids count=] to 1.
+  1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is not null and
+      |score| = |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced score=]:
+      1. Increment |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced bids count=] by 1.
+      1. Set |updateLeadingNonKAnonEnforcedBid| to true with 1 in |leadingBidInfo|'s
+        [=leading bid info/top non-k-anon-enforced bids count=] chance.
+  1. If |updateLeadingNonKAnonEnforcedBid| is true:
+     1. Set |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced score=]
+        to |score|.
+     1. Set |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] to |generatedBid|.
+  1. Return.
 1. Let |updateLeadingBid| be false.
-1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, or |score| is greater than
+1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, or |score| &gt;
   |leadingBidInfo|'s [=leading bid info/top score=]:
   1. Set |updateLeadingBid| to true.
   1. Set |leadingBidInfo|'s [=leading bid info/top bids count=] to 1.
@@ -2601,6 +2631,17 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
   1. Return |auctionReportInfo|.
 </div>
 
+<div>
+  To <dfn>register a bid for forDebuggingOnly reports</dfn> given a [=generated bid=]
+  |generatedBid| and a [=list=] of [=generated bids=] |generatedBidsForDebuggingReports|:
+  1. Set |generatedBid|'s [=generated bid/id=] to |generatedBidsForDebuggingReports|'s [=list/size=].
+  1. [=list/Append=] |generatedBid| to |generatedBidsForDebuggingReports|.
+
+  Issue: Instead of inserting to |generatedBidsForDebuggingReports| in each component auction that runs in
+  parallel, create a structure InterestGroupAuction that holds data for each auction
+  separately (<a href="https://github.com/WICG/turtledove/issues/1021">WICG/turtledove#1021</a>).
+</div>
+
 ### Downsampling ### {#downsampling-header}
 
 *This first introductory paragraph is non-normative.*
@@ -3206,6 +3247,19 @@ threshold when responding to [=query k-anonymity count=].
       [=interest group ad/render url=] is |ad|.
     1. Let |keyHash| be the result of [=computing the key hash of reporting ID=] given |ig| and |igAd|.
     1. [=Increment k-anonymity count=] given |keyHash|.
+</div>
+
+<div algorithm>
+  To <dfn local-lt="update k-anonymity counts">increment a winning bid's k-anonymity count</dfn> given a [=generated bid=] |winner|:
+  1. [=Increment ad k-anonymity count=] given |winner|'s [=generated bid/interest group=] and
+    |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+  1. If |winner|'s [=generated bid/ad component descriptors=] is not null:
+    1. [=list/For each=] |adComponentDescriptor| in |winner|'s [=generated bid/ad component descriptors=]:
+      1. [=Increment component ad k-anonymity count=] given |adComponentDescriptor|'s
+        [=ad descriptor/url=].
+  1. [=Increment reporting ID k-anonymity count=] given |winner|'s
+    [=generated bid/interest group=] and |winner|'s [=generated bid/ad descriptor=]'s
+    [=ad descriptor/url=].
 </div>
 
 # Script Runners # {#script-runners}
@@ -5258,6 +5312,9 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   : <dfn>no bid</dfn>
   :: A [=boolean=], initially false. True if there was a failure generating a bid, or the bidder
     chose not to bid. When true, [=generated bid/bidder debug loss report url=] is still considered.
+  : <dfn>for k-anon auction</dfn>
+  :: A [=boolean=], initially true. If this is false, the bid is only used to determine the hypothetical
+    winner with no k-anonymity constraints, which would be used to [=update k-anonymity counts=] only.
   : <dfn>bid</dfn>
   :: A [=bid with currency=]. If the [=bid with currency/value=] is zero or negative, then this
     [=interest group=] will not participate in the auction.
@@ -5479,13 +5536,19 @@ scored bids. It's a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="leading bid info">
   : <dfn>top score</dfn>
   :: A {{double}}, initially 0.0. The highest score so far.
+  : <dfn>top non-k-anon-enforced score</dfn>
+  :: A {{double}}, initially 0.0. The highest score so far when disregarding k-anonymity.
   : <dfn>top bids count</dfn>
   :: An integer, initially 0. The number of bids with the same `top score`.
+  : <dfn>top non-k-anon-enforced bids count</dfn>
+  :: Number of bids that are tied for leadership when disregarding k-anonymity thus far.
   : <dfn>at most one top bid owner</dfn>
   :: A [=boolean=], initially true. Whether all bids of `top score` are from the same interest
     group owner.
   : <dfn>leading bid</dfn>
-  :: Null or a [=generate bid=], initially null. The leading bid of the auction so far.
+  :: Null or a [=generated bid=], initially null. The leading bid of the auction so far.
+  : <dfn>leading non-k-anon-enforced bid</dfn>
+  :: Null or a [=generated bid=], initially null. The leading bid of the auction disregarding k-anonymity so far.
   : <dfn>auction config</dfn>
   :: An [=auction config=]. The auction config of the auction which generated this
     [=leading bid info/leading bid=].
