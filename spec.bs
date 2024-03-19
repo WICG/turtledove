@@ -3771,7 +3771,7 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
     1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponents}}"].
     1. Return failure if any of the following conditions hold:
       * |groupHasAdComponents| is false;
-      * |adComponents|'s size is greater than 40.
+      * |adComponents|'s size is greater than 40 and |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] does not [=map/exist=].
     1. Let |adComponentDescriptors| be a new [=list=] of [=ad descriptors=].
     1. For |component| in |adComponents|:
       1. Let |componentDescriptor| be a new [=ad descriptor=].
@@ -3785,6 +3785,19 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
       1. If [=finding matching ad=] given |componentUrl|, |ig|, and true returns null, return failure.
       1. [=list/Append=] |componentDescriptor| to |adComponentDescriptors|.
     1. Set |bid|'s [=generated bid/ad component descriptors=] to |adComponentDescriptors|.
+  1. If |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] [=map/exists=]:
+    1. If |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] = 0 or
+       |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] &gt; 40,
+       return failure.
+    1. If |bid|'s [=generated bid/ad component descriptors=] is null, or
+          |bid|'s [=generated bid/ad component descriptors=]'s [=list/size=] &lt;
+          |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"], return failure.
+    1. If |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] &lt;
+          |generateBidOutput|["{{GenerateBidOutput/numMandatoryAdComponents}}"], return failure.
+    1. Set |bid|'s [=generated bid/target number of ad components=] to
+       |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"].
+    1. Set |bid|'s [=generated bid/number of mandatory ad components=] to
+       |generateBidOutput|["{{GenerateBidOutput/numMandatoryAdComponents}}"].
   1. If |generateBidOutput|["{{GenerateBidOutput/adCost}}"] [=map/exists=], then set |bid|'s
     [=generated bid/ad cost=] to |generateBidOutput|["{{GenerateBidOutput/adCost}}"].
   1. If |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"] [=map/exists=]:
@@ -5380,8 +5393,9 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   : <dfn>ad descriptor</dfn>
   :: An [=ad descriptor=]. Render URL and size of the bid's ad.
   : <dfn>ad component descriptors</dfn>
-  :: Null or a [=list=] of [=ad descriptors=]. Ad components associated with bid, if any. May have at
-    most 40 [=list/items=]. Must be null if the interest group making this bid has a null
+  :: Null or a [=list=] of [=ad descriptors=]. Ad components associated with bid, if any.
+    Will be limited to at most 40 [=list/items=] by the time the bid participates in the
+    auction. Must be null if the interest group making this bid has a null
     [=interest group/ad components=] field.
   : <dfn>ad cost</dfn>
   :: Null or a {{double}}. Advertiser click or conversion cost passed from `generateBid()` to
@@ -5404,6 +5418,12 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   : <dfn>component seller</dfn>
   :: Null or an [=origin=]. Seller in component auction which the [=generated bid/interest group=]
     is participating. Only set for component auctions, null otherwise.
+  : <dfn>target number of ad components</dfn>
+  :: Null or {{unsigned long}}. Set if the bidder requested the component list
+    they provide to be reduced to the given target, taking in account k-anonymity.
+  : <dfn>number of mandatory ad components</dfn>
+  :: {{unsigned long}}. Only relevant if [=generated bid/target number of ad components=] is set.
+     Requires the first that many given ad components to be included.
 </dl>
 
 A <dfn>bid debug reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
