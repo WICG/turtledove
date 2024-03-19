@@ -1699,21 +1699,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             [=environment settings object/current monotonic time=], in milliseconds.
           1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
             |generateBidDuration|.
+          1. Let |bidsToScore| be the result of applying [=adjust bid list based on k-anonymity=] to |bidsBatch|.
           1. Let |foundKAnonBids| be false.
-          1. Let |bidsToScore| be a new [=list=] of [=generated bids=]
-          1. [=list/For each=] |generatedBid| of |bidsBatch|:
-            1. If [=query generated bid k-anonymity count=] given |generatedBid| returns true:
-              1. Set |foundKAnonBids| to true.
-              1. Let |bidCopy| be a clone of |generatedBid|.
-              1. Set |bidCopy|'s [=generated bid/for k-anon auction=] to false.
-              1. [=list/Append=] |bidCopy| to |bidsToScore|.
-
-              Note: Conceptually, a bid that's already k-anonymous is considered
-              for both the k-anonymous and non-enforcing-k-anonymity leadership.
-
-            1. Otherwise, set |generatedBid|'s [=generated bid/for k-anon auction=] to false.
-            1. [=list/Append=] |generatedBid| to |bidsToScore|.
-          1. If |bidsBatch| is [=list/is not empty=] but |foundKAnonBids| is false:
+          1. [=list/For each=] |generatedBid| of |bidsToScore|:
+            1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true,
+               set |foundKAnonBids| to true.
+          1. If |bidsToScore| is [=list/is not empty=] but |foundKAnonBids| is false:
 
             Note: [=generate potentially multiple bids=] is now rerun with only k-anonymous [=interest group/ads=] to give
             the buyer a chance to [=generate potentially multiple bids=] for k-anonymous [=interest group/ads=]. Allowing
@@ -1753,6 +1744,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. [=Assert=] that [=list/size=] of |generatedBids| &le; 1
             1. [=list/For each=] |generatedBid| of |bidsBatch|:
               1. [=Assert=] that [=query generated bid k-anonymity count=] given |generatedBid| returns true.
+              1. [=Apply any component ads target to a bid=] given |generatedBid|.
               1. [=list/Append=] |generatedBid| to |bidsToScore|.
           1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |bidDebugReportInfo|, and
                |bidDebugReportInfoList|
@@ -5419,12 +5411,63 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   :: Null or an [=origin=]. Seller in component auction which the [=generated bid/interest group=]
     is participating. Only set for component auctions, null otherwise.
   : <dfn>target number of ad components</dfn>
-  :: Null or {{unsigned long}}. Set if the bidder requested the component list
+  :: Null or {{unsigned long}}, initially null. Set if the bidder requested the component list
     they provide to be reduced to the given target, taking in account k-anonymity.
   : <dfn>number of mandatory ad components</dfn>
   :: {{unsigned long}}. Only relevant if [=generated bid/target number of ad components=] is set.
      Requires the first that many given ad components to be included.
 </dl>
+
+<div algorithm>
+
+To <dfn>apply any component ads target to a bid</dfn>, given a [=generated bid=] |generatedBid|:
+1. If |generatedBid|'s [=generated bid/target number of ad components=] is null, return.
+1. [=Assert=] that |generatedBid|'s [=generated bid/ad component descriptors=] is not null.
+1. Truncate |generatedBid|'s [=generated bid/ad component descriptors=] to length [=generated bid/target number of ad components=]
+
+</div>
+
+<div algorithm>
+
+To <dfn>try to reach component ads target considering k-anonymity</dfn>, given a [=generated bid=] |generatedBid|:
+1. If |generatedBid|'s [=generated bid/target number of ad components=] is null, return false.
+1. Let |selectedComponents| be a new [=list=] of [=ad descriptors=].
+1. [=set/For each=] |i| of [=list/get the indices=] of |generatedBid|:
+  1. Let |candidateComponent| be |generatedBid|'s [=generated bid/ad component descriptors=][|i|].
+  1. If [=query component ad k-anonymity count=] given |candidateComponent|'s [=interest group ad/render url=] returns true:
+    1. [=list/Append=] |candidateComponent| to |selectedComponents|.
+  1. Otherwise:
+    1. If |i| &lt; |generatedBid|'s [=generated bid/number of mandatory ad components=], return false.
+1. If |selectedComponents|'s [=list/size=] &lt; |generatedBid|'s [=generated bid/target number of ad components=],
+   return false.
+1. Set |generatedBid|'s [=generated bid/ad component descriptors=] to |selectedComponents|.
+1. [=Apply any component ads target to a bid=] given |generatedBid|.
+1. Return [=query generated bid k-anonymity count=] given |generatedBid|.
+
+</div>
+
+<div algorithm>
+
+To <dfn>adjust bid list based on k-anonymity</dfn> given a [=list=] of [=generated bids=] |bidsBatch|:
+1. Let |bidsToScore| be a new [=list=] of [=generated bids=]
+1. [=list/For each=] |generatedBid| of |bidsBatch|:
+  1. Let |bidCopy| be a clone of |generatedBid|.
+  1. Set |bidCopy|'s [=generated bid/for k-anon auction=] to false.
+  1. [=Apply any component ads target to a bid=] given |bidCopy|.
+  1. [=list/Append=] |bidCopy| to |bidsToScore|
+
+  1. If [=query generated bid k-anonymity count=] given |generatedBid| returns true:
+    1. [=list/Append=] |generatedBid| to |bidsToScore|.
+
+    Note: Conceptually, a bid that's already k-anonymous is considered
+    for both the k-anonymous and non-enforcing-k-anonymity leadership.
+
+  1. Otherwise, if the result of applying [=try to reach component ads target considering k-anonymity=]
+     given |generatedBid| is true:
+    1. [=list/Append=] |generatedBid| to |bidsToScore|
+1. Return |bidsToScore|
+
+</div>
 
 A <dfn>bid debug reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
 
