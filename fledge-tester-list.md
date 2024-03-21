@@ -82,6 +82,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Anonymised | Ad Network | Testing in progress | | privacysandbox@anonymised.io |
 | Equativ | SSP & DSP | Testing in progress | | privacysandbox@equativ.com |
 | Sportradar | DSP | Testing in progress | | ads-privacy-sandbox@sportradar.com |
+| Ringier Axel Springer Poland | DSP & SSP | Tests ongoing since August 2023 | | privacysandbox@ringieraxelspringer.pl |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
@@ -97,4 +98,5 @@ Companies who may be interested in participating in tests and early adoption opp
 | Globo | Publisher | | adtech-delivery@g.globo|
 | A Gazeta | Publisher | | cdutra@redegazeta.com.br |
 | TNL Mediagene | Publisher | | privacysandbox@tnlmediagene.com |
+| Ringier Axel Springer Poland | Publisher | | privacysandbox@ringieraxelspringer.pl |
 
