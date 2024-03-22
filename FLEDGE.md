@@ -179,9 +179,12 @@ included within the URL. Note that the lifetime of an Interest Group is not affe
 
 The updates are done after auctions so as not to slow down
 the auctions themselves.  The updates are rate limited to running at most daily to
-conserve resources, and timeout after 30 seconds.  An update request only contains information from the single site
-where the user was added to the interest group.  At a later date we can consider
-potential side channel mitigations (e.g.
+conserve resources, and timeout after 30 seconds; however, the `updateIfOlderThanMs`
+field of the [trusted bidding signals response](#31-fetching-real-time-data-from-a-trusted-server)
+maybe be used to trigger a single post-auction update that will run even if the last
+update was less than a day ago. An update request only contains information from the
+single site where the user was added to the interest group.  At a later date we can
+consider potential side channel mitigations (e.g.
 [IP address privacy](https://github.com/GoogleChrome/ip-protection/) or a trusted
 update server as mentioned in [#333](https://github.com/WICG/turtledove/issues/333)
 to mitigate timing attacks) when the related technologies are more developed,
@@ -636,7 +639,8 @@ The response from the server should be a JSON object of the form:
           'priorityVector': {
               'signal1': number,
               'signal2': number,
-              ...}
+              ...},
+          'updateIfOlderThanMs': 60
       },
       ...
   }
@@ -648,6 +652,8 @@ and the server must include the HTTP response header `X-fledge-bidding-signals-f
 The value of each key that an interest group has in its `trustedBiddingSignalsKeys` list will be passed from the `keys` dictionary to the interest group's generateBid() function as the `trustedBiddingSignals` parameter. Values missing from the JSON object will be set to null. If the JSON download fails, or there are no `trustedBiddingSignalsKeys` or `trustedBiddingSignalsURL` in the interest group, then the `trustedBiddingSignals` argument to generateBid() will be null.
 
 The `perInterestGroupData` dictionary contains optional data for interest groups whose names were included in the request URL. The `priorityVector` will be used to calculate the final priority for an interest group, if that interest group has `enableBiddingSignalsPrioritization` set to true in its definition. Otherwise, it's only used to filter out interest groups, if the dot product with `prioritySignals` is negative. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
+
+The `updateIfOlderThanMs` optional field specifies that the interest group should be updated via the `updateURL` mechanism (see the [interest group attributes](#12-interest-group-attributes) section) if the interest group hasn't been joined or updated in a duration of time exceeding `updateIfOlderThanMs` milliseconds. Updates that ended in failure, either parse or network failure, are not considered to increment the last update or join time.
 
 Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way as [`trustedBiddingSignalsURL`](#31-fetching-real-time-data-from-a-trusted-server), with the base URL coming from the `trustedScoringSignalsURL` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderURLs bids offered in the auction. Note that the query params use "Urls" instead of "URLs". It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders. 
 
