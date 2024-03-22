@@ -66,6 +66,7 @@ To be added to a Google Calendar invitation for this meeting, join the Google Gr
 43. Wendell Baker (Yahoo)
 44. Luckey Harpley (remerge)
 45. Alonso Velasquez (Google Privacy Sandbox)
+46. Anthony Yam (Mediaocean)
 
 
 ## Note taker: Orr Bernstein
