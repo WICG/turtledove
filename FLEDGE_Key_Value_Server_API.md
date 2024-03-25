@@ -35,7 +35,7 @@ Keys may exist in different namespaces. The namespaces help the server identify
 keys needed from request query strings and prevent potential key collision, even
 though the keys may be unique across namespaces in today’s use cases.
 
-*   For a DSP, there is only one namespace: `keys`.
+*   For a DSP, there are: `keys` and `groupNames`.
 *   For an SSP, there are `renderUrls` and `adComponentRenderUrls`.
 
 The
