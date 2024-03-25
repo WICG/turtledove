@@ -29,7 +29,7 @@ If `enableBiddingSignalsPrioritization` was set for any of a buyer’s interest 
 If `enableBiddingSignalsPrioritization` was not true for any of a bidder’s interest group, this extra wait-for-all-signals-and-then-reprioritize step is skipped.
 
 ### Wait for Promise Resolution
-Before generateBid() may be invoked, the Chrome waits for all Promises that are members of an auction’s AuctionConfig to be resolved, including those that do not pass anything to generateBid() (like, e.g., additionalBids).  Chrome also delays starting the per-buyer cumulative timeouts until all of an AuctionConfigs Promises have been resolved (in addition to that buyer’s worklets having been assigned executors).
+Before `generateBid()` may be invoked, the Chrome waits for all `Promise`s that are members of an auction’s config to be resolved, including those that do not pass anything to `generateBid()` (like, e.g., `additionalBids`).  Chrome also delays starting the per-buyer cumulative timeouts until all of an auction configs' `Promise`s have been resolved (in addition to that buyer’s worklets having been assigned executors).
 
 ### Generate Bids
 Once all `Promise`s have been resolved, and an interest group’s trusted bidding signals have been fetched (if necessary), and reprioritization has been done (again, if necessary), `generateBid()` is finally invoked.  If the returned ad is not k-anonymous, it’s immediately invoked a second time, restricting the passed in ads to k-anonymous ones.  The `perBuyerTimeout`, which defaults to 50 milliseconds, is applied independently to each call to `generateBid()`.  Note that it includes running global scripts, in addition to running `generateBid()` itself.
