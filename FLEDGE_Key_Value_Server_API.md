@@ -35,7 +35,7 @@ Keys may exist in different namespaces. The namespaces help the server identify
 keys needed from request query strings and prevent potential key collision, even
 though the keys may be unique across namespaces in today’s use cases.
 
-*   For a DSP, there are: `keys` and `groupNames`.
+*   For a DSP, there are: `keys` and `interestGroupNames`.
 *   For an SSP, there are `renderUrls` and `adComponentRenderUrls`.
 
 The
@@ -129,7 +129,7 @@ In the request, one major difference from [V1](#query-api-version-1) is that the
    </td>
    <td rowspan="4">Each key group has exactly one tag from this category.
    </td>
-   <td>groupNames
+   <td>interestGroupNames
    </td>
    <td>Names of interest groups in the encompassing partition.
    </td>
@@ -249,7 +249,7 @@ Example trusted bidding signals request from Chrome:
         {
           "tags": [
             "structured",
-            "groupNames"
+            "interestGroupNames"
           ],
           "data": [
             "InterestGroup1"
@@ -274,7 +274,7 @@ Example trusted bidding signals request from Chrome:
         {
           "tags": [
             "structured",
-            "groupNames"
+            "interestGroupNames"
           ],
           "data": [
             "InterestGroup2",
@@ -394,7 +394,7 @@ Example of one (trusted bidding signals server) response:
         {
           "tags": [
             "structured",
-            "groupNames"
+            "interestGroupNames"
           ],
           "keyValues": {
             "InterestGroup1": {
@@ -485,11 +485,11 @@ Example of one trusted scoring signals server response:
 
 Structured keys are keys that the browser is aware of and the browser can use the response to do additional processing. The value of these keys must abide by the following schema for the browser to successfully parse them.
 
-##### Response schema for tag GroupNames
+##### Response schema for tag interestGroupNames
 
 ```json
 {
-  "title": "Format for value of keys in groups tagged 'structured' and 'groupNames'",
+  "title": "Format for value of keys in groups tagged 'structured' and 'interestGroupNames'",
   "type": "object",
   "additionalProperties": false,
   "properties": {
