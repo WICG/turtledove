@@ -23,7 +23,7 @@ system design.
 
 As mentioned in the main explainer, _"As a temporary mechanism during the First Experiment timeframe, the buyer and seller can fetch these bidding signals from any server, including one they operate themselves (a "Bring Your Own Server" model). However, in the final version after the removal of third-party cookies, the request will only be sent to a trusted key-value-type server."_
 
-The BYOS server API is different from the trusted server API due to the technical design difference. From the Trusted Key Value Server development perspective, the BYOS API is considered "Version 1". For the BYOS API, please refer to the [Protected Audience Spec as the source of truth](https://wicg.github.io/turtledove/).
+Designed on the foundation of the BYOS API, the trusted server API includes a few technical changes to facilitate communication with a key-value server running in a TEE (Trust Execution Environment). From the Trusted Key Value Server development perspective, the BYOS API is considered "Version 1". For the BYOS API, please refer to the [Protected Audience Spec as the source of truth](https://wicg.github.io/turtledove/).
 
 This doc is focused on the Trusted Key Value Server API. The API version starts with version 2. The latest version is version 2.
 
