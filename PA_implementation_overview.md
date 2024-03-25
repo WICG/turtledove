@@ -46,7 +46,7 @@ Note that if multiple auctions share a bidder process, regardless of whether the
 ### Scoring Bids
 Once the seller executor has been loaded, of which there is always only one per aucton config, and `Promise`s resolved, bids are passed to `scoreAd()` as soon as they’re available, on a first-come-first-served basis.  If any `additionalBids` are passed in to an auction, they’ll likely be scored first.  Since ties are resolved randomly, and there’s currently no timeouts that span multiple `scoreAd()` calls, the order in which bids are scored currently does not matter.  Each `scoreAd()` call independently respects the `scoreAd()` timeout (`sellerTimeout`), which includes the time to run the JavaScript file as well as the time to run `scoreAd()`.
 
-Trusted seller signals fetches are started every 100 milliseconds, when there’s a bid a seller executor is waiting to score.  Once the final bid for an auction has been generated, the final signals fetch is immediately issued.  As with bidders, seller executors can be shared between auctions in the same frame running concurrently, which also allows for for shared seller signals fetches.
+Trusted seller signals fetches are started every 10 milliseconds, when there’s a bid a seller executor is waiting to score.  Once the final bid for an auction has been generated, the final signals fetch is immediately issued.  As with bidders, seller executors can be shared between auctions in the same frame running concurrently, which also allows for for shared seller signals fetches.
 
 Once all bids are scored, the result is immediately returned to the JavaScript `Promise`.
 
