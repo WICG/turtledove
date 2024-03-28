@@ -68,3 +68,18 @@ of the web platform.
 This cannot be detected from the web platform. Instead, an ad auction can register both a `reserved.top_navigation_commit` and a `reserved.top_navigation`
 beacon, and then the ad frame can set the same automatic beacon data for both event types. The beacon destination server can then compare
 `top_navigation_commit` and `top_navigation` beacons, and filter out duplicate beacons that have the same exact data.
+
+## Increase in limit to number of component ads
+[Intent to Ship](TBD)
+
+Inside `generateBid` one can determine the currently active limit on number of components ads as follows:
+```
+const maxAdComponents = browserSignals.adComponentsLimit ?
+                        browserSignals.adComponentsLimit : 20;
+```
+
+From the context of a web page, the limit can also be queried as follows:
+```
+const maxAdComponents = navigator.protectedAudience ?
+    navigator.protectedAudience.queryFeatureSupport("adComponentsLimit") : 20;
+```
