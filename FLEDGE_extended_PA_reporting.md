@@ -332,6 +332,47 @@ This would grant both `interest-group-counts` and `latency-stats` permission to 
 
 NOTE: the permission names `interestGroupCounts` and `latencyStats` are *deprecated* and will be removed in a future Chrome release, as they do not follow the documented WebIDL [naming conventions](https://webidl.spec.whatwg.org/#idl-enums).
 
+### Temporary debugging mechanism
+
+_While third-party cookies are still available_, we plan to have a temporary
+mechanism available that allows for easier debugging. This mechanism is
+described in detail in the [Private Aggregation
+explainer](https://github.com/patcg-individual-drafts/private-aggregation-api?tab=readme-ov-file#temporary-debugging-mechanism).
+
+However, one key difference here is that this reporting does not use the
+`privateAggregation` object and so the method described to use this mechanism
+(`privateAggregation.enableDebugMode()`) is not available for this reporting.
+Instead, we add a new (temporary) parameter to the `auctionConfig` passed to
+`runAdAuction()`:
+
+```
+const auctionConfig = {
+  'seller': 'https://www.example-ssp.com',
+  ...
+  'interestGroupBuyers': ['https://buyer1.com', 'https://buyer2.com', ...],
+
+  // The API described above
+  'auctionReportBuyerKeys': [100n, 105n, ...],
+  'auctionReportBuyers': {
+    'interestGroupCount': { 'bucket': 0n, 'scale': 1 },
+    ...
+  }
+
+  // Additional parameter for configuring the debug mode
+  'auctionReportBuyerDebugModeConfig': { 'enabled': true, debugKey: 1234n },
+}
+```
+
+Note that `enabled` defaults to false if not provided. Also, as with
+`privateAggregation.enableDebugMode()`, `debugKey` is an optional unsigned
+64-bit integer that allows sites to associate reports with the contexts that
+triggered them. 
+
+Otherwise, the details of this debug mode are the same as other uses of Private
+Aggregation. For example, this debug mode is generally only available to callers
+eligibile to set third-party cookies and will automatically become deprecated
+when third-party cookies are.
+
 ## Data Volume
 
 To control the data volume of aggregatable reports, auction participants may want to subsample
