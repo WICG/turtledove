@@ -42,26 +42,47 @@ The usefulness of this page depends on testers sharing information and updates.
 
 | Company / Party | Role in testing | Est. Testing Timeframe | Link to testing plan and/or learnings | How to contact you |
 | --------------- | --------------- | ---------------------- | ------------------------------------- | ------------------ |
-| Criteo | DSP | | | privacy-sandbox-testing@criteo.com |
-| Teads | SSP & DSP | | | privacysandbox@teads.com |
-| NextRoll | DSP | | | privacysandbox@nextroll.com |
+| Criteo | DSP | Started in 2022, long term commitment | <ul><li>Participating in the CMA testing</li><li>Entering a stable testing phase on March 11 2024</li><li> [A statistical model for measuring Privacy Sandbox performance impacts](https://medium.com/criteo-engineering/privacy-sandbox-market-testing-a-statistical-model-for-measuring-performance-impacts-2e99ff402898)</li><li> [An update on FLEDGE testing](https://medium.com/criteo-engineering/an-update-on-fledge-chrome-testing-d0046430a3ec) </li></ul> | privacy-sandbox-testing@criteo.com |
+| Criteo | SSP | November 2023 | | privacy-sandbox-testing@criteo.com |
+| Teads | DSP | March 15th 2024 - May 15th 2024 | | privacysandbox@teads.com |
+| Teads | SSP | March 15th 2024 - May 15th 2024 | | privacysandbox@teads.com |
+| NextRoll | DSP | 2024-03-25 - 2024-05-20 | coming soon | privacysandbox@nextroll.com |
 | OpenX | SSP | Limited testing in progress | | joel.meyer@openx.com |
 | RTB House | DSP | Continuous testing ongoing; long term commitment. | https://blog.rtbhouse.com/whitepaper-deep-insights-from-early-fledge-experiments/ | privacysandbox@rtbhouse.com |
-| SMN | DSP | | | privacy-sandbox-testing@so-netmedia.jp |
+| SMN | DSP | February 1st 2024 - April 30th 2024 | | privacy-sandbox-testing@so-netmedia.jp |
 | Raptive | Testing as DSP & SSP & Ad management service | ongoing | | dmarti@cafemedia.com |
-| CyberAgent(Dynalyst) | DSP | | | privacysandbox@cyberagent.co.jp |
+| CyberAgent(Dynalyst) | DSP | March 15th 2024 - June 15th 2024 | | privacysandbox@cyberagent.co.jp |
 | Google Ad Manager + AdSense (including with Authorized Buyers) | SSP | Testing ongoing | [Publishers (Ad Manager)](https://support.google.com/admanager/answer/12052605?hl=en) <br/> [Publishers (AdSense)](https://support.google.com/adsense/answer/12570693)  <br/> [Authorized Buyers (DSPs)](https://developers.google.com/authorized-buyers/rtb/fledge-origin-trial#onboarding) <br/> [Multi-seller auction support](https://github.com/google/ads-privacy/tree/master/proposals/fledge-multiple-seller-testing) | Publishers with questions should reach out via their account manager directly, or via our [support channels](https://support.google.com/admanager/gethelp).<br/><br/>Authorized Buyers (DSPs) interested in testing should follow the steps listed in the [onboarding guide](https://developers.google.com/authorized-buyers/rtb/fledge-origin-trial#onboarding).<br/><br/>For technical questions on the experimental GPT API for multi-seller auctions, reach out via the “send feedback” button on the [GPT developer site](https://developers.google.com/publisher-tag/reference).| 
 | Google Ads + Display & Video 360 | DSP | Testing in progress | [Help Center Article](https://support.google.com/google-ads/answer/13626996?hl=en&ref_topic=13627218&sjid=16039190573195292133-NA) <br/> [Integration Guide for SSPs](https://developers.google.com/display-video/protected-audience/ssp-guide) <br/>   | Advertisers with questions can reach out via their account manager, or directly via this [form](https://docs.google.com/forms/d/1es8wVNYKD2PStYzE8atqZv4OJr3tuavWNMkmVcWRFQI/viewform?ts=63570235&edit_requested=true).| 
 | MicroAd | SSP & DSP | | | privacysandbox@microad.co.jp |
-| Neodata Group | SSP & DSP | | | privacysandbox@neodatagroup.com |
+| Blendee | SSP & DSP | | | privacysandbox@blendee.com |
 | Adlook (subsidiary of RTB House) | DSP | Continuous testing ongoing; long term commitment. | | privacysandbox@adlook.com |
+| PrimeAudience (subsidiary of RTB House) | Ad Network | Continuous testing ongoing; long term commitment. | | contact@primeaudience.com |
 | Microsoft (Xandr, MSAN) | SSP + DSP(s) | Testing | | privacy_sandbox@microsoft.com |
-| Tremor International | SSP & DSP| 2023-2024 | coming soon | subhag.oak@amobee.com |
-| Triplelift | SSP | Testing in progress | | prod-privacysandbox@triplelift.com |
-| Seedtag | SSP & DSP| 2023-2024 | coming soon | privacysandbox@seedtag.com |
-| Index Exchange | SSP | Testing in progress | | privacy-sandbox-support@indexexchange.com |
-| PubMatic | SSP | 2023-2024 | | privacysandbox@pubmatic.com |
-| Adform | DSP & SSP | 2023-2024 | | privacysandbox@adform.com |
+| Nexxen (Unruly/Tremor/Amobee) | SSP | Feb 1st 2024 - May 15th 2024 | coming soon | privacysandbox@nexxen.com |
+| Nexxen (Unruly/Tremor/Amobee) | DSP | Q2-Q3 2024 | coming soon | privacysandbox@nexxen.com |
+| Triplelift | SSP | Jan 2024 | | prod-privacysandbox@triplelift.com |
+| Seedtag | SSP | January 15th 2024 - April 15th 2024 | coming soon | privacysandbox@seedtag.com |
+| Index Exchange | SSP | By January 31, 2024 | | privacy-sandbox-support@indexexchange.com |
+| PubMatic | SSP | Jan 2024 | | privacysandbox@pubmatic.com |
+| Adform | DSP | March 12 - May 31, 2024 | | privacysandbox@adform.com |
+| Onetag | DSP & SSP | 2023-2024 | | privacysandbox@onetag.com |
+| Yahoo Inc | DSP | beginning 15 Jan 2024 | | googleprivacysandbox@yahooinc.com |
+| Magnite | SSP | January 2024 | | privacysandbox@magnite.com |
+| Globo | DSP & SSP | Testing | | adtech-delivery@g.globo |
+| Mediavine | DSP & SSP | 2023-2024 | | privacysandbox@mediavine.com |
+| Jivox | Ad Server (DCO) | Testing in progress | | jvx-google-privacy-sandbox-team@jivox.com |
+| Wirtualna Polska Media | Publisher & SSP | Running Protected Audience API tests since July 2023 | https://github.com/grupawp/PAapi | privacysandbox@grupawp.pl |
+| Appier Inc | DSP | 2023 Q1 - ongoing | | privacy-sandbox@appier.com |
+| Flashtalking | Ad Server & DCO | Testing in progress | | privacysandbox@mediaocean.com |
+| MediaMath | DSP | 2024 Q1 - | | privacysandbox@infillion.com |
+| Sharethrough | SSP | March 2024 | | privacysandbox@sharethrough.com |
+| adstir | SSP | 2024 Q2 - | | privacysandbox@united.jp  |
+| Bypass | DSP | 2024 Q2 - | | privacysandbox@united.jp  |
+| Anonymised | Ad Network | Testing in progress | | privacysandbox@anonymised.io |
+| Equativ | SSP & DSP | Testing in progress | | privacysandbox@equativ.com |
+| Sportradar | DSP | Testing in progress | | ads-privacy-sandbox@sportradar.com |
+| Ringier Axel Springer Poland | DSP & SSP | Tests ongoing since August 2023 | | privacysandbox@ringieraxelspringer.pl |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
@@ -69,8 +90,13 @@ Companies who may be interested in participating in tests and early adoption opp
 | Company / Party | Role (publisher/sellside, advertiser/buyside, etc.) | Additional details about your interest (Optional) | How to contact you |
 | --------------- | --------------------------------------------------- | ------------------------------------------------- | ------------------ |
 | Mail Metro Media | Publisher | Transact through Google Ad Manager and Prebid fledgeForGpt module | programmatic.platforms@assocnews.co.uk |
+| CNN Brasil | Publisher | | alexandre.magno@cnnbrasil.com.br |
 | Vocento | Publisher | | privacysandbox@vocento.com |
 | Clarin | Publisher | | mfranco@clarin.com |
 | Terra Networks | Publisher | | adtech.terra.br@telefonica.com |
 | OLX Brasil | Publisher | | adtech@olxbr.com |
+| Globo | Publisher | | adtech-delivery@g.globo|
+| A Gazeta | Publisher | | cdutra@redegazeta.com.br |
+| TNL Mediagene | Publisher | | privacysandbox@tnlmediagene.com |
+| Ringier Axel Springer Poland | Publisher | | privacysandbox@ringieraxelspringer.pl |
 
