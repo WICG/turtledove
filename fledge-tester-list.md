@@ -46,7 +46,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Criteo | SSP | November 2023 | | privacy-sandbox-testing@criteo.com |
 | Teads | DSP | March 15th 2024 - May 15th 2024 | | privacysandbox@teads.com |
 | Teads | SSP | March 15th 2024 - May 15th 2024 | | privacysandbox@teads.com |
-| NextRoll | DSP | 2024-01-30 | coming soon | privacysandbox@nextroll.com |
+| NextRoll | DSP | 2024-03-25 - 2024-05-20 | coming soon | privacysandbox@nextroll.com |
 | OpenX | SSP | Limited testing in progress | | joel.meyer@openx.com |
 | RTB House | DSP | Continuous testing ongoing; long term commitment. | https://blog.rtbhouse.com/whitepaper-deep-insights-from-early-fledge-experiments/ | privacysandbox@rtbhouse.com |
 | SMN | DSP | February 1st 2024 - April 30th 2024 | | privacy-sandbox-testing@so-netmedia.jp |
@@ -83,7 +83,6 @@ The usefulness of this page depends on testers sharing information and updates.
 | Equativ | SSP & DSP | Testing in progress | | privacysandbox@equativ.com |
 | Sportradar | DSP | Testing in progress | | ads-privacy-sandbox@sportradar.com |
 | Ringier Axel Springer Poland | DSP & SSP | Tests ongoing since August 2023 | | privacysandbox@ringieraxelspringer.pl |
-| Media.net | SSP & DSP | Testing in progress | | privacysandbox@media.net |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
