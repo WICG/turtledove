@@ -19,7 +19,15 @@ This explainer proposes APIs for trusted servers. [The trust model explainer](ht
 the service in more detail, including threat models, trust models, and
 system design.
 
-## Concepts
+### BYOS (Bring Your Own Server) and Trusted server
+
+As mentioned in the main explainer, _"As a temporary mechanism during the First Experiment timeframe, the buyer and seller can fetch these bidding signals from any server, including one they operate themselves (a "Bring Your Own Server" model). However, in the final version after the removal of third-party cookies, the request will only be sent to a trusted key-value-type server."_
+
+Designed on the foundation of the BYOS API, the trusted server API includes a few technical changes to facilitate communication with a key-value server running in a TEE (Trust Execution Environment). From the Trusted Key Value Server development perspective, the BYOS API is considered "Version 1". For the BYOS API, please refer to the [Protected Audience Spec as the source of truth](https://wicg.github.io/turtledove/).
+
+This doc is focused on the Trusted Key Value Server API. The API version starts with version 2. The latest version is version 2.
+
+## Terminology
 
 ### Namespace
 
@@ -27,211 +35,12 @@ Keys may exist in different namespaces. The namespaces help the server identify
 keys needed from request query strings and prevent potential key collision, even
 though the keys may be unique across namespaces in today’s use cases.
 
-*   For a DSP, there is only one namespace: `keys`.
+*   For a DSP, there are: `keys` and `interestGroupNames`.
 *   For an SSP, there are `renderUrls` and `adComponentRenderUrls`.
 
 The
 [FLEDGE explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#31-fetching-real-time-data-from-a-trusted-server)
 provides more context about these namespaces.
-
-### Mode
-
-The server can be configured to run in slightly different modes depending on
-whether it is serving the DSP use case or the SSP use case.
-
-### Hostname
-
-During the query, the browser sets the hostname. This matches the hostname
-described in the main explainer.
-
-## Query API Version 1
-
-### Description
-
-This is the mechanism for the browser client to fetch real-time bidding signals.
-The API is called during the ad auction process, as described in the
-[FLEDGE explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#31-fetching-real-time-data-from-a-trusted-server).
-
-The returned values are purely dependent on the keys (namespace + key + hostname),
-except for advanced use cases explicitly agreed upon between browsers and ad
-tech platforms. A potential advanced use case being discussed is how to provide
-country-level IPGeo information to the bidders. The API provides read-only
-access to the key/value data.
-
-Possible data staleness may occur. Different values may be returned for the
-same keys if reads happen during data updates, due to the distributed nature
-of the system. But if the data is stable, requests are deterministic.
-
-### Form
-
-GET `https://www.kv-server.example/v1/getvalues`
-
-### Examples
-
-```
-https://www.dsp-kv-server.example/v1/getvalues?hostname=publisher.com&keys=key1,key2&interestGroupNames=name1,name2
-https://www.ssp-kv-server.example/v1/getvalues?renderUrls=url1,url2&adComponentRenderUrls=url3,url4
-```
-
-### Query parameters
-
-<table>
-  <tr>
-   <td>Field
-   </td>
-   <td>Value Description
-   </td>
-   <td>Mode
-   </td>
-   <td>Original <a href="https://github.com/WICG/turtledove/blob/main/FLEDGE.md#31-fetching-real-time-data-from-a-trusted-server">FLEDGE explainer</a> description
-   </td>
-   <td>Required
-   </td>
-   <td>Type
-   </td>
-  </tr>
-  <tr>
-   <td>keys
-   </td>
-   <td>List of keys to query values for, under the namespace <code>keys</code>.
-   </td>
-   <td>DSP
-   </td>
-   <td><em>“keys” is a list of trustedBiddingSignalsKeys strings, perhaps coalesced (for efficiency) across any number of interest groups that share a trustedBiddingSignalsUrl.</em>
-   </td>
-   <td>Required
-   </td>
-   <td>List of strings
-   </td>
-  </tr>
-  <tr>
-   <td>renderUrls
-   </td>
-   <td>List of keys to query values for, under the namespace <code>renderUrls</code>.
-   </td>
-   <td>SSP
-   </td>
-   <td rowspan="2"><em>Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system. This works in much the same way, with the base URL coming from the trustedScoringSignalsUrl property of the seller's auction configuration object. However, it has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderUrls bids offered in the auction.</em>
-   </td>
-   <td>Required
-   </td>
-   <td>List of strings
-   </td>
-  </tr>
-  <tr>
-   <td>adComponentRenderUrls
-   </td>
-   <td>List of keys to query values for, under the namespace <code>adComponentRenderUrls</code>.
-   </td>
-   <td>SSP
-   </td>
-   <td>Optional
-   </td>
-   <td>List of strings
-   </td>
-  </tr>
-  <tr>
-   <td>hostname
-   </td>
-   <td>The browser sets the hostname of the publisher page to be the value.
-   </td>
-   <td>DSP
-   </td>
-   <td><em>the hostname of the top-level webpage where the ad will appear. The hostname is provided by the browser.</em>
-   </td>
-   <td>Required
-   </td>
-   <td>String
-   </td>
-  </tr>
-</table>
-
-### JSON response
-
-<table>
-  <tr>
-   <td>Parent Field
-   </td>
-   <td>Field
-   </td>
-   <td>Value Description
-   </td>
-  </tr>
-  <tr>
-   <td rowspan="3">namespace1
-   </td>
-   <td>key1
-   </td>
-   <td>Value corresponding to the key. Any JSON type
-   </td>
-  </tr>
-  <tr>
-   <td>key2
-   </td>
-   <td>Value corresponding to the key. Any JSON type
-   </td>
-  </tr>
-  <tr>
-   <td>…
-   </td>
-   <td>…
-   </td>
-  </tr>
-  <tr>
-   <td rowspan="3">namespace2
-   </td>
-   <td>key1
-   </td>
-   <td>Value corresponding to the key. Any JSON type
-   </td>
-  </tr>
-  <tr>
-   <td>key2
-   </td>
-   <td>Value corresponding to the key. Any JSON type
-   </td>
-  </tr>
-  <tr>
-   <td>…
-   </td>
-   <td>…
-   </td>
-  </tr>
-</table>
-
-### Example response
-
-```
-{
-  "renderUrls": {
-      "https://cdn.com/render_url_of_some_bid": <arbitrary_json>,
-      "https://cdn.com/render_url_of_some_other_bid": <arbitrary_json>,
-      ...},
-  "adComponentRenderUrls": {
-      "https://cdn.com/ad_component_of_a_bid": <arbitrary_json>,
-      "https://cdn.com/another_ad_component_of_a_bid": <arbitrary_json>,
-      ...}
-}
-```
-
-Under each namespace, a list of key-value pairs is returned where the keys match
-those specified in query parameters. If a key is not found by the server, it
-will not be set in the response.
-
-### Data-Version response header
-
-As mentioned in the FLEDGE explainer, a `data-version` header may be optionally
-returned. All key-value pairs updated during a particular period of time belong
-to a version assigned by the system during the update, i.e, the version slowly
-increments.
-
-If the header is returned, all key-value pairs in the response are guaranteed to
-belong to that version and the values will always be deterministic for a
-version. This version cannot be specified in a request. The server makes the
-decision on a best-effort basis to use versions as new as possible.
-
-The server does not guarantee that the version will always be returned. It’s
-much more likely when the number of keys in a request is small.
 
 ## Query API version 2
 
@@ -320,7 +129,7 @@ In the request, one major difference from [V1](#query-api-version-1) is that the
    </td>
    <td rowspan="4">Each key group has exactly one tag from this category.
    </td>
-   <td>groupNames
+   <td>interestGroupNames
    </td>
    <td>Names of interest groups in the encompassing partition.
    </td>
@@ -440,7 +249,7 @@ Example trusted bidding signals request from Chrome:
         {
           "tags": [
             "structured",
-            "groupNames"
+            "interestGroupNames"
           ],
           "data": [
             "InterestGroup1"
@@ -465,7 +274,7 @@ Example trusted bidding signals request from Chrome:
         {
           "tags": [
             "structured",
-            "groupNames"
+            "interestGroupNames"
           ],
           "data": [
             "InterestGroup2",
@@ -585,7 +394,7 @@ Example of one (trusted bidding signals server) response:
         {
           "tags": [
             "structured",
-            "groupNames"
+            "interestGroupNames"
           ],
           "keyValues": {
             "InterestGroup1": {
@@ -676,11 +485,11 @@ Example of one trusted scoring signals server response:
 
 Structured keys are keys that the browser is aware of and the browser can use the response to do additional processing. The value of these keys must abide by the following schema for the browser to successfully parse them.
 
-##### Response schema for tag GroupNames
+##### Response schema for tag interestGroupNames
 
 ```json
 {
-  "title": "Format for value of keys in groups tagged 'structured' and 'groupNames'",
+  "title": "Format for value of keys in groups tagged 'structured' and 'interestGroupNames'",
   "type": "object",
   "additionalProperties": false,
   "properties": {

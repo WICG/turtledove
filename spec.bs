@@ -819,12 +819,29 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
    |replacedAdURL|.
 1. Let |adSize| be |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/size=].
+1. Let |concreteAdSize| be the result of
+
+   Issue: resolving screen-relative sizes to pixel values for |adSize|.
+   (<a href="https://github.com/WICG/turtledove/issues/986">WICG/turtledove#986</a>) 
+1. Let |adWidthString| and |adHeightString| be the result of
+
+   Issue: converting |concreteAdSize| to strings.
+   (<a href="https://github.com/WICG/turtledove/issues/986">WICG/turtledove#986</a>)
+1. Let |sizeMacroMap| be the [=ordered map=] «[ "{%AD_WIDTH%}" → |adWidthString|,
+   "{%AD_HEIGHT%}" → |adHeightString|, "${AD_WIDTH}" → |adWidthString|,
+   "${AD_HEIGHT}" → |adHeightString|]»
+1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
+   the result of [=fencedframeutil/substituting macros=] with |sizeMacroMap| into |winningBid|'s
+   [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
 1. If |adSize| is not null:
    1. Set |pendingConfig|'s [=fenced frame config/content size=] to a [=struct=] with the following
       [=struct/items=]:
      : [=content size/value=]
-     :: |adSize| TODO: Resolve screen-relative sizes and macros and cast this properly.
+     :: |concreteAdSize|.
 
+        Issue: Cast |concreteAdSize| into the format that is eventually chosen for
+        [=content size/value=].
+        (<a href="https://github.com/WICG/turtledove/issues/986">WICG/turtledove#986</a>)
      : [=content size/visibility=]
      :: "<a for=visibility>`opaque`</a>"
 1. Set |pendingConfig|'s [=fenced frame config/interest group descriptor=]'s
