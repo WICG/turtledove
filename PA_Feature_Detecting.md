@@ -83,3 +83,24 @@ From the context of a web page, the limit can also be queried as follows:
 const maxAdComponents = navigator.protectedAudience ?
     navigator.protectedAudience.queryFeatureSupport("adComponentsLimit") : 20;
 ```
+
+## Reporting timeout
+[Intent to Ship](TBD)
+
+Inside `reportWin` one can determine its reporting timeout as follows:
+```
+const reportingTimeout = browserSignals.reportingTimeout ?
+                        browserSignals.reportingTimeout : 50;
+```
+
+Inside `reportResult` one can determine its reporting timeout as follows:
+```
+const reportingTimeout = auctionConfig.reportingTimeout ?
+                        auctionConfig.reportingTimeout : 50;
+```
+
+From the context of a web page, the limit can also be queried as follows:
+```
+const reportingTimeout = navigator.protectedAudience ?
+    navigator.protectedAudience.queryFeatureSupport("reportingTimeout") : 50;
+```
