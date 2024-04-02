@@ -83,6 +83,7 @@ The usefulness of this page depends on testers sharing information and updates.
 | Equativ | SSP & DSP | Testing in progress | | privacysandbox@equativ.com |
 | Sportradar | DSP | Testing in progress | | ads-privacy-sandbox@sportradar.com |
 | Ringier Axel Springer Poland | DSP & SSP | Tests ongoing since August 2023 | | privacysandbox@ringieraxelspringer.pl |
+| Media.net | SSP & DSP | Testing in progress | | privacysandbox@media.net |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
