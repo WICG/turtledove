@@ -99,8 +99,8 @@ const reportingTimeout = auctionConfig.reportingTimeout ?
                         auctionConfig.reportingTimeout : 50;
 ```
 
-From the context of a web page, the limit can also be queried as follows:
+From the context of a web page, whether custom reporting timeout is enabled can be queried as follows:
 ```
-const reportingTimeout = navigator.protectedAudience ?
-    navigator.protectedAudience.queryFeatureSupport("reportingTimeout") : 50;
+const reportingTimeoutEnabled = navigator.protectedAudience ?
+    navigator.protectedAudience.queryFeatureSupport("reportingTimeout") : false;
 ```
