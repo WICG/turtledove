@@ -29,7 +29,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [3.2 On-Device Bidding](#32-on-device-bidding)
     - [3.3 Metadata with the Ad Bid](#33-metadata-with-the-ad-bid)
     - [3.4 Ads Composed of Multiple Pieces](#34-ads-composed-of-multiple-pieces)
-      - [3.4.1 Flexible Component Ad Selection Considering k-anonymity](#341-target-num-component-ads)
+      - [3.4.1 Flexible Component Ad Selection Considering k-Anonymity](#341-target-num-component-ads)
     - [3.5 Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups)
     - [3.6 Currency Checking](#36-currency-checking)
   - [4. Browsers Render the Winning Ad](#4-browsers-render-the-winning-ad)
@@ -708,6 +708,8 @@ generateBid(interestGroup, auctionSignals, perBuyerSignals,
           'adComponents': [{url: adComponent1, width: componentWidth1, height: componentHeight1},
                            {url: adComponent2, width: componentWidth2, height: componentHeight2}, ...],
           'allowComponentAuction': false,
+          'targetNumAdComponents': 3,
+          'numMandatoryAdComponents': 1,
           'modelingSignals': 123};
 }
 ```
@@ -736,8 +738,9 @@ The arguments to `generateBid()` are:
              corresponding to the ad that won though with only the 'renderURL' and 'metadata' fields. */
       'wasmHelper': ..., /* a WebAssembly.Module object based on interest group's biddingWasmHelperURL */
       'dataVersion': 1, /* Data-Version value from the trusted bidding signals server's response(s) */
-      'adComponentsLimit': 40, /* Maximum number of ad components generateBid() may return */,
-      'multiBidLimit': 5, /* If set, maximum number of bids that can be returned at once; see perBuyerMultiBidLimits */
+      'adComponentsLimit': 40, /* Maximum number of ad components generateBid() may return */
+      'multiBidLimit': 5, /* If set, maximum number of bids that can be returned at once;
+                             see perBuyerMultiBidLimits */
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
@@ -760,7 +763,11 @@ The output of `generateBid()` contains the following fields:
     Optionally, if you don't want to hook into interest group size declarations (e.g., if you don't want to use size macros), you can have `render` be just the URL, rather than a dictionary with `url` and `size`.
 *   adComponents: (optional) A list of up to 20 (in process of being increased to 40 starting from M122) adComponent strings from the InterestGroup's adComponents field. Each value must match one of `interestGroup`'s `adComponent`'s `renderURL` and sizes exactly. This field must not be present if `interestGroup` has no `adComponent` field. It is valid for this field not to be present even when `adComponents` is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
 *   allowComponentAuction: If this buyer is taking part of a component auction, this value must be present and true, or the bid is ignored. This value is ignored (and may be absent) if the buyer is part of a top-level auction.
-* modelingSignals: A 0-4095 integer (12-bits) passed to `reportWin()`, with noising, as described in the [noising and bucketing scheme](#521-noised-and-bucketed-signals). Invalid values, such as negative, infinite, and NaN values, will be ignored and not passed. Only the lowest 12 bits will be passed.
+*   modelingSignals (optional): A 0-4095 integer (12-bits) passed to `reportWin()`, with noising, as described in the [noising and bucketing scheme](#521-noised-and-bucketed-signals). Invalid values, such as negative, infinite, and NaN values, will be ignored and not passed. Only the lowest 12 bits will be passed.
+*   targetNumAdComponents and numMandatoryAdComponents (both optional): Permits the
+    browser to select only some of the returned adComponents in order to help
+    make the ad k-anonymous. See [Flexible Component Ad Selection Considering k-Anonymity](#341-target-num-component-ads)
+    for more details.
 
 In case returning multiple bids is supported by the implementation in use,
 `generateBid` may also return up to `browserSignals.multiBidLimit` valid bid
@@ -779,9 +786,9 @@ even if multiple bid support is otherwise on, so they will have
 
 `generateBid()` has access to the `setBid(bids)` method. That takes the
 exact same types as the return values do, and is used as a fallback value in
-case `generateBid()` throws an exception.  Each call will overwrite the
-previously set value; if there is something wrong with the provided `bids` it
-will throw an exception and clear the fallback bid.  In implementations
+case `generateBid()` throws an exception or times out.  Each call will overwrite
+the previously set value; if there is something wrong with the provided `bids`
+it will throw an exception and clear the fallback bid.  In implementations
 supporting returning multiple bids, an array can be passed here as well.
 
 #### 3.3 Metadata with the Ad Bid
@@ -813,13 +820,13 @@ The output of `generateBid()` can use the on-device ad composition flow through 
 
 ##### 3.4.1 Flexible Component Ad Selection Considering k-anonymity
 
-Since an ad containing multiple pieces requires every piece to be k-anonymous to
+Since a bid containing multiple components requires every component to be k-anonymous to
 display, it may be difficult to make such bids successfully. To make this easier,
-`generateBid` can permit the browser to select a subset of returned component ads
+`generateBid()` can permit the browser to select a subset of returned component ads
 that pass the k-anonymity threshold.
 
 Note that feature detection for this in Chrome is the same as for multiple bid
-support --- presence of browserSignals.multiBidLimit; but if supported it can be
+support --- presence of `browserSignals.multiBidLimit`; but if supported it can be
 used on single-bid returns as well; multiple-bid returns are affected per-bid.
 
 To use this functionality, set the `targetNumAdComponents` field of a
@@ -831,7 +838,8 @@ those provided will also be considered for k-anonymity updates. It's an error to
 provide less component ads than a set `targetNumAdComponents`.
 
 When `targetNumAdComponents` is in use, the `adComponents` list in the bid
-can exceed the normal global limit (of 20 or 40), but `targetNumAdComponents`
+can exceed the normal global limit (of 20 or 40, exposed via
+`browserSignals.adComponentsLimit`), but `targetNumAdComponents`
 must still follow that limit. Chrome also currently has a limitation of 100
 entries per sequence that still applies.
 
