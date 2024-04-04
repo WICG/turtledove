@@ -35,9 +35,9 @@ The [Private Aggregation API](https://github.com/patcg-individual-drafts/private
 currently allows auction winners to generate histogram contributions within their
 reportResult()/reportWin() methods using a new API available in the worklet:
 
-```
+```js
 function reportResult(auctionConfig, browserSignals) {
-  …
+  // ...
   privateAggregation.contributeToHistogram({
       bucket: convertBuyerToBucketId(browserSignals.interestGroupOwner),
       value: convertBidToReportingValue(browserSignals.bid)
@@ -76,10 +76,10 @@ To generate the bucket that represent interest group age, the buyer may implemen
 
 Once the buckets have been derived, the buyer can call Private Aggregation inside `generateBid()`:  
 
-```
+```js
 function generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
-  // …
-  privateAggregation.contributeToHistogramOnEvent(“reserved.win”, {
+  // ...
+  privateAggregation.contributeToHistogramOnEvent("reserved.win", {
       bucket: getImpressionReportBucket(), // 128-bit integer as BigInt
       value: 1
   });
@@ -112,7 +112,7 @@ before `offset` is added.
 After the auction happens, the final value of the generated report is (`baseValue` * `scale`) + `offset`.
 The following example shows how to return the gap between an ad bid and the winning bid:
 
-```
+```js
 function generateBid(...) {
   bid = 100;
   privateAggregation.contributeToHistogramOnEvent(
@@ -149,7 +149,7 @@ The final bucket id of the bucket will depend on the outcome of the auction. The
 example allows the buyer to keep track of how many times their bid was rejected for particular reasons.
 
 
-```
+```js
 function generateBid(...) {
   privateAggregation.contributeToHistogramOnEvent(
     "reserved.loss",
@@ -173,7 +173,7 @@ value: 1
 
 ## Reporting API informal specification
 
-```
+```js
 privateAggregation.contributeToHistogramOnEvent(eventType, contribution)
 ```
 
@@ -222,7 +222,7 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
 A fenced frame can trigger the sending of contributions associated with an arbitrary event
 by calling into a new API:
 
-```
+```js
 window.fence.reportEvent("click");
 ```
 
@@ -272,24 +272,25 @@ auction.
 For the seller to declare reporting, the `auctionConfig` passed to `runAdAuction` is amended to
 contain a configuration for the seller latency report.
 
-```
+```js
 const auctionConfig = {
   'seller': 'https://www.example-ssp.com',
-  …
-  ‘interestGroupBuyers’: ['https://buyer1.com', 'https://buyer2.com', …],
+  // ...
+  'interestGroupBuyers': ['https://buyer1.com', 'https://buyer2.com', /* ... */],
   // An aggregation key for each buyer. This represents the starting contribution bucket
   // associated with the corresponding buyer.
-  ‘auctionReportBuyerKeys’: [100n, // key for buyer1.com
+  'auctionReportBuyerKeys': [100n, // key for buyer1.com
                              105n, // key for buyer2.com
-                             …],
+                                   // ...
+                             ],
   // Configures what values will be reported for each buyer. The key declares what signal will be
   // measured, and the bucket declares the bucket this will be placed relative to the
   // buyer key and the scale determines how the value is scaled.
-  `auctionReportBuyers`: {
-    `interestGroupCount`:       { `bucket`: 0n, `scale`: 1,  },
-    ‘bidCount’:                 { `bucket`: 1n, `scale`: 1,  },
-    ‘totalGenerateBidLatency’:  { `bucket`: 2n, `scale`: 1,  },
-    ‘totalSignalsFetchLatency’: { `bucket`: 3n, `scale`: .1, },
+  'auctionReportBuyers': {
+    'interestGroupCount':       { 'bucket': 0n, 'scale': 1,  },
+    'bidCount':                 { 'bucket': 1n, 'scale': 1,  },
+    'totalGenerateBidLatency':  { 'bucket': 2n, 'scale': 1,  },
+    'totalSignalsFetchLatency': { 'bucket': 3n, 'scale': .1, },
   }
 }
 
@@ -345,7 +346,7 @@ However, one key difference here is that this reporting does not use the
 Instead, we add a new (temporary) parameter to the `auctionConfig` passed to
 `runAdAuction()`:
 
-```
+```js
 const auctionConfig = {
   'seller': 'https://www.example-ssp.com',
   ...
