@@ -181,7 +181,7 @@ The updates are done after auctions so as not to slow down
 the auctions themselves.  The updates are rate limited to running at most daily to
 conserve resources, and timeout after 30 seconds; however, the `updateIfOlderThanMs`
 field of the [trusted bidding signals response](#31-fetching-real-time-data-from-a-trusted-server)
-maybe be used to trigger a single post-auction update that will run even if the last
+can be used to trigger a single more timely update that will run even if the last
 update was less than a day ago. An update request only contains information from the
 single site where the user was added to the interest group.  At a later date we can
 consider potential side channel mitigations (e.g.
