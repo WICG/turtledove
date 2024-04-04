@@ -425,9 +425,10 @@ Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame eleme
 
 All fields that accept arbitrary metadata (`auctionSignals`, `sellerSignals`, and `perBuyerSignals` dictionary values) must be JSON-serializable values (i.e. supported by JSON.stringify()). See [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify).
 All fields that specify URLs for loading scripts or JSON (`decisionLogicURL` and
-`trustedScoringSignalsURL`) must be same-origin with `seller` and must point to
-URLs whose responses include the HTTP response header `Ad-Auction-Allowed: true` to
-ensure they are allowed to be used for loading Protected Audience resources.
+`trustedScoringSignalsURL`) must: be valid HTTPS URLs, have no [fragment](https://url.spec.whatwg.org/#concept-url-fragment), and be
+same-origin with `seller`. Additionally, to be used in an auction, the HTTP response headers of these URLs, when requested, must include the
+header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
+loading Protected Audience resources. The `trustedScoringSignalsURL` must also not have a [query](https://url.spec.whatwg.org/#concept-url-query).
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
 
