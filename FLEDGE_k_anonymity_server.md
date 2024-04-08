@@ -19,11 +19,12 @@ where the crowd consists of $k$ users.
 ## Use cases in the Privacy Sandbox
 
 k-anonymity is applied to the `renderUrl` for ad creatives.  One of the
-goals of [FLEDGE](FLEDGE.md) is to offer microtargeting protection; that is,
+goals of [FLEDGE](FLEDGE.md) is to offer protection against showing an ad or
+ad component to less than some minimum number of people; that is,
 a user won't be shown an ad unless some minimum number, $k$, of other users
 are also being shown the same ad.  This is accomplished by applying k-anonymity
 thresholds to the `renderUrl` prior to showing the ad to the user.  In addition
-to microtargeting protection of FLEDGE auctions, k-anonymity might in the
+k-anonymity might in the
 future also prevent user-identifying information from the embedding site from
 being passed to an ad's fenced frame via parameters like `size`.  Adding `size`
 to the k-anonymity check of the `renderUrl` is under discussion in [this
