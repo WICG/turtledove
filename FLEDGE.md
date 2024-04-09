@@ -250,11 +250,17 @@ and `adComponents` fields as well as `prevWins`). Note that `include-full-ads` i
 with the auction server, so this mode is only for debugging.
 
 All fields that accept arbitrary metadata (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable values (i.e. supported by JSON.stringify()). See [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify).
+
 All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
-`biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must be
-same-origin with `owner` and must point to URLs whose responses include the HTTP
-response header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
-loading Protected Audience resources.
+`biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must: be valid HTTPS URLs, contain no credentials, have no [fragment](https://url.spec.whatwg.org/#concept-url-fragment), and be
+same-origin with `owner`. Additionally, to be used in an auction, the HTTP response headers of these URLs, when requested, must include the
+header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
+loading Protected Audience resources. The `trustedBiddingSignalsURL` must also not have a [query](https://url.spec.whatwg.org/#concept-url-query). (See 6.13 [here](https://wicg.github.io/turtledove/#dom-navigator-joinadinterestgroup)).
+
+The `renderUrl` property of an `ad` must be also be a valid and credentialless HTTPs URL, but does _not_
+have the same origin, response header, fragment, or query requirements.
+
+(You can find detailed error conditions for all fields in step 6 of [the `joinAdInterestGroup()` section of the spec](https://wicg.github.io/turtledove/#dom-navigator-joinadinterestgroup)).
 
 The browser will only render an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 50 people would have seen the ad, if it were allowed to show).  While in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal this threshold applied only to the rendered creative, Protected Audience has the additional requirement that the tuple of the interest group owner, bidding script URL, and rendered creative (URL, and [no earlier than Q1 2025](https://developer.chrome.com/docs/privacy-sandbox/protected-audience-api/feature-status/#k-anonymity) the size if specified by `generateBid`) must be k-anonymous for an ad to be shown (this is necessary to ensure the current event-level reporting for interest group win reporting is sufficiently private). For interest groups that have component ads, all of the component ads must also separately meet this threshold for the ad to be shown. Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold. This means that a small, specialized ad that is still below the k-anonymity threshold could still choose to participate in auctions, and its interest group has a way to fall back to a more generic ad until the more specialized one has a large enough audience.
 
@@ -424,9 +430,10 @@ Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame eleme
 
 All fields that accept arbitrary metadata (`auctionSignals`, `sellerSignals`, and `perBuyerSignals` dictionary values) must be JSON-serializable values (i.e. supported by JSON.stringify()). See [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify).
 All fields that specify URLs for loading scripts or JSON (`decisionLogicURL` and
-`trustedScoringSignalsURL`) must be same-origin with `seller` and must point to
-URLs whose responses include the HTTP response header `Ad-Auction-Allowed: true` to
-ensure they are allowed to be used for loading Protected Audience resources.
+`trustedScoringSignalsURL`) must: be valid HTTPS URLs, contain no credentials, have no [fragment](https://url.spec.whatwg.org/#concept-url-fragment), and be
+same-origin with `seller`. Additionally, to be used in an auction, the HTTP response headers of these URLs, when requested, must include the
+header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
+loading Protected Audience resources. The `trustedScoringSignalsURL` must also not have a [query](https://url.spec.whatwg.org/#concept-url-query).
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
 
