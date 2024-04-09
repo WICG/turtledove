@@ -644,6 +644,7 @@ dictionary AuctionAdConfig {
   Promise<record<USVString, any>> perBuyerSignals;
   Promise<record<USVString, unsigned long long>> perBuyerTimeouts;
   Promise<record<USVString, unsigned long long>> perBuyerCumulativeTimeouts;
+  unsigned long long reportingTimeout;
   USVString sellerCurrency;
   Promise<record<USVString, USVString>> perBuyerCurrencies;
   record<USVString, unsigned short> perBuyerGroupLimits;
@@ -1099,7 +1100,6 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       result of [=serializing a JavaScript value to a JSON string=], given |result|.
     * To handle an error, set |auctionConfig|'s [=auction config/seller signals=] to failure.
 1. If |config|["{{AuctionAdConfig/auctionNonce}}"] [=map/exists=], then [=map/set=] |auctionConfig|'s
-
   [=auction config/auction nonce=] to the result of running [=get uuid from string=] with
   |config|["{{AuctionAdConfig/auctionNonce}}"].
 1. If |config|["{{AuctionAdConfig/additionalBids}}"] [=map/exists=]:
@@ -1188,7 +1188,11 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 
 1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
   [=auction config/seller timeout=] to |config|["{{AuctionAdConfig/sellerTimeout}}"] in milliseconds
-  or 500 milliseconds, whichever is smaller.
+  or 500, whichever is smaller.
+1. Let |reportingTimeout| be |config|["{{AuctionAdConfig/reportingTimeout}}"] if it [=map/exists=],
+  50 otherwise.
+1. Set |config|["{{AuctionAdConfig/reportingTimeout}}"] to |reportingTimeout| in milliseconds or
+  5000, whichever is smaller.
 1. If |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"] [=map/exists=], then set
   |auctionConfig|'s [=auction config/seller experiment group id=] to
   |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"].
@@ -2486,12 +2490,14 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
     [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
   1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
      [=map/exists=] and the result of [=query reporting ID k-anonymity count=]
-     given |winner|'s [=generated bid/interest group=] and |igAd| is true, then [=map/set=] |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s
+     given |winner|'s [=generated bid/interest group=] and |igAd| is true, then [=map/set=]
+     |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s
      [=interest group ad/buyer and seller reporting ID=].
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored » be the result of
-    [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`", and
+    [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`", |config|'s
+    [=auction config/config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |config|'s [=auction config/config idl=], |browserSignals|, |directFromSellerSignals| ».
    1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
      : [=reporting result/report url=]
@@ -2562,8 +2568,10 @@ a {{ReportingBrowserSignals}} |browserSignals|, and a [=direct from seller signa
   1. If |winner|'s [=generated bid/provided as additional bid=] is true:
     1. Set |reportFunctionName| be "`reportAdditionalBidWin`".
   1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap| » be the result of
-    [=evaluating a reporting script=] with |buyerReportingScript|, "`reportWin`", and
-     « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config idl=]'s
+    [=evaluating a reporting script=] with |buyerReportingScript|, "`reportWin`", |leadingBidInfo|'s
+    [=leading bid info/auction config=]'s [=auction config/config idl=]'s
+    {{AuctionAdConfig/reportingTimeout}}, and
+    « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config idl=]'s
       {{AuctionAdConfig/auctionSignals}}, |perBuyerSignalsForBuyer|, |sellerSignals|,
       |reportWinBrowserSignals|, |directFromSellerSignals| ».
   1. Set |leadingBidInfo|'s [=leading bid info/buyer reporting result=] to a [=reporting result=]
@@ -3494,7 +3502,8 @@ of the following global objects:
 
 <div algorithm>
   To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=]
-  |functionName|, and a [=list=] of arguments |arguments|:
+  |functionName|, an integer millisecond [=duration=] |timeout|, and a [=list=] of arguments
+  |arguments|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupReportingScriptRunnerGlobalScope}}.
@@ -3503,7 +3512,7 @@ of the following global objects:
       arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
       [=exception/throws=] an exception, return « "null", null, null, null ».
     1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|,
-      |functionName|, |argumentsJS|, and 50 milliseconds.
+      |functionName|, |argumentsJS|, and |timeout|.
     1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null, null ».
     1. Let |resultJSON| be "null".
     1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
@@ -3516,7 +3525,7 @@ of the following global objects:
     1. Let |macroMap| be |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting macro map=]
       if |functionName| is "`reportWin`" or "`reportAdditionalBidWin`", null otherwise.
     1. Return « |resultJSON|, |reportURL|,
-       |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap| ».
+      |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap| ».
 </div>
 
 <div algorithm>
