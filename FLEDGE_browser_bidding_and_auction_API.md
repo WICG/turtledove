@@ -16,6 +16,12 @@ To execute an on-server FLEDGE auction, sellers begin by calling `navigator.getI
 const auctionBlob = navigator.getInterestGroupAdAuctionData({
   // ‘seller’ works the same as for runAdAuction.
   'seller': 'https://www.example-ssp.com',
+  // 'coordinatorOrigin' of the TEE coordinator, defaults to
+  //'https://publickeyservice.gcp.privacysandboxservices.com' (for now). Used to
+  // select which key to use for the encrypted blob. Will eventually be
+  // required.
+  'coordinatorOrigin':
+    'https://publickeyservice.gcp.privacysandboxservices.com',
 });
 ```
 The returned `auctionBlob` is a Promise that will resolve to an `AdAuctionData` object. This object contains `requestId` and `request` fields.
@@ -157,6 +163,34 @@ information related to the request when it finds the value in the request
 matches the server value. Note that you should use a unique value for the
 `consented_debug_token` to avoid subjecting other servers involved in handling
 the request to additional load from logging.
+
+## Testing with alternate Coordinators
+
+The coordinators used by Chrome are controlled by two feature flags. The
+'FledgeBiddingAndAuctionKeyURL' feature parameter controls the key URL used for
+the default coordinator (with the origin
+'https://publickeyservice.gcp.privacysandboxservices.com'). The
+'FledgeBiddingAndAuctionKeyConfig' feature parameter allows full control of the
+set of coordinator origins and their corresponding key URLs used by Chrome by
+specifying a JSON dict where the keys are the coordinator origins and the values
+are the corresponding key URL. You should only need to use one of these feature
+parameters, but if both are specified the 'FledgeBiddingAndAuctionKeyURL' will
+override the key URL for the default coordinator.
+
+Examples of the command line for setting the coordinator for testing is shown
+below:
+
+Set the default key URL to 'http://127.0.0.1:50072/static/test_keys.json':
+```
+chrome --enable-features='FledgeBiddingAndAuctionServerAPI,FledgeBiddingAndAuctionServer:FledgeBiddingAndAuctionKeyURL/http%3A%2F%2F127%2E0%2E0%2E1%3A50072%2Fstatic%2Ftest_keys.json'
+```
+
+Add a new coordinator for origin 'https://new.coordinator.example.com' with key
+URL of 'http://127.0.0.1:50072/static/test_keys.json'. Note that you still need
+to specify the default values:
+```
+chrome --enable-features='FledgeBiddingAndAuctionServerAPI,FledgeBiddingAndAuctionServer:FledgeBiddingAndAuctionKeyConfig/{"https%3A%2F%2Fpublickeyservice.gcp.privacysandboxservices.com"%3A"https%3A%2F%2Fpublickeyservice.pa.gcp.privacysandboxservices.com%2F.well-known%2Fprotected-auction%2Fv1%2Fpublic-keys"%2C"https%3A%2F%2Fpublickeyservice.pa.gcp.privacysandboxservices.com"%3A"https%3A%2F%2Fpublickeyservice.pa.gcp.privacysandboxservices.com%2F.well-known%2Fprotected-auction%2Fv1%2Fpublic-keys"%2C"https%3A%2F%2Fnew.coordinator.example.com"%3A"http%3A%2F%2F127.0.0.1%3A50072%2Fstatic%2Ftest_keys.json"}'
+```
 
 # Appendix
 
