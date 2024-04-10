@@ -1262,7 +1262,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. If |config|["{{AuctionAdConfig/perBuyerMultiBidLimits}}"] [=map/exists=], [=map/for each=]
   |key| → |value| of |config|["{{AuctionAdConfig/perBuyerMultiBidLimits}}"]:
   1. If |key| is "*", then set |auctionConfig|'s
-    [=auction config/all buyer multi-bid limit=] to |value|, and [=iteration/continue=].
+    [=auction config/all buyers multi-bid limit=] to |value|, and [=iteration/continue=].
   1. Let |buyer| the result of [=parsing an https origin=] with |key|.
   1. If |buyer| is failure, then return failure.
   1. Set |auctionConfig|'s [=auction config/per buyer multi-bid limits=][|buyer|] to |value|.
@@ -1459,7 +1459,7 @@ a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=dur
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/bidCount}}"] to the sum of |ig|'s
      [=interest group/bid counts=] for all days within the last 30 days.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/adComponentsLimit}}"] to 40.
-  1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/multiBidLimit}}"] to |multiBidLimit|
+  1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/multiBidLimit}}"] to |multiBidLimit|.
   1. Let |prevWins| be a new <code>[=sequence=]<{{PreviousWin}}></code>.
   1. [=list/For each=] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
     the last 30 days:
@@ -1757,16 +1757,16 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
             1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
               by |generateBidDuration|.
-            1. [=Assert=] that [=list/size=] of |generatedBids| &le; 1
+            1. [=Assert=] that [=list/size=] of |generatedBids| &le; 1.
             1. [=list/For each=] |generatedBid| of |bidsBatch|:
               1. [=Assert=] that [=query generated bid k-anonymity count=] given |generatedBid| returns true.
               1. [=Apply any component ads target to a bid=] given |generatedBid|.
               1. [=list/Append=] |generatedBid| to |bidsToScore|.
           1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |bidDebugReportInfo|, and
-               |bidDebugReportInfoList|
+               |bidDebugReportInfoList|.
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
-                [=list/insert=] |bidToScore|'s [=generated bid/interest group=] in |bidIgs|.
+                [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
             1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
               |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
@@ -3703,7 +3703,7 @@ dictionary GenerateBidOutput {
 Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
 <dl dfn-for="InterestGroupBiddingScriptRunnerGlobalScope">
 : <dfn>bids</dfn>
-:: A list of [=generated bids=], initially empty.
+:: A [=list=] of [=generated bids=], initially empty.
 : <dfn>priority</dfn>
 :: Null, failure, or a {{double}}, initially null.
 : <dfn>priority signals</dfn>
@@ -3725,25 +3725,25 @@ Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
 To <dfn>convert one or many GenerateBidOutputs to a list of generated bids</dfn> given a ({{GenerateBidOutput}} or [=sequence=]<{{GenerateBidOutput}}>)
 |oneOrManyBids|, an integer |multiBidLimit|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|, a [=boolean=]
 |isComponentAuction| and a [=boolean=] |groupHasAdComponents|:
-  1. Let |bidSequence| be [=sequence=]<{{GenerateBidOutput}}>
-  1. If |oneOrManyBids| is a {{GenerateBidOutput}}, set |bidSequence| to « |oneOrManyBids| »
-  1. Otherwise, set |bidSequence| to |oneOrManyBids|
-  1. If |bidSequence|'s [=list/size=] > |multiBidLimit| return failure.
-  1. Let |bids| be a new [=list=] of [=generated bids=]
+  1. Let |bidSequence| be [=sequence=]<{{GenerateBidOutput}}>.
+  1. If |oneOrManyBids| is a {{GenerateBidOutput}}, then set |bidSequence| to « |oneOrManyBids| ».
+  1. Otherwise, set |bidSequence| to |oneOrManyBids|.
+  1. If |bidSequence|'s [=list/size=] &gt; |multiBidLimit|, then return failure.
+  1. Let |bids| be a new [=list=] of [=generated bids=].
   1. [=list/for each=] |bidOutput| of |bidSequence|:
     1. Let |bid| be the result of [=converting GenerateBidOutput to generated bid=] given |bidOutput|, |ig|, |expectedCurrency|, |isComponentAuction|, |groupHasAdComponents|.
     1. If |bid| is failure, return failure.
     1. If |bid| is null, [=iteration/continue=].
     1. [=list/Append=] |bid| to |bids|.
-  1. Return |bids|
+  1. Return |bids|.
 </div>
+
 <div algorithm>
 
 To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOutput}}
 |generateBidOutput|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|, a [=boolean=]
 |isComponentAuction| and a [=boolean=] |groupHasAdComponents|:
-  1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] &le; 0:
-    1. Return null.
+  1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] &le; 0, then return null.
   1. Let |bid| be a new [=generated bid=].
   1. If |generateBidOutput|["{{GenerateBidOutput/render}}"] does not [=map/exist=], return failure.
   1. If |isComponentAuction| is true, and
@@ -3795,9 +3795,8 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
       1. [=list/Append=] |componentDescriptor| to |adComponentDescriptors|.
     1. Set |bid|'s [=generated bid/ad component descriptors=] to |adComponentDescriptors|.
   1. If |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] [=map/exists=]:
-    1. If |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] = 0 or
-       |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] &gt; 40,
-       return failure.
+    1. If |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] is equal to 0 or
+       greater than 40, then return failure.
     1. If |bid|'s [=generated bid/ad component descriptors=] is null, or
           |bid|'s [=generated bid/ad component descriptors=]'s [=list/size=] &lt;
           |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"], return failure.
@@ -5279,7 +5278,7 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
   :: An [=ordered map=] who keys [=map/keys=] are [=origins=] and whose [=map/values=] are integers.
      Specifies how many bids `generateBid()` is permitted to return at once for a particular buyer
      origin.  The initial value is an empty map.
-  : <dfn>all buyer multi-bid limit</dfn>
+  : <dfn>all buyers multi-bid limit</dfn>
   :: An integer. Initially 1. Specifies how many bids `generateBid()` is permitted
     to return at once for buyers without a value in [=auction config/per buyer multi-bid limits=].
   : <dfn>direct from seller signals header ad slot</dfn>
@@ -5358,11 +5357,11 @@ To <dfn>look up per-buyer currency</dfn> given an [=auction config=] |auctionCon
 To <dfn>look up per-buyer multi-bid limit</dfn> given an [=auction config=] |auctionConfig|, and an
 [=origin=] |buyer|:
 
-  1. Let |multiBidLimit| be |auctionConfig|'s [=auction config/all buyer multi-bid limit=]
+  1. Let |multiBidLimit| be |auctionConfig|'s [=auction config/all buyers multi-bid limit=].
   1. If |auctionConfig|'s [=auction config/per buyer multi-bid limits=][|buyer|] [=map/exists=], then set
     |multiBidLimit| to |auctionConfig|'s [=auction config/per buyer multi-bid limits=][|buyer|].
-  1. If |multiBidLimit| < 1, set |multiBidLimit| to 1.
-  1. Return |multiBidLimit|
+  1. If |multiBidLimit| &lt; 1, set |multiBidLimit| to 1.
+  1. Return |multiBidLimit|.
 </div>
 
 <h3 id=bid-generators>Bid generator</h3>
