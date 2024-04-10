@@ -242,6 +242,7 @@ This is detectable because it can change the set of fields that are read from th
     |group|["{{GenerateBidInterestGroup/lifetimeMs}}"] milliseconds.
   1. Set |interestGroup|'s [=interest group/next update after=] to the [=current wall time=] plus 24
     hours.
+  1. Set |interestGroup|'s [=interest group/last updated=] to the [=current wall time=].
   1. Set |interestGroup|'s [=interest group/owner=] to the result of [=parsing an https origin=] on
     |group|["{{GenerateBidInterestGroup/owner}}"].
   1. If |interestGroup|'s [=interest group/owner=] is failure, then [=exception/throw=] a {{TypeError}}.
@@ -1650,6 +1651,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       1. Let |lengthLimit| be the maximum value that a {{long}} integer can hold.
       1. Let |fetchSignalStartTime| be |settings|'s [=environment settings object/current monotonic time=].
       1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
+        1. Let |allPerInterestGroupData| be an [=ordered map=].
         1. [=list/For each=] |ig| of |groups|:
           1. Let |putativeKeys| be a [=set/clone=] of |keys|.
           1. Let |putativeIgNames| be a [=set/clone=] of |igNames|.
@@ -1670,8 +1672,10 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Otherwise:
             1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
               |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
-            1. Let « |partialTrustedBiddingSignals|, |dataVersion| » be the result of [=fetching trusted signals=]
-              with |biddingSignalsUrl| and true.
+            1. Let « |partialTrustedBiddingSignals|, |partialPerInterestGroupData|, |dataVersion| »
+              be the result of [=fetching trusted signals=] with |biddingSignalsUrl| and true.
+            1. [=Append to a bidding signals per-interest group data map=] with
+              |partialPerInterestGroupData|, |igNames|, and |allPerInterestGroupData|.
             1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|:
 
               1. Set |allTrustedBiddingSignals|[|key|] to |value|.
@@ -1680,10 +1684,13 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. Set |ig|'s [=interest group/max trusted bidding signals url length=] to |lengthLimit|.
         1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
           |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
-        1. Let « |partialTrustedBiddingSignals|, |dataVersion| » be the result of [=fetching trusted signals=]
-          with |biddingSignalsUrl| and true.
+        1. Let « |partialTrustedBiddingSignals|, |partialPerInterestGroupData|, |dataVersion| » be
+          the result of [=fetching trusted signals=] with |biddingSignalsUrl| and true.
+        1. [=Append to a bidding signals per-interest group data map=] with
+          |partialPerInterestGroupData|, |igNames|, and |allPerInterestGroupData|.
         1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|:
           1. Set |allTrustedBiddingSignals|[|key|] to |value|.
+        1. [=Process updateIfOlderThanMs=] with |buyer|, and |allPerInterestGroupData|.
       1. If |dataVersion| is not null, then [=map/set=]
         |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
       1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to |settings|'s
@@ -1893,8 +1900,8 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   The network response has to be parsed to pull out the pieces relevant to each
   [=evaluating a scoring script|evaluation of a scoring script=].
 1. Let |trustedScoringSignals| be null.
-1. Let «|allTrustedScoringSignals|, |scoringDataVersion|» be the result of [=fetching trusted signals=]
-  with |fullSignalsUrl| and false.
+1. Let «|allTrustedScoringSignals|, ignored, |scoringDataVersion|» be the result of [=fetching
+  trusted signals=] with |fullSignalsUrl| and false.
 1. If |allTrustedScoringSignals| is an [=ordered map=]:
   1. Set |trustedScoringSignals| to a new empty [=map=].
   1. [=map/Set=] |trustedScoringSignals|["`renderURL`"] to a new empty [=map=].
@@ -2192,6 +2199,7 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
   1. Let |signals| be null.
   1. Let |dataVersion| be null.
   1. Let |formatVersion| be null.
+  1. Let |perInterestGroupData| be an [=ordered map=].
   1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
     [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
     and null, failure, or a [=byte sequence=] |responseBody|:
@@ -2210,15 +2218,17 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
   1. Wait for |signals| to be set.
   1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return « null,
     null ».
-  1. [=map/For each=] |key| → |value| of |signals|:
-    1. [=map/Set=] |signals|[|key|] to the result of [=serializing an Infra value to a JSON string=]
-      given |value|.
   1. If |formatVersion| is 2:
     1. If |signals|["`keys`"] does not [=map/exist=], return « null, null ».
     1. Set |signals| to |signals|["`keys`"].
     1. If |signals| is not an [=ordered map=], return « null, null ».
-    1. TODO: handle priority vector.
-  1. Return « |signals|, |dataVersion| ».
+    1. If |signals|["`perInterestGroupData`"] [=map/exists=] and is an [=ordered map=]:
+      1. Assert |isBiddingSignal| is true.
+      1. Let |perInterestGroupData| be |signals|["`perInterestGroupData`"].
+  1. [=map/For each=] |key| → |value| of |signals|:
+    1. [=map/Set=] |signals|[|key|] to the result of [=serializing an Infra value to a JSON string=]
+      given |value|.
+  1. Return « |signals|, |perInterestGroupData|, |dataVersion| ».
 </div>
 
 <div algorithm>
@@ -2232,6 +2242,26 @@ To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=
   Issue: The Chrome implementation encodes 0x20 (SP) to U+002B (+), while [=string/UTF-8 percent-encoding=]
     encodes it to "%20".
 1. Return |list|.
+
+</div>
+
+<div algorithm>
+
+To <dfn>append to a bidding signals per-interest group data map</dfn> given an [=ordered map=]
+|sourceMap|, a [=ordered set=] |igNames|, and an [=ordered map=] |destinationMap|:
+1. [=map/For each=] |sourceKey| → |sourceValue| of |sourceMap|:
+  1. If |igNames| does not [=set/contain=] |sourceKey|, [=iteration/continue=].
+  1. Let |destinationValue| be an [=ordered map=].
+  1. TODO: handle priority vector.
+  1. If |sourceValue|["`updateIfOlderThanMs`"] is a {{double}}:
+    1. Let |updateIfOlderThanMs| be |sourceValue|["`updateIfOlderThanMs`"].
+    1. If |updateIfOlderThanMs| is less than 600,000, set |updateIfOlderThanMs| to 600,000.
+
+    Note: 600,000 milliseconds is 10 minutes.
+    1. Set |destinationValue|["`updateIfOlderThanMs`"] to |updateIfOlderThanMs|.
+  1. If |destinationValue| [=map/is not empty=]:
+    1. [=map/Set=] |destinationMap|[|sourceKey|] to |destinationValue|.
+
 
 </div>
 
@@ -4249,10 +4279,27 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
         is not null;
       * |ig|'s [=interest group/estimated size=] is greater than 50 KB.
     1. Set |ig|'s [=interest group/next update after=] to the [=current wall time=] plus 24 hours.
+    1. Set |ig|'s [=interest group/last updated=] to the [=current wall time=].
     1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
       [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
     1. <i id=abort-update>Abort update</i>: We jump here if some part of the
       [=interest group=] update failed. [=iteration/Continue=] to the next [=interest group=] update.
+
+</div>
+
+<div algorithm>
+
+To <dfn>Process updateIfOlderThanMs</dfn> given an [=origin=] |buyer|, and an [=ordered map=]
+|perInterestGroupData|:
+
+1. [=map/For each=] |igName| → |perIgData| of |perInterestGroupData|:
+  1. If |perIgData| doesn't [=map/contain=] "`updateIfOlderThanMs`", [=iteration/continue=].
+  1. Let |ig| be the [=interest group=] of the [=user agent=]'s [=interest group set=] whose
+    [=interest group/owner=] is |buyer| and whose name is |igName|:
+    1. If |ig| is not null and the [=current wall time=] minus |ig|'s [=interest group/last
+      updated=] is greater than |perIgData|["`updateIfOlderThanMs`"] milliseconds:
+      1. Set |ig|'s [=interest group/next update after=] to the [=current wall time=].
+      1. Store |ig| in the [=user agent=]'s [=interest group set=].
 
 </div>
 
@@ -5010,6 +5057,9 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
     times the bid calculated during {{Navigator/runAdAuction()}} was greater than 0.
   : <dfn>previous wins</dfn>
   :: A [=list=] of [=previous wins=].
+  : <dfn>last updated</dfn>
+  :: A [=moment=] when the interest group was last joined or successfully updated, whichever came
+    later.
   : <dfn>next update after</dfn>
   :: A [=moment=] at which the browser will permit updating this interest group. See
     [interest group updates](#interest-group-updates).
