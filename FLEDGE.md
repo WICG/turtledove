@@ -49,7 +49,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [6.3 HTTP Response Headers](#63-http-response-headers)
     - [6.4 Reporting Additional Bid Wins](#64-reporting-additional-bid-wins)
   - [7. Debugging Extensions](#7-debugging-extensions)
-    - [7.1 forDebuggingOnly (fDO) APIs](#71-fdo-apis)
+    - [7.1 forDebuggingOnly (fDO) APIs](#71-fordebuggingonly-fdo-apis)
       - [7.1.1 Post Auction Signals](#711-post-auction-signals)
       - [7.1.2 Downsampling](#712-downsampling)
     - [7.2 deprecatedReplaceInURN()](#72-navigatordeprecatedreplaceinurn)
