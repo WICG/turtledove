@@ -3465,7 +3465,7 @@ of the following global objects:
       [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] if it's not
       failure, null otherwise.
     1. Set |bidDebugReportInfo|'s [=bid debug reporting info/bidder debug loss report url=] to |debugLossReportUrl|.
-    1. If |generatedBids| is a not [=list/empty=]:
+    1. If |generatedBids| [=list/is not empty=]:
       1. Let |debugWinReportUrl| be |global|'s
         [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] if it's not
         failure, null otherwise.
@@ -3720,7 +3720,7 @@ Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
 : <dfn>group has ad components</dfn>
 :: A [=boolean=]
 : <dfn>multi-bid limit</dfn>
-:: An integer.
+:: An {{unsigned short}}.
 
 </dl>
 
@@ -5280,7 +5280,7 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
   : <dfn>per buyer multi-bid limits</dfn>
   :: An [=ordered map=] who keys [=map/keys=] are [=origins=] and whose [=map/values=] are integers.
      Specifies how many bids `generateBid()` is permitted to return at once for a particular buyer
-     origin.  The initial value is an empty [=map=].
+     origin. The initial value is an empty [=map=].
   : <dfn>all buyers multi-bid limit</dfn>
   :: An integer. Initially 1. Specifies how many bids `generateBid()` is permitted
     to return at once for buyers without a value in [=auction config/per buyer multi-bid limits=].
@@ -5405,8 +5405,9 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   :: An [=ad descriptor=]. Render URL and size of the bid's ad.
   : <dfn>ad component descriptors</dfn>
   :: Null or a [=list=] of [=ad descriptors=]. Ad components associated with bid, if any.
-    Will be limited to at most 40 [=list/items=] by the time the bid participates in the
-    auction. Must be null if the interest group making this bid has a null
+    Will be limited to at most 40 [=list/items=] (and if {{GenerateBidOutput/targetNumAdComponents}}
+    was specified, it will have exactly that many [=list/items=]) by the time the bid participates
+    in the auction. Must be null if the interest group making this bid has a null
     [=interest group/ad components=] field.
   : <dfn>ad cost</dfn>
   :: Null or a {{double}}. Advertiser click or conversion cost passed from `generateBid()` to
@@ -5430,8 +5431,9 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   :: Null or an [=origin=]. Seller in component auction which the [=generated bid/interest group=]
     is participating. Only set for component auctions, null otherwise.
   : <dfn>target number of ad components</dfn>
-  :: Null or {{unsigned long}}, initially null. Set if the bidder requested the component list
-    they provide to be reduced to the given target, taking in account k-anonymity.
+  :: Null or {{unsigned long}}, initially null. Set if the bidder requested
+    [=generated bid/ad component descriptors=] they provided to be reduced to the given target,
+    taking in account k-anonymity.
   : <dfn>number of mandatory ad components</dfn>
   :: {{unsigned long}}. Only relevant if [=generated bid/target number of ad components=] is set.
      Requires the first that many given ad components to be included.
@@ -5442,7 +5444,9 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
 To <dfn>apply any component ads target to a bid</dfn>, given a [=generated bid=] |generatedBid|:
 1. If |generatedBid|'s [=generated bid/target number of ad components=] is null, return.
 1. [=Assert=] that |generatedBid|'s [=generated bid/ad component descriptors=] is not null.
-1. Truncate |generatedBid|'s [=generated bid/ad component descriptors=] to length [=generated bid/target number of ad components=].
+1. While |generatedBid|'s [=generated bid/ad component descriptors=]'s [=list/size=] &gt;
+    [=generated bid/target number of ad components=]:
+    1. [=list/Remove=] the last value from |generatedBid|'s [=generated bid/ad component descriptors=].
 
 </div>
 
@@ -5454,6 +5458,9 @@ To <dfn>try to reach component ads target considering k-anonymity</dfn>, given a
 1. [=set/For each=] |i| of [=list/get the indices=] of |generatedBid|:
   1. Let |candidateComponent| be |generatedBid|'s [=generated bid/ad component descriptors=][|i|].
   1. If [=query component ad k-anonymity count=] given |candidateComponent|'s [=interest group ad/render url=] returns true:
+
+      Issue: TODO: change to query k-anonymity cache instead, once
+      (<a href="https://github.com/WICG/turtledove/pull/1005">WICG/turtledove#868</a>) is merged
     1. [=list/Append=] |candidateComponent| to |selectedComponents|.
   1. Otherwise:
     1. If |i| &lt; |generatedBid|'s [=generated bid/number of mandatory ad components=], return false.
@@ -5462,9 +5469,6 @@ To <dfn>try to reach component ads target considering k-anonymity</dfn>, given a
 1. Set |generatedBid|'s [=generated bid/ad component descriptors=] to |selectedComponents|.
 1. [=Apply any component ads target to a bid=] given |generatedBid|.
 1. Return [=query generated bid k-anonymity count=] given |generatedBid|.
-
-Issue: TODO: change to query k-anonymity cache instead, once
-(<a href="https://github.com/WICG/turtledove/pull/1005">WICG/turtledove#868</a>) is merged
 
 </div>
 
@@ -5478,18 +5482,20 @@ To <dfn>adjust bid list based on k-anonymity</dfn> given a [=list=] of [=generat
   1. [=Apply any component ads target to a bid=] given |bidCopy|.
   1. [=list/Append=] |bidCopy| to |bidsToScore|
   1. If [=query generated bid k-anonymity count=] given |generatedBid| returns true:
+
+      Issue: TODO: change to query k-anonymity cache instead, once
+      (<a href="https://github.com/WICG/turtledove/pull/1005">WICG/turtledove#868</a>) is merged
     1. [=list/Append=] |generatedBid| to |bidsToScore|.
 
-    Note: Conceptually, a bid that's already k-anonymous is considered
-    for both the k-anonymous and non-enforcing-k-anonymity leadership.
+    Note: Conceptually, a bid that's already k-anonymous is considered for both the k-anonymous and
+    non-enforcing-k-anonymity leadership, which is represented here in the specification by two
+    separate [=generated bid=] objects that get scored independently. An implementation does not,
+    however, actually need to perform the relevant work twice.
 
   1. Otherwise, if the result of applying [=try to reach component ads target considering k-anonymity=]
      given |generatedBid| is true:
     1. [=list/Append=] |generatedBid| to |bidsToScore|.
 1. Return |bidsToScore|.
-
-Issue: TODO: change to query k-anonymity cache instead, once
-(<a href="https://github.com/WICG/turtledove/pull/1005">WICG/turtledove#868</a>) is merged
 
 </div>
 
