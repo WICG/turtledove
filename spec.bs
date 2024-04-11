@@ -1651,7 +1651,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       1. Let |lengthLimit| be the maximum value that a {{long}} integer can hold.
       1. Let |fetchSignalStartTime| be |settings|'s [=environment settings object/current monotonic time=].
       1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
-        1. Let |allPerInterestGroupData| be an [=ordered map=].
+        1. Let |allPerInterestGroupData| be an [=ordered map=] whose keys are [=interest
+          group/name=] strings and whose values are [=ordered maps=] of per-interest group signals.
         1. [=list/For each=] |ig| of |groups|:
           1. Let |putativeKeys| be a [=set/clone=] of |keys|.
           1. Let |putativeIgNames| be a [=set/clone=] of |igNames|.
@@ -2248,14 +2249,15 @@ To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=
 <div algorithm>
 
 To <dfn>append to a bidding signals per-interest group data map</dfn> given an [=ordered map=]
-|sourceMap|, a [=ordered set=] |igNames|, and an [=ordered map=] |destinationMap|:
+|sourceMap|, an [=ordered set=] |igNames|, and an [=ordered map=] |destinationMap|:
 1. [=map/For each=] |sourceKey| → |sourceValue| of |sourceMap|:
   1. If |igNames| does not [=set/contain=] |sourceKey|, [=iteration/continue=].
-  1. Let |destinationValue| be an [=ordered map=].
+  1. Let |destinationValue| be an [=ordered map=] whose keys are per-interest group property string
+    name and whose values are the values of those properties.
   1. TODO: handle priority vector.
   1. If |sourceValue|["`updateIfOlderThanMs`"] is a {{double}}:
     1. Let |updateIfOlderThanMs| be |sourceValue|["`updateIfOlderThanMs`"].
-    1. If |updateIfOlderThanMs| is less than 600,000, set |updateIfOlderThanMs| to 600,000.
+    1. If |updateIfOlderThanMs| &lt; 600,000, set |updateIfOlderThanMs| to 600,000.
 
       Note: 600,000 milliseconds is 10 minutes.
     1. Set |destinationValue|["`updateIfOlderThanMs`"] to |updateIfOlderThanMs|.
@@ -4296,12 +4298,13 @@ To <dfn>process updateIfOlderThanMs</dfn> given an [=origin=] |buyer|, and an [=
   done atomically:
   1. If |perIgData| doesn't [=map/contain=] "`updateIfOlderThanMs`", [=iteration/continue=].
   1. Let |ig| be the [=interest group=] of the [=user agent=]'s [=interest group set=] whose
-    [=interest group/owner=] is |buyer| and whose name is |igName|, or null if [=interest group
-    set=] does not have such an interest group:
+    [=interest group/owner=] is |buyer| and whose [=interest group/name=] is |igName|, or null if
+    [=interest group set=] does not have such an interest group.
   1. If |ig| is not null and the [=current wall time=] minus |ig|'s [=interest group/last updated=]
-    is greater than |perIgData|["`updateIfOlderThanMs`"] milliseconds:
+    is greater than or equal to |perIgData|["`updateIfOlderThanMs`"] milliseconds:
     1. Set |ig|'s [=interest group/next update after=] to the [=current wall time=].
-    1. Store |ig| in the [=user agent=]'s [=interest group set=].
+    1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
+      [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
 
 </div>
 
