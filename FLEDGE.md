@@ -50,7 +50,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [6.3 HTTP Response Headers](#63-http-response-headers)
     - [6.4 Reporting Additional Bid Wins](#64-reporting-additional-bid-wins)
   - [7. Debugging Extensions](#7-debugging-extensions)
-    - [7.1 forDebuggingOnly (fDO) APIs](#71-fdo-apis)
+    - [7.1 forDebuggingOnly (fDO) APIs](#71-fordebuggingonly-fdo-apis)
       - [7.1.1 Post Auction Signals](#711-post-auction-signals)
       - [7.1.2 Downsampling](#712-downsampling)
     - [7.2 deprecatedReplaceInURN()](#72-navigatordeprecatedreplaceinurn)
@@ -64,7 +64,7 @@ The Protected Audience API includes support for:
 *   A mechanism for updating these interest groups. The updates are rate limited, fetched from buyers’ servers, performed off the ad serving critical-path, and contain no contextual information.
 *   On-device bidding by buyers (DSPs or advertisers), based on interest-group metadata and on data loaded from a trusted server at the time of the on-device auction — with a _temporary and untrusted_ "Bring Your Own Server" model, until a trusted-server framework is settled and in place.
 *   On-device ad selection by the seller (an SSP or publisher), based on bids and metadata entered into the auction by the buyers.
-*   Microtargeting protection based on the browser ensuring that the same ad or ad component is being shown to at least some minimum number of people.
+*   Protection against showing an ad or ad component to less than some minimum number of people.
 *   Ad rendering in a temporarily relaxed version of Fenced Frames that prevents interaction with the surrounding page — but that does allow _normal network access for rendering the ad, and for logging and reporting some event-level outcomes_, as a temporary model until both a trusted-server reporting framework and ad delivery via Web Bundles are settled and in place.
 
 Most of these ideas are drawn from the previous ongoing discussion of variants on the [original TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/Original-TURTLEDOVE.md) idea.  Interest group metadata, and applying [k-anonymity](https://github.com/WICG/turtledove/blob/main/FLEDGE_k_anonymity_server.md#what-is-k-anonymity) thresholds only to the rendering and reporting of ads, come from [Outcome-based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) and [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md), as well as discussion [here](https://github.com/WICG/turtledove/issues/361#issuecomment-1430069343).  The separation and clarification of the DSP and SSP roles are along the lines described in [TERN](https://github.com/WICG/turtledove/blob/master/TERN.md) and [PARRROT](https://github.com/prebid/identity-gatekeeper/blob/master/proposals/PARRROT.md).  The trusted servers to support bidding, rendering, and reporting come from the [SPARROW](https://github.com/WICG/sparrow) Gatekeeper and [Dovekey](https://github.com/google/ads-privacy/tree/master/proposals/dovekey) Key-Value server.
@@ -251,13 +251,19 @@ and `adComponents` fields as well as `prevWins`). Note that `include-full-ads` i
 with the auction server, so this mode is only for debugging.
 
 All fields that accept arbitrary metadata (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable values (i.e. supported by JSON.stringify()). See [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify).
-All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
-`biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must be
-same-origin with `owner` and must point to URLs whose responses include the HTTP
-response header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
-loading Protected Audience resources.
 
-The browser will provide protection against microtargeting, by only rendering an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 50 people would have seen the ad, if it were allowed to show).  While in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal this threshold applied only to the rendered creative, Protected Audience has the additional requirement that the tuple of the interest group owner, bidding script URL, and rendered creative (URL, and [no earlier than Q1 2025](https://developer.chrome.com/docs/privacy-sandbox/protected-audience-api/feature-status/#k-anonymity) the size if specified by `generateBid`) must be k-anonymous for an ad to be shown (this is necessary to ensure the current event-level reporting for interest group win reporting is sufficiently private). For interest groups that have component ads, all of the component ads must also separately meet this threshold for the ad to be shown. Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold. This means that a small, specialized ad that is still below the k-anonymity threshold could still choose to participate in auctions, and its interest group has a way to fall back to a more generic ad until the more specialized one has a large enough audience.
+All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
+`biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must: be valid HTTPS URLs, contain no credentials, have no [fragment](https://url.spec.whatwg.org/#concept-url-fragment), and be
+same-origin with `owner`. Additionally, to be used in an auction, the HTTP response headers of these URLs, when requested, must include the
+header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
+loading Protected Audience resources. The `trustedBiddingSignalsURL` must also not have a [query](https://url.spec.whatwg.org/#concept-url-query). (See 6.13 [here](https://wicg.github.io/turtledove/#dom-navigator-joinadinterestgroup)).
+
+The `renderUrl` property of an `ad` must be also be a valid and credentialless HTTPs URL, but does _not_
+have the same origin, response header, fragment, or query requirements.
+
+(You can find detailed error conditions for all fields in step 6 of [the `joinAdInterestGroup()` section of the spec](https://wicg.github.io/turtledove/#dom-navigator-joinadinterestgroup)).
+
+The browser will only render an ad if the same rendering URL is being shown to a sufficiently large number of people (e.g. at least 50 people would have seen the ad, if it were allowed to show).  While in the [Outcome-Based TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/OUTCOME_BASED.md) proposal this threshold applied only to the rendered creative, Protected Audience has the additional requirement that the tuple of the interest group owner, bidding script URL, and rendered creative (URL, and [no earlier than Q1 2025](https://developer.chrome.com/docs/privacy-sandbox/protected-audience-api/feature-status/#k-anonymity) the size if specified by `generateBid`) must be k-anonymous for an ad to be shown (this is necessary to ensure the current event-level reporting for interest group win reporting is sufficiently private). For interest groups that have component ads, all of the component ads must also separately meet this threshold for the ad to be shown. Since a single interest group can carry multiple possible ads that it might show, the group will have an opportunity to re-bid another one of its ads to act as a "fallback ad" any time its most-preferred choice is below threshold. This means that a small, specialized ad that is still below the k-anonymity threshold could still choose to participate in auctions, and its interest group has a way to fall back to a more generic ad until the more specialized one has a large enough audience.
 
 Similar to [the key-value server](#31-fetching-real-time-data-from-a-trusted-server), the server keeping track of which ad URLs are k-anonymous is publicly queryable.  The ad URLs are not supposed to target small groups of users (less than k users). For these reasons, and also in the interest of passing the k-anonymity check, the ad URLs should not contain PII, or sensitive information.
 
@@ -362,6 +368,7 @@ const myAuctionConfig = {
                          '*': 'USD'},
   'perBuyerMultiBidLimits': {'https://example.com': 10, '*': 5},
   'sellerCurrency:' : 'CAD',
+  'reportingTimeout' : 200,
   'deprecatedRenderURLReplacements':{{'${SELLER}':'exampleSSP'},
                                     {'%%SELLER_ALT%%':'exampleSSP'}},
   'componentAuctions': [
@@ -400,6 +407,10 @@ Optionally, `sellerTimeout` can be specified to restrict the runtime (in millise
 
 Optionally, `perBuyerCumulativeTimeouts` is structured like `perBuyerTimeouts`, but the values cover the entirety of the time it takes to generate bids for all interest groups for each buyer, including downloading resources, starting processes, and all generate bid calls. The single limit applies collectively across all interest groups with the same owner. It's measured as wall clock time starting when dedicated tasks needed to generate a bid for a particular buyer start. Timers may be running for multiple bidders simultaneously.  It does not include time taken by the seller to score the buyer's bids. Once the timer expires, the affected buyer's interest groups may no longer generate any bids. Scripts may be unloaded, fetches cancelled, etc. All bids generated before the timeout will continue to participate in the auction. Protected Audience implementations should attempt, on a best-effort basis, to generate bids for each buyer in priority order, so lower priority interest groups are the ones more likely to be timed out. If promises are passed in to the auction config for fields that support them, the timer for a buyer only starts once all promises blocking that buyer's bidding scripts from running have been resolved.
 
+Optionally, `reportingTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `reportResult()` and winning buyer’s `reportWin()` scripts. If no value is specified, a default timeout of 50 ms will be selected. Any timeout higher than 5000 ms will be clamped to 5000 ms.
+
+For all timeouts above, each auction config’s timeouts only control its own auction’s scripts, in other words, top level auction’s timeouts will not affect component auctions.
+
 Optionally, the `signal` field can be set to an [`AbortSignal`](https://dom.spec.whatwg.org/#interface-AbortSignal) object (generally from an [`AbortController`](https://dom.spec.whatwg.org/#interface-abortcontroller)'s [`signal`](https://dom.spec.whatwg.org/#dom-abortcontroller-signal) field) to permit aborting the execution of the auction.  When the [`abort()`](https://dom.spec.whatwg.org/#dom-abortcontroller-abort) method on the associated [`AbortController`](https://dom.spec.whatwg.org/#interface-abortcontroller) is called, an attempt to interrupt the auction will be made. Since the auction executes in parallel to the page, it's possible for this call to happen after the auction actually completed (perhaps unsuccessfully) but before this has been noticed by the caller of `runAdAuction`. In that case, the cancellation attempt is ignored. If the cancellation is successful, the promise is rejected, and no side effects of the whole auction (like reporting and bid statistics) occur, though priority adjustments still take place. Calling `abort()` after the promise from `runAdAuction` has resolved has no effect.
 
 Optionally, `perBuyerGroupLimits` can be specified to limit the number of interest groups from a particular buyer that participate in the auction. A key of `'*'` in `perBuyerGroupLimits` is used to set a limit for unspecified buyers. For each buyer, interest groups will be selected to participate in the auction in order of decreasing `priority` (larger priorities are selected first) up to the specfied limit. The selection of interest groups occurs independently for each buyer, so the priorities do not need to be comparable between buyers and could have a buyer-specific meaning. The value of the limits provided should be representable by a 16 bit unsigned integer.
@@ -421,9 +432,10 @@ Therefore, when requesting a `FencedFrameConfig` for use in a fenced frame eleme
 
 All fields that accept arbitrary metadata (`auctionSignals`, `sellerSignals`, and `perBuyerSignals` dictionary values) must be JSON-serializable values (i.e. supported by JSON.stringify()). See [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify).
 All fields that specify URLs for loading scripts or JSON (`decisionLogicURL` and
-`trustedScoringSignalsURL`) must be same-origin with `seller` and must point to
-URLs whose responses include the HTTP response header `Ad-Auction-Allowed: true` to
-ensure they are allowed to be used for loading Protected Audience resources.
+`trustedScoringSignalsURL`) must: be valid HTTPS URLs, contain no credentials, have no [fragment](https://url.spec.whatwg.org/#concept-url-fragment), and be
+same-origin with `seller`. Additionally, to be used in an auction, the HTTP response headers of these URLs, when requested, must include the
+header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
+loading Protected Audience resources. The `trustedScoringSignalsURL` must also not have a [query](https://url.spec.whatwg.org/#concept-url-query).
 
 A `Permissions-Policy` directive named "run-ad-auction" controls access to the `navigator.runAdAuction()` API.
 
@@ -830,14 +842,14 @@ The metadata accompanying the returned ad is not specified in this document, bec
 
 Sellers can ask buyers to provide whatever information they feel is necessary for their ad scoring job.  Sellers have an opportunity to enforce requirements in their `scoreAd()` function, rejecting bids whose metadata they find lacking.
 
-If `generateBid()` picks an ad whose rendering URL is not yet above the browser-enforced microtargeting prevention threshold, then the function will be called a second time, this time with a modified `interestGroup` argument that includes only the subset of the group's ads that are over threshold.  (The under-threshold ad will, however, be counted towards the microtargeting thresholding for future auctions for this and other users.)
+If `generateBid()` picks an ad whose rendering URL is not yet above the browser-enforced k-anonymity threshold, then the function will be called a second time, this time with a modified `interestGroup` argument that includes only the subset of the group's ads that are over threshold.  (The under-threshold ad will, however, be counted towards the k-anonymity thresholding for future auctions for this and other users.)
 
 
 #### 3.4 Ads Composed of Multiple Pieces
 
-The [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md) proposal describes a use case in which the rendered ad is composed of multiple pieces — a top-level ad template "container" which includes some slots that can be filled in with specific "products".  This is useful because the browser's microtargeting threshold can be applied to each individual component of the ad without compromising on tracking protections.
+The [Product-level TURTLEDOVE](https://github.com/WICG/turtledove/blob/master/PRODUCT_LEVEL.md) proposal describes a use case in which the rendered ad is composed of multiple pieces — a top-level ad template "container" which includes some slots that can be filled in with specific "products".  This is useful because the browser-enforced k-anonymity threshold can be applied to each individual component of the ad without compromising on tracking protections.
 
-Initially, the limit on number of components was 20, but it's in process of being increased to 40 starting from Chrome M122. Implementations of `generateBid` can determine the currently active limit as follows:
+Initially, the limit on the number of components was 20, but it's in process of being increased to 40 starting from Chrome M122. Implementations of `generateBid` can determine the currently active limit as follows:
 ```
 const maxAdComponents = browserSignals.adComponentsLimit ?
                         browserSignals.adComponentsLimit : 20;
@@ -849,7 +861,7 @@ const maxAdComponents = navigator.protectedAudience ?
     navigator.protectedAudience.queryFeatureSupport("adComponentsLimit") : 20;
 ```
 
-The output of `generateBid()` can use the on-device ad composition flow through an optional adComponents field, listing additional URLs made available to the fenced frame the container URL is loaded in. The component URLs may be retrieved by calling `navigator.adAuctionComponents(numComponents)`, where numComponents will be capped to the maximum permitted value. To prevent bidder worklets from using this as a sidechannel to leak additional data to the fenced frame, exactly numComponents obfuscated URLs will be returned by this method, regardless of how many adComponent URLs were actually in the bid, even if the bid contained no adComponents, and the Interest Group itself had no adComponents either.
+The output of `generateBid()` can use the on-device ad composition flow through an optional adComponents field, listing additional URLs made available to the fenced frame the container URL is loaded in. The component URLs may be retrieved by calling `navigator.adAuctionComponents(numComponents)`, where numComponents will be capped to the maximum permitted value. To prevent bidder worklets from using this as a side channel to leak additional data to the fenced frame, exactly numComponents obfuscated URLs will be returned by this method, regardless of how many adComponent URLs were actually in the bid, even if the bid contained no adComponents, and the Interest Group itself had no adComponents either.
 
 ##### 3.4.1 Flexible Component Ad Selection Considering k-anonymity
 
@@ -958,7 +970,7 @@ Currency checking after `scoreAd()` happens only inside component auctions.  If 
 
 ### 4. Browsers Render the Winning Ad
 
-The winning ad will be rendered in a [Fenced Frame](https://github.com/shivanigithub/fenced-frame): a mechanism under development for rendering a document in an embedded context which is unable to communicate with the surrounding page.  This communication blockage is necessary to meet the privacy goal that sites cannot learn about their visitors' ad interests.  (Note that the microtargeting prevention threshold alone is not enough to address this threat: the threshold prevents ads which could identify a single person, but it allows ads which identify a group of people that share a single interest.)
+The winning ad will be rendered in a [Fenced Frame](https://github.com/shivanigithub/fenced-frame): a mechanism under development for rendering a document in an embedded context which is unable to communicate with the surrounding page.  This communication blockage is necessary to meet the privacy goal that sites cannot learn about their visitors' ad interests.  (Note that the k-anonymity rendering threshold alone is not enough to address this threat: the threshold prevents ads which could identify a single person, but it allows ads which identify a group of people that share a single interest.)
 
 Fenced Frames are designed to be able to provide a second type of protection as well: they will not use the network to load any data from a server, instead only rendering content that was previously downloaded (e.g. as a Web Bundle).  This restriction is focused on preventing information leakage based on server-side joins via timing attacks.
 
@@ -994,6 +1006,7 @@ reportResult(auctionConfig, browserSignals, directFromSellerSignals) {
 The arguments to this function are:
 
 *   auctionConfig: The auction configuration object passed to `navigator.runAdAuction()`
+    *   `reportingTimeout` is capped to 5000 ms. Set to default 50 ms if the auctionConfig passed to `navigator.runAdAuction()` does not provide one.
 *   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction.
     *   `topLevelSeller`, `topLevelSellerSignals`, and `modifiedBid` are only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction.
     *   `modifiedBid` is the bid value a component auction's `scoreAd()` script passes to the top-level auction.
@@ -1059,6 +1072,7 @@ The arguments to this function are:
         * `passedNotEnforced` The ad was k-anonymous though k-anonymity was not required to win the auction.
         * `belowThreshold` The ad was not k-anonymous but k-anonymity was not required to win the auction.
         * `notCalculated` The browser did not calculate the k-anonymity status of the ad, and k-anonymity was not required to win the auction.
+    *   The `reportingTimeout` field is `navigator.runAdAuction()` auctionConfig’s `reportingTimeout` capped to 5000 ms if provided, or a default timeout of 50 ms otherwise.
 
 *   `directFromSellerSignals` is an object that may contain the following fields:
     *   `perBuyerSignals`: Like `auctionConfig.perBuyerSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
