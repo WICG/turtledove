@@ -104,3 +104,16 @@ From the context of a web page, whether custom reporting timeout is enabled can 
 const reportingTimeoutEnabled = navigator.protectedAudience ?
     navigator.protectedAudience.queryFeatureSupport("reportingTimeout") : false;
 ```
+
+## Returning multiple bids from generateBid()
+
+Inside `generateBid()`, if `browserSignals.multiBidLimit` exists then returning
+an array of bids is supported. The value of `browserSignals.multiBidLimit`
+returns the maximum numbers of bids that can be returned, which may be as low as
+1.
+
+## Component ad subsetting with targetNumAdComponents
+
+Inside `generateBid()`, if `browserSignals.multiBidLimit` exist then
+the `targetNumAdComponents` and `numMandatoryAdComponents` bid fields will be
+considered.
