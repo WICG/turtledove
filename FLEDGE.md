@@ -333,7 +333,7 @@ const myAuctionConfig = {
   'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
   'auctionSignals': {...},
   'requestedSize': {'width': '100sw', 'height': '200px'},
-  'allSlotsRequestedSizes': [{'width': '100sw', height: '200px'}, {'width': '200px', 'height': '300sh'}, ...],
+  'allSlotsRequestedSizes': [{'width': '100sw', 'height': '200px'}, {'width': '200px', 'height': '300sh'}, ...],
   'directFromSellerSignals': 'https://www.example-ssp.com/...',
   'sellerSignals': {...},
   'sellerTimeout': 100,
@@ -510,7 +510,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
     { 'topWindowHostname': 'www.example-publisher.com',
       'interestGroupOwner': 'https://www.example-dsp.com',
       'renderURL': 'https://cdn.com/render_url_of_bid',
-      'renderSize': {'width': '100sw', height: '200px'}, /* if specified in the bid */
+      'renderSize': {'width': '100sw', 'height': '200px'}, /* if specified in the bid */
       'adComponents': ['https://cdn.com/ad_component_of_bid',
                        'https://cdn.com/next_ad_component_of_bid',
                        ...],
