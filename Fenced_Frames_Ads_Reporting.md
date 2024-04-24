@@ -50,7 +50,7 @@ The following new APIs will be added for achieving this.
 
 There are two variants of the `reportEvent` API for event-level reporting that are invoked with different sets of parameters. In the first variant, fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon with event data to a URL registered by the worklet in `registerAdBeacon` (see below). Depending on the declared `destination`, the beacon is sent to either the buyer's or the seller's registered URL. Examples of such events are mouse hovers, clicks (which may or may not lead to navigation e.g. video player control element clicks), etc.
 
-This API is available from all documents in a fenced frame tree (i.e., the ad creative URL that won the Protected Audience auction). Documents that are same-origin to the mapped URL of the fenced frame config can call this API without any restrictions. Cross-origin documents can only call this API if there is opt-in from both the fenced frame root and the cross-origin document. The fenced frame root opts in by being served with a new `Allow-Cross-Origin-Event-Reporting` response header set to `true`. The cross-origin document opts in by calling `reportEvent` with `crossOriginExposed=true`.
+This API is available from all documents in a fenced frame tree (i.e., the ad creative URL that won the Protected Audience auction). Child iframes or redirected documents that are same-origin to the mapped URL of the fenced frame config can call this API without any restrictions. Cross-origin child iframe documents can only call this API if there is opt-in from both the fenced frame root and the cross-origin document. The fenced frame root opts in by being served with a new `Allow-Cross-Origin-Event-Reporting` response header set to `true`. The cross-origin document opts in by calling `reportEvent` with `crossOriginExposed=true`. [See TURTLEDOVE issue #1077](https://github.com/WICG/turtledove/issues/1077) for the motivation behind cross-origin support.
 
 The browser processes the beacon by sending an HTTP POST request, like the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
 
@@ -79,7 +79,7 @@ then two reports will be processed for the seller from the component auction
 (one for the `component-seller` destination and one for the `direct-seller`
 destination).`
 
-**Cross-origin exposed:** A boolean that determines whether the data can be used to send reporting beacons using information from a fenced frame config whose mapped URL is cross-origin to the invoking document's origin.
+**Cross-origin exposed:** A boolean that determines whether the data can be used to send reporting beacons using information from an ancestor fenced frame's config whose mapped URL is cross-origin to the invoking document's origin.
 
 ### Example
 
@@ -112,10 +112,11 @@ window.fence.reportEvent({
 ```
 
 
-To send a request from a document that is cross-origin to the fenced frame config's mapped URL with the POST request body `''` to the URL registered for `buyer` when a user click happens:
+To send a request from a document that is cross-origin to the fenced frame config's mapped URL with the POST request body `'an example string'` to the URL registered for `buyer` when a user click happens:
 ```
 window.fence.reportEvent({
   'eventType': 'click',
+  'eventData': 'an example string',
   'destination':['buyer'],
   'crossOriginExposed': true
 });
