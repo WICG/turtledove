@@ -7,7 +7,7 @@ Users of the Protected Audience API may need several different categories of rep
 
 | Type | Cardinality/fidelity | Latency | Availability |
 | --- | --- | --- | --- |
-| Private Aggregation | Very High, 2128 buckets | hours | All auction participants, every auction |
+| Private Aggregation | Very High, 2^128 buckets | hours | All auction participants, every auction |
 | Event-level win reporting | Very High | seconds | Winning buyer and sellers, every auction |
 | forDebuggingOnly (downsampled) | Very High | seconds | All auction participants, rare usage |
 | Real-time monitoring (this explainer) | Lower, ~1000 buckets | seconds | All auction participants, every auction |
