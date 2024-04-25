@@ -185,13 +185,13 @@ def debias_rappor(epsilon: float, N: int, histogram: Sequence[int]):
   return [(h - N * f / 2) / (1 - f) for h in histogram]
 ```
 
-The standard deviation (\sigma) from true count can be calculated using the formula, `\sigma \approx 2 \sqrt{N}`, where N is the number of contributions. Measuring deviation at 2 \sigma from true count will give the 95% confidence interval for errors.
+The standard deviation (\sigma) from true count can be calculated using the formula, $\sigma \approx 2\sqrt{N}$, where N is the number of contributions. Measuring deviation at $2\sigma$ from true count will give the 95% confidence interval for errors.
 
 This API’s primary goal is to help adtechs detect that errors are occurring and may need debugging. Due to the noisy contributions and probabilistic nature of the `priorityWeight` param, the count and frequency of these errors are not exact. For this reason, we recommend interpreting the output as a means to identify deviation from trends rather than representative counts for the frequency of contributions. Let’s consider an example:
 
-Suppose an adtech receives 1M reports in 5 minutes, and Bucket 4’s count is 390,000. We can estimate the number of times an auction actually contributed to Bucket 4 using the formula (390000 - 1000000 * .755/2) / (1-.755), which gives us an estimate of approximately 51,000 contributions to Bucket 4 in this example. The standard deviation is approximately 2 * sqrt(1M) = 2000, so the 95% confidence interval is around 4000 on either side of the estimate.  The adtech can be highly confident that of the 1M auctions that sent a report, the number that contributed their 1 to Bucket 4 is somewhere between 47,000 and 55,000, i.e. between 4.7% and 5.5% of the auctions. 
+Suppose an adtech receives 1M reports in 5 minutes, and Bucket 4’s count is 390,000. We can estimate the number of times an auction actually contributed to Bucket 4 using the formula (390000 - 1000000 * .755/2) / (1-.755), which gives us an estimate of approximately 51,000 contributions to Bucket 4 in this example. The standard deviation is approximately $2\sqrt{1M} = 2000$, so the 95% confidence interval is around 4000 on either side of the estimate.  The adtech can be highly confident that of the 1M auctions that sent a report, the number that contributed their 1 to Bucket 4 is somewhere between 47,000 and 55,000, i.e. between 4.7% and 5.5% of the auctions. 
 
-As the API will send reports soon after the auction is completed, the only delay in measuring aggregates comes from aggregating reports after the fact. The cadence and grouping of aggregation is entirely up to the API user, and due to the local noise any report can be queried or analyzed an unlimited number of times. For example, running the de-noising calculation on 1 minute's worth of reports, rather than waiting to collect for 5 minutes, will give estimates 4 minutes sooner, but at the cost of relatively more noise: the size of the 95% confidence interval will be approximately sqrt(5) ≈ 2.2 times as wide.
+As the API will send reports soon after the auction is completed, the only delay in measuring aggregates comes from aggregating reports after the fact. The cadence and grouping of aggregation is entirely up to the API user, and due to the local noise any report can be queried or analyzed an unlimited number of times. For example, running the de-noising calculation on 1 minute's worth of reports, rather than waiting to collect for 5 minutes, will give estimates 4 minutes sooner, but at the cost of relatively more noise: the size of the 95% confidence interval will be approximately $\sqrt{5} \approx 2.2$ times as wide.
 
 We have published a [colab notebook](http://bit.ly/rappor-colab) exploring the RAPPOR algorithm in more detail.
 
@@ -225,7 +225,7 @@ Given that sellers have significant existing control over the auction, we deemed
 
 ## Privacy considerations
 
-At the `epsilon` we are proposing (\epsilon = 1), the entropy leaked is limited to approximately 0.18 bits per auction. This makes it very difficult for a bad actor to gain any meaningful user identifying information from an auction using this API. 
+At the `epsilon` we are proposing ($\epsilon$ = 1), the entropy leaked is limited to approximately 0.18 bits per auction. This makes it very difficult for a bad actor to gain any meaningful user identifying information from an auction using this API. 
 
 While the tight privacy parameters provide strong protections, there are two privacy considerations of note:
 
