@@ -7,7 +7,7 @@ Users of the Protected Audience API may need several different categories of rep
 
 | Type | Cardinality/fidelity | Latency | Availability |
 | --- | --- | --- | --- |
-| Private Aggregation | Very High, 2^128 buckets | hours | All auction participants, every auction |
+| Private Aggregation | Very High, $2^128$ buckets | hours | All auction participants, every auction |
 | Event-level win reporting | Very High | seconds | Winning buyer and sellers, every auction |
 | forDebuggingOnly (downsampled) | Very High | seconds | All auction participants, rare usage |
 | Real-time monitoring (this explainer) | Lower, ~1000 buckets | seconds | All auction participants, every auction |
@@ -185,7 +185,7 @@ def debias_rappor(epsilon: float, N: int, histogram: Sequence[int]):
   return [(h - N * f / 2) / (1 - f) for h in histogram]
 ```
 
-The standard deviation (\sigma) from true count can be calculated using the formula, $\sigma \approx 2\sqrt{N}$, where N is the number of contributions. Measuring deviation at $2\sigma$ from true count will give the 95% confidence interval for errors.
+The standard deviation ($\sigma$) from true count can be calculated using the formula, $\sigma \approx 2\sqrt{N}$, where N is the number of contributions. Measuring deviation at $2\sigma$ from true count will give the 95% confidence interval for errors.
 
 This API’s primary goal is to help adtechs detect that errors are occurring and may need debugging. Due to the noisy contributions and probabilistic nature of the `priorityWeight` param, the count and frequency of these errors are not exact. For this reason, we recommend interpreting the output as a means to identify deviation from trends rather than representative counts for the frequency of contributions. Let’s consider an example:
 
