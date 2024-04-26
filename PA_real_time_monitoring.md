@@ -3,13 +3,13 @@
 
 ## Background
 
-Users of the Protected Audience API may need several different categories of reporting:
+Users of the [Protected Audience API](FLEDGE.md) may need several different categories of reporting:
 
 | Type | Cardinality/fidelity | Latency | Availability |
 | --- | --- | --- | --- |
-| Private Aggregation | Very High, $2^{128}$ buckets | hours | All auction participants, every auction |
-| Event-level win reporting | Very High | seconds | Winning buyer and sellers, every auction |
-| forDebuggingOnly (downsampled) | Very High | seconds | All auction participants, rare usage |
+| [Private Aggregation](https://developers.google.com/privacy-sandbox/relevance/private-aggregation) | Very High, $2^{128}$ buckets | hours | All auction participants, every auction |
+| [Event-level win reporting](FLEDGE.md#5-event-level-reporting-for-now) | Very High | seconds | Winning buyer and sellers, every auction |
+| [forDebuggingOnly (downsampled)](FLEDGE.md#71-fordebuggingonly-fdo-apis) | Very High | seconds | All auction participants, rare usage |
 | Real-time monitoring (this explainer) | Lower, ~1000 buckets | seconds | All auction participants, every auction |
 
 To ensure the browser protects user privacy, no one mechanism can satisfy all three requirements: high cardinality/fidelity, low latency, and available for all participants in every auction.
@@ -18,9 +18,9 @@ The different strengths and weaknesses of each type of reporting make them usefu
 
 | Type | Example Usage |
 | --- | --- |
-| Private Aggregation | Analysis and monitoring with delay (e.g. rolling out new versions of scripts or data) |
-| Event-level win reporting | Billing |
-| forDebuggingOnly | Root cause analysis of aberrant bidding and scoring situations (e.g. JavaScript exception) |
+| [Private Aggregation](https://developers.google.com/privacy-sandbox/relevance/private-aggregation) | Analysis and monitoring with delay (e.g. rolling out new versions of scripts or data) |
+| [Event-level win reporting](FLEDGE.md#5-event-level-reporting-for-now) | Billing |
+| [forDebuggingOnly](FLEDGE.md#71-fordebuggingonly-fdo-apis) | Root cause analysis of aberrant bidding and scoring situations (e.g. JavaScript exception) |
 | Real-time monitoring | Real-time failure detection |
 
 
@@ -28,7 +28,7 @@ The different strengths and weaknesses of each type of reporting make them usefu
 
 The goal of real-time reporting is to get auction monitoring data to the buyer and seller as quickly as possible (e.g. < 5 mins). The primary use-case we are trying to capture with this reporting surface is rapid error detection i.e. detecting quickly whether there are major problems with unexpected behavior in `generateBid()`, `scoreAd()`, or loading of bidding or scoring scripts or trusted signals.
 
-The high level Real Time Reporting API here is similar to the Private Aggregation API in that it allows you 
+The high level Real Time Reporting API here is similar to the [Private Aggregation API](https://developers.google.com/privacy-sandbox/relevance/private-aggregation) in that it allows you 
 to contribute to a histogram, but the contribution is subject to substantial local noise and is sent soon after the auction is completed to allow for a fast detection SLA. Once an error has been detected, [downsampled](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#712-downsampling) `forDebuggingOnly` can be utilized for root cause analysis.
 
 This API will provide histogram contribution values of only 0s and 1s, which can be used to correspond to whether or not the event being monitored behaved expectedly or aberrantly. There are a number of events that adtechs may wish to monitor in real time - adtechs assign meanings to buckets for events in `generateBid()` and `scoreAd()` (e.g. an adtech might define bucket #44 as signal parsing error in generateBid). For certain event-types that cannot be reported from the aforementioned worklets, we propose the browser defines a set of platform-defined buckets (e.g. the bowser might define bucket #12 as failure to fetch bidding or scoring script). Read more about [Platform Contributions here](#platform-contributions-reporting-errors-not-detectable-in-worklet-JS).
@@ -230,7 +230,7 @@ At the `epsilon` we are proposing ($\epsilon$ = 1), the entropy leaked is limite
 While the tight privacy parameters provide strong protections, there are two privacy considerations of note:
 
 *   It reveals a small amount of information from scoreAd and generateBid to sellers and bidders, respectively. These contents are protected by the locally differentially private RAPPOR algorithm. The scope of this risk can be measured with the privacy loss epsilon parameter. This risk could be magnified by a bad actor running many auctions solely for the purpose of collecting more information from a publisher page. At launch, we plan to mitigate this risk by bounding the number of contributions that this API will send to an adtech from a page in a given period of time for each browser.
-*   It reveals to the ad tech the fact that it had an interest group present on the device. This is mitigated by the fact that the reports do not contain any information about which auction triggered them, and the report is heavily noised. We also considered sending reports to all eligible auction participants for a given auction (i.e. all those present in `interestGroupBuyers`, even if they do not have interest groups), but this will result in an overwhelming number of reports sent.
+*   It reveals to the ad tech the fact that it had an interest group present on the device. This is mitigated by the fact that the reports do not contain any information about which auction triggered them, and the report is heavily noised. We also considered sending reports to all *eligible* auction participants for a given auction (i.e. all those present in `interestGroupBuyers`, even if they do not have interest groups), but this will result in an overwhelming number of reports sent.
 
 We plan to address both these considerations in [future work](#limitations-and-future-work).
 
@@ -253,9 +253,9 @@ The downsampled reporting is better suited for root-cause analysis.
 
 We could consider extending the [Private Aggregation API](https://developers.google.com/privacy-sandbox/relevance/private-aggregation) rather than introducing a new API surface for real-time bid reporting. There were a few reasons we chose a new API:
 
-*   Due to the random client-side delay, adtech time to accumulate reports and batch processing time, PAA reporting SLA may not be brought down to the real time nature of reporting for monitoring required by some adtechs. Reducing the delay is possible but would likely require sending more null reports to satisfy the privacy requirements.
-*   PAA is designed for a very large domain of keys in its underlying histogram, whereas the RAPPOR mechanism cannot readily support such large domains due to bandwidth / computation constraints.
-*   Utilizing PAA could interfere with existing PAA privacy budgets, and it isn’t clear exactly how to share budgets across central and local mechanisms.
+1.   Due to the random client-side delay, adtech time to accumulate reports and batch processing time, PAA reporting SLA may not be brought down to the real time nature of reporting for monitoring required by some adtechs. Reducing the delay is possible but would likely require sending more null reports to satisfy the privacy requirements.
+1.   PAA is designed for a very large domain of keys in its underlying histogram, whereas the RAPPOR mechanism cannot readily support such large domains due to bandwidth / computation constraints.
+1.   Utilizing PAA could interfere with existing PAA privacy budgets, and it isn’t clear exactly how to share budgets across central and local mechanisms.
 
 
 ## Limitations and future work
