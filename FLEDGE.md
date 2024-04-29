@@ -1009,7 +1009,7 @@ The arguments to this function are:
     *   `reportingTimeout` is capped to 5000 ms. Set to default 50 ms if the auctionConfig passed to `navigator.runAdAuction()` does not provide one.
 *   browserSignals: An object constructed by the browser, containing information it knows about what happened in the auction.
     *   `topLevelSeller`, `topLevelSellerSignals`, and `modifiedBid` are only present for component auctions, while `componentSeller` is only present for top-level auctions when the winner came from a component auction.
-    *   `modifiedBid` is the bid value a component auction's `scoreAd()` script passes to the top-level auction.
+    *   `modifiedBid` is the bid value a component auction's `scoreAd()` script passed to the top-level auction.
     *   `topLevelSellerSignals` is the output of the top-level seller's `reportResult()` method.
     *   `highestScoringOtherBid` is the value of a bid with the second highest score in the auction. It may be greater than `bid` since it's a bid instead of a score, and a higher bid value may get a lower score. Rejected bids are excluded when calculating this signal. If there was only one bid, it will be 0. In the case of a tie, it will be randomly chosen from all bids with the second highest score, excluding the winning bid if the winning bid had the same score. A component seller's `reportWin()` function will be passed a bid with the second highest score in the component auction, not the top-level auction. It is not reported to top-level sellers in a multi-SSP case because we expect a top-level auction in this case to be first-price auction only:
 
