@@ -70,7 +70,7 @@ beacon, and then the ad frame can set the same automatic beacon data for both ev
 `top_navigation_commit` and `top_navigation` beacons, and filter out duplicate beacons that have the same exact data.
 
 ## Increase in limit to number of component ads
-[Intent to Ship](TBD)
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/3RUQk0GCC9Q/m/NBOcT00mAAAJ)
 
 Inside `generateBid` one can determine the currently active limit on number of components ads as follows:
 ```
@@ -106,6 +106,7 @@ const reportingTimeoutEnabled = navigator.protectedAudience ?
 ```
 
 ## Returning multiple bids from generateBid()
+[Intent to Ship](TBD)
 
 Inside `generateBid()`, if `browserSignals.multiBidLimit` exists then returning
 an array of bids is supported. The value of `browserSignals.multiBidLimit`
@@ -113,7 +114,17 @@ returns the maximum numbers of bids that can be returned, which may be as low as
 1.
 
 ## Component ad subsetting with targetNumAdComponents
+[Intent to Ship](TBD)
 
 Inside `generateBid()`, if `browserSignals.multiBidLimit` exist then
 the `targetNumAdComponents` and `numMandatoryAdComponents` bid fields will be
 considered.
+
+## Cross-origin trusted signals
+[Intent to Ship](TBD)
+
+From context of a web page:
+```
+navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
+    "permitCrossOriginTrustedSignals")
+```

@@ -743,6 +743,66 @@ For detailed specification and explainers of the trusted key-value server, see a
 
 ##### 3.1.1 Cross-Origin Trusted Server Signals
 
+If the key-value server is on a different origin than the corresponding script, additional steps are
+needed to ensure that sensitive information is not inappropriately leaked to, or is manipulated by,
+a third party.
+
+In case of bidder signals, the following changes occur:
+1. The fetch is a cross-origin CORS fetch with `Origin:` set to the buyer script's origin.
+2. The value is passed to `crossOriginTrustedSignals` parameter, not the `trustedBiddingSignals`
+   parameter, and there is one more level of nesting denoting the server's origin, e.g:
+
+```
+{
+  'https://www.kv-server.example': {
+    'keys': {
+        'key1': arbitrary_json,
+        'key2': arbitrary_json,
+        ...},
+    'perInterestGroupData': {
+        'name1': {
+            'priorityVector': {
+                'signal1': number,
+                'signal2': number,
+                ...}
+        },
+        ...
+    }
+  }
+}
+```
+
+Seller signals have additional requirements, as the `trustedScoringSignalsURL` is provided by the
+publisher, not the seller:
+1. The seller script must provide an `Ad-Auction-Allow-Trusted-Scoring-Signals-From` response header,
+   a  [structured headers list of strings](https://www.rfc-editor.org/rfc/rfc8941) describing origins
+   fetching trusted signals from which is permitted. The trusted scoring signals fetch may not begin
+   until this header is received, in order to avoid leaking bid information to a third party.
+   This means using a cross-origin trusted server for seller information may carry a peformance
+   penalty.
+2. The fetch is a cross-origin CORS fetch with `Origin:` set to the seller script's origin.
+3. The value is passed to `crossOriginTrustedSignals` parameter, not the `trustedScoringSignals`
+   parameter, and there is one more level of nesting denoting the server's origin, e.g:
+
+```
+{
+  'https://www.kv-server.example': {
+    'renderURL': {'https://cdn.com/render_url_of_bidder': arbitrary_value_from_signals},
+    'adComponentRenderURLs': {
+        'https://cdn.com/ad_component_of_a_bid': arbitrary_value_from_signals,
+        'https://cdn.com/another_ad_component_of_a_bid': arbitrary_value_from_signals,
+        ...}
+  }
+}
+```
+
+Note that older version of Chrome did not support cross-origin trusted signals. You can query
+whether support is available as:
+
+```
+navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
+    "permitCrossOriginTrustedSignals")
+```
 
 #### 3.2 On-Device Bidding
 
@@ -778,7 +838,7 @@ The arguments to `generateBid()` are:
 *   auctionSignals: As provided by the seller in the call to `runAdAuction()`.  This is the opportunity for the seller to provide information about the page context (ad size, publisher ID, etc), the type of auction (first-price vs second-price), and so on.
 *   perBuyerSignals: The value for _this specific buyer_ as taken from the auction config passed to `runAdAuction()`.  This can include contextual signals about the page that come from the buyer's server, if the seller is an SSP which performs a real-time bidding call to buyer servers and pipes the response back, or if the publisher page contacts the buyer's server directly.  If so, the buyer may wish to check a cryptographic signature of those signals inside `generateBid()` as protection against tampering.
 *   trustedBiddingSignals: An object whose keys are the `trustedBiddingSignalsKeys` for the interest group, and whose values are those returned in the `trustedBiddingSignals` request. This used when the trusted server is same-origin with the buyer's script.
-*   crossOriginTrustedSignals: Like turstedBiddingSignals, but used when the trusted-server is
+*   crossOriginTrustedSignals: Like trustedBiddingSignals, but used when the trusted-server is
     cross-origin to the buyer's script. The value is an object that has as a key the trusted
     server's origin, e.g. `"https://example.org"`, and as value an object in format trustedBiddingSignals uses.
     See [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-signal) for more details.
