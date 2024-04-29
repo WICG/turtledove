@@ -28,7 +28,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
       - [2.5.2 Using Response Headers](#252-using-response-headers)
   - [3. Buyers Provide Ads and Bidding Functions (BYOS for now)](#3-buyers-provide-ads-and-bidding-functions-byos-for-now)
     - [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server)
-      - [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-signal)
+      - [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals)
     - [3.2 On-Device Bidding](#32-on-device-bidding)
     - [3.3 Metadata with the Ad Bid](#33-metadata-with-the-ad-bid)
     - [3.4 Ads Composed of Multiple Pieces](#34-ads-composed-of-multiple-pieces)
@@ -509,7 +509,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   Like trustedScoringSignals, but used when the server is cross-origin to the seller script. The
     value is an object that has as a key the trusted server's origin, e.g. `"https://example.org"`,
     and as value an object in format trustedScoringSignals uses.
-    See [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-signal) for more details.
+    See [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals) for more details.
 *   browserSignals: An object constructed by the browser, containing information that the browser knows and which the seller's auction script might want to verify:
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
@@ -841,7 +841,7 @@ The arguments to `generateBid()` are:
 *   crossOriginTrustedSignals: Like trustedBiddingSignals, but used when the trusted-server is
     cross-origin to the buyer's script. The value is an object that has as a key the trusted
     server's origin, e.g. `"https://example.org"`, and as value an object in format trustedBiddingSignals uses.
-    See [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-signal) for more details.
+    See [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals) for more details.
 *   browserSignals: An object constructed by the browser, containing information that the browser knows, and which the buyer's auction script might want to use or verify.  The `dataVersion` field will only be present if the `Data-Version` header was provided and had a consistent value for all of the trusted bidding signals server responses used to construct the trustedBiddingSignals. `topLevelSeller` is only present if `generateBid()` is running as part of a component auction. Additional fields can include information about both the context (e.g. the true hostname of the current page, which the seller could otherwise lie about) and about the interest group itself (e.g. times when it previously won the auction, to allow on-device frequency capping). Note that unlike for `reportWin()` the `joinCount` and `recency` in `generateBid()`'s browser signals *isn't* subject to the [noising and bucketing scheme](#521-noised-and-bucketed-signals). Furthermore, `recency` in `generateBid()`'s browser signals is specified in milliseconds, rounded to the nearest 100 milliseconds.
     ```
     { 'topWindowHostname': 'www.example-publisher.com',

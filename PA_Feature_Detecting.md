@@ -70,7 +70,7 @@ beacon, and then the ad frame can set the same automatic beacon data for both ev
 `top_navigation_commit` and `top_navigation` beacons, and filter out duplicate beacons that have the same exact data.
 
 ## Increase in limit to number of component ads
-[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/3RUQk0GCC9Q/m/NBOcT00mAAAJ)
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/3RUQk0GCC9Q/m/wmbXOOB8AAAJ)
 
 Inside `generateBid` one can determine the currently active limit on number of components ads as follows:
 ```
