@@ -28,6 +28,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
       - [2.5.2 Using Response Headers](#252-using-response-headers)
   - [3. Buyers Provide Ads and Bidding Functions (BYOS for now)](#3-buyers-provide-ads-and-bidding-functions-byos-for-now)
     - [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server)
+      - [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-signal)
     - [3.2 On-Device Bidding](#32-on-device-bidding)
     - [3.3 Metadata with the Ad Bid](#33-metadata-with-the-ad-bid)
     - [3.4 Ads Composed of Multiple Pieces](#34-ads-composed-of-multiple-pieces)
@@ -489,7 +490,7 @@ Once the bids are known, the seller runs code inside an _auction worklet_.  With
 
 ```
 scoreAd(adMetadata, bid, auctionConfig, trustedScoringSignals, browserSignals,
-    directFromSellerSignals) {
+    directFromSellerSignals, crossOriginTrustedSignals) {
   ...
   return {desirability: desirabilityScoreForThisAd,
           incomingBidInSellerCurrency:
@@ -504,7 +505,11 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   adMetadata: Arbitrary metadata provided by the buyer.
 *   bid: A numerical bid value.
 *   auctionConfig: The auction configuration object passed to `navigator.runAdAuction()`.
-*   trustedScoringSignals: A value retrieved from a real-time trusted server chosen by the seller and reflecting the seller's opinion of this particular creative, as further described in [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) below.  (In the case of [ads composed of multiple pieces](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces) this should instead be some collection of values, structure TBD.)
+*   trustedScoringSignals: A value retrieved from a real-time trusted server chosen by the seller and reflecting the seller's opinion of this particular creative, as further described in [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) below. This is used when the server is same-origin to the seller; crossOriginTrustedSignals is used otherwise.
+*   Like trustedScoringSignals, but used when the server is cross-origin to the seller script. The
+    value is an object that has as a key the trusted server's origin, e.g. `"https://example.org"`,
+    and as value an object in format trustedScoringSignals uses.
+    See [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-signal) for more details.
 *   browserSignals: An object constructed by the browser, containing information that the browser knows and which the seller's auction script might want to verify:
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
@@ -736,6 +741,9 @@ For detailed specification and explainers of the trusted key-value server, see a
 - [FLEDGE Key/Value Server APIs Explainer](https://github.com/WICG/turtledove/blob/master/FLEDGE_Key_Value_Server_API.md)
 - [FLEDGE Key/Value Server Trust Model Explainer](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md)
 
+##### 3.1.1 Cross-Origin Trusted Server Signals
+
+
 #### 3.2 On-Device Bidding
 
 Once the trusted bidding signals are fetched, each interest group's bidding function will run, inside a bidding worklet associated with the interest group owner's domain.  The buyer's JavaScript is loaded from the interest group's `biddingLogicURL`, which must expose a `generateBid()` function:
@@ -743,7 +751,8 @@ Once the trusted bidding signals are fetched, each interest group's bidding func
 
 ```
 generateBid(interestGroup, auctionSignals, perBuyerSignals,
-    trustedBiddingSignals, browserSignals, directFromSellerSignals) {
+    trustedBiddingSignals, browserSignals, directFromSellerSignals,
+    crossOriginTrustedSignals) {
   ...
   return {'ad': adObject,
           'adCost': optionalAdCost,
@@ -768,7 +777,11 @@ The arguments to `generateBid()` are:
     * `priority` and `prioritySignalsOverrides` are not included. They can be modified by `generatedBid()` calls, so could theoretically be used to create a cross-site profile of a user accessible to `generateBid()` methods, otherwise.
 *   auctionSignals: As provided by the seller in the call to `runAdAuction()`.  This is the opportunity for the seller to provide information about the page context (ad size, publisher ID, etc), the type of auction (first-price vs second-price), and so on.
 *   perBuyerSignals: The value for _this specific buyer_ as taken from the auction config passed to `runAdAuction()`.  This can include contextual signals about the page that come from the buyer's server, if the seller is an SSP which performs a real-time bidding call to buyer servers and pipes the response back, or if the publisher page contacts the buyer's server directly.  If so, the buyer may wish to check a cryptographic signature of those signals inside `generateBid()` as protection against tampering.
-*   trustedBiddingSignals: An object whose keys are the `trustedBiddingSignalsKeys` for the interest group, and whose values are those returned in the `trustedBiddingSignals` request.
+*   trustedBiddingSignals: An object whose keys are the `trustedBiddingSignalsKeys` for the interest group, and whose values are those returned in the `trustedBiddingSignals` request. This used when the trusted server is same-origin with the buyer's script.
+*   crossOriginTrustedSignals: Like turstedBiddingSignals, but used when the trusted-server is
+    cross-origin to the buyer's script. The value is an object that has as a key the trusted
+    server's origin, e.g. `"https://example.org"`, and as value an object in format trustedBiddingSignals uses.
+    See [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-signal) for more details.
 *   browserSignals: An object constructed by the browser, containing information that the browser knows, and which the buyer's auction script might want to use or verify.  The `dataVersion` field will only be present if the `Data-Version` header was provided and had a consistent value for all of the trusted bidding signals server responses used to construct the trustedBiddingSignals. `topLevelSeller` is only present if `generateBid()` is running as part of a component auction. Additional fields can include information about both the context (e.g. the true hostname of the current page, which the seller could otherwise lie about) and about the interest group itself (e.g. times when it previously won the auction, to allow on-device frequency capping). Note that unlike for `reportWin()` the `joinCount` and `recency` in `generateBid()`'s browser signals *isn't* subject to the [noising and bucketing scheme](#521-noised-and-bucketed-signals). Furthermore, `recency` in `generateBid()`'s browser signals is specified in milliseconds, rounded to the nearest 100 milliseconds.
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
