@@ -190,6 +190,7 @@ dictionary GenerateBidInterestGroup {
   boolean enableBiddingSignalsPrioritization = false;
   record<DOMString, double> priorityVector;
 
+  record<USVString, sequence<DOMString>> sellerCapabilities;
   DOMString executionMode = "compatibility";
   USVString biddingLogicURL;
   USVString biddingWasmHelperURL;
@@ -197,6 +198,7 @@ dictionary GenerateBidInterestGroup {
   USVString trustedBiddingSignalsURL;
   sequence<USVString> trustedBiddingSignalsKeys;
   DOMString trustedBiddingSignalsSlotSizeMode = "none";
+  long maxTrustedBiddingSignalsURLLength;
   any userBiddingSignals;
   sequence<AuctionAd> ads;
   sequence<AuctionAd> adComponents;
@@ -259,6 +261,26 @@ This is detectable because it can change the set of fields that are read from th
   1. If |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"] [=map/exists=], then set
     |interestGroup|'s [=interest group/priority signals overrides=] to
     |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"].
+  1. If |group|["{{GenerateBidInterestGroup/sellerCapabilities}}"] [=map/exists=], [=map/for each=]
+    |sellerString| → |capabilities| of |group|["{{GenerateBidInterestGroup/sellerCapabilities}}"]:
+    1. Let |sellerCapabilities| be a new [=set=] of [=seller capabilities=].
+    1. [=list/For each=] |capabilityString| of |capabilities|:
+      1. If |capabilityString| is "`interest-group-counts`" or "`latency-stats`", then
+        [=set/append=] |capabilityString| to |sellerCapabilities|.
+
+        Note: For forward compatibility with new values, don't [=exception/throw=].
+    1. If |sellerString| is "`*`", then set |interestGroup|'s
+      [=interest group/all sellers capabilities=] to |sellerCapabilities|.
+    1. Otherwise:
+      1. If |interestGroup|'s [=interest group/seller capabilities=] is null, then set
+        |interestGroup|'s [=interest group/seller capabilities=] to a new [=ordered map=] whose
+        [=map/keys=] are [=origins=] and whose [=map/values=] are [=sets=] of [=seller capabilities=].
+      1. Let |sellerUrl| be the result of running the [=URL parser=] on |sellerString|.
+      1. If |sellerUrl| is not failure:
+        1. Let |seller| be |sellerUrl|'s [=url/origin=].
+        1. If |interestGroup|'s [=interest group/seller capabilities=] does not [=map/contain=]
+          |seller|, then [=map/set=] |interestGroup|'s
+          [=interest group/seller capabilities=][|seller|] to |sellerCapabilities|.
   1. If |group|["{{GenerateBidInterestGroup/executionMode}}"] is "`compatibility`",
     "`frozen-context`", or "`group-by-origin`", then set |interestGroup|'s
     [=interest group/execution mode=] to it.
@@ -295,6 +317,11 @@ This is detectable because it can change the set of fields that are read from th
   1. If |group|["{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}}"] [=map/exists=], then set
     |interestGroup|'s [=interest group/trusted bidding signals keys=] to
     |group|["{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}}"].
+  1. If |group|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"] [=map/exists=]:
+    1. If |group|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"] &ge; 0, set
+      |interestGroup|'s [=interest group/max trusted bidding signals url length=] to
+      |group|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"], otherwise
+      [=exception/throw=] a {{TypeError}}.
   1. If |group|["{{GenerateBidInterestGroup/userBiddingSignals}}"] [=map/exists=]:
     1. Set |interestGroup|'s [=interest group/user bidding signals=] to the result of
       [=serializing a JavaScript value to a JSON string=], given
@@ -605,26 +632,31 @@ partial interface Navigator {
 dictionary AuctionAdConfig {
   required USVString seller;
   required USVString decisionLogicURL;
+
   USVString trustedScoringSignalsURL;
+  long maxTrustedScoringSignalsURLLength;
   sequence<USVString> interestGroupBuyers;
   Promise<any> auctionSignals;
-  record<DOMString, DOMString> requestedSize;
-  sequence<record<DOMString, DOMString>> allSlotsRequestedSizes;
   Promise<any> sellerSignals;
   Promise<DOMString> directFromSellerSignalsHeaderAdSlot;
+  Promise<record<USVString, USVString>> deprecatedRenderURLReplacements;
   unsigned long long sellerTimeout;
   unsigned short sellerExperimentGroupId;
-  USVString sellerCurrency;
   Promise<record<USVString, any>> perBuyerSignals;
   Promise<record<USVString, unsigned long long>> perBuyerTimeouts;
   Promise<record<USVString, unsigned long long>> perBuyerCumulativeTimeouts;
+  unsigned long long reportingTimeout;
+  USVString sellerCurrency;
+  Promise<record<USVString, USVString>> perBuyerCurrencies;
   record<USVString, unsigned short> perBuyerGroupLimits;
   record<USVString, unsigned short> perBuyerExperimentGroupIds;
   record<USVString, record<USVString, double>> perBuyerPrioritySignals;
-  Promise<record<USVString, USVString>> perBuyerCurrencies;
-  sequence<AuctionAdConfig> componentAuctions = [];
+  sequence<DOMString> requiredSellerCapabilities;
+  record<DOMString, DOMString> requestedSize;
+  sequence<record<DOMString, DOMString>> allSlotsRequestedSizes;
   Promise<undefined> additionalBids;
   DOMString auctionNonce;
+  sequence<AuctionAdConfig> componentAuctions = [];
   AbortSignal? signal;
   Promise<boolean> resolveToConfig;
 };
@@ -666,12 +698,12 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       [=auction config/interest group buyers=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. Let |generatedBids| be a new [=list=] of [=generated bids=].
+  1. Let |bidDebugReportInfoList| be a new [=list=] of [=bid debug reporting info=].
   1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
-    null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|, and |generatedBids|.
+    null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|, and |bidDebugReportInfoList|.
   1. Let |auctionReportInfo| be a new [=auction report info=].
   1. If |winnerInfo| is not failure, then set |auctionReportInfo| to the result of running
-    [=collect forDebuggingOnly reports=] with |generatedBids| and |winnerInfo|.
+    [=collect forDebuggingOnly reports=] with |bidDebugReportInfoList| and |winnerInfo|.
   1. If |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
     given |global|, to [=reject=] |p| with a "{{TypeError}}".
   1. Otherwise if |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null:
@@ -776,15 +808,42 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 |pendingConfig|, [=auction config=] |auctionConfig|, [=leading bid info=] |winningBidInfo|, and
 [=auction report info=] |auctionReportInfo|:
 1. Let |winningBid| be |winningBidInfo|'s [=leading bid info/leading bid=].
+1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose 
+  [=map/values=] are [=strings=].
+1. [=list/For each=] |replacement| in |auctionConfig|'s 
+  [=auction config/deprecated render url replacements=]:
+  1. Let |k| be |replacement|'s [=ad keyword replacement/match=].
+  1. Let |v| be |replacement|'s [=ad keyword replacement/replacement=].
+  1. [=map/Set=] |replacements|[|k|] to |v|.
+1. Let |replacedAdURL| be the result of
+  running [=fencedframeutil/substitute macros=] with |replacements| and |winningBid|'s 
+  [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
 1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
-   |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+   |replacedAdURL|.
 1. Let |adSize| be |winningBid|'s [=generated bid/ad descriptor=]'s [=ad descriptor/size=].
+1. Let |concreteAdSize| be the result of
+
+   Issue: resolving screen-relative sizes to pixel values for |adSize|.
+   (<a href="https://github.com/WICG/turtledove/issues/986">WICG/turtledove#986</a>) 
+1. Let |adWidthString| and |adHeightString| be the result of
+
+   Issue: converting |concreteAdSize| to strings.
+   (<a href="https://github.com/WICG/turtledove/issues/986">WICG/turtledove#986</a>)
+1. Let |sizeMacroMap| be the [=ordered map=] «[ "{%AD_WIDTH%}" → |adWidthString|,
+   "{%AD_HEIGHT%}" → |adHeightString|, "${AD_WIDTH}" → |adWidthString|,
+   "${AD_HEIGHT}" → |adHeightString|]»
+1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
+   the result of [=fencedframeutil/substituting macros=] with |sizeMacroMap| into |winningBid|'s
+   [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
 1. If |adSize| is not null:
    1. Set |pendingConfig|'s [=fenced frame config/content size=] to a [=struct=] with the following
       [=struct/items=]:
      : [=content size/value=]
-     :: |adSize| TODO: Resolve screen-relative sizes and macros and cast this properly.
+     :: |concreteAdSize|.
 
+        Issue: Cast |concreteAdSize| into the format that is eventually chosen for
+        [=content size/value=].
+        (<a href="https://github.com/WICG/turtledove/issues/986">WICG/turtledove#986</a>)
      : [=content size/visibility=]
      :: "<a for=visibility>`opaque`</a>"
 1. Set |pendingConfig|'s [=fenced frame config/interest group descriptor=]'s
@@ -820,9 +879,19 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
       [=fenced frame reporting metadata/value=]'s
       [=fenced frame reporting metadata/fenced frame reporting map=], |winningBidInfo| and
       |auctionReportInfo|.
+1. Let |adComponentDescriptorsWithReplacements| be a new [=list=] of [=ad descriptors=].
+1. If |winningBid|'s [=generated bid/ad component descriptors=] is not null: 
+  1. [=list/For each=] |adComponentDescriptor| of |winningBid|'s 
+    [=generated bid/ad component descriptors=]:
+    1. Let |descriptorWithReplacement| be a new [=ad descriptor=].
+    1. Set |descriptorWithReplacement|'s [=ad descriptor/size=] to 
+      |adComponentDescriptor|'s [=ad descriptor/size=].
+    1. Set |descriptorWithReplacement|'s [=ad descriptor/url=] to the result of running
+      [=fencedframeutil/substitute macros=] with |replacements| and |adComponentDescriptor|'s
+      [=ad descriptor/url=].
+    1. [=list/Append=] |descriptorWithReplacement| to |adComponentDescriptorsWithReplacements|.
 1. Set |pendingConfig|'s [=fenced frame config/nested configs=]'s [=nested configs/value=] to
-   the result of running [=create nested configs=] with |winningBid|'s
-   [=generated bid/ad component descriptors=].
+   the result of running [=create nested configs=] with |adComponentDescriptorsWithReplacements|.
 1. Return |pendingConfig|.
 
 </div>
@@ -832,17 +901,12 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 To <dfn>asynchronously finish reporting</dfn> given a
 [=fencedframetype/fenced frame reporting map=] |reportingMap|, [=leading bid info=] |leadingBidInfo|,
 and [=auction report info=] |auctionReportInfo|.
-1. Let |winner| be |leadingBidInfo|'s [=leading bid info/leading bid=].
-1. [=Increment ad k-anonymity count=] given |winner|'s [=generated bid/interest group=] and
-  |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-1. If |winner|'s [=generated bid/ad component descriptors=] is not null:
-  1. [=set/For each=] |adComponentDescriptor| in |winner|'s
-    [=generated bid/ad component descriptors=]:
-    1. [=Increment component ad k-anonymity count=] given |adComponentDescriptor|'s
-      [=ad descriptor/url=].
-1. [=Increment reporting ID k-anonymity count=] given |winner|'s
-  [=generated bid/interest group=] and |winner|'s [=generated bid/ad descriptor=]'s
-  [=ad descriptor/url=].
+1. [=Increment a winning bid's k-anonymity count=] given |leadingBidInfo|'s [=leading bid info/leading bid=].
+1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is
+   not null, and |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/id=]
+   &ne; |leadingBidInfo|'s [=leading bid info/leading bid=]'s  [=generated bid/id=],
+   [=increment a winning bid's k-anonymity count=] given
+   |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=].
 1. Let |buyerDone|, |sellerDone|, and |componentSellerDone| be [=booleans=], initially false.
 1. If |leadingBidInfo|'s [=leading bid info/component seller=] is null, set |componentSellerDone|
    to true.
@@ -990,6 +1054,11 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. [=Assert=]: |trustedScoringSignalsURL|'s [=url/scheme=] is "`https`".
   1. Set |auctionConfig|'s [=auction config/trusted scoring signals url=] to
     |trustedScoringSignalsURL|.
+1. If |config|["{{AuctionAdConfig/maxTrustedScoringSignalsURLLength}}"] [=map/exists=]:
+  1. If |config|["{{AuctionAdConfig/maxTrustedScoringSignalsURLLength}}"] &ge; 0, set |auctionConfig|'s
+    [=auction config/max trusted scoring signals url length=] to
+    |config|["{{AuctionAdConfig/maxTrustedScoringSignalsURLLength}}"], otherwise [=exception/throw=]
+    a {{TypeError}}.
 1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=]:
   1. Let |buyers| be a new empty [=list=].
   1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
@@ -1032,7 +1101,6 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       result of [=serializing a JavaScript value to a JSON string=], given |result|.
     * To handle an error, set |auctionConfig|'s [=auction config/seller signals=] to failure.
 1. If |config|["{{AuctionAdConfig/auctionNonce}}"] [=map/exists=], then [=map/set=] |auctionConfig|'s
-
   [=auction config/auction nonce=] to the result of running [=get uuid from string=] with
   |config|["{{AuctionAdConfig/auctionNonce}}"].
 1. If |config|["{{AuctionAdConfig/additionalBids}}"] [=map/exists=]:
@@ -1102,9 +1170,30 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     * To handle an error:
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
         failure.
+1. If |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"] [=map/exists=]:
+  1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to 
+    |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"].
+  1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
+      [=auction config/deprecated render url replacements=]:
+    * To parse the value |result|:
+      1. Let |renderUrlReplacements| be a new empty [=list=] of [=ad keyword replacement=]s.
+      1. [=list/For each=] |replacement| in |result|:
+        1. If [=validate a url macro=] with |replacement|'s [=ad keyword replacement/match=] 
+          returns false, then [=exception/throw=] a {{TypeError}}.
+        1. Otherwise, [=list/append=] |replacement| to |renderUrlReplacements|.
+      1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to 
+        |renderUrlReplacements|.
+    * To handle an error, set |auctionConfig|'s 
+      [=auction config/deprecated render url replacements=] to failure.
+      
+
 1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
   [=auction config/seller timeout=] to |config|["{{AuctionAdConfig/sellerTimeout}}"] in milliseconds
-  or 500 milliseconds, whichever is smaller.
+  or 500, whichever is smaller.
+1. Let |reportingTimeout| be |config|["{{AuctionAdConfig/reportingTimeout}}"] if it [=map/exists=],
+  50 otherwise.
+1. Set |config|["{{AuctionAdConfig/reportingTimeout}}"] to |reportingTimeout| in milliseconds or
+  5000, whichever is smaller.
 1. If |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"] [=map/exists=], then set
   |auctionConfig|'s [=auction config/seller experiment group id=] to
   |config|["{{AuctionAdConfig/sellerExperimentGroupId}}"].
@@ -1187,6 +1276,16 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. If |buyer| is failure, then return failure.
   1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer priority signals=][|buyer|] to
     |signals|.
+1. If |config|["{{AuctionAdConfig/requiredSellerCapabilities}}"] [=map/exists=]:
+  1. Let |sellerCapabilities| be a new [=set=] of [=seller capabilities=].
+  1. [=list/For each=] |capabilityString| of
+    |config|["{{AuctionAdConfig/requiredSellerCapabilities}}"]:
+    1. If |capabilityString| is "`interest-group-counts`" or "`latency-stats`", then [=set/append=]
+      |capabilityString| to |sellerCapabilities|.
+
+      Note: For forward compatibility with new values, don't [=exception/throw=].
+
+  1. Set |auctionConfig|'s [=auction config/required seller capabilities=] to |sellerCapabilities|.
 1. If |config|["{{AuctionAdConfig/perBuyerCurrencies}}"] [=map/exists=]:
   1. Set |auctionConfig|'s [=auction config/per buyer currencies=] to
     |config|["{{AuctionAdConfig/perBuyerCurrencies}}"]
@@ -1207,6 +1306,8 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. If |config|["{{AuctionAdConfig/componentAuctions}}"] is not [=list/empty=]:
   1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=] and is not [=list/empty=],
     then return failure.
+  1. If |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"] [=map/exists=], then
+    [=exception/throw=] a {{TypeError}}.
 1. [=list/For each=] |component| in |config|["{{AuctionAdConfig/componentAuctions}}"]:
   1. If |isTopLevel| is false, then return failure.
   1. Let |componentAuction| be the result of running [=validate and convert auction ad config=] with
@@ -1222,6 +1323,16 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
      |resolveToConfig|, set |auctionConfig|'s [=auction config/resolve to config=] to
      |resolveToConfig|.
 1. Return |auctionConfig|.
+
+</div>
+
+<div algorithm>
+
+  To <dfn>validate a url macro</dfn> given a [=string=] |macro|:
+  1. Return true if any of the following conditions hold:
+    * |macro| [=string/starts with=] "'${'" and [=string/ends with=] "'}'";
+    * |macro| [=string/starts with=] "'%%'" and [=string/ends with=] "'%%'".
+  1. Otherwise, return false.
 
 </div>
 
@@ -1276,7 +1387,9 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
         [=interest group/joining origin=], |ig|'s [=interest group/additional bid key=]).
     1. [=iteration/Continue=] if any of the following conditions hold:
       * |ig|'s [=interest group/bidding url=] is null;
-      * |ig|'s [=interest group/ads=] is null, or [=list/is empty=].
+      * |ig|'s [=interest group/ads=] is null, or [=list/is empty=];
+      * the result of running [=check if required seller capabilities are permitted=] with
+        |auctionConfig| and |ig| is false.
     1. Let |signalsUrl| be |ig|'s [=interest group/trusted bidding signals url=].
     1. Let |slotSizeQueryParam| be the result of [=calculating the ad slot size query param=]
       given |ig| and |auctionConfig|.
@@ -1310,6 +1423,21 @@ To <dfn>build bid generators map</dfn> given an [=auction config=] |auctionConfi
           1. Otherwise, [=list/append=] |ig| to |perSignalsUrlGenerator|[|joiningOrigin|].
 1. Return « |bidGenerators|, |negativeTargetInfo| ».
 
+</div>
+
+<div algorithm>
+
+To <dfn>check if required seller capabilities are permitted</dfn> given an [=auction config=]
+|auctionConfig| and an [=interest group=] |ig|:
+  1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
+  1. Let |requiredSellerCapabilities| be |auctionConfig|'s
+    [=auction config/required seller capabilities=].
+  1. Return true if all of the following conditions hold:
+    * |ig|'s [=interest group/seller capabilities=] is not null;
+    * |ig|'s [=interest group/seller capabilities=][|seller|] [=map/exists=];
+    * |requiredSellerCapabilities| is a [=set/subset=] of |ig|'s
+      [=interest group/seller capabilities=][|seller|].
+  1. Return false.
 </div>
 
 <div algorithm="generate a bid">
@@ -1362,8 +1490,8 @@ and a [=moment=] |auctionStartTime|:
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, an [=origin=]
-|topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=generated bids=]
-|generatedBids|:
+|topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug reporting info=]
+|bidDebugReportInfoList|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
@@ -1385,7 +1513,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinnerInfo| be the result of running [=generate and score bids=] with |component|,
-      |auctionConfig|, |global|, |topLevelOrigin|, |bidIgs|, and |generatedBids|.
+      |auctionConfig|, |global|, |topLevelOrigin|, |bidIgs|, and |bidDebugReportInfoList|.
     1. If |compWinnerInfo| is failure, return failure.
     1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns
       failure, return failure.
@@ -1398,8 +1526,13 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
     1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
       [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
-      [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicScript|, null,
-      "top-level-auction", null, and |topLevelOrigin|.
+      [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicScript|,
+      null, "top-level-auction", null, and |topLevelOrigin|.
+    1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
+      is not null, then run [=score and rank a bid=] with |auctionConfig|,
+      |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
+      |leadingBidInfo|, |decisionLogicScript|, null, "top-level-auction", null,
+      and |topLevelOrigin|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
   1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1509,20 +1642,49 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     and |buyer|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}"]
     to the result of running [=is debugging only in cooldown or lockout=] with |buyer|.
-  1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perSlotSizeQueryParam|:
-    1. [=map/For each=] |slotSizeQueryParam| → |perSlotSizeQueryParam| of |perBuyerGenerator|:
+  1. [=map/For each=] |slotSizeQueryParam| → |perSlotSizeQueryParam| of |perBuyerGenerator|:
+    1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perSlotSizeQueryParam|:
+      1. Let |allTrustedBiddingSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=],
+        and [=map/values=] are [=strings=].
       1. Let |keys| be a new [=ordered set=].
       1. Let |igNames| be a new [=ordered set=].
+      1. Let |lengthLimit| be the maximum value that a {{long}} integer can hold.
       1. Let |fetchSignalStartTime| be |settings|'s [=environment settings object/current monotonic time=].
       1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
         1. [=list/For each=] |ig| of |groups|:
-          1. [=set/Append=] |ig|'s [=interest group/trusted bidding signals keys=] to |keys|.
-          1. [=set/Append=] |ig|'s [=interest group/name=] to |igNames|.
-      1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
-        |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|, |topLevelOrigin|, and
-        |slotSizeQueryParam|.
-      1. Let « |allTrustedBiddingSignals|, |dataVersion| » be the result of [=fetching trusted signals=]
-        with |biddingSignalsUrl| and true.
+          1. Let |putativeKeys| be a [=set/clone=] of |keys|.
+          1. Let |putativeIgNames| be a [=set/clone=] of |igNames|.
+          1. Let |putativeLengthLimit| be  |ig|'s [=interest group/max trusted bidding signals url length=].
+          1. If |ig|'s [=interest group/max trusted bidding signals url length=] is 0 or `&gt;`
+            |lengthLimit|, then set |putativeLengthLimit| to |lengthLimit|.
+          1. [=list/Extend=] |putativeKeys| with |ig|'s [=interest group/trusted bidding signals keys=].
+          1. [=list/Append=] |ig|'s [=interest group/name=] to |putativeIgNames|.
+
+          1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
+            |signalsUrl|, |putativeKeys|, |putativeIgNames|, |buyerExperimentGroupId|, |topLevelOrigin|, and
+            |slotSizeQueryParam|.
+          1. If [=URL serializer|serialized=] |biddingSignalsUrl|'s [=string/length=] &le; |putativeLengthLimit|:
+
+              1. Set |keys| to |putativeKeys|.
+              1. Set |igNames| to |putativeIgNames|.
+              1. Set |lengthLimit| to |putativeLengthLimit|.
+          1. Otherwise:
+            1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
+              |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
+            1. Let « |partialTrustedBiddingSignals|, |dataVersion| » be the result of [=fetching trusted signals=]
+              with |biddingSignalsUrl| and true.
+            1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|:
+
+              1. Set |allTrustedBiddingSignals|[|key|] to |value|.
+            1. Set |keys| to a [=list/clone=] of |ig|'s [=interest group/trusted bidding signals keys=].
+            1. Set |igNames| to « |ig|'s [=interest group/name=] ».
+            1. Set |ig|'s [=interest group/max trusted bidding signals url length=] to |lengthLimit|.
+        1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
+          |signalsUrl|, |keys|, |igNames|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
+        1. Let « |partialTrustedBiddingSignals|, |dataVersion| » be the result of [=fetching trusted signals=]
+          with |biddingSignalsUrl| and true.
+        1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|:
+          1. Set |allTrustedBiddingSignals|[|key|] to |value|.
       1. If |dataVersion| is not null, then [=map/set=]
         |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
       1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to |settings|'s
@@ -1540,22 +1702,31 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Let |directFromSellerSignalsForBuyer| be the result of running
             [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and |ig|'s
             [=interest group/owner=].
-          1. Let |generatedBid| be the result of [=generate a bid=] given |allTrustedBiddingSignals|,
+          1. Let « |generatedBid|, |bidDebugReportInfo| » be the result of [=generate a bid=] given |allTrustedBiddingSignals|,
             |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
             |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|, |ig|, and
             |auctionStartTime|.
-          1. Set |generatedBid|'s [=generated bid/id=] to |generatedBids|'s [=list/size=].
-          1. [=list/Append=] |generatedBid| to |generatedBids|.
-
-            Issue: Instead of inserting to |generatedBids| in each component auction that runs in
-            parallel, create a strucure InterestGroupAuction that holds data for each auction
-            separately (<a href="https://github.com/WICG/turtledove/issues/1021">WICG/turtledove#1021</a>).
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
             [=environment settings object/current monotonic time=], in milliseconds.
           1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
             |generateBidDuration|.
-          1. If |generatedBid|'s [=generated bid/no bid=] is true, [=iteration/continue=].
-          1. If [=query generated bid k-anonymity count=] given |generatedBid| returns false:
+          1. If |generatedBid| is null:
+            1. [=Register a bid for forDebuggingOnly reports=] given null, |bidDebugReportInfo|, and
+               |bidDebugReportInfoList|.
+            1. [=iteration/continue=].
+          1. Let |bidsToScore| be a new [=list=] of [=generated bids=]
+          1. If [=query generated bid k-anonymity count=] given |generatedBid| returns true:
+            1. Let |bidCopy| be a clone of |generatedBid|.
+            1. Set |bidCopy|'s [=generated bid/for k-anon auction=] to false.
+            1. [=list/Append=] |bidCopy| to |bidsToScore|.
+            1. [=list/Append=] |generatedBid| to |bidsToScore|.
+
+              Note: Conceptually, a bid that's already k-anonymous is considered
+              for both the k-anonymous and non-enforcing-k-anonymity leadership.
+
+            1. [=Register a bid for forDebuggingOnly reports=] given |generatedBid|,
+               |bidDebugReportInfo|, and |bidDebugReportInfoList|.
+          1. Otherwise:
 
             Note: [=Generate a bid=] is now rerun with only k-anonymous [=interest group/ads=] to give
             the buyer a chance to [=generate a bid=] for k-anonymous [=interest group/ads=]. Allowing
@@ -1563,10 +1734,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             mechanism to bootstrap the k-anonymity count, otherwise no [=interest group/ads=] would
             ever trigger [=increment k-anonymity count=] and all ads would fail
             [=query k-anonymity count=].
-            1. TODO: Run [=score and rank a bid=] on |generatedBid| to find the highest scoring bid
-              that isn't k-anonymous. After the auction, if the highest scoring bid that isn't
-              k-anonymous has a higher score than the highest scoring k-anonymous bid, then call
-              [=increment ad k-anonymity count=] on it.
+
+            1. Set |generatedBid|'s [=generated bid/for k-anon auction=] to false.
+            1. [=list/Append=] |generatedBid| to |bidsToScore|.
             1. Let |originalAds| be |ig|'s [=interest group/ads=].
             1. If |originalAds| is not null:
               1. Set |ig|'s [=interest group/ads=] to a new [=list=] of [=interest group ad=].
@@ -1585,7 +1755,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
             1. Let |generateBidStartTime| be |settings|'s
               [=environment settings object/current monotonic time=].
-            1. Set |generatedBid| to the result of [=generate a bid=] given
+            1. Set « |generatedBid|, |bidDebugReportInfo| » to the result of [=generate a bid=] given
               |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
               |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
               |expectedCurrency|, |ig|, and |auctionStartTime|.
@@ -1595,11 +1765,19 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
             1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
               by |generateBidDuration|.
-            1. If |generatedBid| is failure, [=iteration/continue=].
-          1. [=list/Insert=] |generatedBid|'s [=generated bid/interest group=] in |bidIgs|.
-          1. [=Score and rank a bid=] with |auctionConfig|, |generatedBid|, |leadingBidInfo|,
-            |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
-            |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
+            1. If |generatedBid| is a [=generated bid=]:
+              1. [=Assert=] that [=query generated bid k-anonymity count=] given |generatedBid| returns true.
+              1. [=list/Append=] |generatedBid| to |bidsToScore|.
+              1. [=Register a bid for forDebuggingOnly reports=] given |generatedBid|, |bidDebugReportInfo| and
+                 |bidDebugReportInfoList|.
+            1. If |generatedBid| is null, [=register a bid for forDebuggingOnly reports=] given null,
+                 |bidDebugReportInfo| and |bidDebugReportInfoList|.
+          1. [=list/For each=] |bidToScore| of |bidsToScore|:
+            1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
+                [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
+            1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
+              |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
+              |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1612,6 +1790,16 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       [=interest group/owner=].
   1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|, and
     |directFromSellerSignalsForWinner|.
+1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=]
+    are [=strings=].
+  1. [=list/For each=] [=ad keyword replacement=], |replacement|, within [=auction config/deprecated render url replacements=]:
+    1. Let |k| be |replacement|'s [=ad keyword replacement/match=].
+    1. Let |v| be |replacement|'s [=ad keyword replacement/replacement=].
+    1. [=map/Set=] |replacements|[|k|] to |v|.
+1. Set |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/ad descriptor=] to the result of [=fencedframeutil/substitute macros=] with |replacements| and [=leading bid info/leading bid=]'s [=generated bid/ad descriptor=].
+1. If |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/ad descriptors=] is not null:
+  1. [=list/For each=] [=generated bid/ad descriptor=], |adDescriptor|, within [=leading bid info/leading bid=]'s [=generated bid/ad descriptors=]:
+    1. Set |adDescriptor| to the result of [=fencedframeutil/substitute macros=] with |replacements| and |adDescriptor|.
 1. Return |leadingBidInfo|.
 
 </div>
@@ -1643,6 +1831,8 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dd>|ig|'s [=interest group/trusted bidding signals keys=]
       <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsSlotSizeMode}}
       <dd>|ig|'s [=interest group/trusted bidding signals slot size mode=]
+      <dt>{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}
+      <dd>|ig|'s [=interest group/max trusted bidding signals url length=]
       <dt>{{GenerateBidInterestGroup/userBiddingSignals}}
       <dd>[=Parse a JSON string to a JavaScript value=] given |ig|'s [=interest group/user bidding signals=]
 
@@ -1672,7 +1862,7 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 
 <div algorithm>
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
-|generatedBid|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
+|generatedBid|, a [=bid debug reporting info=] |bidDebugReportInfo|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
 {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
 |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
 or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, and an [=origin=]
@@ -1692,8 +1882,17 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
 
   Implementations may batch requests by collecting render URLs and ad component render URLs
   from multiple invocations of [=score and rank a bid=] and passing them all to a single invocation
-  of [=building trusted scoring signals url=] -- the network response has to be parsed to pull out
-  the pieces relevant to each [=evaluating a scoring script|evaluation of a scoring script=].
+  of [=building trusted scoring signals url=] to get a |scoringSignalsUrl|. By employing this approach,
+  the [=string/length=] of [=URL serializer|serialized=] |scoringSignalsUrl| must not exceed the
+
+  [=auction config/max trusted scoring signals url length=] of the auction. In cases where the length
+  limit is exceeded, the request must be divided into smaller pieces to comply with the length restriction.
+  However, note that a single request is always considered valid, regardless of whether its length exceeds
+  the auction's [=auction config/max trusted scoring signals url length=].
+
+  
+  The network response has to be parsed to pull out the pieces relevant to each
+  [=evaluating a scoring script|evaluation of a scoring script=].
 1. Let |trustedScoringSignals| be null.
 1. Let «|allTrustedScoringSignals|, |scoringDataVersion|» be the result of [=fetching trusted signals=]
   with |fullSignalsUrl| and false.
@@ -1745,16 +1944,16 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   |trustedScoringSignals|, |browserSignals|, |directFromSellerSignalsForSeller|, and
   |auctionConfig|'s [=auction config/seller timeout=].
 1. If |auctionLevel| is "top-level-auction":
-  1. Set |generatedBid|'s [=generated bid/top level seller debug loss report url=] to
+  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug loss report url=] to
     |debugLossReportUrl|.
-  1. Set |generatedBid|'s [=generated bid/top level seller debug win report url=] to
+  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug win report url=] to
     |debugWinReportUrl|.
 1. Otherwise:
-  1. Set |generatedBid|'s [=generated bid/seller debug loss report url=] to |debugLossReportUrl|.
-  1. Set |generatedBid|'s [=generated bid/seller debug win report url=] to |debugWinReportUrl|.
+  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug loss report url=] to |debugLossReportUrl|.
+  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug win report url=] to |debugWinReportUrl|.
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
 1. If |auctionLevel| is "component-auction", then set |generatedBid|'s
-  [=generated bid/component seller=] to |seller|.
+  [=generated bid/component seller=] and |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] to |seller|.
 1. Return if any of the following conditions hold:
   * |scoreAdOutput| is failure;
   * auctionLevel| is not "single-level-auction", and |scoreAdOutput|
@@ -1788,8 +1987,24 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     then set |generatedBid|'s [=generated bid/bid in seller currency=] to
     |scoreAdOutput|["{{ScoreAdOutput/incomingBidInSellerCurrency}}"].
 1. Let |score| be |scoreAdOutput|["{{ScoreAdOutput/desirability}}"].
+1. If |generatedBid|'s [=generated bid/for k-anon auction=] is false:
+  1. Let |updateLeadingNonKAnonEnforcedBid| be false.
+  1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
+     is null, or |score| &gt; |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced score=]:
+    1. Set |updateLeadingNonKAnonEnforcedBid| to true.
+    1. Set |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced bids count=] to 1.
+  1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is not null and
+      |score| = |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced score=]:
+      1. Increment |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced bids count=] by 1.
+      1. Set |updateLeadingNonKAnonEnforcedBid| to true with 1 in |leadingBidInfo|'s
+        [=leading bid info/top non-k-anon-enforced bids count=] chance.
+  1. If |updateLeadingNonKAnonEnforcedBid| is true:
+     1. Set |leadingBidInfo|'s [=leading bid info/top non-k-anon-enforced score=]
+        to |score|.
+     1. Set |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] to |generatedBid|.
+  1. Return.
 1. Let |updateLeadingBid| be false.
-1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, or |score| is greater than
+1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, or |score| &gt;
   |leadingBidInfo|'s [=leading bid info/top score=]:
   1. Set |updateLeadingBid| to true.
   1. Set |leadingBidInfo|'s [=leading bid info/top bids count=] to 1.
@@ -2276,12 +2491,14 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
     [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
   1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
      [=map/exists=] and the result of [=query reporting ID k-anonymity count=]
-     given |winner|'s [=generated bid/interest group=] and |igAd| is true, then [=map/set=] |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s
+     given |winner|'s [=generated bid/interest group=] and |igAd| is true, then [=map/set=]
+     |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s
      [=interest group ad/buyer and seller reporting ID=].
   1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored » be the result of
-    [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`", and
+    [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`", |config|'s
+    [=auction config/config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |config|'s [=auction config/config idl=], |browserSignals|, |directFromSellerSignals| ».
    1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
      : [=reporting result/report url=]
@@ -2352,8 +2569,10 @@ a {{ReportingBrowserSignals}} |browserSignals|, and a [=direct from seller signa
   1. If |winner|'s [=generated bid/provided as additional bid=] is true:
     1. Set |reportFunctionName| be "`reportAdditionalBidWin`".
   1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap| » be the result of
-    [=evaluating a reporting script=] with |buyerReportingScript|, "`reportWin`", and
-     « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config idl=]'s
+    [=evaluating a reporting script=] with |buyerReportingScript|, "`reportWin`", |leadingBidInfo|'s
+    [=leading bid info/auction config=]'s [=auction config/config idl=]'s
+    {{AuctionAdConfig/reportingTimeout}}, and
+    « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config idl=]'s
       {{AuctionAdConfig/auctionSignals}}, |perBuyerSignalsForBuyer|, |sellerSignals|,
       |reportWinBrowserSignals|, |directFromSellerSignals| ».
   1. Set |leadingBidInfo|'s [=leading bid info/buyer reporting result=] to a [=reporting result=]
@@ -2395,49 +2614,63 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
 </div>
 
 <div algorithm>
-  To <dfn>collect forDebuggingOnly reports</dfn> given a [=list=] of [=generated bids=]
-  |generatedBids|, [=origin=] |seller|, and [=leading bid info=]-or-null |winnerInfo|:
+  To <dfn>collect forDebuggingOnly reports</dfn> given a [=list=] of [=bid debug reporting info=]
+  |bidDebugReportInfoList|, [=origin=] |seller|, and [=leading bid info=]-or-null |winnerInfo|:
 
   1. Let |auctionReportInfo| be a new [=auction report info=].
   1. Let |winningBid| be |winnerInfo|'s [=leading bid info/leading bid=] if |winnerInfo| is
     not null, null otherwise.
-  1. [=list/For each=] |generatedBid| of |generatedBids|:
-    1. If |winningBid| is not null and |generatedBid|'s [=generated bid/id=] is |winningBid|'s
+  1. [=list/For each=] |bidDebugReportInfo| of |bidDebugReportInfoList|:
+    1. If |winningBid| is not null and |bidDebugReportInfo|'s [=bid debug reporting info/id=] is |winningBid|'s
       [=generated bid/id=]:
-      1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
-        [=generated bid/bidder debug win report url=], |generatedBid|'s
-        [=generated bid/interest group=]'s [=interest group/owner=], and |auctionReportInfo|'s
+      1. [=Assert=] that |winningBid|'s [=generated bid/id=] is not null.
+      1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+        [=bid debug reporting info/bidder debug win report url=], |bidDebugReportInfo|'s
+        [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
         [=auction report info/debug win report urls=].
-      1. If |generatedBid|'s [=generated bid/component seller=] is null:
-        1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
-          [=generated bid/seller debug win report url=], |seller|, and
+      1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
+        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+          [=bid debug reporting info/seller debug win report url=], |seller|, and
           |auctionReportInfo|'s [=auction report info/debug win report urls=].
       1. Otherwise:
-        1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
-          [=generated bid/seller debug win report url=], |generatedBid|'s
-          [=generated bid/component seller=], |auctionReportInfo|'s
+        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+          [=bid debug reporting info/seller debug win report url=], |bidDebugReportInfo|'s
+          [=bid debug reporting info/component seller=], |auctionReportInfo|'s
           [=auction report info/debug win report urls=].
-        1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
-          [=generated bid/top level seller debug win report url=], |seller|, and
+        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+          [=bid debug reporting info/top level seller debug win report url=], |seller|, and
           |auctionReportInfo|'s [=auction report info/debug win report urls=].
     1. Otherwise:
-      1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
-        [=generated bid/bidder debug loss report url=], |generatedBid|'s
-        [=generated bid/interest group=]'s [=interest group/owner=], and |auctionReportInfo|'s
+      1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+        [=bid debug reporting info/bidder debug loss report url=], |bidDebugReportInfo|'s
+        [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
         [=auction report info/debug loss report urls=].
-      1. If |generatedBid|'s [=generated bid/component seller=] is null:
-        1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
-          [=generated bid/seller debug loss report url=], |seller|, and
+      1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
+        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+          [=bid debug reporting info/seller debug loss report url=], |seller|, and
           |auctionReportInfo|'s [=auction report info/debug loss report urls=].
       1. Otherwise:
-        1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
-          [=generated bid/seller debug loss report url=], |generatedBid|'s
-          [=generated bid/component seller=], |auctionReportInfo|'s
+        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+          [=bid debug reporting info/seller debug loss report url=], |bidDebugReportInfo|'s
+          [=bid debug reporting info/component seller=], |auctionReportInfo|'s
           [=auction report info/debug loss report urls=].
-        1. [=Collect a single forDebuggingOnly report=] with |generatedBid|'s
-          [=generated bid/top level seller debug loss report url=], |seller|, and
+        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+          [=bid debug reporting info/top level seller debug loss report url=], |seller|, and
           |auctionReportInfo|'s [=auction report info/debug loss report urls=].
   1. Return |auctionReportInfo|.
+</div>
+
+<div>
+  To <dfn>register a bid for forDebuggingOnly reports</dfn> given a [=generated bid=]-or-null
+  |generatedBid|, [=bid debug reporting info=] |bidDebugReportInfo|, a [=list=] of [=bid debug reporting info=] |bidDebugReportInfoList|:
+  1. If |generatedBid| is not null:
+    1. Set |generatedBid|'s [=generated bid/id=] to |bidDebugReportInfoList|'s [=list/size=].
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/id=] to |bidDebugReportInfoList|'s [=list/size=]
+  1. [=list/Append=] |bidDebugReportInfo| to |bidDebugReportInfoList|.
+
+  Issue: Instead of inserting to |bidDebugReportInfoList| in each component auction that runs in
+  parallel, create a structure InterestGroupAuction that holds data for each auction
+  separately (<a href="https://github.com/WICG/turtledove/issues/1021">WICG/turtledove#1021</a>).
 </div>
 
 ### Downsampling ### {#downsampling-header}
@@ -2456,7 +2689,7 @@ of this specification uses:
   * <dfn>short cooldown period</dfn> is 2 weeks.
 
 Note: More details of how these numbers are determined can be found in comments here:
-(<a href="https://github.com/WICG/turtledove/issues/632">WICG/turtledove#667</a>).
+(<a href="https://github.com/WICG/turtledove/issues/632">WICG/turtledove#632</a>).
 
 The design of downsampling [=forDebuggingOnly reports=] has three main goals:
 * Prevent sending debug reports very often to protect user privacy:
@@ -2919,9 +3152,8 @@ Two goals of this specification rely on applying [=k-anonymity=] thresholds:
     `reportResult()`, only contain limited cross-site information. As described in
     [[#privacy-considerations]], part of this limiting is done by
     applying [=k-anonymity=] requirements to the ad URLs.
-  * To prevent microtargeting:  The browser applies [=k-anonymity=] requirements on the ad URLs to
-    ensure that the same ad or ad component is being shown to at least some minimum number of
-    people.
+  * To ensure that the same ad or ad component is being shown to at least some minimum number of people:
+    The browser applies [=k-anonymity=] requirements on the ad URLs.
 
 The browser enforces these [=k-anonymity=] requirements by maintaining counts of how many times each
 ad and ad component has been shown to users. These counts are maintained across users, so the counting must
@@ -3074,6 +3306,19 @@ from querying the server during an auction.
       [=interest group ad/render url=] is |ad|.
     1. Let |keyHash| be the result of [=computing the key hash of reporting ID=] given |ig| and |igAd|.
     1. [=Increment k-anonymity count=] given |keyHash|.
+</div>
+
+<div algorithm>
+  To <dfn local-lt="update k-anonymity counts">increment a winning bid's k-anonymity count</dfn> given a [=generated bid=] |winner|:
+  1. [=Increment ad k-anonymity count=] given |winner|'s [=generated bid/interest group=] and
+    |winner|'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+  1. If |winner|'s [=generated bid/ad component descriptors=] is not null:
+    1. [=list/For each=] |adComponentDescriptor| in |winner|'s [=generated bid/ad component descriptors=]:
+      1. [=Increment component ad k-anonymity count=] given |adComponentDescriptor|'s
+        [=ad descriptor/url=].
+  1. [=Increment reporting ID k-anonymity count=] given |winner|'s
+    [=generated bid/interest group=] and |winner|'s [=generated bid/ad descriptor=]'s
+    [=ad descriptor/url=].
 </div>
 
 # Script Runners # {#script-runners}
@@ -3240,27 +3485,23 @@ of the following global objects:
           |generatedBidIDL|, |ig|, |expectedCurrency|, |isComponentAuction|, and |global|'s
           [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=].
         1. If |bidOutput| is not failure, then set |generatedBid| to |bidOutput|.
+    1. Let |bidDebugReportInfo| be a new [=bid debug reporting info=].
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/interest group owner=] to
+       |ig|'s [=interest group/owner=]
     1. Let |debugLossReportUrl| be |global|'s
       [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] if it's not
       failure, null otherwise.
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/bidder debug loss report url=] to |debugLossReportUrl|.
     1. If |generatedBid| is a [=generated bid=] and |generatedBid|'s [=generated bid/bid=]'s
       [=bid with currency/value=] &le; 0, then set |generatedBid| to null.
     1. If |generatedBid| is a [=generated bid=]:
       1. Let |debugWinReportUrl| be |global|'s
         [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] if it's not
         failure, null otherwise.
+      1. Set |bidDebugReportInfo|'s [=bid debug reporting info/bidder debug win report url=] to |debugWinReportUrl|.
       1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|,
-        [=generated bid/interest group=] to |ig|, [=generated bid/bidder debug loss report url=] to
-        |debugLossReportUrl|, [=generated bid/bidder debug win report url=] to |debugWinReportUrl|.
-    1. Otherwise:
-      1. Set |generatedBid| to a new [=generated bid=] with the following [=struct/items=]:
-        : [=generated bid/no bid=]
-        :: true
-        : [generated bid/interest group=]
-        :: |ig|
-        : [=generated bid/bidder debug loss report url=]
-        :: |debugLossReportUrl|
-    1. Return |generatedBid|.
+        [=generated bid/interest group=] to |ig|.
+    1. Return « |generatedBid|, |bidDebugReportInfo| ».
 </div>
 
 <div algorithm>
@@ -3291,7 +3532,8 @@ of the following global objects:
 
 <div algorithm>
   To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=]
-  |functionName|, and a [=list=] of arguments |arguments|:
+  |functionName|, an integer millisecond [=duration=] |timeout|, and a [=list=] of arguments
+  |arguments|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupReportingScriptRunnerGlobalScope}}.
@@ -3300,7 +3542,7 @@ of the following global objects:
       arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
       [=exception/throws=] an exception, return « "null", null, null, null ».
     1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|,
-      |functionName|, |argumentsJS|, and 50 milliseconds.
+      |functionName|, |argumentsJS|, and |timeout|.
     1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null, null ».
     1. Let |resultJSON| be "null".
     1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
@@ -3313,7 +3555,7 @@ of the following global objects:
     1. Let |macroMap| be |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting macro map=]
       if |functionName| is "`reportWin`" or "`reportAdditionalBidWin`", null otherwise.
     1. Return « |resultJSON|, |reportURL|,
-       |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap| ».
+      |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap| ».
 </div>
 
 <div algorithm>
@@ -3881,6 +4123,32 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
             1. Otherwise, [=map/set=] |ig|'s [=interest group/priority signals overrides=][|pvKey|] to |pvValue|.
         1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
+        <dt>"`sellerCapabilities`"
+        <dd>
+        1.  If |value| is an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
+          [=map/values=] are [=lists=] of [=strings=], [=map/for each=]
+          |sellerString| → |capabilities| of |value|:
+          1. Let |sellerCapabilities| be a new [=set=] of [=seller capabilities=].
+          1. [=list/For each=] |capabilityString| of |capabilities|:
+            1. If |capabilityString| is "`interest-group-counts`" or "`latency-stats`", then
+              [=set/append=] |capabilityString| to |sellerCapabilities|.
+
+              Note: For forward compatibility with new values, don't [=exception/throw=].
+
+          1. If |sellerString| is "`*`", then set |ig|'s [=interest group/all sellers capabilities=]
+            to |sellerCapabilities|.
+          1. Otherwise:
+            1. If |ig|'s [=interest group/seller capabilities=] is null, then set |ig|'s
+              [=interest group/seller capabilities=] to a new [=ordered map=] whose [=map/keys=] are
+              [=origins=] and whose [=map/values=] are [=sets=] of [=seller capabilities=].
+            1. Let |sellerUrl| be the result of running the [=URL parser=] on |sellerString|.
+            1. If |sellerUrl| is not failure:
+              1. Let |seller| be |sellerUrl|'s [=url/origin=].
+              1. If |ig|'s [=interest group/seller capabilities=] does not [=map/contain=] |seller|,
+                then [=map/set=] |ig|'s [=interest group/seller capabilities=][|seller|] to
+                |sellerCapabilities|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+
         <dt>"`executionMode`"
         <dd>
         1. If |value| is "`compatibility`", "`frozen-context`", or "`group-by-origin`", then set
@@ -3930,9 +4198,19 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
         1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
         <dt>"`trustedBiddingSignalsSlotSizeMode`"
+        <dd>
         1. If |value| is one of "none", "slot-size", or "all-slots-requested-sizes", set |ig|'s
            [=interest group/trusted bidding signals slot size mode=] to |value|.
         1. Otherwise, set [=interest group/trusted bidding signals slot size mode=] to "none".
+
+        <dt>"`maxTrustedBiddingSignalsURLLength`"
+        <dd>
+        1. If |value| is a Number:
+          1. Let |convertedValue| be the result of [=converted to an IDL value|converting=] |value|
+            to a {{long}}.
+          1. If |convertedValue| &ge; 0, then set |ig|'s
+            [=interest group/max trusted bidding signals url length=] to |convertedValue|.
+        1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
         <dt>"`userBiddingSignals`"
         <dd>
@@ -4056,6 +4334,10 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   [=interest group/priority signals overrides=]:
   1. The [=string/length=] of |key|.
   1. 8, which is the size of |value|.
+1. If |ig|'s [=interest group/seller capabilities=] is not null, then [=map/for each=]
+  |seller| → |capabilities| of |ig|'s [=interest group/seller capabilities=]:
+  1. The [=string/length=] of the [=serialization of an origin|serialization=] of |seller|.
+  1. 4, which is |capabilities|'s underlying number of enum bytes.
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
   [=interest group/bidding url=], if the field is not null.
 1. The [=string/length=] of the [=URL serializer|serialization=] of |ig|'s
@@ -4070,6 +4352,8 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
     {{long}} integer, so 4 bytes.
 1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
   1. The [=string/length=] of |key|.
+1. If |ig|'s [=interest group/max trusted bidding signals url length=] is not null:
+  1. 4, which is the size of |ig|'s [=interest group/max trusted bidding signals url length=].
 1. The [=string/length=] of |ig|'s [=interest group/user bidding signals=].
 1. If |ig|'s [=interest group/ads=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
@@ -4156,7 +4440,8 @@ This specification defines two [=policy-controlled features=] identified by the 
 "<code><dfn noexport>run-ad-auction</dfn></code>". Their
 [=policy-controlled feature/default allowlists=] are "`*`".
 
-Issue(WICG/turtledove#522): Move from "`*`" to "`self`".
+Issue: Move from "`*`" to "`self`"
+(<a href="https://github.com/WICG/turtledove/issues/522">WICG/turtledove#522</a>).
 
 <div algorithm>
 
@@ -4678,6 +4963,14 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
   : <dfn>priority signals overrides</dfn>
   :: Null or an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=] are
     {{double}}. Overrides the {{AuctionAdConfig}}'s corresponding priority signals.
+  : <dfn>seller capabilities</dfn>
+  :: Null or an [=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
+    [=sets=] of [=seller capabilities=].
+    The [=seller capabilities=] this [=interest group=] grants to each seller.
+  : <dfn>all sellers capabilities</dfn>
+  :: Null or a [=set=] of [=seller capabilities=].
+    The default [=seller capabilities=] granted to sellers not listed in
+    [=interest group/seller capabilities=].
   : <dfn>execution mode</dfn>
   :: One of three possible values: "`compatibility`", "`frozen-context`", or "`group-by-origin`".
     Initially "`compatibility`". Each value reprensents a {{long}} integer.
@@ -4716,6 +5009,9 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
   : <dfn>trusted bidding signals slot size mode</dfn>
   :: "`none`", "`slot-size`" or "`all-slots-requested-sizes`". Initially "`none`". Each value
     reprensents a {{long}} integer. See [=calculate the ad slot size query param=].
+  : <dfn>max trusted bidding signals url length</dfn>
+  :: A {{long}} integer, initially 0. Indicates the maximum trusted bidding signals fetch url length
+    for the interest group. 0 means no limit.
   : <dfn>user bidding signals</dfn>
   :: Null or a [=string=]. Additional metadata that the owner can use during on-device bidding.
   : <dfn>ads</dfn>
@@ -4792,6 +5088,13 @@ frequency capping. It's a [=struct=] with the following [=struct/items=]:
   :: A [=string=]. A JSON serialized object corresponding to the ad that won the auction.
 </dl>
 
+A <dfn>seller capability</dfn> is a permission granted by an [=interest group=] to sellers. It's
+"`interest-group-counts`" or "`latency-stats`". Each value represents a single bit in a 4-byte
+[=byte sequence=]. The 4-byte [=byte sequence=] can store no more than 32 capabilities.
+
+Note: More than 2 values, but probably not more than 32 values are planned, at least for a while.
+This way, there is not need to reserve more space for a while.
+
 <h3 dfn-type=dfn>Currency tag</h3>
 A currency tag is a [=string=] containing exactly 3 upper-case ASCII letters, or null. The null
 value is used to denote that the currency is unspecified.
@@ -4844,6 +5147,9 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
       When non-null, the [=auction config/trusted scoring signals url=]'s [=origin=] will always be
       [=same origin=] with [=auction config/seller=].
     </p>
+  : <dfn>max trusted scoring signals url length</dfn>
+  :: A {{long}} integer, initially 0. Indicates the maximum trusted scoring signals fetch url length
+    for the auction config. 0 means no limit.
   : <dfn>interest group buyers</dfn>
   :: Null or a [=list=] of [=origins=].
     Owners of interest groups allowed to participate in the auction. Each [=origin's=]
@@ -4918,10 +5224,22 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
     priorities. In the case both have entries with the same key, the entry in
     `per_buyer_priority_signals` takes precedence. No signals key start with "browserSignals.", which
     is reserved for values coming from the browser.
+  : <dfn>required seller capabilities</dfn>
+  :: A [=set=] of [=seller capabilities=].
+    The [=seller capabilities=] that each [=interest group=] must declare to participate in the
+    auction. Interest groups that don't declare all these capabilities will not participate in the
+    auction.
   : <dfn>component auctions</dfn>
   :: A [=list=] of [=auction config=]s.
     Nested auctions whose results will also participate in a top level auction. Only the top level
     [=auction config=] can have component auctions.
+
+  : <dfn>deprecated render url replacements</dfn>
+  :: Null, a {{Promise}}, failure, or a [=list=] of [=ad keyword replacement=]s, each containing a 
+    single [=ad keyword replacement/match=] and [=ad keyword replacement/replacement=]. Render url 
+    replacements can only happen within a single seller [=auction config=] or
+    within the component [=auction config=]s. 
+    
   : <dfn>seller experiment group id</dfn>
   :: Null or an {{unsigned short}}, initially null.
     Optional identifier for an experiment group to support coordinated experiments with the seller's
@@ -4982,12 +5300,13 @@ To <dfn>wait until configuration input promises resolve</dfn> given an [=auction
   1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
   1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], and
-    [=auction config/direct from seller signals header ad slot=] are not {{Promise}}s, and
+    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], 
+    [=auction config/deprecated render url replacements=], and
+    [=auction config/direct from seller signals header ad slot=] are not {{Promise}}s, and 
     [=auction config/expects additional bids=] is false.
   1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], or
+    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], [=auction config/deprecated render url replacements=], or
     [=auction config/direct from seller signals header ad slot=] is failure, return failure.
   1. Return.
 </div>
@@ -5048,9 +5367,9 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
 <dl dfn-for="generated bid">
   : <dfn>id</dfn>
   :: An {{unsigned long}}. Used to identify a [=generated bid=].
-  : <dfn>no bid</dfn>
-  :: A [=boolean=], initially false. True if there was a failure generating a bid, or the bidder
-    chose not to bid. When true, [=generated bid/bidder debug loss report url=] is still considered.
+  : <dfn>for k-anon auction</dfn>
+  :: A [=boolean=], initially true. If this is false, the bid is only used to determine the hypothetical
+    winner with no k-anonymity constraints, which would be used to [=update k-anonymity counts=] only.
   : <dfn>bid</dfn>
   :: A [=bid with currency=]. If the [=bid with currency/value=] is zero or negative, then this
     [=interest group=] will not participate in the auction.
@@ -5062,7 +5381,7 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
 
     Issue: TODO: Check whether [=generated bid/ad descriptor=] can be moved to
     [=generated bid/bid ad=] to avoid duplication
-    (<a href="https://github.com/WICG/turtledove/issues/667">WICG/turtledove#868</a>).
+    (<a href="https://github.com/WICG/turtledove/issues/868">WICG/turtledove#868</a>).
   : <dfn>ad descriptor</dfn>
   :: An [=ad descriptor=]. Render URL and size of the bid's ad.
   : <dfn>ad component descriptors</dfn>
@@ -5090,6 +5409,21 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   : <dfn>component seller</dfn>
   :: Null or an [=origin=]. Seller in component auction which the [=generated bid/interest group=]
     is participating. Only set for component auctions, null otherwise.
+</dl>
+
+A <dfn>bid debug reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="bid debug reporting info">
+  : <dfn>id</dfn>
+  :: An {{unsigned long}}-or-null. Matches a [=generated bid/id=] of the [=generated bid=]
+     corresponding to this reporting information, or null if no bid was produced, in which case the
+     debug loss URLs are still relevant.
+  : <dfn>component seller</dfn>
+  ::  Null or an [=origin=]. Seller in component auction which was running to produce
+    this reporting information. Only set for component auctions, null otherwise.
+  : <dfn>interest group owner</dfn>
+  :: An [=origin=]. Matches [=interest group/owner=] of the interest group that was
+     used to call `generateBid()` to produce this reporting information.
   : <dfn>bidder debug win report url</dfn>
   :: Null or a [=URL=], initially null. Set by `generateBid()`'s
     {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}'s
@@ -5166,6 +5500,18 @@ An <dfn>ad size</dfn> is a [=struct=] with the following [=struct/items=]:
     [=ad size/height=] to |height|, [=ad size/height units=] to |heightUnit|.
   1. Return |adSize|.
 </div>
+
+An <dfn>ad keyword replacement</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="ad keyword replacement">
+  : <dfn>match</dfn>
+  :: A [=string=], represents the match within a {{AuctionAd/renderURL}}, that is going to be
+    replaced by [=ad keyword replacement/replacement=]. Must be in the format `${...}` or 
+    `%%...%%`.
+  : <dfn>replacement</dfn>
+  :: A [=string=], meant to replace [=ad keyword replacement/match=] within a 
+    {{AuctionAd/renderURL}}.
+</dl>
 
 <h3 id=direct-from-seller-signals-section>Direct from seller signals</h3>
 
@@ -5260,13 +5606,19 @@ scored bids. It's a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="leading bid info">
   : <dfn>top score</dfn>
   :: A {{double}}, initially 0.0. The highest score so far.
+  : <dfn>top non-k-anon-enforced score</dfn>
+  :: A {{double}}, initially 0.0. The highest score so far when disregarding k-anonymity.
   : <dfn>top bids count</dfn>
   :: An integer, initially 0. The number of bids with the same `top score`.
+  : <dfn>top non-k-anon-enforced bids count</dfn>
+  :: Number of bids that are tied for leadership when disregarding k-anonymity thus far.
   : <dfn>at most one top bid owner</dfn>
   :: A [=boolean=], initially true. Whether all bids of `top score` are from the same interest
     group owner.
   : <dfn>leading bid</dfn>
-  :: Null or a [=generate bid=], initially null. The leading bid of the auction so far.
+  :: Null or a [=generated bid=], initially null. The leading bid of the auction so far.
+  : <dfn>leading non-k-anon-enforced bid</dfn>
+  :: Null or a [=generated bid=], initially null. The leading bid of the auction disregarding k-anonymity so far.
   : <dfn>auction config</dfn>
   :: An [=auction config=]. The auction config of the auction which generated this
     [=leading bid info/leading bid=].
