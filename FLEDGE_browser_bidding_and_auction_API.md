@@ -35,6 +35,8 @@ The request includes the contents of the interest groups, and information that t
 unmodified in `browserSignals` for bidding like `joinCount`, `bidCount`, and `prevWins`.
 More details on the request format are given in [the appendix](#request-blob-format).
 
+The `seller` is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model).
+
 ### Step 2: Send auction blob to servers
 
 A seller’s JavaScript then sends auctionBlob to their server, perhaps by initiating a [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) using a PUT or POST method with auctionBlob attached as the request body:
