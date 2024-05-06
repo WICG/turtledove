@@ -647,6 +647,7 @@ dictionary AuctionAdConfig {
   unsigned long long reportingTimeout;
   USVString sellerCurrency;
   Promise<record<USVString, USVString>> perBuyerCurrencies;
+  record<USVString, unsigned short> perBuyerMultiBidLimits;
   record<USVString, unsigned short> perBuyerGroupLimits;
   record<USVString, unsigned short> perBuyerExperimentGroupIds;
   record<USVString, record<USVString, double>> perBuyerPrioritySignals;
@@ -1262,6 +1263,13 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. Let |buyer| the result of [=parsing an https origin=] with |key|.
   1. If |buyer| is failure, then return failure.
   1. Set |auctionConfig|'s [=auction config/per buyer experiment group ids=][|buyer|] to |value|.
+1. If |config|["{{AuctionAdConfig/perBuyerMultiBidLimits}}"] [=map/exists=], [=map/for each=]
+  |key| → |value| of |config|["{{AuctionAdConfig/perBuyerMultiBidLimits}}"]:
+  1. If |key| is "*", then set |auctionConfig|'s
+    [=auction config/all buyers multi-bid limit=] to |value|, and [=iteration/continue=].
+  1. Let |buyer| the result of [=parsing an https origin=] with |key|.
+  1. If |buyer| is failure, then return failure.
+  1. Set |auctionConfig|'s [=auction config/per buyer multi-bid limits=][|buyer|] to |value|.
 1. If |config|["{{AuctionAdConfig/perBuyerPrioritySignals}}"] [=map/exists=], [=map/for each=]
   |key| → |value| of |config|["{{AuctionAdConfig/perBuyerPrioritySignals}}"]:
   1. Let |signals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=]
@@ -1439,13 +1447,14 @@ To <dfn>check if required seller capabilities are permitted</dfn> given an [=auc
   1. Return false.
 </div>
 
-<div algorithm="generate a bid">
+<div algorithm="generate potentially multiple bids">
 
-To <dfn>generate a bid</dfn> given an [=ordered map=] |allTrustedBiddingSignals|, a [=string=]
+To <dfn>generate potentially multiple bids</dfn> given an [=ordered map=] |allTrustedBiddingSignals|, a [=string=]
 |auctionSignals|, a {{BiddingBrowserSignals}} |browserSignals|, a [=string=]-or-null |perBuyerSignals|,
 a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=duration=]
-|perBuyerTimeout| in milliseconds, a [=currency tag=] |expectedCurrency|, an [=interest group=] |ig|,
-and a [=moment=] |auctionStartTime|:
+|perBuyerTimeout| in milliseconds, a [=currency tag=] |expectedCurrency|, an {{unsigned short}}
+
+|multiBidLimit|, an [=interest group=] |ig|, and a [=moment=] |auctionStartTime|:
   1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=]
     with |ig|.
   1. Set |browserSignals|["{{BiddingBrowserSignals/joinCount}}"] to the sum of |ig|'s
@@ -1455,6 +1464,7 @@ and a [=moment=] |auctionStartTime|:
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/bidCount}}"] to the sum of |ig|'s
      [=interest group/bid counts=] for all days within the last 30 days.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/adComponentsLimit}}"] to 40.
+  1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/multiBidLimit}}"] to |multiBidLimit|.
   1. Let |prevWins| be a new <code>[=sequence=]<{{PreviousWin}}></code>.
   1. [=list/For each=] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
     the last 30 days:
@@ -1480,7 +1490,7 @@ and a [=moment=] |auctionStartTime|:
     1. If |allTrustedBiddingSignals| is an [=ordered map=] and |allTrustedBiddingSignals|[|key|]
       [=map/exists=], then [=map/set=] |trustedBiddingSignals|[|key|] to
       |allTrustedBiddingSignals|[|key|].
-  1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |ig|, |expectedCurrency|,
+  1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |multiBidLimit|, |ig|, |expectedCurrency|,
     |igGenerateBid|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|, |browserSignals|,
     |directFromSellerSignalsForBuyer|, and |perBuyerTimeout|.
 </div>
@@ -1639,6 +1649,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     |auctionConfig|'s [=auction config/per buyer timeouts=][|buyer|].
   1. Let |expectedCurrency| be the result of [=looking up per-buyer currency=] with |auctionConfig|
     and |buyer|.
+  1. Let |multiBidLimit| be the result of [=looking up per-buyer multi-bid limit=] with |auctionConfig| and |buyer|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}"]
     to the result of running [=is debugging only in cooldown or lockout=] with |buyer|.
   1. [=map/For each=] |slotSizeQueryParam| → |perSlotSizeQueryParam| of |perBuyerGenerator|:
@@ -1701,41 +1712,28 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Let |directFromSellerSignalsForBuyer| be the result of running
             [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and |ig|'s
             [=interest group/owner=].
-          1. Let « |generatedBid|, |bidDebugReportInfo| » be the result of [=generate a bid=] given |allTrustedBiddingSignals|,
-            |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
-            |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|, |ig|, and
-            |auctionStartTime|.
+          1. Let « |bidsBatch|, |bidDebugReportInfo| » be the result of [=generate potentially multiple bids=] given
+            |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
+            |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
+            |expectedCurrency|, |multiBidLimit|, |ig|, and |auctionStartTime|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
             [=environment settings object/current monotonic time=], in milliseconds.
           1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
             |generateBidDuration|.
-          1. If |generatedBid| is null:
-            1. [=Register a bid for forDebuggingOnly reports=] given null, |bidDebugReportInfo|, and
-               |bidDebugReportInfoList|.
-            1. [=iteration/continue=].
-          1. Let |bidsToScore| be a new [=list=] of [=generated bids=]
-          1. If [=query generated bid k-anonymity count=] given |generatedBid| returns true:
-            1. Let |bidCopy| be a clone of |generatedBid|.
-            1. Set |bidCopy|'s [=generated bid/for k-anon auction=] to false.
-            1. [=list/Append=] |bidCopy| to |bidsToScore|.
-            1. [=list/Append=] |generatedBid| to |bidsToScore|.
+          1. Let |bidsToScore| be the result of applying [=adjust bid list based on k-anonymity=] to |bidsBatch|.
+          1. Let |foundKAnonBids| be false.
+          1. [=list/For each=] |generatedBid| of |bidsToScore|:
+            1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true,
+               set |foundKAnonBids| to true.
+          1. If |bidsToScore| [=list/is not empty=] but |foundKAnonBids| is false:
 
-              Note: Conceptually, a bid that's already k-anonymous is considered
-              for both the k-anonymous and non-enforcing-k-anonymity leadership.
-
-            1. [=Register a bid for forDebuggingOnly reports=] given |generatedBid|,
-               |bidDebugReportInfo|, and |bidDebugReportInfoList|.
-          1. Otherwise:
-
-            Note: [=Generate a bid=] is now rerun with only k-anonymous [=interest group/ads=] to give
-            the buyer a chance to [=generate a bid=] for k-anonymous [=interest group/ads=]. Allowing
-            the buyer to first [=generate a bid=] for non-k-anonymous [=interest group/ads=] provides a
+            Note: [=generate potentially multiple bids=] is now rerun with only k-anonymous [=interest group/ads=] to give
+            the buyer a chance to [=generate potentially multiple bids=] for k-anonymous [=interest group/ads=]. Allowing
+            the buyer to first [=generate potentially multiple bids=] for non-k-anonymous [=interest group/ads=] provides a
             mechanism to bootstrap the k-anonymity count, otherwise no [=interest group/ads=] would
             ever trigger [=increment k-anonymity count=] and all ads would fail
             [=query k-anonymity count=].
 
-            1. Set |generatedBid|'s [=generated bid/for k-anon auction=] to false.
-            1. [=list/Append=] |generatedBid| to |bidsToScore|.
             1. Let |originalAds| be |ig|'s [=interest group/ads=].
             1. If |originalAds| is not null:
               1. Set |ig|'s [=interest group/ads=] to a new [=list=] of [=interest group ad=].
@@ -1754,23 +1752,26 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
             1. Let |generateBidStartTime| be |settings|'s
               [=environment settings object/current monotonic time=].
-            1. Set « |generatedBid|, |bidDebugReportInfo| » to the result of [=generate a bid=] given
+            1. Set « |generatedBids|, |bidDebugReportInfo| » to the result of [=generate potentially multiple bids=] given
               |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
-              |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
-              |expectedCurrency|, |ig|, and |auctionStartTime|.
+              |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
+              1 (for multiBidLimit), |ig|, and |auctionStartTime|.
+
+              Note: passing 1 for multiBidLimit limits the rerun to producing at most a single bid.
+
             1. Set |ig|'s [=interest group/ads=] to |originalAds|.
             1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
             1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
               |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
             1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
               by |generateBidDuration|.
-            1. If |generatedBid| is a [=generated bid=]:
+            1. [=Assert=] that [=list/size=] of |generatedBids| &le; 1.
+            1. [=list/For each=] |generatedBid| of |generatedBids|:
               1. [=Assert=] that [=query generated bid k-anonymity count=] given |generatedBid| returns true.
+              1. [=Apply any component ads target to a bid=] given |generatedBid|.
               1. [=list/Append=] |generatedBid| to |bidsToScore|.
-              1. [=Register a bid for forDebuggingOnly reports=] given |generatedBid|, |bidDebugReportInfo| and
-                 |bidDebugReportInfoList|.
-            1. If |generatedBid| is null, [=register a bid for forDebuggingOnly reports=] given null,
-                 |bidDebugReportInfo| and |bidDebugReportInfoList|.
+          1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |bidDebugReportInfo|, and
+               |bidDebugReportInfoList|.
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
@@ -2620,8 +2621,8 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
   1. Let |winningBid| be |winnerInfo|'s [=leading bid info/leading bid=] if |winnerInfo| is
     not null, null otherwise.
   1. [=list/For each=] |bidDebugReportInfo| of |bidDebugReportInfoList|:
-    1. If |winningBid| is not null and |bidDebugReportInfo|'s [=bid debug reporting info/id=] is |winningBid|'s
-      [=generated bid/id=]:
+    1. If |winningBid| is not null and |bidDebugReportInfo|'s [=bid debug reporting info/ids=]
+       [=set/contains=] |winningBid|'s [=generated bid/id=]:
       1. [=Assert=] that |winningBid|'s [=generated bid/id=] is not null.
       1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
         [=bid debug reporting info/bidder debug win report url=], |bidDebugReportInfo|'s
@@ -2660,12 +2661,18 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
 </div>
 
 <div>
-  To <dfn>register a bid for forDebuggingOnly reports</dfn> given a [=generated bid=]-or-null
-  |generatedBid|, [=bid debug reporting info=] |bidDebugReportInfo|, a [=list=] of [=bid debug reporting info=] |bidDebugReportInfoList|:
-  1. If |generatedBid| is not null:
-    1. Set |generatedBid|'s [=generated bid/id=] to |bidDebugReportInfoList|'s [=list/size=].
-    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/id=] to |bidDebugReportInfoList|'s [=list/size=]
+  To <dfn>register bids for forDebuggingOnly reports</dfn> given a [=list=] of
+  [=generated bids=] |generatedBids|, [=bid debug reporting info=] |bidDebugReportInfo|,
+  a [=list=] of [=bid debug reporting info=] |bidDebugReportInfoList|:
+  1. Let |mainId| be |bidDebugReportInfoList|'s [=list/size=].
+  1. Let |subId| be 0.
   1. [=list/Append=] |bidDebugReportInfo| to |bidDebugReportInfoList|.
+  1. [=list/For each=] |generatedBid| of |generatedBids|:
+    1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
+      1. Let |id| be (|mainId|, |subId|).
+      1. Set |subId| to |subId| + 1.
+      1. Set |generatedBid|'s [=generated bid/id=] to |id|.
+      1. [=set/Append=] |id| to |bidDebugReportInfo|'s [=bid debug reporting info/ids=].
 
   Issue: Instead of inserting to |bidDebugReportInfoList| in each component auction that runs in
   parallel, create a structure InterestGroupAuction that holds data for each auction
@@ -2784,7 +2791,7 @@ The <dfn for=Navigator method>createAuctionNonce()</dfn> method steps are:
 
 *This first introductory paragraph is non-normative.*
 
-In addition to [=generate a bid|bids generated by interest groups=], sellers can enable buyers to
+In addition to [=generate potentially multiple bids|bids generated by interest groups=], sellers can enable buyers to
 introduce bids generated outside of the auction, which are called <dfn>additional bids</dfn>.
 [=Additional bids=] are commonly triggered using contextual signals. Buyers compute the
 [=additional bids=], likely as part of a contextual auction. Buyers need to package up each
@@ -3395,8 +3402,10 @@ of the following global objects:
  * {{InterestGroupReportingScriptRunnerGlobalScope}}
 
 <div algorithm>
-  To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an [=interest group=] |ig|, a
-  [=currency tag=] |expectedCurrency|, a {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null
+  To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an {{unsigned short}}
+
+  |multiBidLimit|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|,
+  a {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null
   |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=] |trustedBiddingSignals|,
   a {{BiddingBrowserSignals}} |browserSignals|, a {{DirectFromSellerSignalsForBuyer}}
   |directFromSellerSignalsForBuyer| and an integer millisecond [=duration=] |timeout|:
@@ -3416,6 +3425,7 @@ of the following global objects:
       false otherwise.
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=] to
       |isComponentAuction|.
+    1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/multi-bid limit=] to |multiBidLimit|.
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/interest group=] to |ig|.
     1. Let |igJS| be the result of [=converted to ECMAScript values|converting to ECMAScript values=]
       given |igGenerateBid|.
@@ -3446,15 +3456,17 @@ of the following global objects:
         1. Otherwise, [=map/set=] |ig|'s [=interest group/priority signals overrides=][|k|] to |v|.
       1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
         [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
-    1. Let |generatedBid| be |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=].
+    1. Let |generatedBids| be |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bids=].
     1. If |result| is a [=ECMAScript/normal completion=]:
       1. Let |generatedBidIDL| be the result of [=converted to an IDL value|converting=]
-        |result|'s \[[Value]] to a {{GenerateBidOutput}}.
-      1. If no exception was [=exception/thrown=] in the previous step:
-        1. Let |bidOutput| be the result of [=converting GenerateBidOutput to generated bid=] with
-          |generatedBidIDL|, |ig|, |expectedCurrency|, |isComponentAuction|, and |global|'s
-          [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=].
-        1. If |bidOutput| is not failure, then set |generatedBid| to |bidOutput|.
+        |result|'s \[[Value]] to a ({{GenerateBidOutput}} or [=sequence=]<{{GenerateBidOutput}}>).
+      1. If no exception was [=exception/thrown=] in the previous step, set |generatedBids| to the
+          result of [=converting one or many GenerateBidOutputs to a list of generated bids=] with
+          |generatedBidIDL|, |multiBidLimit|, |ig|, |expectedCurrency|, |isComponentAuction|,
+          and |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=].
+      1. Otherwise, set |generatedBids| to failure.
+    1. If |generatedBids| is not a [=list=] of [=generated bids=], set |generatedBids|
+       to a new [=list=] of [=generated bids=].
     1. Let |bidDebugReportInfo| be a new [=bid debug reporting info=].
     1. Set |bidDebugReportInfo|'s [=bid debug reporting info/interest group owner=] to
        |ig|'s [=interest group/owner=]
@@ -3462,16 +3474,15 @@ of the following global objects:
       [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] if it's not
       failure, null otherwise.
     1. Set |bidDebugReportInfo|'s [=bid debug reporting info/bidder debug loss report url=] to |debugLossReportUrl|.
-    1. If |generatedBid| is a [=generated bid=] and |generatedBid|'s [=generated bid/bid=]'s
-      [=bid with currency/value=] &le; 0, then set |generatedBid| to null.
-    1. If |generatedBid| is a [=generated bid=]:
+    1. If |generatedBids| [=list/is not empty=]:
       1. Let |debugWinReportUrl| be |global|'s
         [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] if it's not
         failure, null otherwise.
       1. Set |bidDebugReportInfo|'s [=bid debug reporting info/bidder debug win report url=] to |debugWinReportUrl|.
-      1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|,
-        [=generated bid/interest group=] to |ig|.
-    1. Return « |generatedBid|, |bidDebugReportInfo| ».
+      1. [=list/For each=] |generatedBid| in |generatedBids|:
+        1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|,
+          [=generated bid/interest group=] to |ig|,
+    1. Return « |generatedBids|, |bidDebugReportInfo| ».
 </div>
 
 <div algorithm>
@@ -3676,7 +3687,7 @@ The <dfn method for="ForDebuggingOnly">reportAdAuctionLoss(|url|)</dfn> method s
          InterestGroupBiddingScriptRunnerGlobalScope)]
 interface InterestGroupBiddingScriptRunnerGlobalScope
         : InterestGroupBiddingAndScoringScriptRunnerGlobalScope {
-  boolean setBid(optional GenerateBidOutput generateBidOutput = {});
+  boolean setBid(optional (GenerateBidOutput or sequence&lt;GenerateBidOutput&gt;) oneOrManyBids = []);
   undefined setPriority(double priority);
   undefined setPrioritySignalsOverride(DOMString key, optional double? priority);
 };
@@ -3696,14 +3707,16 @@ dictionary GenerateBidOutput {
   double adCost;
   unrestricted double modelingSignals;
   boolean allowComponentAuction = false;
+  unsigned long targetNumAdComponents;
+  unsigned long numMandatoryAdComponents = 0;
 };
 
 </pre>
 
 Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
 <dl dfn-for="InterestGroupBiddingScriptRunnerGlobalScope">
-: <dfn>bid</dfn>
-:: Null, or a [=generated bid=], initially null.
+: <dfn>bids</dfn>
+:: A [=list=] of [=generated bids=], initially empty.
 : <dfn>priority</dfn>
 :: Null, failure, or a {{double}}, initially null.
 : <dfn>priority signals</dfn>
@@ -3716,19 +3729,36 @@ Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
 :: A [=boolean=]
 : <dfn>group has ad components</dfn>
 :: A [=boolean=]
+: <dfn>multi-bid limit</dfn>
+:: An {{unsigned short}}.
 
 </dl>
+
+<div algorithm>
+To <dfn>convert one or many GenerateBidOutputs to a list of generated bids</dfn> given a ({{GenerateBidOutput}} or [=sequence=]<{{GenerateBidOutput}}>)
+|oneOrManyBids|, an {{unsigned short}} |multiBidLimit|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|, a [=boolean=]
+
+|isComponentAuction| and a [=boolean=] |groupHasAdComponents|:
+  1. Let |bidSequence| be [=sequence=]<{{GenerateBidOutput}}>.
+  1. If the [=specific type=] of |oneOrManyBids| is {{GenerateBidOutput}}, then set |bidSequence| to « |oneOrManyBids| ».
+  1. Otherwise, set |bidSequence| to |oneOrManyBids|.
+  1. If |bidSequence|'s [=list/size=] &gt; |multiBidLimit|, then return failure.
+  1. Let |bids| be a new [=list=] of [=generated bids=].
+  1. [=list/for each=] |bidOutput| of |bidSequence|:
+    1. Let |bid| be the result of [=converting GenerateBidOutput to generated bid=] given |bidOutput|, |ig|, |expectedCurrency|, |isComponentAuction|, |groupHasAdComponents|.
+    1. If |bid| is failure, return failure.
+    1. If |bid| is null, [=iteration/continue=].
+    1. [=list/Append=] |bid| to |bids|.
+  1. Return |bids|.
+</div>
 
 <div algorithm>
 
 To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOutput}}
 |generateBidOutput|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|, a [=boolean=]
 |isComponentAuction| and a [=boolean=] |groupHasAdComponents|:
+  1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] &le; 0, then return null.
   1. Let |bid| be a new [=generated bid=].
-  1. If |generateBidOutput|["{{GenerateBidOutput/bid}}"] &le; 0:
-    1. Set |bid|'s [=generated bid/bid=] to a [=bid with currency=] with [=bid with currency/value=]
-      |generateBidOutput|["{{GenerateBidOutput/bid}}"] and [=bid with currency/currency=] null.
-    1. Return |bid|.
   1. If |generateBidOutput|["{{GenerateBidOutput/render}}"] does not [=map/exist=], return failure.
   1. If |isComponentAuction| is true, and
     |generateBidOutput|["{{GenerateBidOutput/allowComponentAuction}}"] is false, then return failure.
@@ -3764,7 +3794,7 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
     1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponents}}"].
     1. Return failure if any of the following conditions hold:
       * |groupHasAdComponents| is false;
-      * |adComponents|'s size is greater than 40.
+      * |adComponents|'s size is greater than 40 and |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] does not [=map/exist=].
     1. Let |adComponentDescriptors| be a new [=list=] of [=ad descriptors=].
     1. For |component| in |adComponents|:
       1. Let |componentDescriptor| be a new [=ad descriptor=].
@@ -3778,6 +3808,18 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
       1. If [=finding matching ad=] given |componentUrl|, |ig|, and true returns null, return failure.
       1. [=list/Append=] |componentDescriptor| to |adComponentDescriptors|.
     1. Set |bid|'s [=generated bid/ad component descriptors=] to |adComponentDescriptors|.
+  1. If |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] [=map/exists=]:
+    1. If |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] is equal to 0 or
+       greater than 40, then return failure.
+    1. If |bid|'s [=generated bid/ad component descriptors=] is null, or
+          |bid|'s [=generated bid/ad component descriptors=]'s [=list/size=] &lt;
+          |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"], return failure.
+    1. If |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] &lt;
+          |generateBidOutput|["{{GenerateBidOutput/numMandatoryAdComponents}}"], return failure.
+    1. Set |bid|'s [=generated bid/target number of ad components=] to
+       |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"].
+    1. Set |bid|'s [=generated bid/number of mandatory ad components=] to
+       |generateBidOutput|["{{GenerateBidOutput/numMandatoryAdComponents}}"].
   1. If |generateBidOutput|["{{GenerateBidOutput/adCost}}"] [=map/exists=], then set |bid|'s
     [=generated bid/ad cost=] to |generateBidOutput|["{{GenerateBidOutput/adCost}}"].
   1. If |generateBidOutput|["{{GenerateBidOutput/modelingSignals}}"] [=map/exists=]:
@@ -3851,20 +3893,21 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 </div>
 
 <div algorithm>
-  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid(|generateBidOutput|)</dfn>
+  The <dfn method for="InterestGroupBiddingScriptRunnerGlobalScope">setBid(|oneOrManyBids|)</dfn>
   method steps are:
 
   1. Let |global| be [=this=]'s [=relevant global object=].
-  1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=] to null.
+  1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bids=] to an empty [=list=].
   1. Let |ig| be |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/interest group=].
   1. Let |expectedCurrency| be |global|'s
     [=InterestGroupBiddingScriptRunnerGlobalScope/expected currency=].
-  1. Let |bidToSet| be the result of [=converting GenerateBidOutput to generated bid=] with
-    |generateBidOutput|, |ig|, |expectedCurrency|, |global|'s
+  1. Let |bidsToSet| be the result of [=converting one or many GenerateBidOutputs to a list of generated bids=] with
+    |oneOrManyBids|, |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/multi-bid limit=],
+    |ig|, |expectedCurrency|, |global|'s
     [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=], and |global|'s
     [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=].
-  1. If |bidToSet| is failure, [=exception/throw=] a {{TypeError}}.
-  1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bid=] to |bidToSet|.
+  1. If |bidsToSet| is failure, [=exception/throw=] a {{TypeError}}.
+  1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/bids=] to |bidsToSet|.
 </div>
 
 <div algorithm>
@@ -4741,6 +4784,7 @@ dictionary BiddingBrowserSignals {
   required long bidCount;
   required long recency;
   required long adComponentsLimit;
+  required unsigned short multiBidLimit;
 
   USVString topLevelSeller;
   sequence<PreviousWin> prevWinsMs;
@@ -5245,6 +5289,14 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
   :: A [=currency tag=]. Specifies the currency bids returned by `generateBid()` or `scoreAd()` in
     component auctions are expected to use if [=auction config/per buyer currencies=] does not
     specify a particular value.
+  : <dfn>per buyer multi-bid limits</dfn>
+  :: An [=ordered map=] who keys [=map/keys=] are [=origins=] and whose [=map/values=] are {{unsigned short}}s.
+
+     Specifies how many bids `generateBid()` is permitted to return at once for a particular buyer
+     origin. The initial value is an empty [=map=].
+  : <dfn>all buyers multi-bid limit</dfn>
+  :: An {{unsigned short}}. Initially 1. Specifies how many bids `generateBid()` is permitted
+    to return at once for buyers without a value in [=auction config/per buyer multi-bid limits=].
   : <dfn>direct from seller signals header ad slot</dfn>
   :: Null, a [=string=], a {{Promise}}, or failure. Initially null.
   : <dfn>auction nonce</dfn>
@@ -5317,6 +5369,17 @@ To <dfn>look up per-buyer currency</dfn> given an [=auction config=] |auctionCon
   1. Return |perBuyerCurrency|
 </div>
 
+<div algorithm>
+To <dfn>look up per-buyer multi-bid limit</dfn> given an [=auction config=] |auctionConfig|, and an
+[=origin=] |buyer|:
+
+  1. Let |multiBidLimit| be |auctionConfig|'s [=auction config/all buyers multi-bid limit=].
+  1. If |auctionConfig|'s [=auction config/per buyer multi-bid limits=][|buyer|] [=map/exists=], then set
+    |multiBidLimit| to |auctionConfig|'s [=auction config/per buyer multi-bid limits=][|buyer|].
+  1. If |multiBidLimit| &lt; 1, set |multiBidLimit| to 1.
+  1. Return |multiBidLimit|.
+</div>
+
 <h3 id=bid-generators>Bid generator</h3>
 
 A <dfn>per buyer bid generator</dfn> is an [=ordered map=] whose [=map/keys=] are [=URLs=]
@@ -5335,7 +5398,7 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
 
 <dl dfn-for="generated bid">
   : <dfn>id</dfn>
-  :: An {{unsigned long}}. Used to identify a [=generated bid=].
+  :: A pair of {{unsigned long}}s. Used to identify a [=generated bid=].
   : <dfn>for k-anon auction</dfn>
   :: A [=boolean=], initially true. If this is false, the bid is only used to determine the hypothetical
     winner with no k-anonymity constraints, which would be used to [=update k-anonymity counts=] only.
@@ -5354,8 +5417,10 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   : <dfn>ad descriptor</dfn>
   :: An [=ad descriptor=]. Render URL and size of the bid's ad.
   : <dfn>ad component descriptors</dfn>
-  :: Null or a [=list=] of [=ad descriptors=]. Ad components associated with bid, if any. May have at
-    most 40 [=list/items=]. Must be null if the interest group making this bid has a null
+  :: Null or a [=list=] of [=ad descriptors=]. Ad components associated with bid, if any.
+    Will be limited to at most 40 [=list/items=] (and if {{GenerateBidOutput/targetNumAdComponents}}
+    was specified, it will have exactly that many [=list/items=]) by the time the bid participates
+    in the auction. Must be null if the interest group making this bid has a null
     [=interest group/ad components=] field.
   : <dfn>ad cost</dfn>
   :: Null or a {{double}}. Advertiser click or conversion cost passed from `generateBid()` to
@@ -5378,15 +5443,82 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   : <dfn>component seller</dfn>
   :: Null or an [=origin=]. Seller in component auction which the [=generated bid/interest group=]
     is participating. Only set for component auctions, null otherwise.
+  : <dfn>target number of ad components</dfn>
+  :: Null or {{unsigned long}}, initially null. Set if the bidder requested
+    [=generated bid/ad component descriptors=] they provided to be reduced to the given target,
+    taking in account k-anonymity.
+  : <dfn>number of mandatory ad components</dfn>
+  :: {{unsigned long}}. Only relevant if [=generated bid/target number of ad components=] is set.
+     Requires the first that many given ad components to be included.
 </dl>
+
+<div algorithm>
+
+To <dfn>apply any component ads target to a bid</dfn>, given a [=generated bid=] |generatedBid|:
+1. If |generatedBid|'s [=generated bid/target number of ad components=] is null, return.
+1. [=Assert=] that |generatedBid|'s [=generated bid/ad component descriptors=] is not null.
+1. While |generatedBid|'s [=generated bid/ad component descriptors=]'s [=list/size=] &gt;
+    [=generated bid/target number of ad components=]:
+    1. [=list/Remove=] the last value from |generatedBid|'s [=generated bid/ad component descriptors=].
+
+</div>
+
+<div algorithm>
+
+To <dfn>try to reach component ads target considering k-anonymity</dfn>, given a [=generated bid=] |generatedBid|:
+1. If |generatedBid|'s [=generated bid/target number of ad components=] is null, return false.
+1. Let |selectedComponents| be a new [=list=] of [=ad descriptors=].
+1. [=set/For each=] |i| of [=list/get the indices=] of |generatedBid|:
+  1. Let |candidateComponent| be |generatedBid|'s [=generated bid/ad component descriptors=][|i|].
+  1. If [=query component ad k-anonymity count=] given |candidateComponent|'s [=interest group ad/render url=] returns true:
+
+      Issue: TODO: change to query k-anonymity cache instead.
+      (<a href="https://github.com/WICG/turtledove/issues/1150">WICG/turtledove#1150</a>)
+    1. [=list/Append=] |candidateComponent| to |selectedComponents|.
+  1. Otherwise:
+    1. If |i| &lt; |generatedBid|'s [=generated bid/number of mandatory ad components=], return false.
+1. If |selectedComponents|'s [=list/size=] &lt; |generatedBid|'s [=generated bid/target number of ad components=],
+   return false.
+1. Set |generatedBid|'s [=generated bid/ad component descriptors=] to |selectedComponents|.
+1. [=Apply any component ads target to a bid=] given |generatedBid|.
+1. Return [=query generated bid k-anonymity count=] given |generatedBid|.
+
+</div>
+
+<div algorithm>
+
+To <dfn>adjust bid list based on k-anonymity</dfn> given a [=list=] of [=generated bids=] |bidsBatch|:
+1. Let |bidsToScore| be a new [=list=] of [=generated bids=]
+1. [=list/For each=] |generatedBid| of |bidsBatch|:
+  1. Let |bidCopy| be a clone of |generatedBid|.
+  1. Set |bidCopy|'s [=generated bid/for k-anon auction=] to false.
+  1. [=Apply any component ads target to a bid=] given |bidCopy|.
+  1. [=list/Append=] |bidCopy| to |bidsToScore|
+  1. If [=query generated bid k-anonymity count=] given |generatedBid| returns true:
+
+      Issue: TODO: change to query k-anonymity cache instead.
+      (<a href="https://github.com/WICG/turtledove/issues/1150">WICG/turtledove#1150</a>)
+    1. [=list/Append=] |generatedBid| to |bidsToScore|.
+
+    Note: Conceptually, a bid that's already k-anonymous is considered for both the k-anonymous and
+    non-enforcing-k-anonymity leadership, which is represented here in the specification by two
+    separate [=generated bid=] objects that get scored independently. An implementation does not,
+    however, actually need to perform the relevant work twice.
+
+  1. Otherwise, if the result of applying [=try to reach component ads target considering k-anonymity=]
+     given |generatedBid| is true:
+    1. [=list/Append=] |generatedBid| to |bidsToScore|.
+1. Return |bidsToScore|.
+
+</div>
 
 A <dfn>bid debug reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="bid debug reporting info">
-  : <dfn>id</dfn>
-  :: An {{unsigned long}}-or-null. Matches a [=generated bid/id=] of the [=generated bid=]
-     corresponding to this reporting information, or null if no bid was produced, in which case the
-     debug loss URLs are still relevant.
+  : <dfn>ids</dfn>
+  :: A [=set=] of pairs of {{unsigned long}}s. Includes all [=generated bid/id=] values
+    of the [=generated bid=]s which will want to use this debug reporting information
+    if they win an auction.
   : <dfn>component seller</dfn>
   ::  Null or an [=origin=]. Seller in component auction which was running to produce
     this reporting information. Only set for component auctions, null otherwise.
