@@ -202,7 +202,14 @@ group update only contains information from a single site, the cross-site identi
 join risks occur from side channels like IP address and timing correlation. The
 k-anonymity protection for the auction winning ad [creative](https://developer.chrome.com/en/docs/privacy-sandbox/glossary/#ad-creative) URL is still important as
 the URL potentially contains information from two sites, the joining and auction
-sites.
+sites. A [navigator.updateAdInterestGroups()](https://wicg.github.io/turtledove/#dom-navigator-updateadinterestgroups)
+API is available to trigger updating interest groups owned by the calling origin.
+Similar to after-auction-updates, at a later date we may apply additional privacy
+enhancements, like IP address privacy or delays, to updates triggered by
+updateAdInterestGroups().  The calling origin is required to have its
+[site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme,
+eTLD+1) attested for Protected Audience API. Please see
+[the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model).
 
 The `executionMode` attribute is optional, and may contain one of the following supported values:
 
