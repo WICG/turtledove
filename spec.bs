@@ -1650,12 +1650,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. [=Batch or fetch trusted bidding signals=] given |trustedBiddingSignalsBatcher|,
             |ig|, |signalsUrl|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
         1. [=Fetch the current outstanding trusted signals batch=] given |trustedBiddingSignalsBatcher|,
-            |ig|, |signalsUrl|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
-      1. Let |allTrustedBiddingSignals| be |trustedBiddingSignalsBatcher|'s
-        [=trusted bidding signals batcher/all trusted bidding signals=].
-      1. Let |dataVersion| be |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data version=].
-      1. If |dataVersion| is not null, then [=map/set=]
-        |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
+            |signalsUrl|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
       1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to |settings|'s
         [=environment settings object/current monotonic time=], in milliseconds.
       1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout| by
@@ -1671,7 +1666,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Let |directFromSellerSignalsForBuyer| be the result of running
             [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and |ig|'s
             [=interest group/owner=].
-          1. Let « |generatedBid|, |bidDebugReportInfo| » be the result of [=generate a bid=] given |allTrustedBiddingSignals|,
+          1. Let |dataVersion| be [=map/get=] |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data versions=]
+             [|ig|'s [=interest group/name=]].
+          1. If |dataVersion| is not null, then [=map/set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
+          1. Otherwise, [=map/remove=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"].
+          1. Let « |generatedBid|, |bidDebugReportInfo| » be the result of [=generate a bid=] given
+            |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding signals=],
             |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
             |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|, |ig|, and
             |auctionStartTime|.
@@ -1725,7 +1725,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. Let |generateBidStartTime| be |settings|'s
               [=environment settings object/current monotonic time=].
             1. Set « |generatedBid|, |bidDebugReportInfo| » to the result of [=generate a bid=] given
-              |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
+              |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding signals=],
+              |auctionSignals|, a [=map/clone=] of |browserSignals|,
               |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
               |expectedCurrency|, |ig|, and |auctionStartTime|.
             1. Set |ig|'s [=interest group/ads=] to |originalAds|.
@@ -5306,8 +5307,10 @@ into smaller number of fetches. It's a [=struct=] with the following [=struct/it
   : <dfn>all trusted bidding signals</dfn>
   :: An [=ordered map=] whose [=map/keys=] are [=strings=], and [=map/values=] are [=strings=].
      Contains all trusted bidding signals collected thus far.
-  : <dfn>data version</dfn>
-  :: An {{unsigned long}} or null, initially null. Data version number provided by the last fetch.
+  : <dfn>data versions</dfn>
+  :: An [=ordered map=] who [=map/keys=] are [=strings=] and [=map/values=] are
+    {{unsigned long}} or null. This contains data version returned by a fetch that provided the
+    values for a given interest group name.
   : <dfn>keys</dfn>
   :: An [=ordered set=] of [=strings=]. Describes the keys collected to be fetched in the current
      batch thus far.
@@ -5334,7 +5337,8 @@ and a [=string=] |slotSizeQueryParam|:
   1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|:
     1. Set |trustedBiddingSignalsBatcher|'s
       [=trusted bidding signals batcher/all trusted bidding signals=][|key|] to |value|.
-  1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data version=] to |dataVersion|.
+  1. [=set/For each=] |igName| item of |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=]:
+    1. [=map/Set=] |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data versions=][|igName|] to |dataVersion|.
 </div>
 
 <div algorithm>
