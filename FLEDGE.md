@@ -182,9 +182,12 @@ included within the URL. Note that the lifetime of an Interest Group is not affe
 
 The updates are done after auctions so as not to slow down
 the auctions themselves.  The updates are rate limited to running at most daily to
-conserve resources, and timeout after 30 seconds.  An update request only contains information from the single site
-where the user was added to the interest group.  At a later date we can consider
-potential side channel mitigations (e.g.
+conserve resources, and timeout after 30 seconds; however, the `updateIfOlderThanMs`
+field of the [trusted bidding signals response](#31-fetching-real-time-data-from-a-trusted-server)
+can be used to trigger a single more timely update that will run even if the last
+update was less than a day ago. An update request only contains information from the
+single site where the user was added to the interest group.  At a later date we can
+consider potential side channel mitigations (e.g.
 [IP address privacy](https://github.com/GoogleChrome/ip-protection/) or a trusted
 update server as mentioned in [#333](https://github.com/WICG/turtledove/issues/333)
 to mitigate timing attacks) when the related technologies are more developed,
@@ -674,16 +677,17 @@ The requests may be coalesced (for efficiency) across a certain number of intere
 The response from the server should be a JSON object of the form:
 
 ```
-{ 'keys': {
-      'key1': arbitrary_json,
-      'key2': arbitrary_json,
+{ "keys": {
+      "key1": arbitrary_json,
+      "key2": arbitrary_json,
       ...},
-  'perInterestGroupData': {
-      'name1': {
-          'priorityVector': {
-              'signal1': number,
-              'signal2': number,
-              ...}
+  "perInterestGroupData": {
+      "name1": {
+          "priorityVector": {
+              "signal1": number,
+              "signal2": number,
+              ...},
+          "updateIfOlderThanMs": 360000
       },
       ...
   }
@@ -696,6 +700,8 @@ The value of each key that an interest group has in its `trustedBiddingSignalsKe
 
 The `perInterestGroupData` dictionary contains optional data for interest groups whose names were included in the request URL. The `priorityVector` will be used to calculate the final priority for an interest group, if that interest group has `enableBiddingSignalsPrioritization` set to true in its definition. Otherwise, it's only used to filter out interest groups, if the dot product with `prioritySignals` is negative. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
 
+The `updateIfOlderThanMs` optional field specifies that the interest group should be updated via the `updateURL` mechanism (see the [interest group attributes](#12-interest-group-attributes) section) if the interest group hasn't been joined or updated in a duration of time exceeding `updateIfOlderThanMs` milliseconds. Updates that ended in failure, either parse or network failure, are not considered to increment the last update or join time. An `updateIfOlderThanMs` that's less than 10 minutes will be clamped to 10 minutes.
+
 Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way as [`trustedBiddingSignalsURL`](#31-fetching-real-time-data-from-a-trusted-server), with the base URL coming from the `trustedScoringSignalsURL` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderURLs bids offered in the auction. Note that the query params use "Urls" instead of "URLs". It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders. 
 
 Similarly to `trustedBiddingSignalsURL`, scoring signals requests may also be coalesced across a certain number of bids that share a `trustedScoringSignalsURL`. The number of bids in a single request is limited by the auction configuration's `maxTrustedScoringSignalsURLLength` field. For example, if an auction configuration has a `maxTrustedScoringSignalsURLLength` of 1000, it means that the length of each trusted scoring signals request URL for this auction cannot exceed 1000 characters. If an auction configuration wants an infinite length for the request URL, it can specify 0 for the `maxTrustedScoringSignalsURLLength`.
@@ -703,13 +709,13 @@ Similarly to `trustedBiddingSignalsURL`, scoring signals requests may also be co
 The response to this request should be in the form:
 
 ```
-{ 'renderURLs': {
-      'https://cdn.com/render_url_of_some_bid': arbitrary_json,
-      'https://cdn.com/render_url_of_some_other_bid': arbitrary_json,
+{ "renderURLs": {
+      "https://cdn.com/render_url_of_some_bid": arbitrary_json,
+      "https://cdn.com/render_url_of_some_other_bid": arbitrary_json,
       ...},
-  'adComponentRenderURLs': {
-      'https://cdn.com/ad_component_of_a_bid': arbitrary_json,
-      'https://cdn.com/another_ad_component_of_a_bid': arbitrary_json,
+  "adComponentRenderURLs": {
+      "https://cdn.com/ad_component_of_a_bid": arbitrary_json,
+      "https://cdn.com/another_ad_component_of_a_bid": arbitrary_json,
       ...}
 }
 ```
@@ -717,10 +723,10 @@ The response to this request should be in the form:
 The value of `trustedScoringSignals` passed to the seller's `scoreAd()` function is an object of the form:
 
 ```
-{ 'renderURL': {'https://cdn.com/render_url_of_bidder': arbitrary_value_from_signals},
-  'adComponentRenderURLs': {
-      'https://cdn.com/ad_component_of_a_bid': arbitrary_value_from_signals,
-      'https://cdn.com/another_ad_component_of_a_bid': arbitrary_value_from_signals,
+{ "renderURL": {'https://cdn.com/render_url_of_bidder': arbitrary_value_from_signals},
+  "adComponentRenderURLs": {
+      "https://cdn.com/ad_component_of_a_bid": arbitrary_value_from_signals,
+      "https://cdn.com/another_ad_component_of_a_bid": arbitrary_value_from_signals,
       ...}
 }
 ```
