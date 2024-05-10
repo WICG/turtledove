@@ -128,3 +128,32 @@ From context of a web page:
 navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
     "permitCrossOriginTrustedSignals")
 ```
+
+## Getting browser-side detectable features as an object
+Sometimes it's desirable to get status of all features detectable via `queryFeatureSupport` in a
+forward-compatible way. Sufficiently recent versions provide this functionality via
+`queryFeatureSupport('*')`, which returns a dictionary describing state of various features. Since
+that functionality isn't available in older versions, backwards-compatibility polyfilling is
+suggested:
+
+```
+let qfs = navigator.protectedAudience ?
+    navigator.protectedAudience.queryFeatureSupport.bind(navigator.protectedAudience) : null;
+
+let allFeatureStatus = qfs ?
+  (qfs("*") || {
+    adComponentsLimit: qfs("adComponentsLimit"),
+    deprecatedRenderURLReplacements: qfs("deprecatedRenderURLReplacements"),
+    reportingTimeout: qfs("reportingTimeout")
+   }) : {}
+```
+
+An example return value would be:
+```
+{
+  "adComponentsLimit":40,
+  "deprecatedRenderURLReplacements":false,
+  "reportingTimeout":true,
+  "permitCrossOriginTrustedSignals":true
+}
+```
