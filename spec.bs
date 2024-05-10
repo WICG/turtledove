@@ -2253,9 +2253,11 @@ A <dfn>bidding signals per interest group data</dfn> is a [=struct=] with the fo
 
 <dl dfn-for="bidding signals per interest group data">
   : <dfn>updateIfOlderThanMs</dfn>
-  :: Null or a {{double}}. If non-null, it is the [=duration=] in milliseconds that specifies that
-    the [=interest group=] can be [updated](#interest-group-update) if it hasn't been joined or
-    updated within that duration.
+  :: Null or a {{double}}. If non-null, it is the [=duration=] in milliseconds after which the
+    [=interest group=] is eligible for an [update](#interest-group-update), if it hasn't been joined
+    or updated within that duration. When eligible, the update is performed either following a call
+    to {{Navigator/runAdAuction()}}, for each of the passed {{AuctionAdConfig/interestGroupBuyers}},
+    or explicitly by the {{Navigator/updateAdInterestGroups()}} method.
 </dl>
 
 <div algorithm>
@@ -4103,6 +4105,10 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
   To <dfn lt="interest group update">update interest groups</dfn> given a [=list=] of [=origins=]
   |owners|:
 
+Implementations can consider aborting all updating if updating has been running for too long. This
+can avoid continuing to reveal coarse IP location information to update servers long after
+navigating to another page. Some implementations, such as Chromium, have chosen a 10 minute limit.
+
 1. [=list/For each=] |owner| of |owners|:
   1. [=list/For each=] |originalInterestGroup| of the [=user agent=]'s [=interest group set=] whose
     [=interest group/owner=] is |owner| and [=interest group/next update after=] is before
@@ -4110,10 +4116,6 @@ The <dfn for=Navigator method>updateAdInterestGroups()</dfn> method steps are:
 
     Note: Implementations can consider loading only a portion of these interest groups
     at a time to avoid issuing too many requests at once.
-
-    Note: Implementations can consider aborting all updating if updating has been running for too
-    long. This can avoid continuing to reveal coarse IP location information to update servers long
-    after navigating to another page.
     1. Let |ig| be a deep copy of |originalInterestGroup|.
     1. Let |request| be a new [=request=] with the following properties:
       :   [=request/URL=]
