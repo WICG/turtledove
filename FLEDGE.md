@@ -771,6 +771,8 @@ In case of bidder signals, the following changes occur:
   }
 }
 ```
+3. The data version is passed in `browserSignals.crossOriginDataVersion`, not
+   `browserSignals.dataVersion`.
 
 Seller signals have additional requirements, as the `trustedScoringSignalsURL` is provided by the
 publisher, not the seller:
@@ -795,6 +797,8 @@ publisher, not the seller:
   }
 }
 ```
+4. The data version is passed in `browserSignals.crossOriginDataVersion`, not
+   `browserSignals.dataVersion`.
 
 Note that older version of Chrome did not support cross-origin trusted signals. You can query
 whether support is available as:
