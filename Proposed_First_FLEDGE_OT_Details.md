@@ -1,3 +1,5 @@
+# OBSOLETE: This document describes an experiment that lasted 2022Q1-2023Q2 and so is now obsolete.  Please instead refer to the Protected Audience [explainer](FLEDGE.md) and [spec](https://wicg.github.io/turtledove/).
+
 > FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
 
 # Proposed First FLEDGE Origin Trial Details
