@@ -285,36 +285,46 @@ This is detectable because it can change the set of fields that are read from th
   1. If |group|["{{GenerateBidInterestGroup/executionMode}}"] is "`compatibility`",
     "`frozen-context`", or "`group-by-origin`", then set |interestGroup|'s
     [=interest group/execution mode=] to it.
-  1. For each |groupMember| and |interestGroupField| in the following table
+  1. For each |groupMember|, |interestGroupField|, |acceptsQuery|, |acceptsCrossOrigin| in the
+     following table:
     <table class="data">
-      <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
+      <thead><tr><th>Group member</th><th>Interest group field</th>
+             <th>Accepts query</th><th>Accepts cross-origin</th></tr></thead>
       <tr>
         <td>"{{GenerateBidInterestGroup/biddingLogicURL}}"</td>
         <td>[=interest group/bidding url=]</td>
+        <td>true</td>
+        <td>false</td>
       </tr>
       <tr>
         <td>"{{GenerateBidInterestGroup/biddingWasmHelperURL}}"</td>
         <td>[=interest group/bidding wasm helper url=]</td>
+        <td>true</td>
+        <td>false</td>
       </tr>
       <tr>
         <td>"{{GenerateBidInterestGroup/updateURL}}"</td>
         <td>[=interest group/update url=]</td>
+        <td>true</td>
+        <td>false</td>
       </tr>
       <tr>
         <td>"{{GenerateBidInterestGroup/trustedBiddingSignalsURL}}"</td>
         <td>[=interest group/trusted bidding signals url=]</td>
+        <td>false</td>
+        <td>true</td>
       </tr>
     </table>
     1. If |group| [=map/contains=] |groupMember|:
       1. Let |parsedUrl| be the result of running the [=URL parser=] on |group|[|groupMember|].
       1. [=exception/Throw=] a {{TypeError}} if any of the following conditions hold:
         * |parsedUrl| is failure;
-        * |parsedUrl| is not [=same origin=] with |interestGroup|'s [=interest group/owner=];
+        * |acceptsCrossOrigin| is false |parsedUrl| is not [=same origin=] with
+          |interestGroup|'s [=interest group/owner=];
         * |parsedUrl| [=includes credentials=];
-        * |parsedUrl| [=url/fragment=] is not null.
+        * |parsedUrl| [=url/fragment=] is not null;
+        * |acceptsQuery| is false and |parsedUrl|'s [=url/query=] is not null.
       1. Set |interestGroup|'s |interestGroupField| to |parsedUrl|.
-  1. If |interestGroup|'s [=interest group/trusted bidding signals url=]'s [=url/query=] is not
-    null, then [=exception/throw=] a {{TypeError}}.
   1. If |group|["{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}}"] [=map/exists=], then set
     |interestGroup|'s [=interest group/trusted bidding signals keys=] to
     |group|["{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}}"].
@@ -1662,7 +1672,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. [=Batch or fetch trusted bidding signals=] given |trustedBiddingSignalsBatcher|,
             |ig|, |signalsUrl|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
         1. [=Fetch the current outstanding trusted signals batch=] given |trustedBiddingSignalsBatcher|,
-            |signalsUrl|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
+            |signalsUrl|, |buyer|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
       1. [=Process updateIfOlderThanMs=] with |buyer|, and |trustedBiddingSignalsBatcher|'s
          [=trusted bidding signals batcher/all per interest group data=].
       1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to |settings|'s
@@ -1869,7 +1879,7 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   [=evaluating a scoring script|evaluation of a scoring script=].
 1. Let |trustedScoringSignals| be null.
 1. Let «|allTrustedScoringSignals|, ignored, |scoringDataVersion|» be the result of [=fetching
-  trusted signals=] with |fullSignalsUrl| and false.
+  trusted signals=] with |fullSignalsUrl|, |auctionConfig|'s [=auction config/seller=], and false.
 1. If |allTrustedScoringSignals| is an [=ordered map=]:
   1. Set |trustedScoringSignals| to a new empty [=map=].
   1. [=map/Set=] |trustedScoringSignals|["`renderURL`"] to a new empty [=map=].
@@ -2160,17 +2170,20 @@ The <dfn http-header><code>X-fledge-bidding-signals-format-version</code></dfn> 
 is a [=structured header=] whose value must be an [=structured header/integer=].
 
 <div algorithm>
-To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |isBiddingSignal|:
+To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |scriptOrigin|,
+and a [=boolean=] |isBiddingSignal|:
 
   1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
     ::  |url|
+    :   [=request/origin=]
+    ::  |scriptOrigin|
     :   [=request/header list=]
     ::  «`Accept`: `application/json`»
     :   [=request/client=]
     ::  `null`
     :   [=request/mode=]
-    ::  "`no-cors`"
+    ::  "`cors`"
     :   [=request/referrer=]
     :: "`no-referrer`"
     :   [=request/credentials mode=]
@@ -2181,8 +2194,6 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
     Issue: One of the side-effects of a `null` client for this subresource request is it neuters all
     service worker interceptions, despite not having to set the service workers mode.
 
-    Issue: Stop using "`no-cors`" mode where possible
-    (<a href="https://github.com/WICG/turtledove/issues/667">WICG/turtledove#667</a>).
   1. Let |signals| be null.
   1. Let |dataVersion| be null.
   1. Let |formatVersion| be null.
@@ -4172,24 +4183,34 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
         <dt>"`updateURL`"
         <dt>"`trustedBiddingSignalsURL`"
         <dd>
-        1. For each |groupMember| and |interestGroupField| in the following table
+        1. For each |groupMember|, |interestGroupField|, |acceptsQuery|, |acceptsCrossOrigin| in the
+           following table:
           <table class="data">
-            <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
+            <thead><tr><th>Group member</th><th>Interest group field</th>
+                   <th>Accepts query</th><th>Accepts cross-origin</th></tr></thead>
             <tr>
               <td>"`biddingLogicURL`"</td>
               <td>[=interest group/bidding url=]</td>
+              <td>true</td>
+              <td>false</td>
             </tr>
             <tr>
               <td>"`biddingWasmHelperURL`"</td>
               <td>[=interest group/bidding wasm helper url=]</td>
+              <td>true</td>
+              <td>false</td>
             </tr>
             <tr>
               <td>"`updateURL`"</td>
               <td>[=interest group/update url=]</td>
+              <td>true</td>
+              <td>false</td>
             </tr>
             <tr>
               <td>"`trustedBiddingSignalsURL`"</td>
               <td>[=interest group/trusted bidding signals url=]</td>
+              <td>false</td>
+              <td>true</td>
             </tr>
           </table>
           1. Let |parsedURL| be the result of running the [=URL parser=] on |value|.
@@ -4197,10 +4218,11 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
           1. Jump to the step labeled <i><a href=#abort-update>Abort update</a></i>
             if any of the following conditions hold:
             * |parsedURL| is failure;
-            * |parsedURL|'s [=url/origin=] is not [=same origin=] with |ig|'s
-              [=interest group/owner=];
+            * |acceptsCrossOrigin| is false and |parsedURL|'s [=url/origin=] is not [=same origin=]
+              with |ig|'s [=interest group/owner=];
             * |parsedURL| [=includes credentials=];
-            * |parsedURL| [=url/fragment=] is not null.
+            * |parsedURL| [=url/fragment=] is not null;
+            * |acceptsQuery| is false and |parsedURL|'s [=url/query=] is not null.
           1. Set |ig|'s |interestGroupField| to |parsedURL|.
 
         <dt>"`trustedBiddingSignalsKeys`"
@@ -5036,10 +5058,6 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
   : <dfn>trusted bidding signals url</dfn>
   :: Null or a [=URL=]. Provide a mechanism for making real-time data available for use at bidding
     time. See [=building trusted bidding signals url=].
-    <p class="note">
-      When non-null, the [=interest group/trusted bidding signals url=]'s [=origin=] will always be
-      [=same origin=] with [=interest group/owner=].
-    </p>
   : <dfn>trusted bidding signals keys</dfn>
   :: Null or a [=list=] of [=string=]. See [=building trusted bidding signals url=].
   : <dfn>trusted bidding signals slot size mode</dfn>
@@ -5480,16 +5498,16 @@ To <dfn>append to a bidding signals per-interest group data map</dfn> given an [
 
 <div algorithm>
 To <dfn>fetch the current outstanding trusted signals batch</dfn> given a
-[=trusted bidding signals batcher=] |trustedBiddingSignalsBatcher|, a [=URL=] |signalsUrl|, an
-{{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|,
-and a [=string=] |slotSizeQueryParam|:
+[=trusted bidding signals batcher=] |trustedBiddingSignalsBatcher|, a [=URL=] |signalsUrl|,
+an [=origin=] |scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|,
+an [=origin=] |topLevelOrigin|, and a [=string=] |slotSizeQueryParam|:
 
   1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
      |signalsUrl|, |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=],
      |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=],
      |experimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
   1. Let « |partialTrustedBiddingSignals|, |partialPerInterestGroupData|, |dataVersion| » be the
-     result of [=fetching trusted signals=] with |biddingSignalsUrl| and true.
+     result of [=fetching trusted signals=] with |biddingSignalsUrl|, |scriptOrigin|, and true.
   1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|:
     1. Set |trustedBiddingSignalsBatcher|'s
       [=trusted bidding signals batcher/all trusted bidding signals=][|key|] to |value|.
@@ -5503,9 +5521,9 @@ and a [=string=] |slotSizeQueryParam|:
 
 <div algorithm>
 To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding signals batcher=]
-|trustedBiddingSignalsBatcher|, [=interest group=] |ig|, a [=URL=] |signalsUrl|, an
-{{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|,
-and a [=string=] |slotSizeQueryParam|:
+|trustedBiddingSignalsBatcher|, [=interest group=] |ig|, a [=URL=] |signalsUrl|,
+an [=origin=] |scriptOrigin| an {{unsigned short}}-or-null |experimentGroupId|,
+an [=origin=] |topLevelOrigin|, and a [=string=] |slotSizeQueryParam|:
 
   1. Let |putativeKeys| be a [=set/clone=] of |trustedBiddingSignalsBatcher|'s
      [=trusted bidding signals batcher/keys=].
@@ -5529,7 +5547,7 @@ and a [=string=] |slotSizeQueryParam|:
         |putativeLengthLimit|.
   1. Otherwise:
     1. [=Fetch the current outstanding trusted signals batch=] given |trustedBiddingSignalsBatcher|,
-      |signalsUrl|, |experimentGroupId|, |topLevelOrigin|, |slotSizeQueryParam|.
+      |signalsUrl|, |scriptOrigin|, |experimentGroupId|, |topLevelOrigin|, |slotSizeQueryParam|.
     1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
       [=list/clone=] of |ig|'s [=interest group/trusted bidding signals keys=].
     1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=] to
