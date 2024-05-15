@@ -2078,23 +2078,44 @@ The <dfn http-header><code>Ad-Auction-Allowed</code></dfn> HTTP response header 
 [=structured header=] whose value must be a [=structured header/boolean=].
 
 <div algorithm>
-To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, failure, or a
-[=byte sequence=] |responseBody|, and a [=string=] |mimeType|:
+To <dfn>validate fetching response headers</dfn> given a [=response=] |response|:
+
+  1. If [=header list/getting a structured field value|getting=] [:Ad-Auction-Allowed:] and
+     "`item`" from |response|'s [=response/header list=] does not return a true value, return false.
+  1. If |response|'s [=response/status=] is not an [=ok status=], return false.
+  1. Return true.
+</div>
+
+<div algorithm>
+To <dfn>validate fetching response mime and body</dfn> given a [=response=] |response|, null,
+failure, or a [=byte sequence=] |responseBody|, and a [=string=] |mimeType|:
 
   1. If |responseBody| is null or failure, return false.
-  1. If [=header list/getting a structured field value|getting=] [:Ad-Auction-Allowed:] and
-    "`item`" from |response|'s [=response/header list=] does not return a true value, return false.
   1. Let |headerMimeType| be the result of [=header list/extracting a MIME type=] from |response|'s
     [=response/header list=].
   1. Return false if any of the following conditions hold:
     * |headerMimeType| is failure;
     * |mimeType| is "`text/javascript`" and |headerMimeType| is not a [=JavaScript MIME type=];
     * |mimeType| is "`application/json`" and |headerMimeType| is not a [=JSON MIME type=].
-  1. Let |mimeTypeCharset| be |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
-  1. Return false if any of the following conditions hold:
-    * |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and |responseBody|
-      is not [=UTF-8=] encoded;
-    * |mimeTypeCharset| is "us-ascii", and not all bytes in |responseBody| are [=ASCII bytes=].
+    * |mimeType| is "`application/wasm`" and |headerMimeType|'s [=MIME type/essence=] is not
+      "`application/wasm`".
+  1. If |mimeType| is not "`application/wasm`":
+    1. Let |mimeTypeCharset| be |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
+    1. Return false if any of the following conditions hold:
+      * |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and |responseBody|
+        is not [=UTF-8=] encoded;
+      * |mimeTypeCharset| is "us-ascii", and not all bytes in |responseBody| are [=ASCII bytes=].
+  1. Return true.
+</div>
+
+<div algorithm>
+To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, failure, or a
+[=byte sequence=] |responseBody|, and a [=string=] |mimeType|:
+
+  1. If the result of [=validating fetching response headers=] given |response| is false, then
+     return false.
+  1. If the result of [=validating fetching response mime and body=] given |response|,
+     |responseBody|, |mimeType| is false, the return false.
   1. Return true.
 </div>
 
@@ -2159,10 +2180,8 @@ To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
   1. Let |moduleObject| be null.
   1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
     a [=response=] |response| and null, failure, or a [=byte sequence=] |responseBody|:
-    1. Set |moduleObject| to failure and return, if any of the following conditions hold:
-      * |responseBody| is null or failure;
-      * [=header list/getting a structured field value|Getting=] [:Ad-Auction-Allowed:] and "`item`"
-        from |response|'s [=response/header list=] does not return a true value.
+    1. If [=validate fetching response=] with |response|, |responseBody| and "`application/wasm`"
+        returns false, set |moduleObject| to failure and return.
     1. Let |module| be the result of [=compiling a WebAssembly module=] |response|.
     1. If |module| is [=error=], set |moduleObject| to failure.
     1. Otherwise, set |moduleObject| to |module|.
