@@ -1460,7 +1460,8 @@ To <dfn>check if required seller capabilities are permitted</dfn> given an [=auc
 
 <div algorithm="generate potentially multiple bids">
 
-To <dfn>generate potentially multiple bids</dfn> given an [=ordered map=] |allTrustedBiddingSignals|, a [=string=]
+To <dfn>generate potentially multiple bids</dfn> given an [=ordered map=] |allTrustedBiddingSignals|,
+and [=origin=]-or-null |crossOriginTrustedBiddingSignalsOrigin|, a [=string=]
 |auctionSignals|, a {{BiddingBrowserSignals}} |browserSignals|, a [=string=]-or-null |perBuyerSignals|,
 a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=duration=]
 |perBuyerTimeout| in milliseconds, a [=currency tag=] |expectedCurrency|, an {{unsigned short}}
@@ -1501,9 +1502,20 @@ a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=dur
     1. If |allTrustedBiddingSignals| is an [=ordered map=] and |allTrustedBiddingSignals|[|key|]
       [=map/exists=], then [=map/set=] |trustedBiddingSignals|[|key|] to
       |allTrustedBiddingSignals|[|key|].
+  1. Let |sameOriginTrustedBiddingSignals| be null.
+  1. Let |crossOriginTrustedBiddingSignals| be null.
+  1. If |crossOriginTrustedBiddingSignalsOrigin| is null, then set |sameOriginTrustedBiddingSignals|
+     to |trustedBiddingSignals|.
+  1. Otherwise:
+     1. Set |crossOriginTrustedBiddingSignals| to a new [=ordered map=] whose [=map/keys=] are
+        [=strings=] and whose [=map/values=] are {{any}}.
+     1. Let |originKey| be the [=serialization of an origin|serialization=] given
+        |crossOriginTrustedBiddingSignalsOrigin|.
+     1. [=map/Set=] |crossOriginTrustedBiddingSignalsOrigin|[|originKey|] to |trustedBiddingSignals|.
   1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |multiBidLimit|, |ig|, |expectedCurrency|,
-    |igGenerateBid|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|, |browserSignals|,
-    |directFromSellerSignalsForBuyer|, and |perBuyerTimeout|.
+    |igGenerateBid|, |auctionSignals|, |perBuyerSignals|, |sameOriginTrustedBiddingSignals|,
+    |browserSignals|, |directFromSellerSignalsForBuyer|, |crossOriginTrustedBiddingSignals|,
+    and |perBuyerTimeout|.
 </div>
 
 <div algorithm="generate and score bids">
@@ -1665,6 +1677,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     to the result of running [=is debugging only in cooldown or lockout=] with |buyer|.
   1. [=map/For each=] |slotSizeQueryParam| → |perSlotSizeQueryParam| of |perBuyerGenerator|:
     1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perSlotSizeQueryParam|:
+      1. Let |crossOriginTrustedBiddingSignalsOrigin| be null.
+      1. If |buyer| is not [=same origin=] with |signalsUrl|, then set
+        |crossOriginTrustedBiddingSignalsOrigin| to |signalsUrl|'s [=url/origin=].
       1. Let |trustedBiddingSignalsBatcher| be a new [=trusted bidding signals batcher=].
       1. Let |fetchSignalStartTime| be |settings|'s [=environment settings object/current monotonic time=].
       1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
@@ -1692,11 +1707,16 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             [=interest group/owner=].
           1. Let |dataVersion| be |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data versions=]
              [|ig|'s [=interest group/name=]].
-          1. If |dataVersion| is not null, then [=map/set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
-          1. Otherwise, [=map/remove=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"].
+          1. [=map/remove=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"].
+          1. [=map/remove=] |browserSignals|["{{BiddingBrowserSignals/crossOriginDataVersion}}"].
+          1. If |dataVersion| is not null:
+            1. If |crossOriginTrustedBiddingSignalsOrigin| is not null, then [=map/set=]
+               |browserSignals|["{{BiddingBrowserSignals/crossOriginDataVersion}}"] to |dataVersion|.
+            1. Otherwise, [=map/set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to
+               |dataVersion|.
           1. Let « |bidsBatch|, |bidDebugReportInfo| » be the result of [=generate potentially multiple bids=] given
             |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding signals=],
-            |auctionSignals|, a [=map/clone=] of |browserSignals|,
+            |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
             |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
             |expectedCurrency|, |multiBidLimit|, |ig|, and |auctionStartTime|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
@@ -1737,7 +1757,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               [=environment settings object/current monotonic time=].
             1. Set « |generatedBids|, |bidDebugReportInfo| » to the result of [=generate potentially multiple bids=] given
               |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding signals=],
-              |auctionSignals|, a [=map/clone=] of |browserSignals|,
+              |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
               |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
               1 (for multiBidLimit), |ig|, and |auctionStartTime|.
 
@@ -3410,12 +3430,13 @@ of the following global objects:
 
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an {{unsigned short}}
-
   |multiBidLimit|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|,
   a {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null
-  |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=] |trustedBiddingSignals|,
-  a {{BiddingBrowserSignals}} |browserSignals|, a {{DirectFromSellerSignalsForBuyer}}
-  |directFromSellerSignalsForBuyer| and an integer millisecond [=duration=] |timeout|:
+  |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=]-or-null
+  |sameOriginTrustedBiddingSignals|, a {{BiddingBrowserSignals}} |browserSignals|,
+  a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|,
+  an [=ordered map=]-or-null |crossOriginTrustedBiddingSignals| and an integer millisecond
+  [=duration=] |timeout|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupBiddingScriptRunnerGlobalScope}}.
@@ -3440,14 +3461,18 @@ of the following global objects:
       |auctionSignals| if |auctionSignals| is not null, otherwise {{undefined}}.
     1. Let |perBuyerSignalsJS| be the result of [=parsing a JSON string to a JavaScript value=]
       given |perBuyerSignals| if |perBuyerSignals| is not null, otherwise {{undefined}}.
-    1. Let |trustedBiddingSignalsJS| be |trustedBiddingSignals| [=converted to ECMAScript values=].
+    1. Let |sameOriginTrustedBiddingSignalsJS| be |sameOriginTrustedBiddingSignals|
+       [=converted to ECMAScript values=].
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
-    1. Let |directFromSellerSignalsJs| be |directFromSellerSignalsForBuyer|
+    1. Let |directFromSellerSignalsJS| be |directFromSellerSignalsForBuyer|
       [=converted to ECMAScript values=].
+    1. Let |crossOriginTrustedBiddingSignalsJS| be |crossOriginTrustedBiddingSignals|
+       [=converted to ECMAScript values=].
     1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
     1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
-      « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |trustedBiddingSignalsJS|, |browserSignalsJS|,
-      |directFromSellerSignalsJs| », and |timeout|.
+      « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |sameOriginTrustedBiddingSignalsJS|,
+        |browserSignalsJS|, |directFromSellerSignalsJS|, |crossOriginTrustedBiddingSignalsJS| »,
+        and |timeout|.
     1. Let |duration| be |settings|'s [=environment settings object/current monotonic time=] minus
       |startTime| in milliseconds.
     1. If |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/priority=] is not null and not failure:
@@ -4835,6 +4860,7 @@ dictionary BiddingBrowserSignals {
   sequence<PreviousWin> prevWinsMs;
   object wasmHelper;
   unsigned long dataVersion;
+  unsigned long crossOriginDataVersion;
   boolean forDebuggingOnlyInCooldownOrLockout = false;
 };
 
