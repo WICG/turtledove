@@ -58,7 +58,8 @@ spec: RFC8941; urlPrefix: https://httpwg.org/specs/rfc8941.html
     for: structured header
       text: boolean; url: boolean
       text: integer; url: integer
-      text: boolean; url: boolean
+      text: list; url: list
+      text:string; url: string
 spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
   type: dfn
     urlPrefix: appendix/embedding.html
@@ -1061,9 +1062,9 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. If |config|["{{AuctionAdConfig/trustedScoringSignalsURL}}"] [=map/exists=]:
   1. Let |trustedScoringSignalsURL| be the result of running the [=URL parser=] on
     |config|["{{AuctionAdConfig/trustedScoringSignalsURL}}"].
-  1. If |trustedScoringSignalsURL| is failure, or it is not [=same origin=] with |auctionConfig|'s
-    [=auction config/seller=], then return failure.
-  1. [=Assert=]: |trustedScoringSignalsURL|'s [=url/scheme=] is "`https`".
+  1. If |trustedScoringSignalsURL| is failure, or |trustedScoringSignalURL|'s
+    [=url/scheme=] is not "`https`", then return failure.
+  1. XXX, this is missing  a bunch of checks!
   1. Set |auctionConfig|'s [=auction config/trusted scoring signals url=] to
     |trustedScoringSignalsURL|.
 1. If |config|["{{AuctionAdConfig/maxTrustedScoringSignalsURLLength}}"] [=map/exists=]:
@@ -1889,20 +1890,26 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     [=generated bid/ad component descriptors=]:
     1. [=list/Append=] [=URL serializer|serialized=] |adComponentDescriptor|'s [=ad descriptor/url=]
       to |adComponentRenderURLs|.
-1. Let |fullSignalsUrl| be the result of [=building trusted scoring signals url=] with |auctionConfig|'s
-  [=auction config/trusted scoring signals url=], «|renderURL|», |adComponentRenderURLs|,
-  |auctionConfig|'s [=auction config/seller experiment group id=], and |topLevelOrigin|.
+1. Let |crossOriginTrustedScoringSignalsOrigin| be null.
+1. Let |fullSignalsUrl| be null.
+1. If |auctionConfig|'s [=auction config/trusted scoring signals url=] is not null:
+  1. Let |fullSignalsUrl| be the result of [=building trusted scoring signals url=] with |auctionConfig|'s
+    [=auction config/trusted scoring signals url=], «|renderURL|», |adComponentRenderURLs|,
+    |auctionConfig|'s [=auction config/seller experiment group id=], and |topLevelOrigin|.
 
-  Implementations may batch requests by collecting render URLs and ad component render URLs
-  from multiple invocations of [=score and rank a bid=] and passing them all to a single invocation
-  of [=building trusted scoring signals url=] to get a |scoringSignalsUrl|. By employing this approach,
-  the [=string/length=] of [=URL serializer|serialized=] |scoringSignalsUrl| must not exceed the
+    Implementations may batch requests by collecting render URLs and ad component render URLs
+    from multiple invocations of [=score and rank a bid=] and passing them all to a single invocation
+    of [=building trusted scoring signals url=] to get a |scoringSignalsUrl|. By employing this approach,
+    the [=string/length=] of [=URL serializer|serialized=] |scoringSignalsUrl| must not exceed the
+    [=auction config/max trusted scoring signals url length=] of the auction. In cases where the length
+    limit is exceeded, the request must be divided into smaller pieces to comply with the length restriction.
+    However, note that a single request is always considered valid, regardless of whether its length exceeds
+    the auction's [=auction config/max trusted scoring signals url length=].
 
-  [=auction config/max trusted scoring signals url length=] of the auction. In cases where the length
-  limit is exceeded, the request must be divided into smaller pieces to comply with the length restriction.
-  However, note that a single request is always considered valid, regardless of whether its length exceeds
-  the auction's [=auction config/max trusted scoring signals url length=].
+    The network response has to be parsed to pull out the pieces relevant to each
+    [=evaluating a scoring script|evaluation of a scoring script=].
 
+<<<<<<< Updated upstream
   
   The network response has to be parsed to pull out the pieces relevant to each
   [=evaluating a scoring script|evaluation of a scoring script=].
@@ -1923,6 +1930,38 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
         [=map/exists=], then [=map/set=] |adComponentRenderURLsValue|[|adComponentRenderURL|] to
         |allTrustedScoringSignals|["`adComponentRenderURLs`"][|adComponentRenderURL|].
     1. [=map/Set=] |trustedScoringSignals|["`adComponentRenderURLs`"] to |adComponentRenderURLsValue|.
+=======
+    These requests may also begin before the script fetch, but requests cross-origin to the
+    script origin must not happen until [:Ad-Auction-Allow-Trusted-Scoring-Signals-From:] header on
+    the script is received, parsed, and determined to authorize such a fetch.
+  1. If |fullSignalsUrl| is not same [=same origin=] with |auctionConfig|'s [=auction config/seller=],
+     then:
+      1. Set |crossOriginTrustedScoringSignalsOrigin| to |fullSignalsUrl|'s [=url/origin=].
+      1. If |allowedCrossOriginTrustedScoringSignals| does not [=list/contain=] |crossOriginTrustedScoringSignalsOrigin|:
+        1. Set |crossOriginTrustedScoringSignalsOrigin| to null.
+        1. Set |fullSignalsUrl| to null.
+1. Let |sameOriginTrustedScoringSignals| be null.
+1. Let |crossOriginTrustedScoringSignals| be null.
+1. If |fullSignalsUrl| is not null:
+  1. Let |trustedScoringSignals| be null.
+  1. Let «|allTrustedScoringSignals|, ignored, |scoringDataVersion|» be the result of [=fetching
+    trusted signals=] with |fullSignalsUrl|, |auctionConfig|'s [=auction config/seller=], and false.
+  1. If |allTrustedScoringSignals| is an [=ordered map=]:
+    1. Set |trustedScoringSignals| to a new empty [=map=].
+    1. [=map/Set=] |trustedScoringSignals|["`renderURL`"] to a new empty [=map=].
+    1. If |allTrustedScoringSignals|["`renderURLs`"] [=map/exists=] and
+      |allTrustedScoringSignals|["`renderURLs`"][|renderURL|] [=map/exists=], then [=map/set=] |trustedScoringSignals|["`renderURL`"][|renderURL|] to
+      |allTrustedScoringSignals|["`renderURLs`"][|renderURL|].
+    1. If |adComponentRenderURLs| is not [=list/empty=]:
+      1. Let |adComponentRenderURLsValue| be a new empty [=map=].
+      1. If |allTrustedScoringSignals|["`adComponentRenderURLs`"] [=map/exists=], [=set/for each=]
+        |adComponentRenderURL| in |adComponentRenderURLs|:
+        1. If |allTrustedScoringSignals|["`adComponentRenderURLs`"][|adComponentRenderURL|]
+          [=map/exists=], then [=map/set=] |adComponentRenderURLsValue|[|adComponentRenderURL|] to
+          |allTrustedScoringSignals|["`adComponentRenderURLs`"][|adComponentRenderURL|].
+      1. [=map/Set=] |trustedScoringSignals|["`adComponentRenderURLs`"] to |adComponentRenderURLsValue|.
+  1. XXX --- cross or main. Do not wrap null. Actually, is that OK in the other case?
+>>>>>>> Stashed changes
 1. Let |adMetadata| be |generatedBid|'s [=generated bid/ad=].
 1. Let |bidValue| be |generatedBid|'s [=generated bid/bid=].
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null, then set |bidValue| to
@@ -1944,7 +1983,11 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     <dd>The result of [=serializing a currency tag=] with |generatedBid|'s [=generated bid/bid=]'s
       [=bid with currency/currency=]
     <dt>{{ScoringBrowserSignals/dataVersion}}
-    <dd>|scoringDataVersion| if it is not null, {{undefined}} otherwise
+    <dd>|scoringDataVersion| if it is not null and |crossOriginTrustedScoringSignalsOrigin| is null,
+        unset otherwise.
+    <dt>{{ScoringBrowserSignals/crossOriginDataVersion}}
+    <dd>|scoringDataVersion| if it is not null and |crossOriginTrustedScoringSignalsOrigin| is not
+        null, unset otherwise.
     <dt>{{ScoringBrowserSignals/adComponents}}
     <dd>|generatedBid|'s [=generated bid/ad component descriptors=] [=converted to a string sequence=]
     <dt>{{ScoringBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}
@@ -2122,6 +2165,9 @@ To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, 
      |responseBody|, |mimeType| is false, the return false.
   1. Return true.
 </div>
+
+The <dfn http-header><code>Ad-Auction-Allow-Trusted-Scoring-Signals-From</code></dfn> HTTP response header is a
+[=structured header=] whose value must be a [=structured header/list=] of [=structured header/strings=].
 
 <div algorithm>
 To <dfn>fetch script</dfn> given a [=URL=] |url|:
@@ -4891,6 +4937,7 @@ dictionary ScoringBrowserSignals {
   required DOMString bidCurrency;
 
   unsigned long dataVersion;
+  unsigned long crossOriginDataVersion;
   sequence<USVString> adComponents;
   boolean forDebuggingOnlyInCooldownOrLockout = false;
 };
@@ -5245,10 +5292,6 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
     Provide a mechanism for making real-time data (information about a specific [=ad creative=])
     available for use at [=evaluate a scoring script|scoring=] time, e.g. the results of some ad
     scanning system.
-    <p class="note">
-      When non-null, the [=auction config/trusted scoring signals url=]'s [=origin=] will always be
-      [=same origin=] with [=auction config/seller=].
-    </p>
   : <dfn>max trusted scoring signals url length</dfn>
   :: A {{long}} integer, initially 0. Indicates the maximum trusted scoring signals fetch url length
     for the auction config. 0 means no limit.
