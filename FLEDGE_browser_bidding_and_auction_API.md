@@ -17,21 +17,18 @@ const auctionBlob = navigator.getInterestGroupAdAuctionData({
   // ‘seller’ works the same as for runAdAuction.
   'seller': 'https://www.example-ssp.com',
   // 'coordinatorOrigin' of the TEE coordinator, defaults to
-  //'https://publickeyservice.gcp.privacysandboxservices.com' (for now). Used to
-  // select which key to use for the encrypted blob. Will eventually be
-  // required.
+  //'https://publickeyservice.pa.gcp.privacysandboxservices.com/' (for now). Used to
+  // select which coordinator to use for fetching the key used to encrypt the request
+  // blob. Will eventually be required.
   'coordinatorOrigin':
-    'https://publickeyservice.gcp.privacysandboxservices.com',
-  // 'requestSize' the maximum size of the returned request (optional). If not
-  // specified the returned blob is padded to one of 7 specific sizes. If
-  // perBuyerConfig options are provided, then this will also be the minimum
-  // size. If not specified when perBuyerConfig is provided, the sum of the
-  // 'targetSize' for the perBuyerConfigs will be used.
+    'https://publickeyservice.pa.gcp.privacysandboxservices.com/',
+  // 'requestSize' the affects the size of the returned request (optional).
   'requestSize': 51200,
   // 'perBuyerConfig' specifies per-buyer options for size optimizations when
-  // constructing the blob.
+  // constructing the blob (optional).
   'perBuyerConfig': {'https://buyer1.origin.example.com': {
-      // 'targetSize' specifies the size of the blob to devote to this buyer.
+      // 'targetSize' specifies the size of the blob to devote to this buyer
+      // (optional).
       "targetSize": 8192,
     },
     'https://buyer2.origin.example.com': {}
@@ -43,16 +40,8 @@ The `seller` field will be checked to ensure it matches the `seller` specified
 in the AuctionConfig passed to `runAdAuction()` with the response. The
 `coordinatorOrigin` selects which set of TEE keys should be used to encrypt this
 request. The `coordinatorOrigin` must be a coordinator that is known to Chrome.
-The `requestSize` and `perBuyerConfig` fields allow some control over how the
-request blob is constructed. The `requestSize` field specifies a maximum size
-for the returned blob. If the `perBuyerConfig` does not specify any buyers then
-the returned blob will either be one of the 7 specific size buckets or the
-`requestSize`, whichever is smaller. If the `perBuyerConfig` is specified then
-the blob will only include the interest groups for the buyers specifically
-listed and the returned blob will always be `requestSize` in size, or the sum
-of the `targetSize` of each buyer if the `requestSize` is not specified. Entries
-in the `perBuyerConfig` that do not specify the `targetSize` will be equally
-allocated any remaining space in the request.
+The `requestSize` and `perBuyerConfig` fields are described in more detail in
+the [Request Size and Configuration](#request-size-and-configuration) section below.
 
 The returned `auctionBlob` is a Promise that will resolve to an `AdAuctionData` object. This object contains `requestId` and `request` fields.
 The `requestId` contains a UUID that needs to be presented to `runAdAuction()` along with the response.
@@ -159,6 +148,47 @@ const myAuctionConfig = {
 
 Note that since the `serverResponse` field in the config is a promise it is
 possible to run the on-device auction in parallel with the B&A auction.
+
+## Request Size and Configuration
+
+### Request Size Controls
+The `requestSize` field provided to `navigator.getInterestGroupAdAuctionData()`
+can be used to specify the maximum size of the returned request. If the
+`perBuyerConfig` field is not present (or is empty) then the `requestSize` field
+sets the maximum size for the returned encrypted blob. If the blob fits into a
+size bucket smaller than `requestSize` then that size will be used instead.
+
+If the `perBuyerConfig` field is specified and non-empty, the returned encrypted
+blob will be exactly `requestSize` bytes long unless there was an error. If an error
+occured then the returned blob will be 0 size and the function may throw an error.
+
+### Buyer Controls
+If the `perBuyerConfig` field is specified then the blob will only include the
+interest groups for the buyers specifically listed. If `requestSize` is not
+specified then the sum of the `targetSize` of each buyer will be used for the
+`requestSize`. Interest groups for each buyer will be added to the request -- in
+decreasing order by the interest group's `priority` field -- until the next
+interest group does not fit.
+
+Space can be allocated between different buyers in several different modes:
+
+1. Equally - Space is divided equally between buyers when `targetSize` is not specified.
+
+2. Proportionally - Space is assigned to buyers using `targetSize` as the
+   weight. So a buyer with a `targetSize` of 2 will can use twice as much space
+   as a buyer with a `targetSize` of 1. If all buyers have a `targetSize`
+   specified then proportional mode is used.
+
+3. Fixed/Mixed - Space is first allocated to buyers with `targetSize` specified.
+   They get up to `targetSize` bytes. The remaining space is divided equally
+   between the buyers that did not have `targetSize` specified.
+
+The browser will process first process buyers with `targetSize` specified before
+processing buyers without that field specified. Within either of these groups
+buyers are processed in random order. Space that was allocated to a buyer but
+was not used is divided up among remaining buyers based on the active allocation
+mode. The browser may, as an optimization, calculate and use the maximum length
+used by a buyer to better inform its allocation strategy.
 
 ## Privacy Considerations
 
