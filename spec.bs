@@ -1794,7 +1794,7 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dt>{{GenerateBidInterestGroup/enableBiddingSignalsPrioritization}}
       <dd>|ig|'s [=interest group/enable bidding signals prioritization=]
       <dt>{{GenerateBidInterestGroup/priorityVector}}
-      <dd>|ig|'s [=interest group/priority vector=] if not null, otherwise {{undefined}}
+      <dd>|ig|'s [=interest group/priority vector=] if not null, otherwise not set.
       <dt>{{GenerateBidInterestGroup/executionMode}}
       <dd>|ig|'s [=interest group/execution mode=]
       <dt>{{GenerateBidInterestGroup/biddingLogicURL}}
@@ -1806,7 +1806,7 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsURL}}
       <dd>The [=serialize a URL|serialization=] of |ig|'s [=interest group/trusted bidding signals url=]
       <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}}
-      <dd>|ig|'s [=interest group/trusted bidding signals keys=]
+      <dd>|ig|'s [=interest group/trusted bidding signals keys=], if not null, otherwise not set.
       <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsSlotSizeMode}}
       <dd>|ig|'s [=interest group/trusted bidding signals slot size mode=]
       <dt>{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}
@@ -4378,7 +4378,8 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 
     Note: Each of [=interest group/trusted bidding signals slot size mode=]'s value represents a
     {{long}} integer, so 4 bytes.
-1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
+1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null,
+   [=list/for each=] |key| of it:
   1. The [=string/length=] of |key|.
 1. If |ig|'s [=interest group/max trusted bidding signals url length=] is not null:
   1. 4, which is the size of |ig|'s [=interest group/max trusted bidding signals url length=].
@@ -5034,7 +5035,7 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
       [=same origin=] with [=interest group/owner=].
     </p>
   : <dfn>trusted bidding signals keys</dfn>
-  :: A [=list=] of [=strings=]. See [=building trusted bidding signals url=].
+  :: Null or a [=list=] of [=strings=]. See [=building trusted bidding signals url=].
   : <dfn>trusted bidding signals slot size mode</dfn>
   :: "`none`", "`slot-size`" or "`all-slots-requested-sizes`". Initially "`none`". Each value
     reprensents a {{long}} integer. See [=calculate the ad slot size query param=].
@@ -5518,8 +5519,9 @@ and a [=string=] |slotSizeQueryParam|:
       [|ig|'s [=interest group/name=]] to true.
     1. Return.
   1. [=map/Set=] |trustedBiddingSignalsBatcher|'s
-     [=trusted bidding signals batcher/no signals flags=][|ig|'s [=interest group/name=]] to
-     [=interest group/trusted bidding signals keys=] [=map/is empty=].
+     [=trusted bidding signals batcher/no signals flags=][|ig|'s [=interest group/name=]] to true
+     if |ig|'s [=interest group/trusted bidding signals keys=] is null or [=map/is empty=];
+     otherwise set it to false.
 
      Note: An interest group with no trusted signals keys requests would still fetch and process
      per-interest group data like priorityVector and
@@ -5535,7 +5537,8 @@ and a [=string=] |slotSizeQueryParam|:
     |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=],
     then set |putativeLengthLimit| to |trustedBiddingSignalsBatcher|'s
     [=trusted bidding signals batcher/length limit=].
-  1. [=list/Extend=] |putativeKeys| with |ig|'s [=interest group/trusted bidding signals keys=].
+  1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, [=list/extend=]
+     |putativeKeys| with |ig|'s [=interest group/trusted bidding signals keys=].
   1. [=list/Append=] |ig|'s [=interest group/name=] to |putativeIgNames|.
   1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
     |signalsUrl|, |putativeKeys|, |putativeIgNames|, |experimentGroupId|, |topLevelOrigin|, and
@@ -5549,8 +5552,11 @@ and a [=string=] |slotSizeQueryParam|:
   1. Otherwise:
     1. [=Fetch the current outstanding trusted signals batch=] given |trustedBiddingSignalsBatcher|,
       |signalsUrl|, |experimentGroupId|, |topLevelOrigin|, |slotSizeQueryParam|.
-    1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
+    1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, set
+      |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
       [=list/clone=] of |ig|'s [=interest group/trusted bidding signals keys=].
+    1. Otherwise, set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
+       new [=list=].
     1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=] to
         « |ig|'s [=interest group/name=] ».
     1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=] to
