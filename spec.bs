@@ -1493,7 +1493,7 @@ a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=dur
     1. [=map/Set=] |prevWinIDL|["{{PreviousWin/adJSON}}"] to |prevWin|'s [=previous win/ad json=].
     1. [=list/Append=] |prevWinIDL| to |prevWins|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/prevWinsMs}}"] to |prevWins|.
-  1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
+  1. Let « |biddingScript|, ignored » be the result of [=fetching script=] with |ig|'s
     [=interest group/bidding url=].
   1. If |biddingScript| is failure, return failure.
   1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
@@ -1534,8 +1534,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 |bidDebugReportInfoList|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |auctionStartTime| be the [=current wall time=].
-1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
-  [=auction config/decision logic url=].
+1. Let « |decisionLogicScript|, |allowedCrossOriginTrustedScoringSignals| » be the result of
+  [=fetching script=] with |auctionConfig|'s [=auction config/decision logic url=].
 1. If |decisionLogicScript| is failure, return null.
 1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. Let « |bidGenerators|, |negativeTargetInfo| » be the result of running
@@ -1567,12 +1567,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
       [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
       [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicScript|,
-      null, "top-level-auction", null, and |topLevelOrigin|.
+      |allowedCrossOriginTrustedScoringSignals|, null, "top-level-auction", null, and |topLevelOrigin|.
     1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
       is not null, then run [=score and rank a bid=] with |auctionConfig|,
       |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
-      |leadingBidInfo|, |decisionLogicScript|, null, "top-level-auction", null,
-      and |topLevelOrigin|.
+      |leadingBidInfo|, |decisionLogicScript|, |allowedCrossOriginTrustedScoringSignals|, null,
+      "top-level-auction", null, and |topLevelOrigin|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
   1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1635,8 +1635,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
   1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
-    |decisionLogicScript|, null, |auctionLevel|, |componentAuctionExpectedCurrency|, and
-    |topLevelOrigin|.
+    |decisionLogicScript|, |allowedCrossOriginTrustedScoringSignals|, null, |auctionLevel|,
+    |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
   1. Decrement |pendingAdditionalBids| by 1.
 1. Let |settings| be |global|'s [=relevant settings object=].
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
@@ -1793,7 +1793,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
             1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
-              |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
+              |decisionLogicScript|, |allowedCrossOriginTrustedScoringSignals|,
+              |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
@@ -2160,6 +2161,21 @@ The <dfn http-header><code>Ad-Auction-Allow-Trusted-Scoring-Signals-From</code><
 [=structured header=] whose value must be a [=structured header/list=] of [=structured header/strings=].
 
 <div algorithm>
+To <dfn>parse allowed trusted scoring signals origins</dfn> given a [=header list=] |headerList|:
+
+  1. Let |parsedHeader| be the result of [=header list/getting a structured field value=]
+    [:Ad-Auction-Allow-Trusted-Scoring-Signals-From:] and "`list`" from |headerList|.
+  1. If |parsedHeader| is null, return an empty [=list=].
+  1. Let |result| be a new [=list=] of [=origins=].
+  1. [=list/For each=] |entry| in |parsedHeader|:
+    1. If |entry| is not a [=string=], return an empty [=list=].
+    1. Let |parsedEntry| be the result of [=parsing an https origin=] on |entry|.
+    1. If |parsedEntry| is failure, return an empty [=list=].
+    1. [=list/Append=] |parsedEntry| to |result|.
+  1. Return |result|.
+</div>
+
+<div algorithm>
 To <dfn>fetch script</dfn> given a [=URL=] |url|:
   1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
@@ -2183,14 +2199,17 @@ To <dfn>fetch script</dfn> given a [=URL=] |url|:
     Issue: Stop using "`no-cors`" mode where possible
     (<a href="https://github.com/WICG/turtledove/issues/667">WICG/turtledove#667</a>).
   1. Let |script| be null.
+  1. Let |allowedCrossOriginTrustedScoringSignals| be an empty [=list=].
   1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
     [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
     and null, failure, or a [=byte sequence=] |responseBody|:
     1. If [=validate fetching response=] with |response|, |responseBody| and "`text/javascript`"
       returns false, set |script| to failure and return.
     1. Set |script| to |responseBody|.
+    1. Set |allowedCrossOriginTrustedScoringSignals| to the result of [=parsing allowed trusted
+      scoring signals origins=] given |response|'s [=response/header list=].
   1. Wait for |script| to be set.
-  1. Return |script|.
+  1. Return « |script|, |allowedCrossOriginTrustedScoringSignals| ».
 </div>
 
 <div algorithm>
@@ -2566,7 +2585,7 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
      given |winner|'s [=generated bid/interest group=] and |igAd| is true, then [=map/set=]
      |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s
      [=interest group ad/buyer and seller reporting ID=].
-  1. Let |sellerReportingScript| be the result of [=fetching script=] with |config|'s
+  1. Let « |sellerReportingScript|, ignored » be the result of [=fetching script=] with |config|'s
     [=auction config/decision logic url=].
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored » be the result of
     [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`", |config|'s
@@ -2635,7 +2654,7 @@ a {{ReportingBrowserSignals}} |browserSignals|, and a [=direct from seller signa
       |igAd|'s [=interest group ad/buyer reporting ID=].
     1. Otherwise, [=map/Set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/interestGroupName}}"]
       to |winner|'s [=generated bid/interest group=] [=interest group/name=].
-  1. Let |buyerReportingScript| be the result of [=fetching script=] with |winner|'s
+  1. Let « |buyerReportingScript|, ignored » be the result of [=fetching script=] with |winner|'s
     [=generated bid/interest group=]'s [=interest group/bidding url=].
   1. Let |reportFunctionName| be "`reportWin`".
   1. If |winner|'s [=generated bid/provided as additional bid=] is true:
