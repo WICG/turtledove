@@ -2209,13 +2209,14 @@ To <dfn>fetch script</dfn> given a [=URL=] |url|:
       scoring signals origins=] given |response|'s [=response/header list=].
     1. Let |bodyStream| be |response|’s [=response/body=]’s [=body/stream=].
     1. Let |bodyReader| be result of [=ReadableStream/getting a reader=] from |bodyStream|.
-    1. Let |bodyReadPromise| be the result of [=ReadableStreamDefaultReader/reading all bytes=]
-      from |bodyReader|.
-    1. [=Upon fulfillment=] of |bodyReadPromise| with a [=byte sequence=] |responseBody|:
+    1. Let |successSteps|, given a a [=byte sequence=] |responseBody| be:
       1. If [=validate fetching response mime and body=] with |response|, |responseBody| and
-        "`text/javascript`" returns false, set |script| to failure and return.
-      1. Set |script| to |responseBody|
-    1. [=Upon rejection=] of |bodyReadPromise|, set |script| to failure.
+        "`text/javascript`" returns false, set |script| to failure.
+      1. Otherwise, set |script| to |responseBody|.
+    1. Let |failureSteps|, given an [=exception=] <var ignore>e</var> be:
+      1. Set |script| to failure.
+    1. [=ReadableStreamDefaultReader/Read all bytes=] from |bodyReader|, given |successSteps|
+      and |failureSteps|.
   1. Wait for |script| to be set.
   1. Return « |script|, |allowedCrossOriginTrustedScoringSignals| ».
 </div>
