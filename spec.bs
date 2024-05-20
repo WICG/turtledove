@@ -2201,13 +2201,21 @@ To <dfn>fetch script</dfn> given a [=URL=] |url|:
   1. Let |script| be null.
   1. Let |allowedCrossOriginTrustedScoringSignals| be an empty [=list=].
   1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
-    [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
-    and null, failure, or a [=byte sequence=] |responseBody|:
-    1. If [=validate fetching response=] with |response|, |responseBody| and "`text/javascript`"
-      returns false, set |script| to failure and return.
-    1. Set |script| to |responseBody|.
+    [=fetch/processResponse=] set to the following steps given a [=response=] |response|:
+    1. If the result of [=validating fetching response headers=] given |response| is false,
+      then set |script| to failure and return.
+    1. TODO during review: The above failure should abort the fetch.
     1. Set |allowedCrossOriginTrustedScoringSignals| to the result of [=parsing allowed trusted
       scoring signals origins=] given |response|'s [=response/header list=].
+    1. Let |bodyStream| be |response|’s [=response/body=]’s [=body/stream=].
+    1. Let |bodyReader| be result of [=ReadableStream/getting a reader=] from |bodyStream|.
+    1. Let |bodyReadPromise| be the result of [=ReadableStreamDefaultReader/reading all bytes=]
+      from |bodyReader|.
+    1. [=Upon fulfillment=] of |bodyReadPromise| with a [=byte sequence=] |responseBody|:
+      1. If [=validate fetching response mime and body=] with |response|, |responseBody| and
+        "`text/javascript`" returns false, set |script| to failure and return.
+      1. Set |script| to |responseBody|
+    1. [=Upon rejection=] of |bodyReadPromise|, set |script| to failure.
   1. Wait for |script| to be set.
   1. Return « |script|, |allowedCrossOriginTrustedScoringSignals| ».
 </div>
