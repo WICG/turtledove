@@ -1943,7 +1943,14 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
           [=map/exists=], then [=map/set=] |adComponentRenderURLsValue|[|adComponentRenderURL|] to
           |allTrustedScoringSignals|["`adComponentRenderURLs`"][|adComponentRenderURL|].
       1. [=map/Set=] |trustedScoringSignals|["`adComponentRenderURLs`"] to |adComponentRenderURLsValue|.
-  1. XXX --- cross or main. Do not wrap null. Actually, is that OK in the other case?
+    1. If |crossOriginTrustedScoringSignalsOrigin| is null, set |sameOriginTrustedScoringSignals|
+      to |trustedScoringSignals|.
+    1. Otherwise:
+      1. Set |crossOriginTrustedScoringSignals| to a new [=ordered map=] whose [=map/keys=] are
+          [=strings=] and whose [=map/values=] are {{any}}.
+      1. Let |originKey| be the [=serialization of an origin|serialization=] given
+          |crossOriginTrustedScoringSignalsOrigin|.
+      1. [=map/Set=] |crossOriginTrustedScoringSignals|[|originKey|] to |trustedScoringSignals|.
 1. Let |adMetadata| be |generatedBid|'s [=generated bid/ad=].
 1. Let |bidValue| be |generatedBid|'s [=generated bid/bid=].
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null, then set |bidValue| to
@@ -1979,8 +1986,8 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
 1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl| » be the result of
   [=evaluating a scoring script=] with |decisionLogicScript|, |adMetadata|,
   |bidValue|'s [=bid with currency/value=], |auctionConfig|'s [=auction config/config idl=],
-  |trustedScoringSignals|, |browserSignals|, |directFromSellerSignalsForSeller|, and
-  |auctionConfig|'s [=auction config/seller timeout=].
+  |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals| |browserSignals|,
+  |directFromSellerSignalsForSeller|, and |auctionConfig|'s [=auction config/seller timeout=].
 1. If |auctionLevel| is "top-level-auction":
   1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug loss report url=] to
     |debugLossReportUrl|.
@@ -3556,21 +3563,25 @@ of the following global objects:
 
 <div algorithm>
   To <dfn>evaluate a scoring script</dfn> given a [=string=] |script|, a [=string=] |adMetadata|,
-  a {{double}} |bidValue|, an {{AuctionAdConfig}} |auctionConfigIDL|, an [=ordered map=]
-  |trustedScoringSignals|, a {{ScoringBrowserSignals}} |browserSignals|, a
-  {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, and an integer
-  millisecond [=duration=] |timeout|:
+  a {{double}} |bidValue|, an {{AuctionAdConfig}} |auctionConfigIDL|, an [=ordered map=]-or-null
+  |sameOriginTrustedScoringSignals|, an [=ordered map=]-or-null |crossOriginTrustedScoringSignals|,
+  {{ScoringBrowserSignals}} |browserSignals|, a {{DirectFromSellerSignalsForSeller}}
+  |directFromSellerSignalsForSeller|, and an integer millisecond [=duration=] |timeout|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupScoringScriptRunnerGlobalScope}}.
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
     1. Let |auctionConfigJS| be |auctionConfigIDL| [=converted to ECMAScript values=].
-    1. Let |trustedScoringSignalsJS| be |trustedScoringSignals| [=converted to ECMAScript values=].
+    1. Let |sameOriginTrustedScoringSignalsJS| be |sameOriginTrustedScoringSignals|
+       [=converted to ECMAScript values=].
+    1. Let |crossOriginTrustedScoringSignalsJS| be |crossOriginTrustedScoringSignals|
+       [=converted to ECMAScript values=].
     1. Let |directFromSellerSignalsJs| be |directFromSellerSignalsForSeller|
       [=converted to ECMAScript values=].
     1. Let |scoreAdResult| be the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
-      «|adMetadata|, |bidValue|, |auctionConfigJS|, |trustedScoringSignalsJS|, |browserSignalsJS|,
-      |directFromSellerSignalsJs|», and |timeout|.
+      «|adMetadata|, |bidValue|, |auctionConfigJS|, |sameOriginTrustedScoringSignalsJS|,
+      |browserSignalsJS|, |directFromSellerSignalsJs|, |crossOriginTrustedScoringSignalsJS|»,
+      and |timeout|.
     1. Let |debugWinReportUrl| be |global|'s
       [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] if it's not
       failure, null otherwise.
