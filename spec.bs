@@ -66,6 +66,8 @@ spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
 spec: WebAssembly-js-api; urlPrefix: https://webassembly.github.io/spec/js-api/
   type: dfn
     text: compiling a WebAssembly module; url: #compile-a-webassembly-module
+  type: dfn
+    text: compiling a potential WebAssembly response; url: #compile-a-potential-webassembly-response
 spec: WebIDL; urlPrefix: https://webidl.spec.whatwg.org/
   type: dfn
     text: convert a Web IDL arguments list to an ECMAScript arguments list; url: #web-idl-arguments-list-converting
@@ -2097,8 +2099,13 @@ failure, or a [=byte sequence=] |responseBody|, and a [=string=] |mimeType|:
     * |headerMimeType| is failure;
     * |mimeType| is "`text/javascript`" and |headerMimeType| is not a [=JavaScript MIME type=];
     * |mimeType| is "`application/json`" and |headerMimeType| is not a [=JSON MIME type=].
-    * |mimeType| is "`application/wasm`" and |headerMimeType|'s [=MIME type/essence=] is not
+    * |mimeType| is "`application/wasm`" and the result of [=header list/getting=] "`Content-Type`"
+      from |response|'s [=response/header list=] is null or not [=byte-case-insensitive=] equal to
       "`application/wasm`".
+
+      Note: This was intended to match the behavior of [=compiling a potential WebAssembly
+      response=], but ended up more restrictive of whitespace.
+
   1. If |mimeType| is not "`application/wasm`":
     1. Let |mimeTypeCharset| be |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
     1. Return false if any of the following conditions hold:
@@ -2115,7 +2122,7 @@ To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, 
   1. If the result of [=validating fetching response headers=] given |response| is false, then
      return false.
   1. If the result of [=validating fetching response mime and body=] given |response|,
-     |responseBody|, |mimeType| is false, the return false.
+     |responseBody|, |mimeType| is false, then return false.
   1. Return true.
 </div>
 
