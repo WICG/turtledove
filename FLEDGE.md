@@ -383,8 +383,8 @@ const myAuctionConfig = {
   'perBuyerMultiBidLimits': {'https://example.com': 10, '*': 5},
   'sellerCurrency:' : 'CAD',
   'reportingTimeout' : 200,
-  'deprecatedRenderURLReplacements':{{'${SELLER}':'exampleSSP'},
-                                    {'%%SELLER_ALT%%':'exampleSSP'}},
+  'deprecatedRenderURLReplacements':{'${SELLER}':'exampleSSP',
+                                    '%%SELLER_ALT%%':'exampleSSP'},
   'componentAuctions': [
     {'seller': 'https://www.some-other-ssp.com',
       'decisionLogicURL': ...,
