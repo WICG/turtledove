@@ -1450,8 +1450,8 @@ To <dfn>check if required seller capabilities are permitted</dfn> given an [=auc
 
 <div algorithm="generate potentially multiple bids">
 
-To <dfn>generate potentially multiple bids</dfn> given an [=ordered map=] |allTrustedBiddingSignals|, a [=string=]
-|auctionSignals|, a {{BiddingBrowserSignals}} |browserSignals|, a [=string=]-or-null |perBuyerSignals|,
+To <dfn>generate potentially multiple bids</dfn> given an [=ordered map=]-or-null |allTrustedBiddingSignals|,
+a [=string=] |auctionSignals|, a {{BiddingBrowserSignals}} |browserSignals|, a [=string=]-or-null |perBuyerSignals|,
 a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=duration=]
 |perBuyerTimeout| in milliseconds, a [=currency tag=] |expectedCurrency|, an {{unsigned short}}
 
@@ -1485,12 +1485,14 @@ a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=dur
       [=interest group/bidding wasm helper url=].
     1. If |wasmModuleObject| is not failure, then [=map/set=]
       |browserSignals|["{{BiddingBrowserSignals/wasmHelper}}"] to |wasmModuleObject|.
-  1. Let |trustedBiddingSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and
-    whose [=map/values=] are {{any}}.
-  1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
-    1. If |allTrustedBiddingSignals| is an [=ordered map=] and |allTrustedBiddingSignals|[|key|]
-      [=map/exists=], then [=map/set=] |trustedBiddingSignals|[|key|] to
-      |allTrustedBiddingSignals|[|key|].
+  1. Let |trustedBiddingSignals| be null.
+  1. If |allTrustedBiddingSignals| is not null:
+    1. [=Assert=] that |ig|'s [=interest group/trusted bidding signals keys=] is not null.
+    1. Set |trustedBiddingSignals| to an [=ordered map=] whose [=map/keys=] are [=strings=] and
+      whose [=map/values=] are {{any}}.
+    1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
+      1. If |allTrustedBiddingSignals|[|key|] [=map/exists=], then [=map/set=]
+        |trustedBiddingSignals|[|key|] to |allTrustedBiddingSignals|[|key|].
   1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |multiBidLimit|, |ig|, |expectedCurrency|,
     |igGenerateBid|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|, |browserSignals|,
     |directFromSellerSignalsForBuyer|, and |perBuyerTimeout|.
@@ -1680,13 +1682,17 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Let |directFromSellerSignalsForBuyer| be the result of running
             [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and |ig|'s
             [=interest group/owner=].
-          1. Let |dataVersion| be |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data versions=]
-             [|ig|'s [=interest group/name=]].
+          1. Let |dataVersion| be null.
+          1. Let |allTrustedBiddingSignals| be an [=ordered map=]-or-null, initially null.
+          1. If |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/no signals flags=]
+             [|ig|'s [=interest group/name=]] is false:
+            1. Set |dataVersion| to |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data versions=]
+               [|ig|'s [=interest group/name=]].
+            1. Set |allTrustedBiddingSignals| to [=trusted bidding signals batcher/all trusted bidding signals=].
           1. If |dataVersion| is not null, then [=map/set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
           1. Otherwise, [=map/remove=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"].
           1. Let « |bidsBatch|, |bidDebugReportInfo| » be the result of [=generate potentially multiple bids=] given
-            |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding signals=],
-            |auctionSignals|, a [=map/clone=] of |browserSignals|,
+            |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
             |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
             |expectedCurrency|, |multiBidLimit|, |ig|, and |auctionStartTime|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
@@ -1726,8 +1732,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. Let |generateBidStartTime| be |settings|'s
               [=environment settings object/current monotonic time=].
             1. Set « |generatedBids|, |bidDebugReportInfo| » to the result of [=generate potentially multiple bids=] given
-              |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding signals=],
-              |auctionSignals|, a [=map/clone=] of |browserSignals|,
+              |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
               |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
               1 (for multiBidLimit), |ig|, and |auctionStartTime|.
 
@@ -1790,7 +1795,7 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dt>{{GenerateBidInterestGroup/enableBiddingSignalsPrioritization}}
       <dd>|ig|'s [=interest group/enable bidding signals prioritization=]
       <dt>{{GenerateBidInterestGroup/priorityVector}}
-      <dd>|ig|'s [=interest group/priority vector=] if not null, otherwise {{undefined}}
+      <dd>|ig|'s [=interest group/priority vector=] if not null, otherwise not set.
       <dt>{{GenerateBidInterestGroup/executionMode}}
       <dd>|ig|'s [=interest group/execution mode=]
       <dt>{{GenerateBidInterestGroup/biddingLogicURL}}
@@ -1802,7 +1807,7 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsURL}}
       <dd>The [=serialize a URL|serialization=] of |ig|'s [=interest group/trusted bidding signals url=]
       <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}}
-      <dd>|ig|'s [=interest group/trusted bidding signals keys=]
+      <dd>|ig|'s [=interest group/trusted bidding signals keys=], if not null, otherwise not set.
       <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsSlotSizeMode}}
       <dd>|ig|'s [=interest group/trusted bidding signals slot size mode=]
       <dt>{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}
@@ -2185,7 +2190,7 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
     1. Set |signals| to the result of [=parsing JSON bytes to an Infra value=] |responseBody|.
   1. Wait for |signals| to be set.
   1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return « null,
-    null ».
+    null, null ».
   1. If |formatVersion| is 2:
     1. If |signals|["`keys`"] does not [=map/exist=], return « null, null ».
     1. Set |signals| to |signals|["`keys`"].
@@ -3380,12 +3385,12 @@ of the following global objects:
 
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an {{unsigned short}}
-
   |multiBidLimit|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|,
   a {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null
-  |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=] |trustedBiddingSignals|,
-  a {{BiddingBrowserSignals}} |browserSignals|, a {{DirectFromSellerSignalsForBuyer}}
-  |directFromSellerSignalsForBuyer| and an integer millisecond [=duration=] |timeout|:
+  |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=]-or-null
+  |trustedBiddingSignals|, a {{BiddingBrowserSignals}} |browserSignals|,
+  a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer| and an integer millisecond
+  [=duration=] |timeout|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupBiddingScriptRunnerGlobalScope}}.
@@ -4374,7 +4379,8 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 
     Note: Each of [=interest group/trusted bidding signals slot size mode=]'s value represents a
     {{long}} integer, so 4 bytes.
-1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
+1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null,
+   [=list/for each=] |key| of it:
   1. The [=string/length=] of |key|.
 1. If |ig|'s [=interest group/max trusted bidding signals url length=] is not null:
   1. 4, which is the size of |ig|'s [=interest group/max trusted bidding signals url length=].
@@ -5030,7 +5036,7 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
       [=same origin=] with [=interest group/owner=].
     </p>
   : <dfn>trusted bidding signals keys</dfn>
-  :: Null or a [=list=] of [=string=]. See [=building trusted bidding signals url=].
+  :: Null or a [=list=] of [=strings=]. See [=building trusted bidding signals url=].
   : <dfn>trusted bidding signals slot size mode</dfn>
   :: "`none`", "`slot-size`" or "`all-slots-requested-sizes`". Initially "`none`". Each value
     reprensents a {{long}} integer. See [=calculate the ad slot size query param=].
@@ -5398,8 +5404,9 @@ To <dfn>look up per-buyer multi-bid limit</dfn> given an [=auction config=] |auc
 <h3 id=bid-generators>Bid generator</h3>
 
 A <dfn>per buyer bid generator</dfn> is an [=ordered map=] whose [=map/keys=] are [=URLs=]
-representing [=interest group/trusted bidding signals urls=], and whose [=map/values=] are
-[=per signals url bid generators=].
+or null representing [=interest group/trusted bidding signals urls=], and whose [=map/values=] are
+[=per signals url bid generators=]. The key of null is used for [=interest groups=] that do not
+specify a [=interest group/trusted bidding signals url=].
 
 A <dfn>per signals url bid generator</dfn> is an [=ordered map=] whose [=map/keys=] are [=origins=]
 representing [=interest group/joining origins=], and whose [=map/values=] are [=lists=] of
@@ -5417,9 +5424,13 @@ into smaller number of fetches. It's a [=struct=] with the following [=struct/it
   : <dfn>all per interest group data</dfn>
   :: An [=ordered map=] whose [=map/keys=] are [=interest group/name=] [=strings=] and whose
      [=map/values=] are [=bidding signals per interest group data=].
+  : <dfn>no signals flags</dfn>
+  :: An [=ordered map=] whose [=map/keys=] are [=interest group/name=] [=strings=] and whose
+     [=map/values=] are {{boolean}}s. This is set if given interest group did not request any
+     trusted bidding signals keys or if its trusted signals fetch failed.
   : <dfn>data versions</dfn>
-  :: An [=ordered map=] who [=map/keys=] are [=strings=] and [=map/values=] are
-    {{unsigned long}} or null. This contains data version returned by a fetch that provided the
+  :: An [=ordered map=] who [=map/keys=] are [=interest group/name=] [=strings=] and [=map/values=]
+    are {{unsigned long}} or null. This contains data version returned by a fetch that provided the
     values for a given interest group name.
   : <dfn>keys</dfn>
   :: An [=ordered set=] of [=strings=]. Describes the keys collected to be fetched in the current
@@ -5473,21 +5484,29 @@ To <dfn>fetch the current outstanding trusted signals batch</dfn> given a
 {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|,
 and a [=string=] |slotSizeQueryParam|:
 
+  1. If |signalsUrl| is null, return.
   1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
      |signalsUrl|, |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=],
      |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=],
      |experimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
   1. Let « |partialTrustedBiddingSignals|, |partialPerInterestGroupData|, |dataVersion| » be the
      result of [=fetching trusted signals=] with |biddingSignalsUrl| and true.
-  1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|:
-    1. Set |trustedBiddingSignalsBatcher|'s
-      [=trusted bidding signals batcher/all trusted bidding signals=][|key|] to |value|.
-  1. [=set/For each=] |igName| item of |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=]:
-    1. [=map/Set=] |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data versions=][|igName|] to |dataVersion|.
-  1. [=Append to a bidding signals per-interest group data map=] with
-      |partialPerInterestGroupData|, |trustedBiddingSignalsBatcher|'s
-      [=trusted bidding signals batcher/ig names=], and |trustedBiddingSignalsBatcher|'s
-      [=trusted bidding signals batcher/all per interest group data=].
+  1. If |partialTrustedBiddingSignals| is not null:
+    1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|, [=map/set=]
+      |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding
+      signals=][|key|] to |value|.
+    1. [=set/For each=] |igName| of |trustedBiddingSignalsBatcher|'s [=trusted bidding signals
+      batcher/ig names=], [=map/set=] |trustedBiddingSignalsBatcher|'s [=trusted bidding signals
+      batcher/data versions=][|igName|] to |dataVersion|.
+    1. [=Append to a bidding signals per-interest group data map=] with
+       |partialPerInterestGroupData|, |trustedBiddingSignalsBatcher|'s
+       [=trusted bidding signals batcher/ig names=], and |trustedBiddingSignalsBatcher|'s
+       [=trusted bidding signals batcher/all per interest group data=].
+ 1. Otherwise, [=set/for each=] |igName| of |trustedBiddingSignalsBatcher|'s
+    [=trusted bidding signals batcher/ig names=]:
+    1. [=map/Set=] |trustedBiddingSignalsBatcher|'s
+       [=trusted bidding signals batcher/no signals flags=][|igName|] to true.
+
 </div>
 
 <div algorithm>
@@ -5495,6 +5514,20 @@ To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding s
 |trustedBiddingSignalsBatcher|, [=interest group=] |ig|, a [=URL=] |signalsUrl|, an
 {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|,
 and a [=string=] |slotSizeQueryParam|:
+
+  1. If |signalsUrl| is null:
+    1. [=map/Set=] |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/no signals flags=]
+      [|ig|'s [=interest group/name=]] to true.
+    1. Return.
+  1. [=map/Set=] |trustedBiddingSignalsBatcher|'s
+     [=trusted bidding signals batcher/no signals flags=][|ig|'s [=interest group/name=]] to true
+     if |ig|'s [=interest group/trusted bidding signals keys=] is null or [=map/is empty=];
+     otherwise set it to false.
+
+     Note: An interest group with no trusted signals keys requests would still fetch and process
+     per-interest group data like priorityVector and
+     [=bidding signals per interest group data/updateIfOlderThanMs=], but it will get null passed in
+     to its bidding function.
 
   1. Let |putativeKeys| be a [=set/clone=] of |trustedBiddingSignalsBatcher|'s
      [=trusted bidding signals batcher/keys=].
@@ -5505,7 +5538,8 @@ and a [=string=] |slotSizeQueryParam|:
     |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=],
     then set |putativeLengthLimit| to |trustedBiddingSignalsBatcher|'s
     [=trusted bidding signals batcher/length limit=].
-  1. [=list/Extend=] |putativeKeys| with |ig|'s [=interest group/trusted bidding signals keys=].
+  1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, [=list/extend=]
+     |putativeKeys| with |ig|'s [=interest group/trusted bidding signals keys=].
   1. [=list/Append=] |ig|'s [=interest group/name=] to |putativeIgNames|.
   1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
     |signalsUrl|, |putativeKeys|, |putativeIgNames|, |experimentGroupId|, |topLevelOrigin|, and
@@ -5519,8 +5553,11 @@ and a [=string=] |slotSizeQueryParam|:
   1. Otherwise:
     1. [=Fetch the current outstanding trusted signals batch=] given |trustedBiddingSignalsBatcher|,
       |signalsUrl|, |experimentGroupId|, |topLevelOrigin|, |slotSizeQueryParam|.
-    1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
+    1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, set
+      |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
       [=list/clone=] of |ig|'s [=interest group/trusted bidding signals keys=].
+    1. Otherwise, set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
+       new [=list=].
     1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=] to
         « |ig|'s [=interest group/name=] ».
     1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=] to
