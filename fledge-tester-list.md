@@ -102,4 +102,5 @@ Companies who may be interested in participating in tests and early adoption opp
 | A Gazeta | Publisher | | cdutra@redegazeta.com.br |
 | TNL Mediagene | Publisher | | privacysandbox@tnlmediagene.com |
 | Ringier Axel Springer Poland | Publisher | | privacysandbox@ringieraxelspringer.pl |
-
+| Bullwhip Technologies | Analytics SaaS | | privacysandbox@bullwhip.io |
+| Mintegral (Mobvista) | SSP & DSP | Test Privacy Sandbox | partnerships@mobvista.com |
