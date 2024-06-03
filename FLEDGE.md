@@ -31,7 +31,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [3.2 On-Device Bidding](#32-on-device-bidding)
     - [3.3 Metadata with the Ad Bid](#33-metadata-with-the-ad-bid)
     - [3.4 Ads Composed of Multiple Pieces](#34-ads-composed-of-multiple-pieces)
-      - [3.4.1 Flexible Component Ad Selection Considering k-Anonymity](#341-target-num-component-ads)
+      - [3.4.1 Flexible Component Ad Selection Considering k-Anonymity](#341-flexible-component-ad-selection-considering-k-anonymity)
     - [3.5 Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups)
     - [3.6 Currency Checking](#36-currency-checking)
   - [4. Browsers Render the Winning Ad](#4-browsers-render-the-winning-ad)
@@ -840,7 +840,7 @@ The output of `generateBid()` contains the following fields:
 *   modelingSignals (optional): A 0-4095 integer (12-bits) passed to `reportWin()`, with noising, as described in the [noising and bucketing scheme](#521-noised-and-bucketed-signals). Invalid values, such as negative, infinite, and NaN values, will be ignored and not passed. Only the lowest 12 bits will be passed.
 *   targetNumAdComponents and numMandatoryAdComponents (both optional): Permits the
     browser to select only some of the returned adComponents in order to help
-    make the ad k-anonymous. See [Flexible Component Ad Selection Considering k-Anonymity](#341-target-num-component-ads)
+    make the ad k-anonymous. See [Flexible Component Ad Selection Considering k-Anonymity](#341-flexible-component-ad-selection-considering-k-anonymity)
     for more details.
 
 In case returning multiple bids is supported by the implementation in use,
