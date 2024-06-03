@@ -346,8 +346,8 @@ const myAuctionConfig = {
   'maxTrustedScoringSignalsURLLength': 10000,
   'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
   'auctionSignals': {...},
-  'requestedSize': {width: '100', height: '200'},
-  'allSlotsRequestedSizes': [{width: '100', height: '200'}, {width: '200', height: '300'}, ...],
+  'requestedSize': {'width': '100sw', 'height': '200px'},
+  'allSlotsRequestedSizes': [{'width': '100sw', 'height': '200px'}, {'width': '200px', 'height': '300px'}, ...],
   'directFromSellerSignalsHeaderAdSlot': 'adSlot/1',
   'sellerSignals': {...},
   'sellerTimeout': 100,
@@ -526,7 +526,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
     { 'topWindowHostname': 'www.example-publisher.com',
       'interestGroupOwner': 'https://www.example-dsp.com',
       'renderURL': 'https://cdn.com/render_url_of_bid',
-      'renderSize': {width: 100, height: 200}, /* if specified in the bid */
+      'renderSize': {'width': '100sw', 'height': '200px'}, /* if specified in the bid */
       'adComponents': ['https://cdn.com/ad_component_of_bid',
                        'https://cdn.com/next_ad_component_of_bid',
                        ...],
@@ -803,7 +803,7 @@ The arguments to `generateBid()` are:
     { 'topWindowHostname': 'www.example-publisher.com',
       'seller': 'https://www.example-ssp.com',
       'topLevelSeller': 'https://www.another-ssp.com',
-      'requestedSize': {width: 100, height: 200}, /* if specified in auction config */
+      'requestedSize': {'width': '100sw', 'height': '200px'}, /* if specified in auction config */
       'joinCount': 3,
       'recency': 3600000,
       'bidCount': 17,
