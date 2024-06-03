@@ -1592,6 +1592,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/topWindowHostname}}"] to |topLevelHost|.
 1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/seller}}"] to the [=serialization of an
   origin|serialization=] of |seller|.
+1. If |auctionConfig|'s [=auction config/requested size=] is not null, [=map/set=] 
+   |browserSignals|["{{BiddingBrowserSignals/requestedSize}}"] to the result of running
+   [=convert an ad size to a map=] with |auctionConfig|'s [=auction config/requested size=].
 1. Let |auctionLevel| be "single-level-auction".
 1. Let |componentAuctionExpectedCurrency| be null.
 1. If |topLevelAuctionConfig| is not null:
@@ -1904,6 +1907,9 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     <dt>{{ScoringBrowserSignals/renderURL}}
     <dd>The result of running the [=URL serializer=] on |generatedBid|'s
       [=generated bid/ad descriptor=]'s [=ad descriptor/url=]
+    <dt>{{ScoringBrowserSignals/renderSize}}
+    <dd>The result of running [=convert an ad size to a map=] with |generatedBid|'s
+        [=generated bid/ad descriptor=]'s [=ad descriptor/size=] if it is not null, {{undefined}} otherwise
     <dt>{{ScoringBrowserSignals/biddingDurationMsec}}
     <dd>|generatedBid|'s [=generated bid/bid duration=]
     <dt>{{ScoringBrowserSignals/bidCurrency}}
@@ -4804,6 +4810,7 @@ dictionary BiddingBrowserSignals {
   required long adComponentsLimit;
   required unsigned short multiBidLimit;
 
+  record<DOMString, DOMString> requestedSize;
   USVString topLevelSeller;
   sequence<PreviousWin> prevWinsMs;
   object wasmHelper;
@@ -4818,11 +4825,26 @@ dictionary ScoringBrowserSignals {
   required unsigned long biddingDurationMsec;
   required DOMString bidCurrency;
 
+  record<DOMString, DOMString> renderSize;
   unsigned long dataVersion;
   sequence<USVString> adComponents;
   boolean forDebuggingOnlyInCooldownOrLockout = false;
 };
 </xmp>
+
+<div algorithm>
+  To <dfn>convert an ad size to a map</dfn> given an [=ad size=] |adSize|:
+  
+  1. Let |dict| be a new empty [=map=].
+  1. Let |jsWidth| be |adSize|'s [=ad size/width=], [=converted to an ECMAScript value=].
+  1. [=map/Set=] |dict|["width"] to the result of [=string/concatenating=] « [$ToString$](|jsWidth|),
+     |adSize|'s [=ad size/width units=] ».
+  1. Let |jsHeight| be |adSize|'s [=ad size/height=], [=converted to an ECMAScript value=].
+  1. [=map/Set=] |dict|["height"] to the result of [=string/concatenating=] « [$ToString$](|jsHeight|),
+     |adSize|'s [=ad size/height units=] ».
+  1. Return |dict|.
+
+</div>
 
 Note: {{ScoringBrowserSignals}}'s {{ScoringBrowserSignals/adComponents}} is {{undefined}} when
 [=generated bid/ad component descriptors=] is null or [=list/is empty|an empty list=]. It cannot be
