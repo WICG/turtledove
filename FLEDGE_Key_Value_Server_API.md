@@ -1,6 +1,6 @@
 > FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
 
-# FLEDGE Key/Value Server APIs Explainer
+# Protected Audience Key/Value Server APIs Explainer
 
 Authors:
 
@@ -9,9 +9,9 @@ Authors:
 
 ## Summary
 
-[FLEDGE](https://github.com/WICG/turtledove/blob/main/FLEDGE.md) is a privacy-preserving API that facilitates interest group based advertising. Trusted
-servers in FLEDGE are used to add real-time signals into ad selection for both
-buyers and sellers. The FLEDGE proposal specifies that these trusted servers
+[Protected Audience](https://github.com/WICG/turtledove/blob/main/FLEDGE.md) is a privacy-preserving API that facilitates interest group based advertising. Trusted
+servers in Protected Audience are used to add real-time signals into ad selection for both
+buyers and sellers. The Protected Audience proposal specifies that these trusted servers
 should provide basic key-value lookups to facilitate fetching these signals but
 do no event-level logging or have other side effects.
 
@@ -39,7 +39,7 @@ though the keys may be unique across namespaces in today’s use cases.
 *   For an SSP, there are `renderUrls` and `adComponentRenderUrls`.
 
 The
-[FLEDGE explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#31-fetching-real-time-data-from-a-trusted-server)
+[Protected Audience explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#31-fetching-real-time-data-from-a-trusted-server)
 provides more context about these namespaces.
 
 ## Query API version 2
@@ -50,11 +50,12 @@ __Query versions 2 and beyond are specifically designed for the trusted TEE key/
 
 In this version we present a protocol that enables trusted communication between Chrome and the trusted key/value service. The protocol assumes a functioning trust model as described in [the key/value service explainer](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md) is in place, primarily that only service implementations recognized by Privacy Sandbox can obtain private decryption keys, and the mechanism for the client and service to obtain cryptographic keys is available but outside the scope of this document.
 
-On a high level, the protocol is based on HTTPS + [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-ohttp/)(OHTTP).
+On a high level, the protocol is similar to the [Bidding & Auction services protocol](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md), with [HPKE encryption](https://datatracker.ietf.org/doc/rfc9180/).
 
 *   TLS is used to ensure that the client is talking to the real service operator (identified by the domain). FLEDGE enforces that the origin of the trusted server matches the config owner ([interest group owner](https://wicg.github.io/turtledove/#joining-interest-groups) for the trusted bidding signal server or [auction config’s seller](https://wicg.github.io/turtledove/#running-ad-auctions) for the trusted scoring signal server).
-*   OHTTP is used to ensure that the message is only visible to the approved versions of services inside the trusted execution environment (TEE).
-    *   The reason to use OHTTP is that the request must be encrypted and can only be decrypted by the trusted service itself. A notable alternative protocol is TLS which in addition to the domain validation, validates the service identity attestation. However, attestation verification as part of TLS can present performance challenges and is still being evaluated.
+*   HPKE is used to ensure that the message is only visible to the approved versions of services inside the trusted execution environment (TEE).
+    *   The reason to use HPKE is that the request must be encrypted and can only be decrypted by the trusted service itself. A notable alternative protocol is TLS which in addition to the domain validation, validates the service identity attestation. However, attestation verification as part of TLS can present performance challenges and is still being evaluated.
+    *   The protocol to configure the HPKE is roughly based on the [Oblivious HTTP proposal](https://datatracker.ietf.org/doc/rfc9458/).
 
 For more information on the design, please refer to [the trust model explainer](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md).
 
