@@ -89,7 +89,7 @@ Contributions to this work are subject to W3C Community Contributor License Agre
   * Optional decouple bidding/reporting function urls to allow smaller k tuple: https://github.com/WICG/turtledove/issues/679#issuecomment-1703973736
 
 * Omri Ariav:
-  * Follow up on main blockers for native advertising (one, two, three) 
+  * Follow up on main blockers for native advertising ([one](https://github.com/WICG/turtledove/issues/1074), [two](https://github.com/WICG/turtledove/issues/741), [three](https://github.com/WICG/turtledove/issues/1096)) 
   * Follow up on easing domain restrictions (https://github.com/WICG/turtledove/issues/956) 
 
   * Warren Fernandes
@@ -132,14 +132,15 @@ The Microsoft Edge folks are holding every-second-Thursday meetings at this same
 * [Miguel] But the ad metadata is not subject to k anon
 * [Leeron] Yes but it is also does not egress from the auction
 * [Kleber] If you are willing to use PAgg to find out how often a deal got used, then that is also good. This is specifically about getting deal id into event level reports
-* Note: Please review GH post 873 and if there is anything else, please post on that GH
+* Note: Please review GH post https://github.com/WICG/turtledove/issues/873 and if there is anything else, please post on that GH
 
 
 
-## Omri Ariav: Follow up on main blockers for native advertising (one, two, three) 
+## Omri Ariav: Follow up on main blockers for native advertising ([one](https://github.com/WICG/turtledove/issues/1074), [two](https://github.com/WICG/turtledove/issues/741), [three](https://github.com/WICG/turtledove/issues/1096)) 
 * [Omri] Taboola is a leading native advertising vendor with code on page on many publishers websites. We show sponsored and organic recommendations, usually in the form of an endless feed below the article. . We have some challenges with implementation. Is there any plan for a dedicated loop with Native?
 * [Kleber] The focus to integrate information from publisher pages has been focused on the video use case. A lot of the answers being developed for video may be useful for native rendering. No primary focus recently, so you are right in that regard
 * [Omri] Can we expect a bolder discussion of the native use cases in the foreseeable future?
+* 
 * [Kleber] The look and feel is best suited for reusing some of the video discussions happening.
 * [Alonso] Do you really mean targeting in bgeneral or do you mean that there is a specific targeting capability for the native use case?
 * [Omri] It is the first one… having it working in the context of native (O.A: in native the amount of ad slots can be endless comparing to display)
