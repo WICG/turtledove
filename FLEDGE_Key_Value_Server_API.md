@@ -1,5 +1,3 @@
-> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
-
 # Protected Audience Key/Value Server APIs Explainer
 
 Authors:
@@ -48,7 +46,7 @@ __Query versions 2 and beyond are specifically designed for the trusted TEE key/
 
 ### Background
 
-In this version we present a protocol that enables trusted communication between Chrome and the trusted key/value service. The protocol assumes a functioning trust model as described in [the key/value service explainer](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md) is in place, primarily that only service implementations recognized by Privacy Sandbox can obtain private decryption keys, and the mechanism for the client and service to obtain cryptographic keys is available but outside the scope of this document.
+In this version we present a protocol that enables trusted communication between Chrome and the trusted key/value service. The protocol assumes a functioning trust model as described in [the key/value service explainer](https://github.com/privacysandbox/protected-auction-services-docs/blob/main/key_value_service_trust_model.md) is in place, primarily that only service implementations recognized by Privacy Sandbox can obtain private decryption keys, and the mechanism for the client and service to obtain cryptographic keys is available but outside the scope of this document.
 
 On a high level, the protocol is similar to the [Bidding & Auction services protocol](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md), with (bidirectional) [HPKE encryption](https://datatracker.ietf.org/doc/rfc9180/).
 
@@ -58,7 +56,7 @@ On a high level, the protocol is similar to the [Bidding & Auction services prot
     *   The protocol to configure the HPKE is roughly based on the [Oblivious HTTP proposal](https://datatracker.ietf.org/doc/rfc9458/).
 *   The protocol to configure the HPKE is roughly based on the [Oblivious HTTP proposal](https://datatracker.ietf.org/doc/rfc9458/).
 
-For more information on the design, please refer to [the trust model explainer](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md).
+For more information on the design, please refer to [the trust model explainer](https://github.com/privacysandbox/protected-auction-services-docs/blob/main/key_value_service_trust_model.md).
 
 ### Overview
 
@@ -513,10 +511,10 @@ To be supported in the future.
 
 ## Server Internal APIs and procedures
 
-The system will provide multiple private APIs and procedures, for loading data and user-defined functions whose model is described in detail in the [Key/Value server design explainer](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md#support-for-user-defined-functions-udfs).
+The system will provide multiple private APIs and procedures, for loading data and user-defined functions whose model is described in detail in the [Key/Value server design explainer](https://github.com/privacysandbox/protected-auction-services-docs/blob/main/key_value_service_trust_model.md#support-for-user-defined-functions-udfs).
 
 These APIs and procedures are ACLs controlled by the ad tech operator of the system, for only the operator (and their designated parties) to use.
 
-The key/value server code is available on its [Privacy Sandbox github repo](https://github.com/privacysandbox/fledge-key-value-service) which reflects the most recent API and procedures. As an example, the [data loading guide](https://github.com/privacysandbox/fledge-key-value-service/blob/main/docs/loading_data.md) has specific instructions on integrating with the data ingestion procedure. The procedure may be based on the actual storage medium of the dataset, e.g., the server can read data from data files from a prespecified location.
+The key/value server code is available on its [Privacy Sandbox github repo](https://github.com/privacysandbox/protected-auction-key-value-service) which reflects the most recent API and procedures. As an example, the [data loading guide](https://github.com/privacysandbox/protected-auction-key-value-service/blob/main/docs/data_loading/loading_data.md) has specific instructions on integrating with the data ingestion procedure. The procedure may be based on the actual storage medium of the dataset, e.g., the server can read data from data files from a prespecified location.
 
-As the [FLEDGE API](https://github.com/WICG/turtledove/blob/main/FLEDGE.md) describes the client side flow, the APIs and procedures related to the server system design and implementation will have the specification posted and updated in the key/value server’s [github repo](https://github.com/privacysandbox/fledge-key-value-service).
+As the [FLEDGE API](https://github.com/WICG/turtledove/blob/main/FLEDGE.md) describes the client side flow, the APIs and procedures related to the server system design and implementation will have the specification posted and updated in the key/value server’s [github repo](https://github.com/privacysandbox/protected-auction-key-value-service).
