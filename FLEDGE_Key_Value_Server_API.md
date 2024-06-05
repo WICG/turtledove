@@ -340,7 +340,7 @@ The response is compressed. Due to security and privacy reasons the compression 
     "compressionGroups": {
       "type": "array",
       "items": {
-        "title": "tkv.response.v2.CompressionGroup",
+        "title": "tkv.response.v2.CompressedCompressionGroup",
         "type": "object",
         "description": "Object for a compression group, compressed using the algorithm specified in the request",
         "additionalProperties": false,
