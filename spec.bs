@@ -660,6 +660,9 @@ dictionary AuctionAdConfig {
   sequence<AuctionAdConfig> componentAuctions = [];
   AbortSignal? signal;
   Promise<boolean> resolveToConfig;
+
+  Promise<Uint8Array> serverResponse;
+  USVString requestId;
 };
 </xmp>
 
@@ -700,8 +703,12 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |bidDebugReportInfoList| be a new [=list=] of [=bid debug reporting info=].
-  1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
-    null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|, and |bidDebugReportInfoList|.
+  1. If |auctionConfig|'s serverResponse member is not null
+    1. Let |winnerInfo| be the result of running [=parse and validate server response=] with |auctionConfig|,
+      null, |global|, |bidIgs|, and |bidDebugReportInfoList|.
+  1. Else
+    1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
+      null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|, and |bidDebugReportInfoList|.
   1. Let |auctionReportInfo| be a new [=auction report info=].
   1. If |winnerInfo| is not failure, then set |auctionReportInfo| to the result of running
     [=collect forDebuggingOnly reports=] with |bidDebugReportInfoList| and |winnerInfo|.
@@ -809,15 +816,15 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 |pendingConfig|, [=auction config=] |auctionConfig|, [=leading bid info=] |winningBidInfo|, and
 [=auction report info=] |auctionReportInfo|:
 1. Let |winningBid| be |winningBidInfo|'s [=leading bid info/leading bid=].
-1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose 
+1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are [=strings=].
-1. [=list/For each=] |replacement| in |auctionConfig|'s 
+1. [=list/For each=] |replacement| in |auctionConfig|'s
   [=auction config/deprecated render url replacements=]:
   1. Let |k| be |replacement|'s [=ad keyword replacement/match=].
   1. Let |v| be |replacement|'s [=ad keyword replacement/replacement=].
   1. [=map/Set=] |replacements|[|k|] to |v|.
 1. Let |replacedAdURL| be the result of
-  running [=fencedframeutil/substitute macros=] with |replacements| and |winningBid|'s 
+  running [=fencedframeutil/substitute macros=] with |replacements| and |winningBid|'s
   [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
 1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
    |replacedAdURL|.
@@ -825,7 +832,7 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 1. Let |concreteAdSize| be the result of
 
    Issue: resolving screen-relative sizes to pixel values for |adSize|.
-   (<a href="https://github.com/WICG/turtledove/issues/986">WICG/turtledove#986</a>) 
+   (<a href="https://github.com/WICG/turtledove/issues/986">WICG/turtledove#986</a>)
 1. Let |adWidthString| and |adHeightString| be the result of
 
    Issue: converting |concreteAdSize| to strings.
@@ -881,11 +888,11 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
       [=fenced frame reporting metadata/fenced frame reporting map=], |winningBidInfo| and
       |auctionReportInfo|.
 1. Let |adComponentDescriptorsWithReplacements| be a new [=list=] of [=ad descriptors=].
-1. If |winningBid|'s [=generated bid/ad component descriptors=] is not null: 
-  1. [=list/For each=] |adComponentDescriptor| of |winningBid|'s 
+1. If |winningBid|'s [=generated bid/ad component descriptors=] is not null:
+  1. [=list/For each=] |adComponentDescriptor| of |winningBid|'s
     [=generated bid/ad component descriptors=]:
     1. Let |descriptorWithReplacement| be a new [=ad descriptor=].
-    1. Set |descriptorWithReplacement|'s [=ad descriptor/size=] to 
+    1. Set |descriptorWithReplacement|'s [=ad descriptor/size=] to
       |adComponentDescriptor|'s [=ad descriptor/size=].
     1. Set |descriptorWithReplacement|'s [=ad descriptor/url=] to the result of running
       [=fencedframeutil/substitute macros=] with |replacements| and |adComponentDescriptor|'s
@@ -1042,11 +1049,17 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. Let |seller| be the result of [=parsing an https origin=] with |config|["{{AuctionAdConfig/seller}}"].
 1. If |seller| is failure, then return failure.
 1. Set |auctionConfig|'s [=auction config/seller=] to |seller|.
-1. Let |decisionLogicURL| be the result of running the [=URL parser=] on
-  |config|["{{AuctionAdConfig/decisionLogicURL}}"].
-1. If |decisionLogicURL| is failure, or it is not [=same origin=] with |auctionConfig|'s
-  [=auction config/seller=], then return failure.
-1. Set |auctionConfig|'s [=auction config/decision logic url=] to |decisionLogicURL|.
+1. If |config|["{{AuctionAdConfig/serverResponse}}"] [=map/exists=]:
+  1. If not |config|["{{AuctionAdConfig/requestId}}"] [=map/exists=] then [=exception/throw=]
+    a {{TypeError}}.
+  1. Set |auctionConfig|'s [=auction config/server response=] to |config|["{{AuctionAdConfig/serverResponse}}"].
+  1. Set |auctionConfig|'s [=auction config/server response id=] to |config|["{{AuctionAdConfig/requestId}}"].
+1. Otherwise:
+  1. Let |decisionLogicURL| be the result of running the [=URL parser=] on
+    |config|["{{AuctionAdConfig/decisionLogicURL}}"].
+  1. If |decisionLogicURL| is failure, or it is not [=same origin=] with |auctionConfig|'s
+    [=auction config/seller=], then return failure.
+  1. Set |auctionConfig|'s [=auction config/decision logic url=] to |decisionLogicURL|.
 1. If |config|["{{AuctionAdConfig/trustedScoringSignalsURL}}"] [=map/exists=]:
   1. Let |trustedScoringSignalsURL| be the result of running the [=URL parser=] on
     |config|["{{AuctionAdConfig/trustedScoringSignalsURL}}"].
@@ -1172,21 +1185,21 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
         failure.
 1. If |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"] [=map/exists=]:
-  1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to 
+  1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to
     |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"].
   1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
       [=auction config/deprecated render url replacements=]:
     * To parse the value |result|:
       1. Let |renderUrlReplacements| be a new empty [=list=] of [=ad keyword replacement=]s.
       1. [=list/For each=] |replacement| in |result|:
-        1. If [=validate a url macro=] with |replacement|'s [=ad keyword replacement/match=] 
+        1. If [=validate a url macro=] with |replacement|'s [=ad keyword replacement/match=]
           returns false, then [=exception/throw=] a {{TypeError}}.
         1. Otherwise, [=list/append=] |replacement| to |renderUrlReplacements|.
-      1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to 
+      1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to
         |renderUrlReplacements|.
-    * To handle an error, set |auctionConfig|'s 
+    * To handle an error, set |auctionConfig|'s
       [=auction config/deprecated render url replacements=] to failure.
-      
+
 
 1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
   [=auction config/seller timeout=] to |config|["{{AuctionAdConfig/sellerTimeout}}"] in milliseconds
@@ -1369,9 +1382,10 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. Let |win| be a new [=previous win=].
   1. Set |win|'s [=previous win/time=] to the [=current wall time=].
   1. Let |ad| be an [=interest group ad=] whose [=interest group ad/render url=] is |bid|'s
-    [=generated bid/bid ad=]'s [=interest group ad/render url=], and whose
+    [=generated bid/bid ad=]'s [=interest group ad/render url=], whose
     [=interest group ad/metadata=] is |bid|'s [=generated bid/bid ad=]'s
-    [=interest group ad/metadata=].
+    [=interest group ad/metadata=], and use [=interest group ad/ad render ID=] is
+    |bid|'s [=generated bid/bid ad=]'s [=interest group ad/ad render ID=].
   1. Set |win|'s [=previous win/ad json=] to the result of
     [=serializing an Infra value to a JSON string=] given |ad|.
   1. [=list/Append=] |win| to |loadedIg|'s [=interest group/previous wins=].
@@ -1864,7 +1878,7 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   However, note that a single request is always considered valid, regardless of whether its length exceeds
   the auction's [=auction config/max trusted scoring signals url length=].
 
-  
+
   The network response has to be parsed to pull out the pieces relevant to each
   [=evaluating a scoring script|evaluation of a scoring script=].
 1. Let |trustedScoringSignals| be null.
@@ -2564,6 +2578,158 @@ a {{ReportingBrowserSignals}} |browserSignals|, and a [=direct from seller signa
      :: |reportingMacroMap|
 </div>
 
+<div algorithm>
+To <dfn>parse and validate server response</dfn> given an [=auction config=] |auctionConfig|, an
+[=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|,
+a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug reporting info=]
+|bidDebugReportInfoList|:
+
+1. [=Assert=] that these steps are running [=in parallel=].
+1. [=Assert=] that |topLevelAuctionConfig| is null. TODO(behamilton): support multi-level.
+1. Let |requestId| be the value of |auctionConfig|'s [=auction config/server response id=].
+1. Let |requestContexts| be the value of |global|'s [=associated Document's=] [=node navigable's=]
+  [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=].
+1. If not [=map/exists=] |requestContexts|[|requestId|] return null.
+1. TODO(behamilton) Let |response| be the result of deserializing |auctionConfig|'s [=auction config/server response=]
+  according to the Bidding and Auction Services IETF standard (TODO).
+1. Construct bids based on |response|.
+1. Add the bids form the |response| to |bidIgs|.
+1. Insert the debug reporting URLs from |response| into |bidDebugReportInfoList|.
+
+</div>
+
+<h3 id="getInterestGroupAdAuctionData">getInterestGroupAdAuctionData()</h3>
+
+<xmp class="idl">
+[SecureContext]
+partial interface Navigator {
+  Promise<AdAuctionData> getInterestGroupAdAuctionData(AdAuctionDataConfig config);
+};
+
+dictionary AdAuctionDataConfig {
+  required USVString seller;
+  required USVString coordinatorOrigin;
+};
+
+dictionary AdAuctionData {
+  required Uint8Array request;
+  required USVString requestId;
+};
+</xmp>
+
+A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction interest group">
+  : <dfn>name</dfn>
+  :: A [=string=] that uniquely defines each interest group, as in [=interest group/name=].
+  : <dfn>biddingSignalsKeys</dfn>
+  :: Null or a [=list=] of [=string=], as in [=interest group/trusted bidding signals keys=]
+  : <dfn>userBiddingSignals</dfn>
+  :: Null or a [=string=], as in [=interest group/user bidding signals=]
+  : <dfn>ads</dfn>
+  :: A [=list=] of [=strings=] containing the corresponding [=interest group ad/ad render IDs=]
+    from the [=interest group/ads=] field.
+  : <dfn>components</dfn>
+  ::  A [=list=] of [=strings=] containing the corresponding [=interest group ad/ad render IDs=]
+    from the [=interest group/ad components=] field.
+  : <dfn>browserSignals</dfn>
+  :: A [=server auction browser signals=] object.
+</dl>
+
+A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction browser signals">
+  : <dfn>bidCount</dfn>
+  :: A count of the number of bids for this interest group in the last 30 days.
+    Calculated by summing the [=interest group/bid counts=] where the .
+  : <dfn>joinCount</dfn>
+  :: A count of the number of joins for this interest group in the last 30 days.
+    Calculated by summing the [=interest group/join counts=].
+  : <dfn>recencyMs</dfn>
+  :: A [=duration=], in milliseconds, representing the [=current wall time=] at
+    the time this object was constructed minus the corresponding [=interest group=]'s
+    [=interest group/join time=], in milliseconds.
+  : <dfn>prevWins</dfn>
+  :: A <code>[=sequence=]<[=server auction previous win=]></code>
+</dl>
+
+A <dfn>server auction previous win</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction previous win">
+  : <dfn>timeDelta</dfn>
+  :: A [=duration=], in milliseconds, representing the [=current wall time=] at
+    the time this object was constructed minus the corresponding [=previous win=]'s [=previous win/time=], in seconds.
+  : <dfn>ad render ID</dfn>
+  :: A [=string=] containing the [=interest group ad/ad render ID=] for the ad represented by this entry.
+</dl>
+
+A <dfn>server auction request context</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction request context">
+  : <dfn>requestId</dfn>
+  :: A unique identifier associated with this and only this invocation of
+    {{Window/navigator}}.{{Navigator/getInterestGroupAdAuctionData()}}. This is
+    used to look-up a specific request context.
+  : <dfn>requestContext</dfn>
+  :: An opaque context used to handle the request.
+</dl>
+
+<div algorithm="getInterestGroupAdAuctionData()">
+
+The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> method steps are:
+
+1. Let |global| be [=this=]'s [=relevant global object=].
+1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=run-ad-auction=]"
+  [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
+1. Let |p| be [=a new promise=].
+1. Let |queue| be the result of [=starting a new parallel queue=].
+1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
+  1. Let |igMap| be a new [=map=].
+  1. Let |startTime| be a [=moment=] equal to the [=current wall time=].
+  1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
+    1. If |ig|'s [=interest group/ads] is Null or [=list/is empty=], continue.
+    1. Set |owner| to the value of |ig's [=interest group/owner=] field.
+    1. If not |igMap|[|owner|] [=map/exists=]:
+      1. [=map/set=] |igMap|[|owner|] to a new [=list=]>.
+    1. Let |serverIg| be a new [=server auction interest group=].
+    1. Set |serverIg|'s [=server auction interest group/name=] to the value of |ig|'s [=interest group/name=] field.
+    1. Set |serverIg|'s [=server auction interest group/biddingSignalsKeys=] to the value of |ig|'s [=interest group/trusted bidding signals keys=] field.
+    1. Set |serverIg|'s [=server auction interest group/userBiddingSignals=] to the value of |ig|'s [=interest group/user bidding signals=] field.
+    1. Let |ads| be a new [=list=].
+    1. For each |ad| in |ig|'s [=interest group/ads=] field, [=list/append=] the value of |ad|'s [=interest group ad/ad render ID=] to |ads|.
+    1. Set |serverIg|'s [=server auction interest group/ads=] to |ads|.
+    1. Let |components| be a new [=list=].
+    1. For each |component| in |ig|'s [=interest group/ad components=] field, [=list/append=] the value of |component|'s [=interest group ad/ad render ID=] to |components|.
+    1. Set |serverIg|'s [=server auction interest group/components=] to |components|.
+    1. Let |browserSignals be a new [=server auction browser signals=].
+    1. Set |browserSignals|' [=server auction browser signals/bidCount=] to the sum of |ig|'s [=interest group/bid counts=] with a bid day within the last 30 days.
+    1. Set |browserSignals|' [=server auction browser signals/joinCount=] to the sum of |ig|'s [=interest group/join counts=] with a join day within the last 30 days.
+    1. Set |browserSignals|' [=server auction browser signals/recencyMs=] to the [=current wall time=] minus |ig|'s [=interest group/join time=] in millseconds.
+    1. Let |prevWins| be a new <code>[=sequence=]<[=server auction previous win=]></code>.
+    1. [=list/For each=] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
+      the last 30 days:
+      1. Let |timeDelta| be |startTime| minus |prevWin|'s [=previous win/time=].
+      1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
+        otherwise.
+      1. Let |serverPrevWin| be a new [=server auction previous win=].
+      1. Set |serverPrevWin|'s [=server auction previous win/timeDelta=] to |timeDelta|.
+      1. Let |adRenderId| be the value of the "adRenderId" field in |prevWin|'s [=previous win/ad json=], or the empty string if not present.
+      1. Set |serverPrevWin|'s [=server auction previous win/ad render ID=] to |adRenderId|.
+      1. [=list/append=] |serverPrevWin| to |prevWins|.
+    1. Set |browserSignals|' [=server auction browser signals/prevWins=] to |prevWins|.
+    1. Set |serverIg|'s [=server auction interest group/browserSignals=] to |browserSignals|.
+    1. [=list/append=] |serverIg| to |igMap|[|owner|].
+  1. Let |result| be a new {{AdAuctionData}}.
+  1. Let |requestId} be the [=string representation=] of a [=version 4 UUID=]
+  1. Set |result|'s {{AdAuctionData/requestId}} field to |requestId|.
+  1. Let |context| be the result of serializing |igMap| using |config| according to the Bidding and Auction Services IETF standard into |result|'s {{AdAuctionData/request}} field.
+  1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
+    resolve |p| with |result|.
+  1. Let |requestContext| be a new [=server auction request context=].
+  1. Set |requestContext|'s [=server auction request context/requestId=] field to the value of |result|'s {{AdAuctionData/requestId}} field.
+  1. Set |requestContext|'s [=server auction request context/requestContext=] field to |context|.
+  1. [=map/set=] |global|'s [=associated Document's=] [=node navigable's=]
+    [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=][|requestId|] to |requestContext|.
+1. Return p
+
+</div>
+
 # Reporting # {#reporting}
 
 ## {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}} ## {#for-debugging-only-header}
@@ -2696,7 +2862,7 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
   To <dfn>is debugging only in cooldown or lockout</dfn> given an [=origin=] |origin|:
 
   1. If [=user agent=]'s [=debug report lockout until=] is not null, and [=current wall time=] is
-    less than [=user agent=]'s [=debug report lockout until=], return true. 
+    less than [=user agent=]'s [=debug report lockout until=], return true.
   1. If [=user agent=]'s [=debug report cooldown=] is null, then return false.
   1. If [=user agent=]'s [=debug report cooldown=][|origin|] [=map/exists=] and [=current wall time=]
     is less than [=user agent=]'s [=debug report cooldown=][|origin|], then return true.
@@ -4536,6 +4702,8 @@ prevents a leak of the user's ad interest group membership to the server.
 
 # Fetch Patch for Auction Headers # {#fetch-patch-for-auction-headers}
 
+TODO(behamilton): Handle Bidding and Auction Server header.
+
 This section specifies a manner by which some data, including [=additional bids=] and
 [=direct from seller signals=], may be provided to auctions such that the data is only used within
 their intended auction.
@@ -4575,6 +4743,11 @@ with the {{RequestInit/adAuctionHeaders}} option set to `true`, or during an
 request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a>
 set to `true`, as described in the [:Ad-Auction-Additional-Bid:] header description.
 </div>
+
+Each [=traversable navigable=] has a <dfn for="traversable navigable">saved Bidding
+and Auction request context</dfn>, which is a [=map=] whose [=map/keys=] are
+the [=string representation=] of a [=version 4 UUID=] and whose [=map/values=]
+are [=server auction request contexts=].
 
 <div algorithm="fetch capture adAuctionHeaders boolean patch">
 Modify the definition of a [=request=]:
@@ -5104,6 +5277,9 @@ An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/item
     with registered macros. Each origin's [=origin/scheme=] must be "`https`" and each origin must be
     <a href="https://github.com/privacysandbox/attestation">enrolled</a>. Only meaningful in
     [=interest group/ads=], but ignored in [=interest group/ad components=].
+  : <dfn> ad render ID</dfn>
+  :: A [=string=] containing up to 12 [=ASCII bytes=] uniquely identifying this ad. Sent instead
+    of the full [=interest group ad=] for auctions executed on a server.
 </dl>
 
 A <dfn>previous win</dfn> is the [=interest group=]'s auction win history, to allow on-device
@@ -5160,7 +5336,7 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
   :: An [=origin=].
     The origin of the seller running the ad auction. The [=origin/scheme=] must be "`https`".
   : <dfn>decision logic url</dfn>
-  :: A [=URL=].
+  :: Null or a [=URL=].
     The URL to fetch the seller's JavaScript from.
     <p class="note">
       The [=auction config/decision logic url=]'s [=origin=] will always be [=same origin=] with
@@ -5263,11 +5439,11 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
     [=auction config=] can have component auctions.
 
   : <dfn>deprecated render url replacements</dfn>
-  :: Null, a {{Promise}}, failure, or a [=list=] of [=ad keyword replacement=]s, each containing a 
-    single [=ad keyword replacement/match=] and [=ad keyword replacement/replacement=]. Render url 
+  :: Null, a {{Promise}}, failure, or a [=list=] of [=ad keyword replacement=]s, each containing a
+    single [=ad keyword replacement/match=] and [=ad keyword replacement/replacement=]. Render url
     replacements can only happen within a single seller [=auction config=] or
-    within the component [=auction config=]s. 
-    
+    within the component [=auction config=]s.
+
   : <dfn>seller experiment group id</dfn>
   :: Null or an {{unsigned short}}, initially null.
     Optional identifier for an experiment group to support coordinated experiments with the seller's
@@ -5327,6 +5503,14 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
   :: A [=boolean=] or failure, initially false.
     Specifies whether some bids will be provided as signed exchanges. Sets to failure if the
     {{AuctionAdConfig/additionalBids}} {{Promise}} is [=rejected=].
+  : <dfn>server response</dfn>
+  :: Null or a {{Promise}} or a {{Uint8Array}} containing an encrypted response from the server.
+    Response from a trusted auction server.
+  : <dfn>server response id</dfn>
+  :: Null or a [=version 4 UUID=]
+    A UUID used to match a request from
+    {{Window/navigator}}.{{Navigator/getInterestGroupAdAuctionData()}} to the
+    encrypted response stored in [=auction config=]'s [=auction config/server response=] field.
 </dl>
 
 <div algorithm>
@@ -5336,9 +5520,9 @@ To <dfn>wait until configuration input promises resolve</dfn> given an [=auction
   1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
   1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], 
+    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=],
     [=auction config/deprecated render url replacements=], and
-    [=auction config/direct from seller signals header ad slot=] are not {{Promise}}s, and 
+    [=auction config/direct from seller signals header ad slot=] are not {{Promise}}s, and
     [=auction config/expects additional bids=] is false.
   1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
@@ -5745,10 +5929,10 @@ An <dfn>ad keyword replacement</dfn> is a [=struct=] with the following [=struct
 <dl dfn-for="ad keyword replacement">
   : <dfn>match</dfn>
   :: A [=string=], represents the match within a {{AuctionAd/renderURL}}, that is going to be
-    replaced by [=ad keyword replacement/replacement=]. Must be in the format `${...}` or 
+    replaced by [=ad keyword replacement/replacement=]. Must be in the format `${...}` or
     `%%...%%`.
   : <dfn>replacement</dfn>
-  :: A [=string=], meant to replace [=ad keyword replacement/match=] within a 
+  :: A [=string=], meant to replace [=ad keyword replacement/match=] within a
     {{AuctionAd/renderURL}}.
 </dl>
 
