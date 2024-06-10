@@ -66,6 +66,9 @@ spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
 spec: WebAssembly-js-api; urlPrefix: https://webassembly.github.io/spec/js-api/
   type: dfn
     text: compiling a WebAssembly module; url: #compile-a-webassembly-module
+spec: WebAssembly-web-api; urlPrefix: https://webassembly.github.io/spec/web-api/
+  type: dfn
+    text: compiling a potential WebAssembly response; url: #compile-a-potential-webassembly-response
 spec: WebIDL; urlPrefix: https://webidl.spec.whatwg.org/
   type: dfn
     text: convert a Web IDL arguments list to an ECMAScript arguments list; url: #web-idl-arguments-list-converting
@@ -627,6 +630,7 @@ bid in the auction for the chance to display their advertisement.
 [SecureContext]
 partial interface Navigator {
   Promise<(USVString or FencedFrameConfig)?> runAdAuction(AuctionAdConfig config);
+  readonly attribute boolean deprecatedRunAdAuctionEnforcesKAnonymity;
 };
 
 dictionary AuctionAdConfig {
@@ -665,6 +669,15 @@ dictionary AuctionAdConfig {
   USVString requestId;
 };
 </xmp>
+
+Note: To help with ease of adoption, the browser will support the attribute
+{{Window/navigator}}.{{Navigator/deprecatedRunAdAuctionEnforcesKAnonymity}}
+while k-anonymity enforcement is being rolled out. This attribute is true
+when {{Window/navigator}}.{{Navigator/runAdAuction()}} enforces
+[[#k-anonymity]] when running an auction and false otherwise. The attribute
+is not useful once k-anonymity enforcement is fully rolled out, and hence
+this attribute will be deprecated and removed some time after this point.
+See <a href="https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity">https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity</a> for more up to date information.
 
 <div algorithm="runAdAuction()">
 
@@ -1464,8 +1477,8 @@ To <dfn>check if required seller capabilities are permitted</dfn> given an [=auc
 
 <div algorithm="generate potentially multiple bids">
 
-To <dfn>generate potentially multiple bids</dfn> given an [=ordered map=] |allTrustedBiddingSignals|, a [=string=]
-|auctionSignals|, a {{BiddingBrowserSignals}} |browserSignals|, a [=string=]-or-null |perBuyerSignals|,
+To <dfn>generate potentially multiple bids</dfn> given an [=ordered map=]-or-null |allTrustedBiddingSignals|,
+a [=string=] |auctionSignals|, a {{BiddingBrowserSignals}} |browserSignals|, a [=string=]-or-null |perBuyerSignals|,
 a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=duration=]
 |perBuyerTimeout| in milliseconds, a [=currency tag=] |expectedCurrency|, an {{unsigned short}}
 
@@ -1499,12 +1512,14 @@ a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=dur
       [=interest group/bidding wasm helper url=].
     1. If |wasmModuleObject| is not failure, then [=map/set=]
       |browserSignals|["{{BiddingBrowserSignals/wasmHelper}}"] to |wasmModuleObject|.
-  1. Let |trustedBiddingSignals| be an [=ordered map=] whose [=map/keys=] are [=strings=] and
-    whose [=map/values=] are {{any}}.
-  1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
-    1. If |allTrustedBiddingSignals| is an [=ordered map=] and |allTrustedBiddingSignals|[|key|]
-      [=map/exists=], then [=map/set=] |trustedBiddingSignals|[|key|] to
-      |allTrustedBiddingSignals|[|key|].
+  1. Let |trustedBiddingSignals| be null.
+  1. If |allTrustedBiddingSignals| is not null:
+    1. [=Assert=] that |ig|'s [=interest group/trusted bidding signals keys=] is not null.
+    1. Set |trustedBiddingSignals| to an [=ordered map=] whose [=map/keys=] are [=strings=] and
+      whose [=map/values=] are {{any}}.
+    1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
+      1. If |allTrustedBiddingSignals|[|key|] [=map/exists=], then [=map/set=]
+        |trustedBiddingSignals|[|key|] to |allTrustedBiddingSignals|[|key|].
   1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |multiBidLimit|, |ig|, |expectedCurrency|,
     |igGenerateBid|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|, |browserSignals|,
     |directFromSellerSignalsForBuyer|, and |perBuyerTimeout|.
@@ -1604,6 +1619,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/topWindowHostname}}"] to |topLevelHost|.
 1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/seller}}"] to the [=serialization of an
   origin|serialization=] of |seller|.
+1. If |auctionConfig|'s [=auction config/requested size=] is not null, [=map/set=] 
+   |browserSignals|["{{BiddingBrowserSignals/requestedSize}}"] to the result of running
+   [=convert an ad size to a map=] with |auctionConfig|'s [=auction config/requested size=].
 1. Let |auctionLevel| be "single-level-auction".
 1. Let |componentAuctionExpectedCurrency| be null.
 1. If |topLevelAuctionConfig| is not null:
@@ -1694,13 +1712,17 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. Let |directFromSellerSignalsForBuyer| be the result of running
             [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and |ig|'s
             [=interest group/owner=].
-          1. Let |dataVersion| be |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data versions=]
-             [|ig|'s [=interest group/name=]].
+          1. Let |dataVersion| be null.
+          1. Let |allTrustedBiddingSignals| be an [=ordered map=]-or-null, initially null.
+          1. If |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/no signals flags=]
+             [|ig|'s [=interest group/name=]] is false:
+            1. Set |dataVersion| to |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data versions=]
+               [|ig|'s [=interest group/name=]].
+            1. Set |allTrustedBiddingSignals| to [=trusted bidding signals batcher/all trusted bidding signals=].
           1. If |dataVersion| is not null, then [=map/set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
           1. Otherwise, [=map/remove=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"].
           1. Let « |bidsBatch|, |bidDebugReportInfo| » be the result of [=generate potentially multiple bids=] given
-            |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding signals=],
-            |auctionSignals|, a [=map/clone=] of |browserSignals|,
+            |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
             |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
             |expectedCurrency|, |multiBidLimit|, |ig|, and |auctionStartTime|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
@@ -1740,8 +1762,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. Let |generateBidStartTime| be |settings|'s
               [=environment settings object/current monotonic time=].
             1. Set « |generatedBids|, |bidDebugReportInfo| » to the result of [=generate potentially multiple bids=] given
-              |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding signals=],
-              |auctionSignals|, a [=map/clone=] of |browserSignals|,
+              |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
               |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
               1 (for multiBidLimit), |ig|, and |auctionStartTime|.
 
@@ -1804,7 +1825,7 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dt>{{GenerateBidInterestGroup/enableBiddingSignalsPrioritization}}
       <dd>|ig|'s [=interest group/enable bidding signals prioritization=]
       <dt>{{GenerateBidInterestGroup/priorityVector}}
-      <dd>|ig|'s [=interest group/priority vector=] if not null, otherwise {{undefined}}
+      <dd>|ig|'s [=interest group/priority vector=] if not null, otherwise not set.
       <dt>{{GenerateBidInterestGroup/executionMode}}
       <dd>|ig|'s [=interest group/execution mode=]
       <dt>{{GenerateBidInterestGroup/biddingLogicURL}}
@@ -1816,7 +1837,7 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsURL}}
       <dd>The [=serialize a URL|serialization=] of |ig|'s [=interest group/trusted bidding signals url=]
       <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}}
-      <dd>|ig|'s [=interest group/trusted bidding signals keys=]
+      <dd>|ig|'s [=interest group/trusted bidding signals keys=], if not null, otherwise not set.
       <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsSlotSizeMode}}
       <dd>|ig|'s [=interest group/trusted bidding signals slot size mode=]
       <dt>{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}
@@ -1913,6 +1934,9 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     <dt>{{ScoringBrowserSignals/renderURL}}
     <dd>The result of running the [=URL serializer=] on |generatedBid|'s
       [=generated bid/ad descriptor=]'s [=ad descriptor/url=]
+    <dt>{{ScoringBrowserSignals/renderSize}}
+    <dd>The result of running [=convert an ad size to a map=] with |generatedBid|'s
+        [=generated bid/ad descriptor=]'s [=ad descriptor/size=] if it is not null, {{undefined}} otherwise
     <dt>{{ScoringBrowserSignals/biddingDurationMsec}}
     <dd>|generatedBid|'s [=generated bid/bid duration=]
     <dt>{{ScoringBrowserSignals/bidCurrency}}
@@ -2057,23 +2081,52 @@ The <dfn http-header><code>Ad-Auction-Allowed</code></dfn> HTTP response header 
 [=structured header=] whose value must be a [=structured header/boolean=].
 
 <div algorithm>
-To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, failure, or a
-[=byte sequence=] |responseBody|, and a [=string=] |mimeType|:
+To <dfn>validate fetching response headers</dfn> given a [=response=] |response|:
+
+  1. If [=header list/getting a structured field value|getting=] [:Ad-Auction-Allowed:] and
+     "`item`" from |response|'s [=response/header list=] does not return a true value, return false.
+  1. If |response|'s [=response/status=] is not an [=ok status=], return false.
+  1. Return true.
+</div>
+
+<div algorithm>
+To <dfn>validate fetching response mime and body</dfn> given a [=response=] |response|, null,
+failure, or a [=byte sequence=] |responseBody|, and a [=string=] |mimeType|:
 
   1. If |responseBody| is null or failure, return false.
-  1. If [=header list/getting a structured field value|getting=] [:Ad-Auction-Allowed:] and
-    "`item`" from |response|'s [=response/header list=] does not return a true value, return false.
   1. Let |headerMimeType| be the result of [=header list/extracting a MIME type=] from |response|'s
     [=response/header list=].
   1. Return false if any of the following conditions hold:
     * |headerMimeType| is failure;
     * |mimeType| is "`text/javascript`" and |headerMimeType| is not a [=JavaScript MIME type=];
     * |mimeType| is "`application/json`" and |headerMimeType| is not a [=JSON MIME type=].
-  1. Let |mimeTypeCharset| be |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
-  1. Return false if any of the following conditions hold:
-    * |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and |responseBody|
-      is not [=UTF-8=] encoded;
-    * |mimeTypeCharset| is "us-ascii", and not all bytes in |responseBody| are [=ASCII bytes=].
+    * |mimeType| is "`application/wasm`" and the result of [=header list/getting=] "`Content-Type`"
+      from |response|'s [=response/header list=] is null or not [=byte-case-insensitive=] equal to
+      "`application/wasm`".
+
+      Note: This was intended to match the behavior of [=compiling a potential WebAssembly
+      response=], but diverges by failing to remove leading and trailing [=HTTP tab or space
+      bytes=].
+
+  1. If |mimeType| is not "`application/wasm`":
+    1. Let |mimeTypeCharset| be "utf-8".
+    1. If |headerMimeType|'s [=MIME type/parameters=]["`charset`"] exists, set |mimeTypeCharset|
+      to |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
+    1. Return true if any of the following conditions hold:
+      * |mimeTypeCharset| is "utf-8", and |responseBody| is [=UTF-8=] encoded;
+      * |mimeTypeCharset| is "us-ascii", and all bytes in |responseBody| are [=ASCII bytes=].
+    1. Return false.
+  1. Return true.
+</div>
+
+<div algorithm>
+To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, failure, or a
+[=byte sequence=] |responseBody|, and a [=string=] |mimeType|:
+
+  1. If the result of [=validating fetching response headers=] given |response| is false, then
+     return false.
+  1. If the result of [=validating fetching response mime and body=] given |response|,
+     |responseBody|, |mimeType| is false, then return false.
   1. Return true.
 </div>
 
@@ -2138,10 +2191,8 @@ To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
   1. Let |moduleObject| be null.
   1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
     a [=response=] |response| and null, failure, or a [=byte sequence=] |responseBody|:
-    1. Set |moduleObject| to failure and return, if any of the following conditions hold:
-      * |responseBody| is null or failure;
-      * [=header list/getting a structured field value|Getting=] [:Ad-Auction-Allowed:] and "`item`"
-        from |response|'s [=response/header list=] does not return a true value.
+    1. If [=validate fetching response=] with |response|, |responseBody| and "`application/wasm`"
+        returns false, set |moduleObject| to failure and return.
     1. Let |module| be the result of [=compiling a WebAssembly module=] |response|.
     1. If |module| is [=error=], set |moduleObject| to failure.
     1. Otherwise, set |moduleObject| to |module|.
@@ -2199,7 +2250,7 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, and a [=boolean=] |is
     1. Set |signals| to the result of [=parsing JSON bytes to an Infra value=] |responseBody|.
   1. Wait for |signals| to be set.
   1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return « null,
-    null ».
+    null, null ».
   1. If |formatVersion| is 2:
     1. If |signals|["`keys`"] does not [=map/exist=], return « null, null ».
     1. Set |signals| to |signals|["`keys`"].
@@ -3546,12 +3597,12 @@ of the following global objects:
 
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an {{unsigned short}}
-
   |multiBidLimit|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|,
   a {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null
-  |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=] |trustedBiddingSignals|,
-  a {{BiddingBrowserSignals}} |browserSignals|, a {{DirectFromSellerSignalsForBuyer}}
-  |directFromSellerSignalsForBuyer| and an integer millisecond [=duration=] |timeout|:
+  |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=]-or-null
+  |trustedBiddingSignals|, a {{BiddingBrowserSignals}} |browserSignals|,
+  a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer| and an integer millisecond
+  [=duration=] |timeout|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupBiddingScriptRunnerGlobalScope}}.
@@ -4540,7 +4591,8 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 
     Note: Each of [=interest group/trusted bidding signals slot size mode=]'s value represents a
     {{long}} integer, so 4 bytes.
-1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
+1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null,
+   [=list/for each=] |key| of it:
   1. The [=string/length=] of |key|.
 1. If |ig|'s [=interest group/max trusted bidding signals url length=] is not null:
   1. 4, which is the size of |ig|'s [=interest group/max trusted bidding signals url length=].
@@ -4971,6 +5023,7 @@ dictionary BiddingBrowserSignals {
   required long adComponentsLimit;
   required unsigned short multiBidLimit;
 
+  record<DOMString, DOMString> requestedSize;
   USVString topLevelSeller;
   sequence<PreviousWin> prevWinsMs;
   object wasmHelper;
@@ -4985,11 +5038,26 @@ dictionary ScoringBrowserSignals {
   required unsigned long biddingDurationMsec;
   required DOMString bidCurrency;
 
+  record<DOMString, DOMString> renderSize;
   unsigned long dataVersion;
   sequence<USVString> adComponents;
   boolean forDebuggingOnlyInCooldownOrLockout = false;
 };
 </xmp>
+
+<div algorithm>
+  To <dfn>convert an ad size to a map</dfn> given an [=ad size=] |adSize|:
+  
+  1. Let |dict| be a new empty [=map=].
+  1. Let |jsWidth| be |adSize|'s [=ad size/width=], [=converted to an ECMAScript value=].
+  1. [=map/Set=] |dict|["width"] to the result of [=string/concatenating=] « [$ToString$](|jsWidth|),
+     |adSize|'s [=ad size/width units=] ».
+  1. Let |jsHeight| be |adSize|'s [=ad size/height=], [=converted to an ECMAScript value=].
+  1. [=map/Set=] |dict|["height"] to the result of [=string/concatenating=] « [$ToString$](|jsHeight|),
+     |adSize|'s [=ad size/height units=] ».
+  1. Return |dict|.
+
+</div>
 
 Note: {{ScoringBrowserSignals}}'s {{ScoringBrowserSignals/adComponents}} is {{undefined}} when
 [=generated bid/ad component descriptors=] is null or [=list/is empty|an empty list=]. It cannot be
@@ -5203,7 +5271,7 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
       [=same origin=] with [=interest group/owner=].
     </p>
   : <dfn>trusted bidding signals keys</dfn>
-  :: Null or a [=list=] of [=string=]. See [=building trusted bidding signals url=].
+  :: Null or a [=list=] of [=strings=]. See [=building trusted bidding signals url=].
   : <dfn>trusted bidding signals slot size mode</dfn>
   :: "`none`", "`slot-size`" or "`all-slots-requested-sizes`". Initially "`none`". Each value
     reprensents a {{long}} integer. See [=calculate the ad slot size query param=].
@@ -5582,8 +5650,9 @@ To <dfn>look up per-buyer multi-bid limit</dfn> given an [=auction config=] |auc
 <h3 id=bid-generators>Bid generator</h3>
 
 A <dfn>per buyer bid generator</dfn> is an [=ordered map=] whose [=map/keys=] are [=URLs=]
-representing [=interest group/trusted bidding signals urls=], and whose [=map/values=] are
-[=per signals url bid generators=].
+or null representing [=interest group/trusted bidding signals urls=], and whose [=map/values=] are
+[=per signals url bid generators=]. The key of null is used for [=interest groups=] that do not
+specify a [=interest group/trusted bidding signals url=].
 
 A <dfn>per signals url bid generator</dfn> is an [=ordered map=] whose [=map/keys=] are [=origins=]
 representing [=interest group/joining origins=], and whose [=map/values=] are [=lists=] of
@@ -5601,9 +5670,13 @@ into smaller number of fetches. It's a [=struct=] with the following [=struct/it
   : <dfn>all per interest group data</dfn>
   :: An [=ordered map=] whose [=map/keys=] are [=interest group/name=] [=strings=] and whose
      [=map/values=] are [=bidding signals per interest group data=].
+  : <dfn>no signals flags</dfn>
+  :: An [=ordered map=] whose [=map/keys=] are [=interest group/name=] [=strings=] and whose
+     [=map/values=] are {{boolean}}s. This is set if given interest group did not request any
+     trusted bidding signals keys or if its trusted signals fetch failed.
   : <dfn>data versions</dfn>
-  :: An [=ordered map=] who [=map/keys=] are [=strings=] and [=map/values=] are
-    {{unsigned long}} or null. This contains data version returned by a fetch that provided the
+  :: An [=ordered map=] who [=map/keys=] are [=interest group/name=] [=strings=] and [=map/values=]
+    are {{unsigned long}} or null. This contains data version returned by a fetch that provided the
     values for a given interest group name.
   : <dfn>keys</dfn>
   :: An [=ordered set=] of [=strings=]. Describes the keys collected to be fetched in the current
@@ -5657,21 +5730,29 @@ To <dfn>fetch the current outstanding trusted signals batch</dfn> given a
 {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|,
 and a [=string=] |slotSizeQueryParam|:
 
+  1. If |signalsUrl| is null, return.
   1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
      |signalsUrl|, |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=],
      |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=],
      |experimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
   1. Let « |partialTrustedBiddingSignals|, |partialPerInterestGroupData|, |dataVersion| » be the
      result of [=fetching trusted signals=] with |biddingSignalsUrl| and true.
-  1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|:
-    1. Set |trustedBiddingSignalsBatcher|'s
-      [=trusted bidding signals batcher/all trusted bidding signals=][|key|] to |value|.
-  1. [=set/For each=] |igName| item of |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=]:
-    1. [=map/Set=] |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data versions=][|igName|] to |dataVersion|.
-  1. [=Append to a bidding signals per-interest group data map=] with
-      |partialPerInterestGroupData|, |trustedBiddingSignalsBatcher|'s
-      [=trusted bidding signals batcher/ig names=], and |trustedBiddingSignalsBatcher|'s
-      [=trusted bidding signals batcher/all per interest group data=].
+  1. If |partialTrustedBiddingSignals| is not null:
+    1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|, [=map/set=]
+      |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding
+      signals=][|key|] to |value|.
+    1. [=set/For each=] |igName| of |trustedBiddingSignalsBatcher|'s [=trusted bidding signals
+      batcher/ig names=], [=map/set=] |trustedBiddingSignalsBatcher|'s [=trusted bidding signals
+      batcher/data versions=][|igName|] to |dataVersion|.
+    1. [=Append to a bidding signals per-interest group data map=] with
+       |partialPerInterestGroupData|, |trustedBiddingSignalsBatcher|'s
+       [=trusted bidding signals batcher/ig names=], and |trustedBiddingSignalsBatcher|'s
+       [=trusted bidding signals batcher/all per interest group data=].
+ 1. Otherwise, [=set/for each=] |igName| of |trustedBiddingSignalsBatcher|'s
+    [=trusted bidding signals batcher/ig names=]:
+    1. [=map/Set=] |trustedBiddingSignalsBatcher|'s
+       [=trusted bidding signals batcher/no signals flags=][|igName|] to true.
+
 </div>
 
 <div algorithm>
@@ -5679,6 +5760,20 @@ To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding s
 |trustedBiddingSignalsBatcher|, [=interest group=] |ig|, a [=URL=] |signalsUrl|, an
 {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|,
 and a [=string=] |slotSizeQueryParam|:
+
+  1. If |signalsUrl| is null:
+    1. [=map/Set=] |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/no signals flags=]
+      [|ig|'s [=interest group/name=]] to true.
+    1. Return.
+  1. [=map/Set=] |trustedBiddingSignalsBatcher|'s
+     [=trusted bidding signals batcher/no signals flags=][|ig|'s [=interest group/name=]] to true
+     if |ig|'s [=interest group/trusted bidding signals keys=] is null or [=map/is empty=];
+     otherwise set it to false.
+
+     Note: An interest group with no trusted signals keys requests would still fetch and process
+     per-interest group data like priorityVector and
+     [=bidding signals per interest group data/updateIfOlderThanMs=], but it will get null passed in
+     to its bidding function.
 
   1. Let |putativeKeys| be a [=set/clone=] of |trustedBiddingSignalsBatcher|'s
      [=trusted bidding signals batcher/keys=].
@@ -5689,7 +5784,8 @@ and a [=string=] |slotSizeQueryParam|:
     |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=],
     then set |putativeLengthLimit| to |trustedBiddingSignalsBatcher|'s
     [=trusted bidding signals batcher/length limit=].
-  1. [=list/Extend=] |putativeKeys| with |ig|'s [=interest group/trusted bidding signals keys=].
+  1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, [=list/extend=]
+     |putativeKeys| with |ig|'s [=interest group/trusted bidding signals keys=].
   1. [=list/Append=] |ig|'s [=interest group/name=] to |putativeIgNames|.
   1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
     |signalsUrl|, |putativeKeys|, |putativeIgNames|, |experimentGroupId|, |topLevelOrigin|, and
@@ -5703,8 +5799,11 @@ and a [=string=] |slotSizeQueryParam|:
   1. Otherwise:
     1. [=Fetch the current outstanding trusted signals batch=] given |trustedBiddingSignalsBatcher|,
       |signalsUrl|, |experimentGroupId|, |topLevelOrigin|, |slotSizeQueryParam|.
-    1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
+    1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, set
+      |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
       [=list/clone=] of |ig|'s [=interest group/trusted bidding signals keys=].
+    1. Otherwise, set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
+       new [=list=].
     1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=] to
         « |ig|'s [=interest group/name=] ».
     1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=] to
