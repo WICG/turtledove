@@ -54,7 +54,6 @@ On a high level, the protocol is similar to the [Bidding & Auction services prot
 *   HPKE is used to ensure that the message is only visible to the approved versions of services inside the trusted execution environment (TEE).
     *   The reason to use HPKE is that the request must be encrypted and can only be decrypted by the trusted service itself. A notable alternative protocol is TLS which in addition to the domain validation, validates the service identity attestation. However, attestation verification as part of TLS can present performance challenges and is still being evaluated.
     *   The protocol to configure the HPKE is roughly based on the [Oblivious HTTP proposal](https://datatracker.ietf.org/doc/rfc9458/).
-*   The protocol to configure the HPKE is roughly based on the [Oblivious HTTP proposal](https://datatracker.ietf.org/doc/rfc9458/).
 
 For more information on the design, please refer to [the trust model explainer](https://github.com/privacysandbox/protected-auction-services-docs/blob/main/key_value_service_trust_model.md).
 
