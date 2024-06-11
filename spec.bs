@@ -629,6 +629,10 @@ partial interface Navigator {
   Promise<(USVString or FencedFrameConfig)?> runAdAuction(AuctionAdConfig config);
 };
 
+dictionary AuctionRealTimeReportingConfig {
+  required DOMString type;
+};
+
 dictionary AuctionAdConfig {
   required USVString seller;
   required USVString decisionLogicURL;
@@ -657,6 +661,8 @@ dictionary AuctionAdConfig {
   sequence<record<DOMString, DOMString>> allSlotsRequestedSizes;
   Promise<undefined> additionalBids;
   DOMString auctionNonce;
+  AuctionRealTimeReportingConfig sellerRealTimeReportingConfig;
+  record<USVString, AuctionRealTimeReportingConfig> perBuyerRealTimeReportingConfig;
   sequence<AuctionAdConfig> componentAuctions = [];
   AbortSignal? signal;
   Promise<boolean> resolveToConfig;
@@ -2728,6 +2734,18 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
   1. Return |canSendAfterSampled|.
 </div>
 
+## {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/realTimeReporting}} ## {#real-time-reporting-header}
+
+*This first introductory paragraph is non-normative.*
+
+The goal of real-time reporting is to get auction monitoring data to the buyer and seller as quickly
+as possible (e.g. < 5 mins). The primary use-case is rapid error detection i.e. detecting quickly
+whether there are major problems with unexpected behavior in `generateBid()``, `scoreAd()``, or
+fetching of bidding or scoring scripts or trusted signals. This API will provide histogram
+contribution values of only 0s and 1s, which can be used to correspond to whether or not the event
+being monitored behaved expectedly or aberrantly. The contribution is subject to substantial local
+noise and is sent soon after the auction is completed.
+
 # Additional Bids and Negative Targeting # {#additional-bids-and-negative-targeting}
 
 ## createAuctionNonce() ## {#create-auction-nonce}
@@ -3596,19 +3614,31 @@ interface ForDebuggingOnly {
   undefined reportAdAuctionLoss(USVString url);
 };
 
+[Exposed=InterestGroupBiddingAndScoringScriptRunnerGlobalScope]
+interface RealTimeReporting {
+  undefined contributeToHistogram(RealTimeContribution contribution);
+};
+
+dictionary RealTimeContribution {
+  required long bucket;
+  required double priorityWeight;
+  long latencyThreshold = 0;
+};
+
 [Exposed=InterestGroupBiddingAndScoringScriptRunnerGlobalScope,
  Global=InterestGroupBiddingAndScoringScriptRunnerGlobalScope]
 interface InterestGroupBiddingAndScoringScriptRunnerGlobalScope : InterestGroupScriptRunnerGlobalScope {
-
   readonly attribute ForDebuggingOnly forDebuggingOnly;
+  readonly attribute RealTimeReporting realTimeReporting;
 };
 
 </pre>
 
-Each {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope}} has an associated
-<dfn for=InterestGroupBiddingAndScoringScriptRunnerGlobalScope>forDebuggingOnly</dfn>, which is an
-{{ForDebuggingOnly}} instance created alongside the
-{{InterestGroupBiddingAndScoringScriptRunnerGlobalScope}}.
+Each {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope}} has an associated {{ForDebuggingOnly}}
+instance <dfn for=InterestGroupBiddingAndScoringScriptRunnerGlobalScope>forDebuggingOnly</dfn>, and
+an associated {{RealTimeReporting}} instance
+<dfn for=InterestGroupBiddingAndScoringScriptRunnerGlobalScope>realTimeReporting</dfn>, which are
+created alongside the {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope}}.
 
 
 <div algorithm>
@@ -3659,6 +3689,49 @@ The <dfn method for="ForDebuggingOnly">reportAdAuctionLoss(|url|)</dfn> method s
 
   1. Set |global|'s
     [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] to |parsedUrl|.
+</div>
+
+
+<div algorithm>
+The <dfn attribute for=InterestGroupBiddingAndScoringScriptRunnerGlobalScope>realTimeReporting</dfn>
+getter steps are:
+
+  1. Return [=this=]'s [=relevant global object=]'s
+    [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/realTimeReporting=].
+</div>
+
+Each {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope}} has a
+<dl dfn-for="InterestGroupBiddingAndScoringScriptRunnerGlobalScope">
+  : <dfn>real time reporting contributions</dfn>
+  :: A [=list=] of [=real time reporting contributions=].
+</dl>
+
+<div algorithm>
+The <dfn method for="RealTimeReporting">contributeToHistogram({{RealTimeContribution}} |contribution|)</dfn>
+method steps are:
+
+  1. Let |global| be [=this=]'s [=relevant global object=].
+  1. If |contribution|["{{RealTimeContribution/bucket}}"] &gt; 2047 or is negative, then return;
+
+    Note: For forward compatibility with new values, don't [=exception/throw=].
+
+  1. If |contribution|["{{RealTimeContribution/priorityWeight}}"] &le; 0, then [=exception/throw=] a
+    {{TypeError}}.
+  1. Let |latencyThreshold| be null.
+  1. If |contribution|["{{RealTimeContribution/latencyThreshold}}"] [=map/exists=]:
+    1. If |contribution|["{{RealTimeContribution/latencyThreshold}}"] is negative, then
+      [=exception/throw=] a {{TypeError}}.
+    1. Set |latencyThreshold| to |contribution|["{{RealTimeContribution/latencyThreshold}}"].
+  1. Let |contributionEntry| be a new [=real time reporting contribution=] with the following
+    [=struct/items=]:
+    : [=real time reporting contribution/bucket=]
+    :: |contribution|["{{RealTimeContribution/bucket}}"]
+    : [=real time reporting contribution/priority weight=]
+    :: |contribution|["{{RealTimeContribution/priorityWeight}}"]
+    : [=real time reporting contribution/latency threshold=]
+    :: |latencyThreshold|
+  1. [=list/Append] |contributionEntry| to |global|'s
+    [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/real time reporting contributions=].
 </div>
 
 ### InterestGroupBiddingScriptRunnerGlobalScope ### {#bidding-global-scope}
@@ -5970,6 +6043,19 @@ An <dfn>auction report info</dfn> is a [=struct=] with the following [=struct/it
     sent after [downsampling debug reports](#downsampling-header). While the browser is
     experimenting with third party cookie deprecation (before they have been fully removed), the
     `forDebuggingOnly` reporting APIs are not downsampled, so they are still lists.
+
+</dl>
+
+A <dfn>real time reporting contribution</dfn> is a [=struct=] with the following [=struct/items=]:
+// TODO: add comments
+<dl dfn-for="real time reporting contribution">
+  : <dfn>bucket</dfn>
+  :: A {{long}}. Must be in [=the range=] from 0 to 2047, inclusive.
+  : <dfn>priority weight</dfn>
+  :: A {{double}}. Must be greater than 0 and less than infinity, dictates the relative likelihood
+    of which bucket will get the contribution.
+  : <dfn>latency threshold</dfn>
+  :: A {{long}}. Must be non-negative.
 
 </dl>
 
