@@ -66,6 +66,9 @@ spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
 spec: WebAssembly-js-api; urlPrefix: https://webassembly.github.io/spec/js-api/
   type: dfn
     text: compiling a WebAssembly module; url: #compile-a-webassembly-module
+spec: WebAssembly-web-api; urlPrefix: https://webassembly.github.io/spec/web-api/
+  type: dfn
+    text: compiling a potential WebAssembly response; url: #compile-a-potential-webassembly-response
 spec: WebIDL; urlPrefix: https://webidl.spec.whatwg.org/
   type: dfn
     text: convert a Web IDL arguments list to an ECMAScript arguments list; url: #web-idl-arguments-list-converting
@@ -627,6 +630,7 @@ bid in the auction for the chance to display their advertisement.
 [SecureContext]
 partial interface Navigator {
   Promise<(USVString or FencedFrameConfig)?> runAdAuction(AuctionAdConfig config);
+  readonly attribute boolean deprecatedRunAdAuctionEnforcesKAnonymity;
 };
 
 dictionary AuctionRealTimeReportingConfig {
@@ -668,6 +672,15 @@ dictionary AuctionAdConfig {
   Promise<boolean> resolveToConfig;
 };
 </xmp>
+
+Note: To help with ease of adoption, the browser will support the attribute
+{{Window/navigator}}.{{Navigator/deprecatedRunAdAuctionEnforcesKAnonymity}}
+while k-anonymity enforcement is being rolled out. This attribute is true
+when {{Window/navigator}}.{{Navigator/runAdAuction()}} enforces
+[[#k-anonymity]] when running an auction and false otherwise. The attribute
+is not useful once k-anonymity enforcement is fully rolled out, and hence
+this attribute will be deprecated and removed some time after this point.
+See <a href="https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity">https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity</a> for more up to date information.
 
 <div algorithm="runAdAuction()">
 
@@ -815,15 +828,15 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 |pendingConfig|, [=auction config=] |auctionConfig|, [=leading bid info=] |winningBidInfo|, and
 [=auction report info=] |auctionReportInfo|:
 1. Let |winningBid| be |winningBidInfo|'s [=leading bid info/leading bid=].
-1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose 
+1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are [=strings=].
-1. [=list/For each=] |replacement| in |auctionConfig|'s 
+1. [=list/For each=] |replacement| in |auctionConfig|'s
   [=auction config/deprecated render url replacements=]:
   1. Let |k| be |replacement|'s [=ad keyword replacement/match=].
   1. Let |v| be |replacement|'s [=ad keyword replacement/replacement=].
   1. [=map/Set=] |replacements|[|k|] to |v|.
 1. Let |replacedAdURL| be the result of
-  running [=fencedframeutil/substitute macros=] with |replacements| and |winningBid|'s 
+  running [=fencedframeutil/substitute macros=] with |replacements| and |winningBid|'s
   [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
 1. Set |pendingConfig|'s [=fenced frame config/mapped url=]'s [=mapped url/value=] to
    |replacedAdURL|.
@@ -831,7 +844,7 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 1. Let |concreteAdSize| be the result of
 
    Issue: resolving screen-relative sizes to pixel values for |adSize|.
-   (<a href="https://github.com/WICG/turtledove/issues/986">WICG/turtledove#986</a>) 
+   (<a href="https://github.com/WICG/turtledove/issues/986">WICG/turtledove#986</a>)
 1. Let |adWidthString| and |adHeightString| be the result of
 
    Issue: converting |concreteAdSize| to strings.
@@ -887,11 +900,11 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
       [=fenced frame reporting metadata/fenced frame reporting map=], |winningBidInfo| and
       |auctionReportInfo|.
 1. Let |adComponentDescriptorsWithReplacements| be a new [=list=] of [=ad descriptors=].
-1. If |winningBid|'s [=generated bid/ad component descriptors=] is not null: 
-  1. [=list/For each=] |adComponentDescriptor| of |winningBid|'s 
+1. If |winningBid|'s [=generated bid/ad component descriptors=] is not null:
+  1. [=list/For each=] |adComponentDescriptor| of |winningBid|'s
     [=generated bid/ad component descriptors=]:
     1. Let |descriptorWithReplacement| be a new [=ad descriptor=].
-    1. Set |descriptorWithReplacement|'s [=ad descriptor/size=] to 
+    1. Set |descriptorWithReplacement|'s [=ad descriptor/size=] to
       |adComponentDescriptor|'s [=ad descriptor/size=].
     1. Set |descriptorWithReplacement|'s [=ad descriptor/url=] to the result of running
       [=fencedframeutil/substitute macros=] with |replacements| and |adComponentDescriptor|'s
@@ -1178,21 +1191,21 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       1. Set |auctionConfig|'s [=auction config/direct from seller signals header ad slot=] to
         failure.
 1. If |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"] [=map/exists=]:
-  1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to 
+  1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to
     |config|["{{AuctionAdConfig/deprecatedRenderURLReplacements}}"].
   1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
       [=auction config/deprecated render url replacements=]:
     * To parse the value |result|:
       1. Let |renderUrlReplacements| be a new empty [=list=] of [=ad keyword replacement=]s.
       1. [=list/For each=] |replacement| in |result|:
-        1. If [=validate a url macro=] with |replacement|'s [=ad keyword replacement/match=] 
+        1. If [=validate a url macro=] with |replacement|'s [=ad keyword replacement/match=]
           returns false, then [=exception/throw=] a {{TypeError}}.
         1. Otherwise, [=list/append=] |replacement| to |renderUrlReplacements|.
-      1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to 
+      1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to
         |renderUrlReplacements|.
-    * To handle an error, set |auctionConfig|'s 
+    * To handle an error, set |auctionConfig|'s
       [=auction config/deprecated render url replacements=] to failure.
-      
+
 
 1. If |config|["{{AuctionAdConfig/sellerTimeout}}"] [=map/exists=], set |auctionConfig|'s
   [=auction config/seller timeout=] to |config|["{{AuctionAdConfig/sellerTimeout}}"] in milliseconds
@@ -1598,6 +1611,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/topWindowHostname}}"] to |topLevelHost|.
 1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/seller}}"] to the [=serialization of an
   origin|serialization=] of |seller|.
+1. If |auctionConfig|'s [=auction config/requested size=] is not null, [=map/set=] 
+   |browserSignals|["{{BiddingBrowserSignals/requestedSize}}"] to the result of running
+   [=convert an ad size to a map=] with |auctionConfig|'s [=auction config/requested size=].
 1. Let |auctionLevel| be "single-level-auction".
 1. Let |componentAuctionExpectedCurrency| be null.
 1. If |topLevelAuctionConfig| is not null:
@@ -1875,7 +1891,7 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   However, note that a single request is always considered valid, regardless of whether its length exceeds
   the auction's [=auction config/max trusted scoring signals url length=].
 
-  
+
   The network response has to be parsed to pull out the pieces relevant to each
   [=evaluating a scoring script|evaluation of a scoring script=].
 1. Let |trustedScoringSignals| be null.
@@ -1910,6 +1926,9 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     <dt>{{ScoringBrowserSignals/renderURL}}
     <dd>The result of running the [=URL serializer=] on |generatedBid|'s
       [=generated bid/ad descriptor=]'s [=ad descriptor/url=]
+    <dt>{{ScoringBrowserSignals/renderSize}}
+    <dd>The result of running [=convert an ad size to a map=] with |generatedBid|'s
+        [=generated bid/ad descriptor=]'s [=ad descriptor/size=] if it is not null, {{undefined}} otherwise
     <dt>{{ScoringBrowserSignals/biddingDurationMsec}}
     <dd>|generatedBid|'s [=generated bid/bid duration=]
     <dt>{{ScoringBrowserSignals/bidCurrency}}
@@ -2054,23 +2073,52 @@ The <dfn http-header><code>Ad-Auction-Allowed</code></dfn> HTTP response header 
 [=structured header=] whose value must be a [=structured header/boolean=].
 
 <div algorithm>
-To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, failure, or a
-[=byte sequence=] |responseBody|, and a [=string=] |mimeType|:
+To <dfn>validate fetching response headers</dfn> given a [=response=] |response|:
+
+  1. If [=header list/getting a structured field value|getting=] [:Ad-Auction-Allowed:] and
+     "`item`" from |response|'s [=response/header list=] does not return a true value, return false.
+  1. If |response|'s [=response/status=] is not an [=ok status=], return false.
+  1. Return true.
+</div>
+
+<div algorithm>
+To <dfn>validate fetching response mime and body</dfn> given a [=response=] |response|, null,
+failure, or a [=byte sequence=] |responseBody|, and a [=string=] |mimeType|:
 
   1. If |responseBody| is null or failure, return false.
-  1. If [=header list/getting a structured field value|getting=] [:Ad-Auction-Allowed:] and
-    "`item`" from |response|'s [=response/header list=] does not return a true value, return false.
   1. Let |headerMimeType| be the result of [=header list/extracting a MIME type=] from |response|'s
     [=response/header list=].
   1. Return false if any of the following conditions hold:
     * |headerMimeType| is failure;
     * |mimeType| is "`text/javascript`" and |headerMimeType| is not a [=JavaScript MIME type=];
     * |mimeType| is "`application/json`" and |headerMimeType| is not a [=JSON MIME type=].
-  1. Let |mimeTypeCharset| be |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
-  1. Return false if any of the following conditions hold:
-    * |mimeTypeCharset| does not [=map/exist=], or |mimeTypeCharset| is "utf-8", and |responseBody|
-      is not [=UTF-8=] encoded;
-    * |mimeTypeCharset| is "us-ascii", and not all bytes in |responseBody| are [=ASCII bytes=].
+    * |mimeType| is "`application/wasm`" and the result of [=header list/getting=] "`Content-Type`"
+      from |response|'s [=response/header list=] is null or not [=byte-case-insensitive=] equal to
+      "`application/wasm`".
+
+      Note: This was intended to match the behavior of [=compiling a potential WebAssembly
+      response=], but diverges by failing to remove leading and trailing [=HTTP tab or space
+      bytes=].
+
+  1. If |mimeType| is not "`application/wasm`":
+    1. Let |mimeTypeCharset| be "utf-8".
+    1. If |headerMimeType|'s [=MIME type/parameters=]["`charset`"] exists, set |mimeTypeCharset|
+      to |headerMimeType|'s [=MIME type/parameters=]["`charset`"].
+    1. Return true if any of the following conditions hold:
+      * |mimeTypeCharset| is "utf-8", and |responseBody| is [=UTF-8=] encoded;
+      * |mimeTypeCharset| is "us-ascii", and all bytes in |responseBody| are [=ASCII bytes=].
+    1. Return false.
+  1. Return true.
+</div>
+
+<div algorithm>
+To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, failure, or a
+[=byte sequence=] |responseBody|, and a [=string=] |mimeType|:
+
+  1. If the result of [=validating fetching response headers=] given |response| is false, then
+     return false.
+  1. If the result of [=validating fetching response mime and body=] given |response|,
+     |responseBody|, |mimeType| is false, then return false.
   1. Return true.
 </div>
 
@@ -2135,10 +2183,8 @@ To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
   1. Let |moduleObject| be null.
   1. [=Fetch=] |request| with [=fetch/processResponseConsumeBody=] set to the following steps given
     a [=response=] |response| and null, failure, or a [=byte sequence=] |responseBody|:
-    1. Set |moduleObject| to failure and return, if any of the following conditions hold:
-      * |responseBody| is null or failure;
-      * [=header list/getting a structured field value|Getting=] [:Ad-Auction-Allowed:] and "`item`"
-        from |response|'s [=response/header list=] does not return a true value.
+    1. If [=validate fetching response=] with |response|, |responseBody| and "`application/wasm`"
+        returns false, set |moduleObject| to failure and return.
     1. Let |module| be the result of [=compiling a WebAssembly module=] |response|.
     1. If |module| is [=error=], set |moduleObject| to failure.
     1. Otherwise, set |moduleObject| to |module|.
@@ -2707,7 +2753,7 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
   To <dfn>is debugging only in cooldown or lockout</dfn> given an [=origin=] |origin|:
 
   1. If [=user agent=]'s [=debug report lockout until=] is not null, and [=current wall time=] is
-    less than [=user agent=]'s [=debug report lockout until=], return true. 
+    less than [=user agent=]'s [=debug report lockout until=], return true.
   1. If [=user agent=]'s [=debug report cooldown=] is null, then return false.
   1. If [=user agent=]'s [=debug report cooldown=][|origin|] [=map/exists=] and [=current wall time=]
     is less than [=user agent=]'s [=debug report cooldown=][|origin|], then return true.
@@ -4877,6 +4923,7 @@ dictionary BiddingBrowserSignals {
   required long adComponentsLimit;
   required unsigned short multiBidLimit;
 
+  record<DOMString, DOMString> requestedSize;
   USVString topLevelSeller;
   sequence<PreviousWin> prevWinsMs;
   object wasmHelper;
@@ -4891,11 +4938,26 @@ dictionary ScoringBrowserSignals {
   required unsigned long biddingDurationMsec;
   required DOMString bidCurrency;
 
+  record<DOMString, DOMString> renderSize;
   unsigned long dataVersion;
   sequence<USVString> adComponents;
   boolean forDebuggingOnlyInCooldownOrLockout = false;
 };
 </xmp>
+
+<div algorithm>
+  To <dfn>convert an ad size to a map</dfn> given an [=ad size=] |adSize|:
+  
+  1. Let |dict| be a new empty [=map=].
+  1. Let |jsWidth| be |adSize|'s [=ad size/width=], [=converted to an ECMAScript value=].
+  1. [=map/Set=] |dict|["width"] to the result of [=string/concatenating=] « [$ToString$](|jsWidth|),
+     |adSize|'s [=ad size/width units=] ».
+  1. Let |jsHeight| be |adSize|'s [=ad size/height=], [=converted to an ECMAScript value=].
+  1. [=map/Set=] |dict|["height"] to the result of [=string/concatenating=] « [$ToString$](|jsHeight|),
+     |adSize|'s [=ad size/height units=] ».
+  1. Return |dict|.
+
+</div>
 
 Note: {{ScoringBrowserSignals}}'s {{ScoringBrowserSignals/adComponents}} is {{undefined}} when
 [=generated bid/ad component descriptors=] is null or [=list/is empty|an empty list=]. It cannot be
@@ -5342,11 +5404,11 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
     [=auction config=] can have component auctions.
 
   : <dfn>deprecated render url replacements</dfn>
-  :: Null, a {{Promise}}, failure, or a [=list=] of [=ad keyword replacement=]s, each containing a 
-    single [=ad keyword replacement/match=] and [=ad keyword replacement/replacement=]. Render url 
+  :: Null, a {{Promise}}, failure, or a [=list=] of [=ad keyword replacement=]s, each containing a
+    single [=ad keyword replacement/match=] and [=ad keyword replacement/replacement=]. Render url
     replacements can only happen within a single seller [=auction config=] or
-    within the component [=auction config=]s. 
-    
+    within the component [=auction config=]s.
+
   : <dfn>seller experiment group id</dfn>
   :: Null or an {{unsigned short}}, initially null.
     Optional identifier for an experiment group to support coordinated experiments with the seller's
@@ -5415,9 +5477,9 @@ To <dfn>wait until configuration input promises resolve</dfn> given an [=auction
   1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
   1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], 
+    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=],
     [=auction config/deprecated render url replacements=], and
-    [=auction config/direct from seller signals header ad slot=] are not {{Promise}}s, and 
+    [=auction config/direct from seller signals header ad slot=] are not {{Promise}}s, and
     [=auction config/expects additional bids=] is false.
   1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
@@ -5855,10 +5917,10 @@ An <dfn>ad keyword replacement</dfn> is a [=struct=] with the following [=struct
 <dl dfn-for="ad keyword replacement">
   : <dfn>match</dfn>
   :: A [=string=], represents the match within a {{AuctionAd/renderURL}}, that is going to be
-    replaced by [=ad keyword replacement/replacement=]. Must be in the format `${...}` or 
+    replaced by [=ad keyword replacement/replacement=]. Must be in the format `${...}` or
     `%%...%%`.
   : <dfn>replacement</dfn>
-  :: A [=string=], meant to replace [=ad keyword replacement/match=] within a 
+  :: A [=string=], meant to replace [=ad keyword replacement/match=] within a
     {{AuctionAd/renderURL}}.
 </dl>
 
