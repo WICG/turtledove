@@ -1875,23 +1875,22 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 </div>
 
 <div algorithm>
-To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
-|generatedBid|, a [=bid debug reporting info=] |bidDebugReportInfo|, a [=leading bid info=] |leadingBidInfo|,
-a [=string=] |decisionLogicScript|, a [=list=] or [=origins=] |allowCrossOriginTrustedScoringSignalsFrom|,
-a {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
-|biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
-or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, and an [=origin=]
-|topLevelOrigin|:
+To <dfn>fetch and decode trusted scoring signals</dfn> given an [=auction config=] |auctionConfig|,
+  a [=generated bid=] |generatedBid|, a [=list=] or [=origins=]
+  |allowCrossOriginTrustedScoringSignalsFrom|, and an [=origin=] |topLevelOrigin|:
 
+1. Let |crossOriginTrustedScoringSignalsOrigin| be null.
+1. Let |sameOriginTrustedScoringSignals| be null.
+1. Let |crossOriginTrustedScoringSignals| be null.
+1. Let |scoringDataVersion| be null.
 1. Let |renderURL| be [=URL serializer|serialized=] |generatedBid|'s
   [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
 1. Let |adComponentRenderURLs| be a new empty [=list=].
 1. If |generatedBid|'s [=generated bid/ad component descriptors=] is not null:
-  1. [=list/For each=] |adComponentDescriptor| in |generatedBid|'s
-    [=generated bid/ad component descriptors=]:
+  1. [=list/For each=] |adComponentDescriptor| in |generatedBid|'s [=generated bid/ad component
+    descriptors=]:
     1. [=list/Append=] [=URL serializer|serialized=] |adComponentDescriptor|'s [=ad descriptor/url=]
       to |adComponentRenderURLs|.
-1. Let |crossOriginTrustedScoringSignalsOrigin| be null.
 1. Let |fullSignalsUrl| be null.
 1. If |auctionConfig|'s [=auction config/trusted scoring signals url=] is not null:
   1. Let |fullSignalsUrl| be the result of [=building trusted scoring signals url=] with |auctionConfig|'s
@@ -1920,9 +1919,6 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
         |crossOriginTrustedScoringSignalsOrigin|:
         1. Set |crossOriginTrustedScoringSignalsOrigin| to null.
         1. Set |fullSignalsUrl| to null.
-1. Let |sameOriginTrustedScoringSignals| be null.
-1. Let |crossOriginTrustedScoringSignals| be null.
-1. Let |scoringDataVersion| be null.
 1. If |fullSignalsUrl| is not null:
   1. Let |trustedScoringSignals| and |allTrustedScoringSignals| be null.
   1. Set «|allTrustedScoringSignals|, ignored, |scoringDataVersion|» to the result of [=fetching
@@ -1931,7 +1927,8 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     1. Set |trustedScoringSignals| to a new empty [=map=].
     1. [=map/Set=] |trustedScoringSignals|["`renderURL`"] to a new empty [=map=].
     1. If |allTrustedScoringSignals|["`renderURLs`"] [=map/exists=] and
-      |allTrustedScoringSignals|["`renderURLs`"][|renderURL|] [=map/exists=], then [=map/set=] |trustedScoringSignals|["`renderURL`"][|renderURL|] to
+      |allTrustedScoringSignals|["`renderURLs`"][|renderURL|] [=map/exists=], then [=map/set=]
+      |trustedScoringSignals|["`renderURL`"][|renderURL|] to
       |allTrustedScoringSignals|["`renderURLs`"][|renderURL|].
     1. If |adComponentRenderURLs| is not [=list/empty=]:
       1. Let |adComponentRenderURLsValue| be a new empty [=map=].
@@ -1949,7 +1946,24 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
       1. Let |originKey| be the [=serialization of an origin|serialization=] given
           |crossOriginTrustedScoringSignalsOrigin|.
       1. [=map/Set=] |crossOriginTrustedScoringSignals|[|originKey|] to |trustedScoringSignals|.
+1. Return «|crossOriginTrustedScoringSignalsOrigin|, |sameOriginTrustedScoringSignals|,
+    |crossOriginTrustedScoringSignals|, |scoringDataVersion|»
 
+</div>
+
+<div algorithm>
+To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
+|generatedBid|, a [=bid debug reporting info=] |bidDebugReportInfo|, a [=leading bid info=] |leadingBidInfo|,
+a [=string=] |decisionLogicScript|, a [=list=] or [=origins=] |allowCrossOriginTrustedScoringSignalsFrom|,
+a {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
+|biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
+or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, and an [=origin=]
+|topLevelOrigin|:
+
+1. Let «|crossOriginTrustedScoringSignalsOrigin|, |sameOriginTrustedScoringSignals|,
+  |crossOriginTrustedScoringSignals|, |scoringDataVersion|» be the result of [=fetch and
+  decode trusted scoring signals=] given |auctionConfig|, |generatedBid|,
+  |allowCrossOriginTrustedScoringSignalsFrom|, |topLevelOrigin|.
 1. Let |adMetadata| be |generatedBid|'s [=generated bid/ad=].
 1. Let |bidValue| be |generatedBid|'s [=generated bid/bid=].
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null, then set |bidValue| to
