@@ -83,6 +83,13 @@ spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
   type: dfn
     text: shared-storage; url: #permissionspolicy-shared-storage
     text: shared-storage-select-url; url: #permissionspolicy-shared-storage-select-url
+spec: CSP; urlPrefix: https://w3c.github.io/webappsec-csp/
+  type: dfn
+    text: directive name; url: directive-name
+    text: directive value; url: directive-value
+spec: CSPEE; urlPrefix: https://w3c.github.io/webappsec-cspee/
+  type: dfn
+    text: required csp; url: browsing-context-required-csp
 </pre>
 
 <pre class=link-defaults>
@@ -2614,6 +2621,54 @@ a {{ReportingBrowserSignals}} |browserSignals|, and a [=direct from seller signa
      : [=reporting result/reporting macro map=]
      :: |reportingMacroMap|
 </div>
+
+<h3 id="canloadadauctionfencedframe">canLoadAdAuctionFencedFrame()</h3>
+
+*This first introductory paragraph is non-normative.*
+
+The process of running an ad auction through {{Window/navigator}}.{{Navigator/runAdAuction()}} is an
+expensive operation. To prevent wasted cycles if the resulting ad cannot be loaded in the current
+context, {{Window/navigator}}.{{Navigator/canLoadAdAuctionFencedFrame()}} is provided as a method to
+determine, before the ad auction begins, whether an ad auction-created <{fencedframe}> is allowed to
+be loaded in the current context. A <{fencedframe}> has restrictions on where and how it can be
+loaded that do not exist with <{iframe}>s.
+
+<xmp class="idl">
+[SecureContext]
+partial interface Navigator {
+  boolean canLoadAdAuctionFencedFrame();
+};
+</xmp>
+
+The <dfn for=Navigator method>canLoadAdAuctionFencedFrame()</dfn> method steps are:
+
+1. Let |global| be [=this=]'s [=relevant global object=].
+
+1. If |global|'s [=Window/browsing context=]'s [=required CSP=] is not null, then return false.
+
+1. Let |CSP list| be [=this=]'s [=relevant settings object=]'s [=environment settings object/policy
+   container=]'s [=policy container/CSP list=].
+
+1. [=list/For each=] |policy| of |CSP list|:
+
+  1. [=list/For each=] |directive| of |policy|'s [=policy/directive set=]:
+
+    1. If |directive|'s [=directive name|name=] is either "`fenced-frame-src`", "`frame-src`",
+       "`child-src`", or "`default-src`", and if |directive|'s [=directive name|value=] does not
+       contain either "`https:`", "`https://*:*`", or "`*`", then return false.
+
+1. Let |sandbox flags| be |global|'s [=associated Document=]'s [=Document/active sandboxing flag
+   set=].
+
+1. [=list/For each=] |mandatory unsandboxed flag| of TODO: Get the mandatory unsandboxed
+   flags list from the fenced frames spec:
+
+   Issue: TODO: Get the mandatory unsandboxed flags list once it exists in the fenced frame spec.
+
+  1. If |sandbox flags| does not [=set/contains|contain=] |mandatory unsandboxed flag|, then return
+     false.
+
+1. Return true.
 
 # Reporting # {#reporting}
 
