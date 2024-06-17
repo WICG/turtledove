@@ -59,6 +59,8 @@ spec: RFC8941; urlPrefix: https://httpwg.org/specs/rfc8941.html
       text: boolean; url: boolean
       text: integer; url: integer
       text: boolean; url: boolean
+spec: RFC1700; urlPrefix: https://www.rfc-editor.org/rfc/rfc1700
+  type: dfn; text: the order of transmission
 spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
   type: dfn
     urlPrefix: appendix/embedding.html
@@ -680,7 +682,9 @@ when {{Window/navigator}}.{{Navigator/runAdAuction()}} enforces
 [[#k-anonymity]] when running an auction and false otherwise. The attribute
 is not useful once k-anonymity enforcement is fully rolled out, and hence
 this attribute will be deprecated and removed some time after this point.
-See <a href="https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity">https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity</a> for more up to date information.
+See <a href="https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity">
+https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity</a> for
+more up to date information.
 
 <div algorithm="runAdAuction()">
 
@@ -723,7 +727,8 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|, and |bidDebugReportInfoList|.
   1. Let |auctionReportInfo| be a new [=auction report info=].
   1. If |winnerInfo| is not failure, then set |auctionReportInfo| to the result of running
-    [=collect forDebuggingOnly reports=] with |bidDebugReportInfoList| and |winnerInfo|.
+      [=collect forDebuggingOnly reports=] with |bidDebugReportInfoList| and |winnerInfo|.
+  1. [=Collect real time reports=] with |auctionReportInfo|.
   1. If |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
     given |global|, to [=reject=] |p| with a "{{TypeError}}".
   1. Otherwise if |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null:
@@ -1330,6 +1335,16 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
           failure, [=exception/throw=] a {{TypeError}}.
         1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer currencies=][|buyer|] to |value|.
     * To handle an error, set |auctionConfig|'s [=auction config/per buyer currencies=] to failure.
+1. If |config|["{{AuctionAdConfig/sellerRealTimeReportingConfig}}"] [=map/exists=]:
+  1. If |config|["{{AuctionAdConfig/sellerRealTimeReportingConfig}}"]["type"] is
+    "`default-local-reporting`", then set |auctionConfig|'s
+    [=auction config/seller real time reporting config=] to "`default-local-reporting`".
+1. If |config|["{{AuctionAdConfig/perBuyerRealTimeReportingConfig}}"] [=map/exists=],
+  [=map/For each=] |key| → |value| of |config|["{{AuctionAdConfig/perBuyerRealTimeReportingConfig}}"]:
+  1. Let |buyer| the result of [=parsing an https origin=] with |key|.
+  1. If |buyer| is failure, then return failure.
+  1. If |value|["type"] is "`default-local-reporting`", then set |auctionConfig|'s
+    [=auction config/per buyer real time reporting config=][|buyer|] to "`default-local-reporting`".
 1. If |config|["{{AuctionAdConfig/componentAuctions}}"] is not [=list/empty=]:
   1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=] and is not [=list/empty=],
     then return failure.
@@ -2785,12 +2800,119 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
 *This first introductory paragraph is non-normative.*
 
 The goal of real-time reporting is to get auction monitoring data to the buyer and seller as quickly
-as possible (e.g. < 5 mins). The primary use-case is rapid error detection i.e. detecting quickly
-whether there are major problems with unexpected behavior in `generateBid()``, `scoreAd()``, or
-fetching of bidding or scoring scripts or trusted signals. This API will provide histogram
-contribution values of only 0s and 1s, which can be used to correspond to whether or not the event
-being monitored behaved expectedly or aberrantly. The contribution is subject to substantial local
-noise and is sent soon after the auction is completed.
+as possible (e.g. &lt; 5 mins). The primary use-case is rapid error detection i.e. detecting quickly
+whether there are major problems with unexpected behavior in `generateBid()`, `scoreAd()`, or
+fetching of bidding or scoring scripts or trusted signals.
+
+Initial implementation of this specification defines
+  * <dfn>number of user buckets</dfn> is 1024, which means buckets 0 to 1023 are supported by
+    {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/realTimeReporting}} API.
+  * <dfn>number of platform buckets</dfn> is 4, which are buckets for errors that are not visible in
+    either scoreAd() or generateBid().
+
+<div id="real-time-report-example" class=example>
+  <p> Each real time report is a cbor message using the following data structure:</p>
+  <pre highlight="js">
+  {
+    "version": 1,
+    "histogram": {
+      "buckets": [5, 32, 0, 1, ..., 129],  // 128 elements.
+      "length": 1024    //1024 buckets before packing.
+    },
+    "platformHistogram": {
+      "buckets": [192],
+      "length": 4  // 4 buckets before packing.
+    }
+  }
+  </pre>
+</div>
+
+<div algorithm>
+  To <dfn>collect real time reports</dfn> given a [=list=] of [=generated bids=] |generatedBids|,
+  and an [=auction report info=] auctionReportInfo:
+
+  1. [=list/For each=] |generatedBid| of |generatedBids|:
+    1. [=list/Append=] |generatedBid|'s [=generated bid/bidder debug win report url=]
+</div>
+
+<div algorithm>
+  To <dfn>sample real time contributions</dfn> given a [=list=] of
+  [=real time reporting contributions=] |contributions|, perform the following steps. They return an
+  integer or null:
+
+  1. If |contributions| [=list/is empty=], then return null.
+  1. Let |priorityWeightSum| be 0.
+  1. [=list/For each=] |contribution| of |contributions|:
+    1. Increment |priorityWeightSum| by |contribution|'s
+      [=real time reporting contribution/priority weight=].
+  1. Let |sampleRand| be a random {{double}}, 0 &le; sampleRand &lt; 1.
+  1. Set |sampleRand| be |sampleRand| multiplied by |priorityWeightSum|.
+  1. Set |priorityWeightSum| to 0.
+  1. Let |selectedBucket| be -1.
+  1. [=list/For each=] |contribution| of |contributions|:
+    1. Increment |priorityWeightSum| by|contribution|'s
+      [=real time reporting contribution/priority weight=].
+    1. If |priorityWeightSum| &ge; |sampleRand|, then set |selectedBucket| to |contribution|'s
+      [=real time reporting contribution/bucket=], and [=iteration/break=];
+  1. [=Assert=] |selectedBucket| is not -1.
+  1. Return |selectedBucket|.
+</div>
+
+<div algorithm>
+  To <dfn>build a real time report</dfn> given :
+
+  1. 
+</div>
+
+<div algorithm>
+  To <dfn>bit pack</dfn> a [=list=] of [=booleans=] |input|:
+
+  Note: See [=the order of transmission=] for more information about the bit ordering this algorithm
+    follows.
+  1. Let |packed| be a [=list=] of [=bytes=], whose [=list/size=] is (|inputSize + 7) / 8.0.
+  1. Let |currentByte| be 0.
+  1. Let |numBits| be 0.
+  1. Let |inputSize| be |input|'s [=list/size=].
+  1. [=list/For each=] |i| in [=the range=] from 0 to |inputSize|, exclusive:
+    1. Set |currentByte| to |currentByte| * 2 + |input|[|i|].
+    1. Increment |numBits| by 1.
+    1. If |numBits| is 8, then:
+      1. [=list/Append=] |currentByte| to |packed|.
+      1. Set |currentByte| to 0 and |numBits| to 0.
+    1. Otherwise if |i| is |inputSize| - 1, then:
+      1. [=iteration/While=] |numBits| < 8:
+        1. Set |currentByte| to |currentByte| * 2.
+        1. [=list/Append=] |currentByte| to |packed|.
+        1. Increment |numBits| by 1.
+  1. Return |packed|.
+</div>
+
+### Apply noise (RAPPOR) ### {#rappor-header}
+
+*This first introductory paragraph is non-normative.*
+
+Basic <a href=https://research.google/pubs/rappor-randomized-aggregatable-privacy-preserving-ordinal-response>
+RAPPOR</a> noises each coordinate of the bit vector independently, and it is parameterized by
+<dfn>epsilon</dfn>, a measure of privacy loss. The initial implementation uses an [=epsilon=] value of
+1, yielding a flipping probability of ~0.378.
+
+
+<div algorithm>
+  To <dfn>apply RAPPOR noise</dfn> given an integer-or-null |maybeBucket|:
+
+  1. Let |totalBuckets| be the sum of [=number of user buckets=] and [=number of platform buckets=].
+  1. Let |histogram| be a [=list=] of [=booleans=], whose [=list/size=] is |totalBuckets|.
+  1. If |maybeBucket| is not null:
+    1. [=Assert=] 0 &le; |maybeBucket| &lt; |totalBuckets|.
+    1. Set |histogram|[|maybeBucket|] to true.
+  1. Let |f| be <code><span class="math">2.0/(1+e<sup>[=epsilon=]/2.0</sup>)</span></code>.
+  1. [=list/For each=] |i| in 
+    1. Let |rand| be a random {{double}}, 0 &le; |rand| &lt; 1
+    1. If |rand| &lt; |f| / 2.0, then:
+      1. Let |flipped| be false if |histogram|[|i|] is true, otherwise true.
+      1. Set |histogram|[|i|] to |flipped|.
+  1. Return |histogram|.
+</div>
 
 # Additional Bids and Negative Targeting # {#additional-bids-and-negative-targeting}
 
@@ -3757,7 +3879,7 @@ The <dfn method for="RealTimeReporting">contributeToHistogram({{RealTimeContribu
 method steps are:
 
   1. Let |global| be [=this=]'s [=relevant global object=].
-  1. If |contribution|["{{RealTimeContribution/bucket}}"] &gt; 2047 or is negative, then return;
+  1. If |contribution|["{{RealTimeContribution/bucket}}"] &ge; 1024 or is negative, then return;
 
     Note: For forward compatibility with new values, don't [=exception/throw=].
 
@@ -5468,6 +5590,16 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
   :: A [=boolean=] or failure, initially false.
     Specifies whether some bids will be provided as signed exchanges. Sets to failure if the
     {{AuctionAdConfig/additionalBids}} {{Promise}} is [=rejected=].
+  : <dfn>seller real time reporting config</dfn>
+  :: Null, or a [=string=], initially null. Seller's real time reporting type. Currently the only
+    supported type is "default-local-reporting" indicating local differential privacy. If not null,
+    the seller opted in to receive real time reports.
+  : <dfn>per buyer real time reporting config</dfn>
+  :: An [=ordered map=], whose [=map/keys=] are [=origins=], and whose [=map/values=] are [=strings=].
+    Each buyer's real time reporting type. Currently the only supported type is
+    "default-local-reporting" indicating local differential privacy. All buyers in the map opted in
+    to receive real time reports.
+
 </dl>
 
 <div algorithm>
@@ -5483,7 +5615,8 @@ To <dfn>wait until configuration input promises resolve</dfn> given an [=auction
     [=auction config/expects additional bids=] is false.
   1. If |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
-    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=], [=auction config/deprecated render url replacements=], or
+    [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=],
+    [=auction config/deprecated render url replacements=], or
     [=auction config/direct from seller signals header ad slot=] is failure, return failure.
   1. Return.
 </div>
@@ -5835,6 +5968,9 @@ A <dfn>bid debug reporting info</dfn> is a [=struct=] with the following [=struc
   : <dfn>interest group owner</dfn>
   :: An [=origin=]. Matches [=interest group/owner=] of the interest group that was
      used to call `generateBid()` to produce this reporting information.
+  : <dfn>real time reports</dfn>
+  :: A [=map=] whose [=map/keys=] are [=origins=], and whose [=map/values=] are [=lists=] of 
+
   : <dfn>bidder debug win report url</dfn>
   :: Null or a [=URL=], initially null. Set by `generateBid()`'s
     {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}'s
@@ -6106,18 +6242,22 @@ An <dfn>auction report info</dfn> is a [=struct=] with the following [=struct/it
     experimenting with third party cookie deprecation (before they have been fully removed), the
     `forDebuggingOnly` reporting APIs are not downsampled, so they are still lists.
 
+  : <dfn>real time reporting contributions</dfn>
+  :: A [=list=] of [=real time reporting contribution=].
+
 </dl>
 
 A <dfn>real time reporting contribution</dfn> is a [=struct=] with the following [=struct/items=]:
 // TODO: add comments
 <dl dfn-for="real time reporting contribution">
   : <dfn>bucket</dfn>
-  :: A {{long}}. Must be in [=the range=] from 0 to 2047, inclusive.
+  :: A {{long}}.
   : <dfn>priority weight</dfn>
   :: A {{double}}. Must be greater than 0 and less than infinity, dictates the relative likelihood
     of which bucket will get the contribution.
   : <dfn>latency threshold</dfn>
-  :: A {{long}}. Must be non-negative.
+  :: A {{long}}. The contribution will be dropped if corresponding latency (e.g., generateBid()
+    execution latency) is not greater than this threshold.
 
 </dl>
 
