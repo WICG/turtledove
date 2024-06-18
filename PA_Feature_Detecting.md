@@ -106,7 +106,7 @@ const reportingTimeoutEnabled = navigator.protectedAudience ?
 ```
 
 ## Returning multiple bids from generateBid()
-[Intent to Ship](TBD)
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/ZdZXN1D-MtI/)
 
 Inside `generateBid()`, if `browserSignals.multiBidLimit` exists then returning
 an array of bids is supported. The value of `browserSignals.multiBidLimit`
@@ -114,7 +114,7 @@ returns the maximum numbers of bids that can be returned, which may be as low as
 1.
 
 ## Component ad subsetting with targetNumAdComponents
-[Intent to Ship](TBD)
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/ZdZXN1D-MtI/)
 
 Inside `generateBid()`, if `browserSignals.multiBidLimit` exist then
 the `targetNumAdComponents` and `numMandatoryAdComponents` bid fields will be

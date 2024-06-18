@@ -506,10 +506,6 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   bid: A numerical bid value.
 *   auctionConfig: The auction configuration object passed to `navigator.runAdAuction()`.
 *   trustedScoringSignals: A value retrieved from a real-time trusted server chosen by the seller and reflecting the seller's opinion of this particular creative, as further described in [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) below. This is used when the server is same-origin to the seller; crossOriginTrustedSignals is used otherwise.
-*   Like trustedScoringSignals, but used when the server is cross-origin to the seller script. The
-    value is an object that has as a key the trusted server's origin, e.g. `"https://example.org"`,
-    and as value an object in format trustedScoringSignals uses.
-    See [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals) for more details.
 *   browserSignals: An object constructed by the browser, containing information that the browser knows and which the seller's auction script might want to verify:
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
@@ -527,6 +523,11 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   directFromSellerSignals is an object that may contain the following fields:
     *   sellerSignals: Like auctionConfig.sellerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?sellerSignals`.
     *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
+*   crossOriginTrustedSignals: like `trustedScoringSignals`, but used when the server is cross-origin
+    to the seller script. The value is an object that has as a key the trusted server's origin, e.g.
+    `"https://example.org"`, and as value an object in format `trustedScoringSignals` uses. See
+    [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals) for more
+    details.
 
 The output of `scoreAd()` is an object with the following fields:
 * desirability: Number indicating how desirable this ad is.  Any value that is zero or negative indicates that the ad cannot win the auction.  (This could be used, for example, to eliminate any interest-group-targeted ad that would not beat a contextually-targeted candidate.) The winner of the auction is the ad object which was given the highest score.
@@ -747,8 +748,9 @@ If the key-value server is on a different origin than the corresponding script, 
 needed to ensure that sensitive information is not inappropriately leaked to, or is manipulated by,
 a third party.
 
-In case of bidder signals, the following changes occur:
-1. The fetch is a cross-origin CORS fetch with `Origin:` set to the buyer script's origin.
+In the case of bidder signals, the following changes occur:
+1. The fetch is a cross-origin [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) fetch
+   with `Origin:` set to the buyer script's origin.
 2. The value is passed to `crossOriginTrustedSignals` parameter, not the `trustedBiddingSignals`
    parameter, and there is one more level of nesting denoting the server's origin, e.g:
 
@@ -782,7 +784,8 @@ publisher, not the seller:
    until this header is received, in order to avoid leaking bid information to a third party.
    This means using a cross-origin trusted server for seller information may carry a peformance
    penalty.
-2. The fetch is a cross-origin CORS fetch with `Origin:` set to the seller script's origin.
+2. The fetch is a cross-origin [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) fetch
+   with `Origin:` set to the seller script's origin.
 3. The value is passed to `crossOriginTrustedSignals` parameter, not the `trustedScoringSignals`
    parameter, and there is one more level of nesting denoting the server's origin, e.g:
 
@@ -842,10 +845,6 @@ The arguments to `generateBid()` are:
 *   auctionSignals: As provided by the seller in the call to `runAdAuction()`.  This is the opportunity for the seller to provide information about the page context (ad size, publisher ID, etc), the type of auction (first-price vs second-price), and so on.
 *   perBuyerSignals: The value for _this specific buyer_ as taken from the auction config passed to `runAdAuction()`.  This can include contextual signals about the page that come from the buyer's server, if the seller is an SSP which performs a real-time bidding call to buyer servers and pipes the response back, or if the publisher page contacts the buyer's server directly.  If so, the buyer may wish to check a cryptographic signature of those signals inside `generateBid()` as protection against tampering.
 *   trustedBiddingSignals: An object whose keys are the `trustedBiddingSignalsKeys` for the interest group, and whose values are those returned in the `trustedBiddingSignals` request. This used when the trusted server is same-origin with the buyer's script.
-*   crossOriginTrustedSignals: Like trustedBiddingSignals, but used when the trusted-server is
-    cross-origin to the buyer's script. The value is an object that has as a key the trusted
-    server's origin, e.g. `"https://www.kv-server.example"`, and as value an object in format trustedBiddingSignals uses.
-    See [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals) for more details.
 *   browserSignals: An object constructed by the browser, containing information that the browser knows, and which the buyer's auction script might want to use or verify.  The `dataVersion` field will only be present if the `Data-Version` header was provided and had a consistent value for all of the trusted bidding signals server responses used to construct the trustedBiddingSignals. `topLevelSeller` is only present if `generateBid()` is running as part of a component auction. Additional fields can include information about both the context (e.g. the true hostname of the current page, which the seller could otherwise lie about) and about the interest group itself (e.g. times when it previously won the auction, to allow on-device frequency capping). Note that unlike for `reportWin()` the `joinCount` and `recency` in `generateBid()`'s browser signals *isn't* subject to the [noising and bucketing scheme](#521-noised-and-bucketed-signals). Furthermore, `recency` in `generateBid()`'s browser signals is specified in milliseconds, rounded to the nearest 100 milliseconds.
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
@@ -868,6 +867,12 @@ The arguments to `generateBid()` are:
 *   directFromSellerSignals is an object that may contain the following fields:
     *   perBuyerSignals: Like auctionConfig.perBuyerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
     *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
+*   crossOriginTrustedSignals: Like `trustedBiddingSignals`, but used when the trusted-server is
+    cross-origin to the buyer's script. The value is an object that has as a key the trusted
+    server's origin, e.g. `"https://www.kv-server.example"`, and as value an object in format
+    `trustedBiddingSignals` uses. See
+    [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals) for more
+    details.
 
 In the case of component auctions, an interest group's `generateBid()` function will be invoked in all component auctions for which it qualifies, though the `bidCount` value passed to future auctions will only be incremented by one for participation in that auction as a whole.
 
