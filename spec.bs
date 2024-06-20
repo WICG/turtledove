@@ -350,6 +350,27 @@ This is detectable because it can change the set of fields that are read from th
     "slot-size", or "all-slots-requested-sizes", set |interestGroup|'s
     [=interest group/trusted bidding signals slot size mode=] to
     |group|["{{GenerateBidInterestGroup/trustedBiddingSignalsSlotSizeMode}}"].
+  1. Let |adSizes| be a new [=map=] whose [=map/keys=] are [=strings=] and [=map/values=] are
+     [=ad sizes=].
+  1. If |group|["{{GenerateBidInterestGroup/adSizes}}"] [=map/exists=]:
+    1. [=map/For each=] |sizeName| → |size| of |group|["{{GenerateBidInterestGroup/adSizes}}"]:
+      1. If |sizeName| is "", [=exception/throw=] a {{TypeError}}.
+      1. Let |parsedSize| be the result from running [=parse an AdRender ad size=] with |size|.
+      1. If |parsedSize| is null, [=exception/throw=] a {{TypeError}}.
+      1. [=map/Set=] |adSizes|[|sizeName|] to |parsedSize|.
+    1. Set |interestGroup|'s [=interest group/ad sizes=] to |adSizes|.
+  1. Let |sizeGroups| be a new [=map=] whose [=map/keys=] are [=strings=] and [=map/values=]
+     are [=strings=].
+  1. If |group|["{{GenerateBidInterestGroup/sizeGroups}}"] [=map/exists=]:
+    1. [=map/For each=] |groupName| → |sizeList| of
+       |group|["{{GenerateBidInterestGroup/sizeGroups}}"]:
+      1. If |groupName| is "", [=exception/throw=] a {{TypeError}}.
+      1. [=list/For each |sizeName| of |sizeList|:
+        1. If |sizeName| is "", [=exception/throw=] a {{TypeError}}.
+        1. If |adSizes|[|sizeName|] does not [=map/exist=], then [=exception/throw=] a
+               {{TypeError}}.
+      1. [=map/Set=] |sizeGroups|[|groupName|] to |sizeList|.
+    1. Set |interestGroup|'s [=interest group/size groups=] to |sizeGroups|.
   1. For each |groupMember| and |interestGroupField| in the following table
     <table class="data">
       <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
@@ -371,8 +392,12 @@ This is detectable because it can change the set of fields that are read from th
         * |renderURL| [=url/scheme=] is not "`https`";
         * |renderURL| [=includes credentials=].
       1. Set |igAd|'s [=interest group ad/render url=] to |renderURL|.
-      1. If |ad|["{{AuctionAd/sizeGroup}}"] [=map/exists=], then set |igAd|'s
-         [=interest group ad/size group=] to |ad|["{{AuctionAd/sizeGroup}}"].
+      1. If |ad|["{{AuctionAd/sizeGroup}}"] [=map/exists=]:
+        1. Let |sizeGroup| be |ad|["{{AuctionAd/sizeGroup}}}].
+        1. [=exception/Throw=] a {{TypeError}} if none of the following conditions hold:
+           1. |adSizes|[|sizeGroup|] [=map/exists=].
+           1. |sizeGroups|[|sizeGroup|] [=map/exists=].
+        1. Set |igAd|'s [=interest group ad/size group=] to |sizeGroup|.
       1. If |ad|["{{AuctionAd/metadata}}"] [=map/exists=], then let
         |igAd|'s [=interest group ad/metadata=] be the result of
         [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
@@ -392,28 +417,6 @@ This is detectable because it can change the set of fields that are read from th
               a {{TypeError}}.
           1. Set |igAd|'s [=interest group ad/allowed reporting origins=] to |allowedReportingOrigins|.
       1. [=list/Append=] |igAd| to |interestGroup|'s |interestGroupField|.
-  1. If |group|["{{GenerateBidInterestGroup/adSizes}}"] [=map/exists=]:
-    1. Let |adSizes| be a new [=map=] whose [=map/keys=] are [=strings=] and [=map/values=] are
-       [=ad sizes=].
-    1. [=map/For each=] |sizeName| → |size| of |group|["{{GenerateBidInterestGroup/adSizes}}"]:
-      1. If |sizeName| is "", [=exception/throw=] a {{TypeError}}.
-      1. Let |parsedSize| be the result from running [=parse an AdRender ad size=] with |size|.
-      1. If |parsedSize| is null, [=exception/throw=] a {{TypeError}}.
-      1. [=map/Set=] |adSizes|[|sizeName|] to |parsedSize|.
-    1. Set |interestGroup|'s [=interest group/ad sizes=] to |adSizes|.
-  1. If |group|["{{GenerateBidInterestGroup/sizeGroups}}"] [=map/exists=]:
-    1. Let |adSizes| be |interestGroup|'s [=interest group/ad sizes=].
-    1. Let |sizeGroups| be a new [=map=] whose [=map/keys=] are [=strings=] and [=map/values=]
-       are [=strings=].
-    1. [=map/For each=] |groupName| → |sizeList| of
-       |group|["{{GenerateBidInterestGroup/sizeGroups}}"]:
-      1. If |groupName| is "", [=exception/throw=] a {{TypeError}}.
-      1. [=list/For each |sizeName| of |sizeList|:
-        1. If |sizeName| is "", [=exception/throw=] a {{TypeError}}.
-        1. If |adSizes|[|sizeName|] does not [=map/exist=], then [=exception/throw=] a
-               {{TypeError}}.
-      1. [=map/Set=] |sizeGroups|[|groupName|] to |sizeList|.
-    1. Set |interestGroup|'s [=interest group/size groups=] to |sizeGroups|.
   1. If |group|["{{AuctionAdInterestGroup/additionalBidKey}}"] [=map/exists=]:
     1. Let |decodedKey| be the result of running [=forgiving-base64 decode=] with
       |group|["{{AuctionAdInterestGroup/additionalBidKey}}"].
@@ -4356,6 +4359,31 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
         Issue:  Serializing an Infra value to JSON bytes expects to be called within a valid ES realm. See
         <a href="https://github.com/whatwg/infra/issues/625">infra/625</a>
 
+        <dt>"`adSizes`"
+        <dd>
+        1. Let |adSizes| be a new [=map=] whose [=map/keys=] are [=strings=] and [=map/values=] are
+           [=ad sizes=].
+        1. [=map/For each=] |sizeName| → |size| of |value|:
+          1. If |sizeName| is "", [=exception/throw=] a {{TypeError}}.
+          1. Let |adSize| be the result from running [=parse an AdRender ad size=] with |size|.
+          1. If |adSize| is null, [=exception/throw=] a {{TypeError}}.
+          1. [=map/Set=] |adSizes|[|sizeName|] to |adSize|.
+        1. Set |ig|'s [=interest group/ad sizes=] to |adSizes|.
+
+        <dt>"`sizeGroups`"
+        <dd>
+        1. Let |adSizes| be |ig|'s [=interest group/ad sizes=].
+        1. Let |sizeGroups| be a new [=map=] whose [=map/keys=] are [=strings=] and [=map/values=]
+           are [=strings=].
+        1. [=map/For each=] |groupName| → |sizeList| of |value|:
+          1. If |groupName| is "", [=exception/throw=] a {{TypeError}}.
+          1. [=list/For each |sizeName| of |sizeList|:
+            1. If |sizeName| is "", [=exception/throw=] a {{TypeError}}.
+            1. If |adSizes|[|sizeName|] does not [=map/exist=], then [=exception/throw=] a
+               {{TypeError}}.
+          1. [=map/Set=] |sizeGroups|[|groupName|] to |sizeList|.
+        1. Set |ig|'s [=interest group/size groups=] to |sizeGroups|.
+
         <dt>"`ads`"
         <dt>"`adComponents`"
         <dd>
@@ -4385,8 +4413,13 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
               * |renderURL| [=url/scheme=] is not "`https`";
               * |renderURL| [=includes credentials=].
             1. Set |igAd|'s [=interest group ad/render url=] to |renderURL|.
-            1. If |ad|["{{AuctionAd/sizeGroup}}"] [=map/exists]], then set |igAd|'s
-               [=interest group ad/size group=] to |ad|["{{AuctionAd/sizeGroup}}"].
+            1. If |ad|["{{AuctionAd/sizeGroup}}"] [=map/exists=]:
+              1. Let |sizeGroup| be |ad|["{{AuctionAd/sizeGroup}}}].
+              1. Jump to the step labeled <i><a href=#abort-update>Abort update</a></i> if none of
+                 the following conditions hold:
+                * |adSizes|[|sizeGroup|] [=map/exists=].
+                * |sizeGroups|[|sizeGroup|] [=map/exists=].
+              1. Set |igAd|'s [=interest group ad/size group=] to |sizeGroup|.
             1. If |ad|["{{AuctionAd/metadata}}"] [=map/exists=], then let
               |igAd|'s [=interest group ad/metadata=] be the result of
               [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
@@ -4400,31 +4433,6 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
             1. [=list/Append=] |igAd| to |igAds|.
           1. If |igAds| is not [=list/is empty=]:
             1. Set |ig|'s |interestGroupField| to |igAds|.
-
-        <dt>"`adSizes`"
-        <dd>
-        1. Let |adSizes| be a new [=map=] whose [=map/keys=] are [=strings=] and [=map/values=] are
-           [=ad sizes=].
-        1. [=map/For each=] |sizeName| → |size| of |value|:
-          1. If |sizeName| is "", [=exception/throw=] a {{TypeError}}.
-          1. Let |adSize| be the result from running [=parse an AdRender ad size=] with |size|.
-          1. If |adSize| is null, [=exception/throw=] a {{TypeError}}.
-          1. [=map/Set=] |adSizes|[|sizeName|] to |adSize|.
-        1. Set |ig|'s [=interest group/ad sizes=] to |adSizes|.
-
-        <dt>"`sizeGroups`"
-        <dd>
-        1. Let |adSizes| be |ig|'s [=interest group/ad sizes=].
-        1. Let |sizeGroups| be a new [=map=] whose [=map/keys=] are [=strings=] and [=map/values=]
-           are [=strings=].
-        1. [=map/For each=] |groupName| → |sizeList| of |value|:
-          1. If |groupName| is "", [=exception/throw=] a {{TypeError}}.
-          1. [=list/For each |sizeName| of |sizeList|:
-            1. If |sizeName| is "", [=exception/throw=] a {{TypeError}}.
-            1. If |adSizes|[|sizeName|] does not [=map/exist=], then [=exception/throw=] a
-               {{TypeError}}.
-          1. [=map/Set=] |sizeGroups|[|groupName|] to |sizeList|.
-        1. Set |ig|'s [=interest group/size groups=] to |sizeGroups|.
 
         <dt>"`additionalBidKey`"
         <dd>
