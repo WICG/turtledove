@@ -1510,7 +1510,7 @@ a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=dur
     1. Otherwise:
       1. Set |crossOriginTrustedBiddingSignals| to a new [=ordered map=] whose [=map/keys=] are
           [=strings=] and whose [=map/values=] are {{any}}.
-      1. Let |originKey| be the [=serialization of an origin|serialization=] given
+      1. Let |originKey| be the [=serialization of an origin|serialization=] of
           |crossOriginTrustedBiddingSignalsOrigin|.
       1. [=map/Set=] |crossOriginTrustedBiddingSignalsOrigin|[|originKey|] to |trustedBiddingSignals|.
   1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |multiBidLimit|, |ig|, |expectedCurrency|,
@@ -1716,8 +1716,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. Set |dataVersion| to |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data versions=]
                [|ig|'s [=interest group/name=]].
             1. Set |allTrustedBiddingSignals| to [=trusted bidding signals batcher/all trusted bidding signals=].
-          1. [=map/remove=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"].
-          1. [=map/remove=] |browserSignals|["{{BiddingBrowserSignals/crossOriginDataVersion}}"].
+          1. [=map/Remove=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"].
+          1. [=map/Remove=] |browserSignals|["{{BiddingBrowserSignals/crossOriginDataVersion}}"].
           1. If |dataVersion| is not null:
             1. If |crossOriginTrustedBiddingSignalsOrigin| is not null, then [=map/set=]
                |browserSignals|["{{BiddingBrowserSignals/crossOriginDataVersion}}"] to |dataVersion|.
@@ -1765,7 +1765,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. Let |generateBidStartTime| be |settings|'s
               [=environment settings object/current monotonic time=].
             1. Set « |generatedBids|, |bidDebugReportInfo| » to the result of [=generate potentially multiple bids=] given
-              |allTrustedBiddingSignals], |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|,
+              |allTrustedBiddingSignals|, |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|,
               a [=map/clone=] of |browserSignals|,
               |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
               1 (for multiBidLimit), |ig|, and |auctionStartTime|.
@@ -1876,8 +1876,8 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 
 <div algorithm>
 To <dfn>fetch and decode trusted scoring signals</dfn> given an [=auction config=] |auctionConfig|,
-  a [=generated bid=] |generatedBid|, a [=list=] of [=origins=]
-  |allowCrossOriginTrustedScoringSignalsFrom|, and an [=origin=] |topLevelOrigin|:
+a [=generated bid=] |generatedBid|, a [=list=] of [=origins=]
+|allowCrossOriginTrustedScoringSignalsFrom|, and an [=origin=] |topLevelOrigin|:
 
 1. Let |crossOriginTrustedScoringSignalsOrigin| be null.
 1. Let |sameOriginTrustedScoringSignals| be null.
@@ -1893,7 +1893,7 @@ To <dfn>fetch and decode trusted scoring signals</dfn> given an [=auction config
       to |adComponentRenderURLs|.
 1. Let |fullSignalsUrl| be null.
 1. If |auctionConfig|'s [=auction config/trusted scoring signals url=] is not null:
-  1. Let |fullSignalsUrl| be the result of [=building trusted scoring signals url=] with |auctionConfig|'s
+  1. Set |fullSignalsUrl| be the result of [=building trusted scoring signals url=] with |auctionConfig|'s
     [=auction config/trusted scoring signals url=], «|renderURL|», |adComponentRenderURLs|,
     |auctionConfig|'s [=auction config/seller experiment group id=], and |topLevelOrigin|.
 
@@ -2185,7 +2185,7 @@ The <dfn http-header><code>Ad-Auction-Allow-Trusted-Scoring-Signals-From</code><
 To <dfn>parse allowed trusted scoring signals origins</dfn> given a [=header list=] |headerList|:
 
   1. Let |parsedHeader| be the result of [=header list/getting a structured field value=]
-    [:Ad-Auction-Allow-Trusted-Scoring-Signals-From:] and "`list`" from |headerList|.
+    given [:Ad-Auction-Allow-Trusted-Scoring-Signals-From:] and "`list`" from |headerList|.
   1. If |parsedHeader| is null, return an empty [=list=].
   1. Let |result| be a new [=list=] of [=origins=].
   1. [=list/For each=] |entry| in |parsedHeader|:
@@ -2232,11 +2232,13 @@ To <dfn>fetch script</dfn> given a [=URL=] |url|:
       scoring signals origins=] given |response|'s [=response/header list=].
     1. Let |bodyStream| be |response|’s [=response/body=]’s [=body/stream=].
     1. Let |bodyReader| be result of [=ReadableStream/getting a reader=] from |bodyStream|.
-    1. Let |successSteps|, given a a [=byte sequence=] |responseBody| be:
+    1. Let |successSteps| be a set of steps that take a [=byte sequence=] |responseBody|, and
+      perform the following:
       1. If [=validate fetching response mime and body=] with |response|, |responseBody| and
         "`text/javascript`" returns false, set |script| to failure.
       1. Otherwise, set |script| to |responseBody|.
-    1. Let |failureSteps|, given an [=exception=] <var ignore>e</var> be:
+    1. Let |failureSteps| be a set of steps that take an [=exception=] <var ignore>e</var>, and
+      perform the following:
       1. Set |script| to failure.
     1. [=ReadableStreamDefaultReader/Read all bytes=] from |bodyReader|, given |successSteps|
       and |failureSteps|.
