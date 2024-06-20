@@ -3971,6 +3971,8 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   1. Let |dimension| be the result of parsing |dimensionString| using the
     [=rules for parsing floating-point number values=].
   1. If |dimension| is an error, then return null as the dimension and the empty string as the dimension unit.
+  1. If |dimension| is less than 0, then return null as the dimension and the empty string as the
+     dimension unit.
   1. [=Collect a sequence of code points=] that are [=ASCII lower alpha=], given |position|. Let
     that be |dimensionUnit|.
   1. If |position| is not past the end of |input|, then return null as the dimension and the empty
@@ -4009,11 +4011,16 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 
   1. Let |adUrl| be |adDescriptor|'s [=ad descriptor/url=].
   1. If |adUrl|'s [=url/scheme=] is not "`https`", return null.
-  1. TODO: Need to check [=ad descriptor/size=] as well.
-  1. If |isComponent|, [=list/for each=] |ad| in |ig|'s [=interest group/ad components=]:
-    1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return |ad|.
-  1. Otherwise, [=list/for each=] |ad| in |ig|'s [=interest group/ads=]:
-    1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return |ad|.
+  1. Let |adSize| be |adDescriptor|'s [=ad descriptor/size=].
+  1. Let |adList| be |ig|'s [=interest group/ad components=] if |isComponent|, otherwise |ig|'s
+     [=interest group/ads=].
+  1. [=list/For each=] |ad| in |adList|:
+    1. If |ad|'s [=interest group ad/render url=] does not equal |adUrl|, [=iteration/continue=].
+    1. If |ad|'s [=interest group ad/size group=] is null, return |ad|.
+    1. If |adSize| is null, return |ad|.
+    1. [=list/For each=] |igSize| in (|ig|'s [=interest group/size groups=])[|ad|'s
+       [=interest group ad/size group=]]:
+      1. If |igSize| equals |adSize|, return |ad|.
   1. Return null.
 </div>
 
