@@ -88,6 +88,13 @@ spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
   type: dfn
     text: shared-storage; url: #permissionspolicy-shared-storage
     text: shared-storage-select-url; url: #permissionspolicy-shared-storage-select-url
+spec: CSP; urlPrefix: https://w3c.github.io/webappsec-csp/
+  type: dfn
+    text: directive name; url: directive-name
+    text: directive value; url: directive-value
+spec: CSPEE; urlPrefix: https://w3c.github.io/webappsec-cspee/
+  type: dfn
+    text: required csp; url: browsing-context-required-csp
 </pre>
 
 <pre class=link-defaults>
@@ -2664,6 +2671,56 @@ a {{ReportingBrowserSignals}} |browserSignals|, and a [=direct from seller signa
      : [=reporting result/reporting macro map=]
      :: |reportingMacroMap|
 </div>
+
+<h3 id="canloadadauctionfencedframe">canLoadAdAuctionFencedFrame()</h3>
+
+*This first introductory paragraph is non-normative.*
+
+The process of running an ad auction through {{Window/navigator}}.{{Navigator/runAdAuction()}} is an
+expensive operation. To prevent wasted cycles if the resulting ad cannot be loaded in the current
+context, {{Window/navigator}}.{{Navigator/canLoadAdAuctionFencedFrame()}} is provided as a method to
+determine, before the ad auction begins, whether an ad auction-created <{fencedframe}> is allowed to
+be loaded in the current context. A <{fencedframe}> has restrictions on where and how it can be
+loaded that do not exist with <{iframe}>s.
+
+<xmp class="idl">
+[SecureContext]
+partial interface Navigator {
+  boolean canLoadAdAuctionFencedFrame();
+};
+</xmp>
+
+The <dfn for=Navigator method>canLoadAdAuctionFencedFrame()</dfn> method steps are:
+
+1. Let |global| be [=this=]'s [=relevant global object=].
+
+1. If |global|'s [=Window/browsing context=]'s [=required CSP=] is not null, then return false.
+
+   Note: CSPEE lets arbitrary data flow from an embedder into a <{fencedframe}> via the policies it
+   sets. Since this goes against the privacy guarantees of a Protected Audience-created
+   <{fencedframe}>, this is disallowed.
+
+1. Let |CSPList| be [=this=]'s [=relevant settings object=]'s [=environment settings object/policy
+   container=]'s [=policy container/CSP list=].
+
+1. [=list/For each=] |policy| of |CSPList|:
+
+  1. [=set/For each=] |directive| of |policy|'s [=policy/directive set=]:
+
+    1. If |directive|'s [=directive name|name=] is either "`fenced-frame-src`", "`frame-src`",
+       "`child-src`", or "`default-src`", and if |directive|'s [=directive value|value=] does not
+       [=set/contain=] any of "`https:`", "`https://*:*`", or "`*`", then return false.
+
+1. Let |sandboxFlags| be |global|'s [=associated Document=]'s [=Document/active sandboxing flag
+   set=].
+
+1. If the [=set/intersection=] of |sandboxFlags| and TBD [=set/is not empty=], then return false.
+
+   Issue: TODO: Get the mandatory unsandboxed [=sandboxing flag set=] once it exists in the fenced
+   frame spec. This will then determine the intersection between that and the |sandboxFlags|.
+   (<a href="https://github.com/WICG/turtledove/issues/1206">WICG/turtledove#1206</a>)
+
+1. Return true.
 
 # Reporting # {#reporting}
 
