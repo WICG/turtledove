@@ -726,11 +726,17 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |bidDebugReportInfoList| be a new [=list=] of [=bid debug reporting info=].
+  1. Let |realTimeContributionsMap| be a new [=ordered map=] whose [=map/keys=] are [=origins=] and
+    whose [=map/values=] are [=real time reporting contributions=].
   1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
-    null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|, and |bidDebugReportInfoList|.
+    null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|,
+    |bidDebugReportInfoList|, and |realTimeContributionsMap|.
   1. Let |auctionReportInfo| be a new [=auction report info=].
-  1. If |winnerInfo| is not failure, then set |auctionReportInfo| to the result of running
-      [=collect forDebuggingOnly reports=] with |bidDebugReportInfoList| and |winnerInfo|.
+  1. If |winnerInfo| is not failure, then:
+    1. Set |auctionReportInfo| to the result of running [=collect forDebuggingOnly reports=] with
+      |bidDebugReportInfoList| and |winnerInfo|.
+    1. Set |auctionReportInfo|'s [=auction report info/real time reporting contributions map=] to
+      |realTimeContributionsMap|.
   1. If |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
     given |global|, to [=reject=] |p| with a "{{TypeError}}".
   1. Otherwise if |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null:
@@ -739,7 +745,8 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     1. [=list/For each=] |reportUrl| of |auctionReportInfo|'s
       [=auction report info/debug loss report urls=]:
       1. [=Send report=] to |reportUrl|.
-    1. [=Send real time reports=] with |auctionReportInfo|'s [=auction report info/real time reports=].
+    1. [=Send real time reports=] with |auctionReportInfo|'s
+      [=auction report info/real time reporting contributions map=].
   1. Otherwise:
     1. Let |winner| be |winnerInfo|'s [=leading bid info/leading bid=].
     1. Let |fencedFrameConfig| be the result of [=filling in a pending fenced frame config=] with
@@ -982,7 +989,8 @@ and [=auction report info=] |auctionReportInfo|.
   1. [=Send report=] to |report|.
 1. [=list/For each=] |reportUrl| of |auctionReportInfo|'s [=auction report info/debug loss report urls=]:
   1. [=Send report=] to |report|.
-1. [=Send real time reports=] with |auctionReportInfo|'s [=auction report info/real time reports=].
+1. [=Send real time reports=] with |auctionReportInfo|'s
+  [=auction report info/real time reporting contributions map=].
 
 </div>
 
@@ -1531,17 +1539,18 @@ a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=dur
     1. [=list/For each=] |key| of |ig|'s [=interest group/trusted bidding signals keys=]:
       1. If |allTrustedBiddingSignals|[|key|] [=map/exists=], then [=map/set=]
         |trustedBiddingSignals|[|key|] to |allTrustedBiddingSignals|[|key|].
-  1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |multiBidLimit|, |ig|, |expectedCurrency|,
-    |igGenerateBid|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|, |browserSignals|,
-    |directFromSellerSignalsForBuyer|, and |perBuyerTimeout|.
+  1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |multiBidLimit|, |ig|,
+    |expectedCurrency|, |igGenerateBid|, |auctionSignals|, |perBuyerSignals|, |trustedBiddingSignals|,
+    |browserSignals|, |directFromSellerSignalsForBuyer|, and |perBuyerTimeout|.
 </div>
 
 <div algorithm="generate and score bids">
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, an [=origin=]
-|topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug reporting info=]
-|bidDebugReportInfoList|:
+|topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, a [=list=] of [=bid debug reporting info=]
+|bidDebugReportInfoList|, and an [=ordered map=] whose [=map/keys=] are [=origins=] and whose
+[=map/values=] are [=real time reporting contributions=] |realTimeContributionsMap|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
@@ -1563,7 +1572,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. Let |compWinnerInfo| be the result of running [=generate and score bids=] with |component|,
-      |auctionConfig|, |global|, |topLevelOrigin|, |bidIgs|, and |bidDebugReportInfoList|.
+      |auctionConfig|, |global|, |topLevelOrigin|, |bidIgs|, |bidDebugReportInfoList|, and
+      |realTimeContributionsMap|.
     1. If |compWinnerInfo| is failure, return failure.
     1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns
       failure, return failure.
@@ -1577,12 +1587,13 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
       [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
       [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicScript|,
-      null, "top-level-auction", null, and |topLevelOrigin|.
-    1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
-      is not null, then run [=score and rank a bid=] with |auctionConfig|,
-      |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
-      |leadingBidInfo|, |decisionLogicScript|, null, "top-level-auction", null,
-      and |topLevelOrigin|.
+      |directFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|, and
+      |realTimeContributionsMap|.
+    1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is not null, then
+      run [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
+      [=leading bid info/leading non-k-anon-enforced bid=], |leadingBidInfo|, |decisionLogicScript|,
+      |directFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|, and
+      |realTimeContributionsMap|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
   1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1648,8 +1659,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
   1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
-    |decisionLogicScript|, null, |auctionLevel|, |componentAuctionExpectedCurrency|, and
-    |topLevelOrigin|.
+    |decisionLogicScript|, |directFromSellerSignalsForSeller|, null, |auctionLevel|,
+    |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
   1. Decrement |pendingAdditionalBids| by 1.
 1. Let |settings| be |global|'s [=relevant settings object=].
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
@@ -1732,10 +1743,11 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. Set |allTrustedBiddingSignals| to [=trusted bidding signals batcher/all trusted bidding signals=].
           1. If |dataVersion| is not null, then [=map/set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
           1. Otherwise, [=map/remove=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"].
-          1. Let « |bidsBatch|, |bidDebugReportInfo| » be the result of [=generate potentially multiple bids=] given
-            |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
-            |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
-            |expectedCurrency|, |multiBidLimit|, |ig|, and |auctionStartTime|.
+          1. Let « |bidsBatch|, |bidDebugReportInfo|, |realTimeContributions| » be the result of
+            running [=generate potentially multiple bids=] with |allTrustedBiddingSignals|,
+            |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
+            |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
+            |multiBidLimit|, |ig|, and |auctionStartTime|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
             [=environment settings object/current monotonic time=], in milliseconds.
           1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
@@ -1772,9 +1784,10 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
             1. Let |generateBidStartTime| be |settings|'s
               [=environment settings object/current monotonic time=].
-            1. Set « |generatedBids|, |bidDebugReportInfo| » to the result of [=generate potentially multiple bids=] given
-              |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
-              |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
+            1. Set « |generatedBids|, |bidDebugReportInfo|, |realTimeContributions| » to the result
+              of running [=generate potentially multiple bids=] with |allTrustedBiddingSignals|,
+              |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
+              |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
               1 (for multiBidLimit), |ig|, and |auctionStartTime|.
 
               Note: passing 1 for multiBidLimit limits the rerun to producing at most a single bid.
@@ -1792,12 +1805,17 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               1. [=list/Append=] |generatedBid| to |bidsToScore|.
           1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |bidDebugReportInfo|, and
                |bidDebugReportInfoList|.
+          1. If |auctionConfig|[=auction config/per buyer real time reporting config=][|buyer|] is
+            "`default-local-reporting`", then:
+            1. If |realTimeContributions|[|buyer|] [=map/exists=], then [=list/extend=]
+              |realTimeContributionsMap| with |realTimeContributions|.
+            1. Otherwise, [=map/set=] |realTimeContributions|[|buyer|] to |realTimeContributions|.
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
             1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
               |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
-              |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
+              |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1882,11 +1900,13 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 
 <div algorithm>
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
-|generatedBid|, a [=bid debug reporting info=] |bidDebugReportInfo|, a [=leading bid info=] |leadingBidInfo|, a [=string=] |decisionLogicScript|, a
-{{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
-|biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
-or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, and an [=origin=]
-|topLevelOrigin|:
+|generatedBid|, a [=bid debug reporting info=] |bidDebugReportInfo|, a [=leading bid info=]
+|leadingBidInfo|, a [=string=] |decisionLogicScript|, a {{DirectFromSellerSignalsForSeller}}
+|directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null |biddingDataVersion|, an enum
+|auctionLevel|, which is "single-level-auction", "top-level-auction", or "component-auction", a
+[=currency tag=] |componentAuctionExpectedCurrency|, an [=origin=] |topLevelOrigin|, and an
+[=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
+[=real time reporting contributions=] |realTimeContributionsMap|:
 
 1. Let |renderURL| be [=URL serializer|serialized=] |generatedBid|'s
   [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
@@ -1961,8 +1981,8 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     <dd>The result of running [=is debugging only in cooldown or lockout=] with |seller|
   </dl>
 
-1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl| » be the result of
-  [=evaluating a scoring script=] with |decisionLogicScript|, |adMetadata|,
+1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions| » be
+  the result of [=evaluating a scoring script=] with |decisionLogicScript|, |adMetadata|,
   |bidValue|'s [=bid with currency/value=], |auctionConfig|'s [=auction config/config idl=],
   |trustedScoringSignals|, |browserSignals|, |directFromSellerSignalsForSeller|, and
   |auctionConfig|'s [=auction config/seller timeout=].
@@ -1977,9 +1997,14 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
 1. If |auctionLevel| is "component-auction", then set |generatedBid|'s
   [=generated bid/component seller=] and |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] to |seller|.
+1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
+  "`default-local-reporting`", then:
+  1. If |realTimeContributions|[|seller|] [=map/exists=], then [=list/extend=]
+    |realTimeContributionsMap| with |realTimeContributions|.
+  1. Otherwise, [=map/set=] |realTimeContributions|[|seller|] to |realTimeContributions|.
 1. Return if any of the following conditions hold:
   * |scoreAdOutput| is failure;
-  * auctionLevel| is not "single-level-auction", and |scoreAdOutput|
+  * |auctionLevel| is not "single-level-auction", and |scoreAdOutput|
     ["{{ScoreAdOutput/allowComponentAuction}}"] is false;
   * |scoreAdOutput|["{{ScoreAdOutput/desirability}}"] &le; 0.
 1. If |auctionLevel| is "component-auction":
@@ -2832,14 +2857,6 @@ Initial implementation of this specification defines
 </div>
 
 <div algorithm>
-  To <dfn>collect real time reports</dfn> given a [=list=] of [=generated bids=] |generatedBids|,
-  and an [=auction report info=] auctionReportInfo:
-
-  1. [=list/For each=] |generatedBid| of |generatedBids|:
-    1. [=list/Append=] |generatedBid|'s 
-</div>
-
-<div algorithm>
   To <dfn>sample real time contributions</dfn> given a [=list=] of
   [=real time reporting contributions=] |contributions|, perform the following steps. They return an
   integer or null:
@@ -2966,7 +2983,6 @@ Basic <a href=https://research.google/pubs/rappor-randomized-aggregatable-privac
 RAPPOR</a> noises each coordinate of the bit vector independently, and it is parameterized by
 <dfn>epsilon</dfn>, a measure of privacy loss. The initial implementation uses an [=epsilon=] value of
 1, yielding a flipping probability of ~0.378.
-
 
 <div algorithm>
   To <dfn>apply RAPPOR noise</dfn> given an integer-or-null |maybeBucket|:
@@ -3709,8 +3725,6 @@ of the following global objects:
     1. Let |bidDebugReportInfo| be a new [=bid debug reporting info=].
     1. Set |bidDebugReportInfo|'s [=bid debug reporting info/interest group owner=] to
        |ig|'s [=interest group/owner=].
-    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/real time reporting contributions=] to
-      |global|'s [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/real time reporting contributions=].
     1. Let |debugLossReportUrl| be |global|'s
       [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] if it's not
       failure, null otherwise.
@@ -3723,7 +3737,9 @@ of the following global objects:
       1. [=list/For each=] |generatedBid| in |generatedBids|:
         1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|,
           [=generated bid/interest group=] to |ig|.
-    1. Return « |generatedBids|, |bidDebugReportInfo| ».
+    1. Let |realTimeContributions| be |global|'s
+      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/real time reporting contributions=].
+    1. Return « |generatedBids|, |bidDebugReportInfo|, |realTimeContributions| ».
 </div>
 
 <div algorithm>
@@ -3743,14 +3759,18 @@ of the following global objects:
     1. Let |scoreAdResult| be the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
       «|adMetadata|, |bidValue|, |auctionConfigJS|, |trustedScoringSignalsJS|, |browserSignalsJS|,
       |directFromSellerSignalsJs|», and |timeout|.
-    1. Let |realTimeContributions| be |global|'s
-      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/real time reporting contributions=].
     1. Let |debugWinReportUrl| be |global|'s
       [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] if it's not
       failure, null otherwise.
     1. Let |debugLossReportUrl| be |global|'s
       [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] if it's not
       failure, null otherwise.
+    1. Let |realTimeContributions| be a new [=list=] of [=real time reporting contributions=].
+    1. If |auctionConfigIDL|["{{AuctionAdConfig/sellerRealTimeReportingConfig}}"] [=map/exists=] and 
+      |auctionConfigIDL|["{{AuctionAdConfig/sellerRealTimeReportingConfig}}"]["type"] is
+      "`default-local-reporting`", then:
+      1. Set |realTimeContributions| to |global|'s
+        [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/real time reporting contributions=].
     1. Return « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions| ».
 </div>
 
@@ -6039,9 +6059,6 @@ A <dfn>bid debug reporting info</dfn> is a [=struct=] with the following [=struc
   : <dfn>interest group owner</dfn>
   :: An [=origin=]. Matches [=interest group/owner=] of the interest group that was
      used to call `generateBid()` to produce this reporting information.
-  : <dfn>real time reporting contributions</dfn>
-  :: A [=map=] whose [=map/keys=] are [=origins=], and whose [=map/values=] are [=lists=] of
-    [=real time reporting contributions=].
 
   : <dfn>bidder debug win report url</dfn>
   :: Null or a [=URL=], initially null. Set by `generateBid()`'s
@@ -6314,8 +6331,9 @@ An <dfn>auction report info</dfn> is a [=struct=] with the following [=struct/it
     experimenting with third party cookie deprecation (before they have been fully removed), the
     `forDebuggingOnly` reporting APIs are not downsampled, so they are still lists.
 
-  : <dfn>real time reporting contributions</dfn>
-  :: A [=list=] of [=real time reporting contribution=].
+  : <dfn>real time reporting contributions map</dfn>
+  :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
+    [=real time reporting contributions=].
 
 </dl>
 
