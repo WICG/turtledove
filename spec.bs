@@ -1507,8 +1507,10 @@ To <dfn>generate potentially multiple bids</dfn> given an [=ordered map=]-or-nul
 a [=string=] |auctionSignals|, a {{BiddingBrowserSignals}} |browserSignals|, a [=string=]-or-null |perBuyerSignals|,
 a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=duration=]
 |perBuyerTimeout| in milliseconds, a [=currency tag=] |expectedCurrency|, an {{unsigned short}}
-
-|multiBidLimit|, an [=interest group=] |ig|, and a [=moment=] |auctionStartTime|:
+|multiBidLimit|, an [=interest group=] |ig|, and a [=moment=] |auctionStartTime|, perform the
+following steps. They return a failure if failing to fetch the script, otherwise a [=tuple=]
+« [=list=] of [=generated bids=], [=bid debug reporting info=], [=list=] of
+  [=real time reporting contributions=] ».
   1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=]
     with |ig|.
   1. Set |browserSignals|["{{BiddingBrowserSignals/joinCount}}"] to the sum of |ig|'s
@@ -1532,7 +1534,7 @@ a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=dur
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/prevWinsMs}}"] to |prevWins|.
   1. Let |biddingScript| be the result of [=fetching script=] with |ig|'s
     [=interest group/bidding url=].
-  1. If |biddingScript| is failure, return failure.
+  1. If |biddingScript| is failure, then return failure.
   1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
     1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
       [=interest group/bidding wasm helper url=].
@@ -1556,14 +1558,17 @@ a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=dur
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, an [=origin=]
 |topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, a [=list=] of [=bid debug reporting info=]
-|bidDebugReportInfoList|, and an [=ordered map=] whose [=map/keys=] are [=origins=] and whose
-[=map/values=] are [=real time reporting contributions=] |realTimeContributionsMap|:
+|bidDebugReportInfoList|, and an [=ordered map=] |realTimeContributionsMap| whose [=map/keys=] are
+[=origins=] and whose [=map/values=] are [=real time reporting contributions=]:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
   [=auction config/decision logic url=].
-1. If |decisionLogicScript| is failure, return null.
 1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
+1. If |decisionLogicScript| is failure, then:
+  1. [=Add a platform contribution=] with [=scoring script failure bucket=],
+    |realTimeContributionsMap| and |seller|.
+  1. Return null.
 1. Let « |bidGenerators|, |negativeTargetInfo| » be the result of running
   [=build bid generators map=] with |auctionConfig|.
 1. Let |leadingBidInfo| be a new [=leading bid info=].
@@ -1743,18 +1748,27 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             [=interest group/owner=].
           1. Let |dataVersion| be null.
           1. Let |allTrustedBiddingSignals| be an [=ordered map=]-or-null, initially null.
-          1. If |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/no signals flags=]
-             [|ig|'s [=interest group/name=]] is false:
-            1. Set |dataVersion| to |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/data versions=]
-               [|ig|'s [=interest group/name=]].
+          1. Let |igName| be |ig|'s [=interest group/name=].
+          1. If |trustedBiddingSignalsBatcher|'s
+            [=trusted bidding signals batcher/no signals flags=][|igName|] does not [=map/exist=]:
+            1. Set |dataVersion| to |trustedBiddingSignalsBatcher|'s
+              [=trusted bidding signals batcher/data versions=][|igName|].
             1. Set |allTrustedBiddingSignals| to [=trusted bidding signals batcher/all trusted bidding signals=].
+          1. Otherwise if |trustedBiddingSignalsBatcher|'s
+            [=trusted bidding signals batcher/no signals flags=][|igName|] is "fetch-failed", then
+            [=add a platform contribution=] with [=trusted bidding signals failure bucket=],
+            |realTimeContributionsMap|, and |igName|.
           1. If |dataVersion| is not null, then [=map/set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
           1. Otherwise, [=map/remove=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"].
-          1. Let « |bidsBatch|, |bidDebugReportInfo|, |realTimeContributions| » be the result of
-            running [=generate potentially multiple bids=] with |allTrustedBiddingSignals|,
-            |auctionSignals|, a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
-            |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
-            |multiBidLimit|, |ig|, and |auctionStartTime|.
+          1. Let |generateBidResult| be the result of running [=generate potentially multiple bids=]
+            with |allTrustedBiddingSignals|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
+            |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
+            |expectedCurrency|, |multiBidLimit|, |ig|, and |auctionStartTime|.
+          1. If |generateBidResult| is failure, then:
+            1. [=add a platform contribution=] with [=bidding script failure bucket=],
+              |realTimeContributionsMap| and |buyer|.
+            1. [=iteration/Continue=].
+          1. Let « |bidsBatch|, |bidDebugReportInfo|, |realTimeContributions| » be result.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
             [=environment settings object/current monotonic time=], in milliseconds.
           1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
@@ -1813,10 +1827,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
           1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |bidDebugReportInfo|, and
                |bidDebugReportInfoList|.
           1. If |auctionConfig|[=auction config/per buyer real time reporting config=][|buyer|] is
-            "`default-local-reporting`", then:
-            1. If |realTimeContributions|[|buyer|] [=map/exists=], then [=list/extend=]
-              |realTimeContributionsMap| with |realTimeContributions|.
-            1. Otherwise, [=map/set=] |realTimeContributions|[|buyer|] to |realTimeContributions|.
+            "`default-local-reporting`", then [=insert entries to map=] given
+            |realTimeContributionsMap|, |buyer|, and |realTimeContributions|.
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
@@ -1943,7 +1955,10 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. Let |trustedScoringSignals| be null.
 1. Let «|allTrustedScoringSignals|, ignored, |scoringDataVersion|» be the result of [=fetching
   trusted signals=] with |fullSignalsUrl| and false.
-1. If |allTrustedScoringSignals| is an [=ordered map=]:
+1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
+1. If |allTrustedScoringSignals| is null, then [=add a platform contribution=] with
+  [=trusted scoring signals failure bucket=], |realTimeContributionsMap|, and |seller|.
+1. Otherwise if |allTrustedScoringSignals| is an [=ordered map=]:
   1. Set |trustedScoringSignals| to a new empty [=map=].
   1. [=map/Set=] |trustedScoringSignals|["`renderURL`"] to a new empty [=map=].
   1. If |allTrustedScoringSignals|["`renderURLs`"] [=map/exists=] and
@@ -1962,7 +1977,6 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null, then set |bidValue| to
   |generatedBid|'s [=generated bid/modified bid=].
 1. Let |owner| be |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=].
-1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. Let |browserSignals| be a {{ScoringBrowserSignals}} with the following fields:
   <dl>
     <dt>{{ScoringBrowserSignals/topWindowHostname}}
@@ -2005,10 +2019,8 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 1. If |auctionLevel| is "component-auction", then set |generatedBid|'s
   [=generated bid/component seller=] and |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] to |seller|.
 1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
-  "`default-local-reporting`", then:
-  1. If |realTimeContributions|[|seller|] [=map/exists=], then [=list/extend=]
-    |realTimeContributionsMap| with |realTimeContributions|.
-  1. Otherwise, [=map/set=] |realTimeContributions|[|seller|] to |realTimeContributions|.
+  "`default-local-reporting`", then [=insert entries to map=] given |realTimeContributionsMap|,
+  |seller|, and |realTimeContributions|.
 1. Return if any of the following conditions hold:
   * |scoreAdOutput| is failure;
   * |auctionLevel| is not "single-level-auction", and |scoreAdOutput|
@@ -3014,10 +3026,10 @@ Initial implementation of this specification defines
 </div>
 
 <div algorithm>
-  To <dfn>send real time reports</dfn> given a [=map=] |allContributions| whose [=map/keys=] are
+  To <dfn>send real time reports</dfn> given a [=map=] |contributionsMap| whose [=map/keys=] are
   [=origins=] and whose [=map/values=] are [=real time reporting contributions=]:
 
-  1. [=map/For each=] |origin| → |contributions| of |allContributions|:
+  1. [=map/For each=] |origin| → |contributions| of |contributionsMap|:
     1. Let |maybeBucket| be the result of [=sampling real time contributions=] with |contributions|.
     1. Let |histogram| be the result of [=applying RAPPOR noise=] with |maybeBucket|.
     1. Let |reportUrl| be a new [=URL=] with the following [=struct/items=]:
@@ -3030,6 +3042,39 @@ Initial implementation of this specification defines
       :   [=url/path=]
       ::  « ".well-known", "interest-group", "real-time-report" »
     1. [=Send a real time report=] with |reportUrl| and |histogram|.
+</div>
+
+
+### Platform contribution ### {#platform-contribution-header}
+
+*This first introductory paragraph is non-normative.*
+
+There are some errors not visible in either `scoreAd()` or `generateBid()`, like failures to fetch
+the bidding or scoring script, trusted real-time signals. In these cases, a certain portion of the
+resulting histogram are used for platform errors.
+
+Platform contributions have a hardcoded <dfn>platform contribution priority weight</dfn>. The
+initial implementation uses a value of 1.
+
+The initial implementation supports four platform contributions with buckets starting from
+[=number of user buckets=]:
+* <dfn>bidding script failure bucket</dfn>: [=number of user buckets=]
+* <dfn>scoring script failure bucket</dfn>: [=number of user buckets=] plus 1
+* <dfn>trusted bidding signals failure bucket</dfn>: [=number of user buckets=] plus 2
+* <dfn>trusted scoring signals failure bucket</dfn>: [=number of user buckets=] plus 3
+
+<div algorithm>
+  To <dfn>add a platform contribution</dfn> given a {{long}} |bucket|, an [=ordered map=]
+  |realTimeContributionsMap| whose [=map/keys=] are
+  [=origins=] and whose [=map/values=] are [=real time reporting contributions=], and an [=origin=]
+  |origin|:
+
+  1. Let |contribution| be a new [=real time reporting contribution=] with the following [=struct/items=]:
+    : [=real time reporting contribution/bucket=]
+    :: |bucket|
+    : [=real time reporting contribution/priority weight=]
+    :: [=platform contribution priority weight=]
+  1. [=Insert entries to map=] given |realTimeContributionsMap|, |origin|, and « |contribution| » .
 </div>
 
 ### Apply noise (RAPPOR) ### {#rappor-header}
@@ -3720,7 +3765,9 @@ of the following global objects:
   |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=]-or-null
   |trustedBiddingSignals|, a {{BiddingBrowserSignals}} |browserSignals|,
   a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer| and an integer millisecond
-  [=duration=] |timeout|:
+  [=duration=] |timeout|, , perform the following steps. They return a [=tuple=]
+  « [=list=] of [=generated bids=], [=bid debug reporting info=], [=list=] of 
+    [=real time reporting contributions=] ».
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupBiddingScriptRunnerGlobalScope}}.
@@ -3794,8 +3841,12 @@ of the following global objects:
       1. [=list/For each=] |generatedBid| in |generatedBids|:
         1. Set |generatedBid|'s [=generated bid/bid duration=] to |duration|,
           [=generated bid/interest group=] to |ig|.
-    1. Let |realTimeContributions| be |global|'s
-      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/real time reporting contributions=].
+    1. Let |realTimeContributions| be a new [=list=] of [=real time reporting contributions=].
+    1. [=list/For each=] |contribution| of |global|'s
+      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/real time reporting contributions=]:
+      1. If |contribution|'s [=real time reporting contribution/latency threshold=] is not null, and
+        &ge; |duration|, then [=iteration/continue=].
+      1. [=list/append=] |contribution| to |realTimeContributions|.
     1. Return « |generatedBids|, |bidDebugReportInfo|, |realTimeContributions| ».
 </div>
 
@@ -3813,9 +3864,12 @@ of the following global objects:
     1. Let |trustedScoringSignalsJS| be |trustedScoringSignals| [=converted to ECMAScript values=].
     1. Let |directFromSellerSignalsJs| be |directFromSellerSignalsForSeller|
       [=converted to ECMAScript values=].
+    1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
     1. Let |scoreAdResult| be the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
       «|adMetadata|, |bidValue|, |auctionConfigJS|, |trustedScoringSignalsJS|, |browserSignalsJS|,
       |directFromSellerSignalsJs|», and |timeout|.
+    1. Let |duration| be |settings|'s [=environment settings object/current monotonic time=] minus
+      |startTime| in milliseconds.
     1. Let |debugWinReportUrl| be |global|'s
       [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug win report url=] if it's not
       failure, null otherwise.
@@ -3823,11 +3877,11 @@ of the following global objects:
       [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/debug loss report url=] if it's not
       failure, null otherwise.
     1. Let |realTimeContributions| be a new [=list=] of [=real time reporting contributions=].
-    1. If |auctionConfigIDL|["{{AuctionAdConfig/sellerRealTimeReportingConfig}}"] [=map/exists=] and 
-      |auctionConfigIDL|["{{AuctionAdConfig/sellerRealTimeReportingConfig}}"]["type"] is
-      "`default-local-reporting`", then:
-      1. Set |realTimeContributions| to |global|'s
-        [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/real time reporting contributions=].
+    1. [=list/For each=] |contribution| of |global|'s
+      [=InterestGroupBiddingAndScoringScriptRunnerGlobalScope/real time reporting contributions=]:
+      1. If |contribution|'s [=real time reporting contribution/latency threshold=] is not null, and
+        &ge; |duration|, then [=iteration/continue=].
+      1. [=list/append=] |contribution| to |realTimeContributions|.
     1. Return « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions| ».
 </div>
 
@@ -3942,7 +3996,7 @@ interface RealTimeReporting {
 dictionary RealTimeContribution {
   required long bucket;
   required double priorityWeight;
-  long latencyThreshold = 0;
+  long latencyThreshold;
 };
 
 [Exposed=InterestGroupBiddingAndScoringScriptRunnerGlobalScope,
@@ -4849,6 +4903,14 @@ Issue: This would ideally be replaced by a more descriptive algorithm in Infra. 
         1. If |unit| is not an [=ASCII lower hex digit=], then return an empty [=string=].
         1. Append |unit| to the end of |uuidStr|.
     1. Return [=ASCII encoded=] |uuidStr|.
+</div>
+
+<div algorithm>
+  To <dfn>insert entries to map</dfn> given an [=ordered map=] |map|, a |key| which is in same type
+  as |map|'s [=map/key=], and a [=list=] |entries| which is in same type as |map|'s [=map/value=]:
+
+  1. If |map|[|key|] [=map/exists=], then [=list/extend=] |map| with |entries|.
+  1. Otherwise, [=map/set=] |map|[|key|] to |entries|.
 </div>
 
 
@@ -5842,8 +5904,9 @@ into smaller number of fetches. It's a [=struct=] with the following [=struct/it
      [=map/values=] are [=bidding signals per interest group data=].
   : <dfn>no signals flags</dfn>
   :: An [=ordered map=] whose [=map/keys=] are [=interest group/name=] [=strings=] and whose
-     [=map/values=] are {{boolean}}s. This is set if given interest group did not request any
-     trusted bidding signals keys or if its trusted signals fetch failed.
+     [=map/values=] are enums "no-fetch" or "fetch-failed". This is set to "not-fetched" if given
+     interest group did not request any trusted bidding signals keys, or "fetch-failed" if its
+     trusted signals fetch failed.
   : <dfn>data versions</dfn>
   :: An [=ordered map=] who [=map/keys=] are [=interest group/name=] [=strings=] and [=map/values=]
     are {{unsigned long}} or null. This contains data version returned by a fetch that provided the
@@ -5918,10 +5981,10 @@ and a [=string=] |slotSizeQueryParam|:
        |partialPerInterestGroupData|, |trustedBiddingSignalsBatcher|'s
        [=trusted bidding signals batcher/ig names=], and |trustedBiddingSignalsBatcher|'s
        [=trusted bidding signals batcher/all per interest group data=].
- 1. Otherwise, [=set/for each=] |igName| of |trustedBiddingSignalsBatcher|'s
+  1. Otherwise, [=set/for each=] |igName| of |trustedBiddingSignalsBatcher|'s
     [=trusted bidding signals batcher/ig names=]:
     1. [=map/Set=] |trustedBiddingSignalsBatcher|'s
-       [=trusted bidding signals batcher/no signals flags=][|igName|] to true.
+       [=trusted bidding signals batcher/no signals flags=][|igName|] to "fetch-failed".
 
 </div>
 
@@ -5931,14 +5994,14 @@ To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding s
 {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|,
 and a [=string=] |slotSizeQueryParam|:
 
+  1. Let |igName| be |ig|'s [=interest group/name=].
   1. If |signalsUrl| is null:
     1. [=map/Set=] |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/no signals flags=]
-      [|ig|'s [=interest group/name=]] to true.
+      [|igName|] to "no-fetch".
     1. Return.
   1. [=map/Set=] |trustedBiddingSignalsBatcher|'s
-     [=trusted bidding signals batcher/no signals flags=][|ig|'s [=interest group/name=]] to true
-     if |ig|'s [=interest group/trusted bidding signals keys=] is null or [=map/is empty=];
-     otherwise set it to false.
+     [=trusted bidding signals batcher/no signals flags=][|igName|] to "no-fetch"
+     if |ig|'s [=interest group/trusted bidding signals keys=] is null or [=map/is empty=].
 
      Note: An interest group with no trusted signals keys requests would still fetch and process
      per-interest group data like priorityVector and
@@ -5956,7 +6019,7 @@ and a [=string=] |slotSizeQueryParam|:
     [=trusted bidding signals batcher/length limit=].
   1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, [=list/extend=]
      |putativeKeys| with |ig|'s [=interest group/trusted bidding signals keys=].
-  1. [=list/Append=] |ig|'s [=interest group/name=] to |putativeIgNames|.
+  1. [=list/Append=] |igName| to |putativeIgNames|.
   1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
     |signalsUrl|, |putativeKeys|, |putativeIgNames|, |experimentGroupId|, |topLevelOrigin|, and
     |slotSizeQueryParam|.
@@ -5975,7 +6038,7 @@ and a [=string=] |slotSizeQueryParam|:
     1. Otherwise, set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
        new [=list=].
     1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=] to
-        « |ig|'s [=interest group/name=] ».
+        « |igName| ».
     1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=] to
       |ig|'s [=interest group/max trusted bidding signals url length=].
 
@@ -6391,21 +6454,20 @@ An <dfn>auction report info</dfn> is a [=struct=] with the following [=struct/it
   : <dfn>real time reporting contributions map</dfn>
   :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
     [=real time reporting contributions=].
-
 </dl>
 
 A <dfn>real time reporting contribution</dfn> is a [=struct=] with the following [=struct/items=]:
-// TODO: add comments
+
 <dl dfn-for="real time reporting contribution">
   : <dfn>bucket</dfn>
-  :: A {{long}}.
+  :: A {{long}}. Must be greater than 0 and less than the sum of [=number of user buckets=] and
+    [=number of platform buckets=].
   : <dfn>priority weight</dfn>
   :: A {{double}}. Must be greater than 0 and less than infinity, dictates the relative likelihood
     of which bucket will get the contribution.
   : <dfn>latency threshold</dfn>
-  :: A {{long}}. The contribution will be dropped if corresponding latency (e.g., generateBid()
-    execution latency) is not greater than this threshold.
-
+  :: Null or a [=duration=] in milliseconds. Initially null.
+    Reports when a latency (e.g., `generateBid()` execution latency) is greater than this threshold.
 </dl>
 
 # Privacy Considerations # {#privacy-considerations}
