@@ -776,8 +776,8 @@ In the case of bidder signals, the following changes occur:
 3. The data version is passed in `browserSignals.crossOriginDataVersion`, not
    `browserSignals.dataVersion`.
 
-Seller signals have additional requirements, as the `trustedScoringSignalsURL` is provided by the
-publisher, not the seller:
+Seller signals have additional requirements, as the `trustedScoringSignalsURL` is provided by a
+context that is not required to be same-origin with the seller:
 1. The seller script must provide an `Ad-Auction-Allow-Trusted-Scoring-Signals-From` response header,
    a  [structured headers list of strings](https://www.rfc-editor.org/rfc/rfc8941) describing origins
    from which fetching trusted signals is permitted. The trusted scoring signals fetch may not begin
@@ -803,7 +803,7 @@ publisher, not the seller:
 4. The data version is passed in `browserSignals.crossOriginDataVersion`, not
    `browserSignals.dataVersion`.
 
-Note that older version of Chrome did not support cross-origin trusted signals. You can query
+Note that older versions of Chrome did not support cross-origin trusted signals. You can query
 whether support is available as:
 
 ```
