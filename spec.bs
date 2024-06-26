@@ -733,8 +733,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |bidDebugReportInfoList| be a new [=list=] of [=bid debug reporting info=].
-  1. Let |realTimeContributionsMap| be a new [=ordered map=] whose [=map/keys=] are [=origins=] and
-    whose [=map/values=] are [=real time reporting contributions=].
+  1. Let |realTimeContributionsMap| be a new [=real time reporting contributions map=].
   1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
     null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|,
     |bidDebugReportInfoList|, and |realTimeContributionsMap|.
@@ -1558,8 +1557,7 @@ following steps. They return a failure if failing to fetch the script, otherwise
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, an [=origin=]
 |topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, a [=list=] of [=bid debug reporting info=]
-|bidDebugReportInfoList|, and an [=ordered map=] |realTimeContributionsMap| whose [=map/keys=] are
-[=origins=] and whose [=map/values=] are [=real time reporting contributions=]:
+|bidDebugReportInfoList|, and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
@@ -1923,9 +1921,8 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 |leadingBidInfo|, a [=string=] |decisionLogicScript|, a {{DirectFromSellerSignalsForSeller}}
 |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null |biddingDataVersion|, an enum
 |auctionLevel|, which is "single-level-auction", "top-level-auction", or "component-auction", a
-[=currency tag=] |componentAuctionExpectedCurrency|, an [=origin=] |topLevelOrigin|, and an
-[=ordered map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
-[=real time reporting contributions=] |realTimeContributionsMap|:
+[=currency tag=] |componentAuctionExpectedCurrency|, an [=origin=] |topLevelOrigin|, and a
+[=real time reporting contributions map=] |realTimeContributionsMap|:
 
 1. Let |renderURL| be [=URL serializer|serialized=] |generatedBid|'s
   [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
@@ -3026,8 +3023,8 @@ Initial implementation of this specification defines
 </div>
 
 <div algorithm>
-  To <dfn>send real time reports</dfn> given a [=map=] |contributionsMap| whose [=map/keys=] are
-  [=origins=] and whose [=map/values=] are [=real time reporting contributions=]:
+  To <dfn>send real time reports</dfn> given a [=real time reporting contributions map=]
+  |contributionsMap|:
 
   1. [=map/For each=] |origin| → |contributions| of |contributionsMap|:
     1. Let |maybeBucket| be the result of [=sampling real time contributions=] with |contributions|.
@@ -3042,6 +3039,9 @@ Initial implementation of this specification defines
       :   [=url/path=]
       ::  « ".well-known", "interest-group", "real-time-report" »
     1. [=Send a real time report=] with |reportUrl| and |histogram|.
+
+      Issue: TODO: Spec rate limiting.
+      (<a href="https://github.com/WICG/turtledove/issues/1215">WICG/turtledove#1215</a>)
 </div>
 
 
@@ -3064,10 +3064,8 @@ The initial implementation supports four platform contributions with buckets sta
 * <dfn>trusted scoring signals failure bucket</dfn>: [=number of user buckets=] plus 3
 
 <div algorithm>
-  To <dfn>add a platform contribution</dfn> given a {{long}} |bucket|, an [=ordered map=]
-  |realTimeContributionsMap| whose [=map/keys=] are
-  [=origins=] and whose [=map/values=] are [=real time reporting contributions=], and an [=origin=]
-  |origin|:
+  To <dfn>add a platform contribution</dfn> given a {{long}} |bucket|, a
+  [=real time reporting contributions map=] |realTimeContributionsMap|, and an [=origin=] |origin|:
 
   1. Let |contribution| be a new [=real time reporting contribution=] with the following [=struct/items=]:
     : [=real time reporting contribution/bucket=]
@@ -6452,9 +6450,11 @@ An <dfn>auction report info</dfn> is a [=struct=] with the following [=struct/it
     `forDebuggingOnly` reporting APIs are not downsampled, so they are still lists.
 
   : <dfn>real time reporting contributions map</dfn>
-  :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are
-    [=real time reporting contributions=].
+  :: A [=real time reporting contributions map=]
 </dl>
+
+A <dfn>real time reporting contributions map</dfn> is an [=ordered map=] whose [=map/keys=] are
+[=origins=] and whose [=map/values=] are [=lists=] of [=real time reporting contributions=].
 
 A <dfn>real time reporting contribution</dfn> is a [=struct=] with the following [=struct/items=]:
 
