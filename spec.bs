@@ -1897,14 +1897,15 @@ a [=generated bid=] |generatedBid|, a [=list=] of [=origins=]
     [=auction config/trusted scoring signals url=], «|renderURL|», |adComponentRenderURLs|,
     |auctionConfig|'s [=auction config/seller experiment group id=], and |topLevelOrigin|.
 
-    Implementations may batch requests by collecting render URLs and ad component render URLs
-    from multiple invocations of [=score and rank a bid=] and passing them all to a single invocation
-    of [=building trusted scoring signals url=] to get a |scoringSignalsUrl|. By employing this approach,
-    the [=string/length=] of [=URL serializer|serialized=] |scoringSignalsUrl| must not exceed the
-    [=auction config/max trusted scoring signals url length=] of the auction. In cases where the length
-    limit is exceeded, the request must be divided into smaller pieces to comply with the length restriction.
-    However, note that a single request is always considered valid, regardless of whether its length exceeds
-    the auction's [=auction config/max trusted scoring signals url length=].
+    Implementations may batch <a href="#trusted-scoring-signals-fetch">trusted scoring signals
+    requests</a> with same [=auction config/trusted scoring signals url=], |auctionConfig|'s
+    [=auction config/seller experiment group id=], and |topLevelOrigin| by collecting render URLs
+    and ad component render URLs from multiple invocations of [=score and rank a bid=] and passing
+    them all to a single invocation of [=building trusted scoring signals url=] to get a
+    |scoringSignalsUrl|. Requests may not be combined if the resulting combination's
+    [=string/length=] of [=URL serializer|serialized=] |scoringSignalsUrl| exceeds the [=auction
+    config/max trusted scoring signals url length=] of the auction; however this limit does not
+    apply if no combining has taken place.
 
     The network response has to be parsed to pull out the pieces relevant to each
     [=evaluating a scoring script|evaluation of a scoring script=].
@@ -1921,9 +1922,9 @@ a [=generated bid=] |generatedBid|, a [=list=] of [=origins=]
         1. Set |fullSignalsUrl| to null.
 1. If |fullSignalsUrl| is not null:
   1. Let |allTrustedScoringSignals| be null.
-  1. Set «|allTrustedScoringSignals|, <var ignore>ignored</var>, |scoringDataVersion|» to the result
-    of [=fetching trusted signals=] with |fullSignalsUrl|, |auctionConfig|'s [=auction config/
-    seller=], and false.
+  1. <i id="trusted-scoring-signals-fetch">Set</i> «|allTrustedScoringSignals|,
+    <var ignore>ignored</var>, |scoringDataVersion|» to the result of [=fetching trusted signals=]
+    with |fullSignalsUrl|, |auctionConfig|'s [=auction config/seller=], and false.
   1. If |allTrustedScoringSignals| is an [=ordered map=]:
     1. Let |trustedScoringSignals| be a new empty [=map=].
     1. [=map/Set=] |trustedScoringSignals|["`renderURL`"] to a new empty [=map=].
