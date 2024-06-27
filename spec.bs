@@ -43,9 +43,6 @@ urlPrefix: https://datatracker.ietf.org/doc/html/rfc8032
 urlPrefix: https://datatracker.ietf.org/doc/html/rfc3986
   type:dfn
     text: unreserved percent encoding character; url: section-2.3
-urlPrefix: https://www.rfc-editor.org/rfc/rfc8949
-  type:dfn
-    text: CBOR encoding; url: name-specification-of-the-cbor-e
 spec: html; urlPrefix: https://html.spec.whatwg.org/C
   type: dfn
     text: create an agent; url: create-an-agent
@@ -61,9 +58,6 @@ spec: RFC8941; urlPrefix: https://httpwg.org/specs/rfc8941.html
     for: structured header
       text: boolean; url: boolean
       text: integer; url: integer
-      text: boolean; url: boolean
-spec: RFC1700; urlPrefix: https://www.rfc-editor.org/rfc/rfc1700
-  type: dfn; text: the order of transmission
 spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
   type: dfn
     urlPrefix: appendix/embedding.html
@@ -1559,13 +1553,14 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 |topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, a [=list=] of [=bid debug reporting info=]
 |bidDebugReportInfoList|, and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. [=Assert=] that these steps are running [=in parallel=].
+1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicScript| be the result of [=fetching script=] with |auctionConfig|'s
   [=auction config/decision logic url=].
-1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. If |decisionLogicScript| is failure, then:
-  1. [=Add a platform contribution=] with [=scoring script failure bucket=],
-    |realTimeContributionsMap| and |seller|.
+  1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
+    "`default-local-reporting`", then [=add a platform contribution=] with
+    [=scoring script failure bucket=], |realTimeContributionsMap| and |seller|.
   1. Return null.
 1. Let « |bidGenerators|, |negativeTargetInfo| » be the result of running
   [=build bid generators map=] with |auctionConfig|.
@@ -1591,19 +1586,19 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       1. Let |topLevelDirectFromSellerSignals| be the result of running
         [=get direct from seller signals=] given |seller|, |auctionConfig|'s
         [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
-      1. Let |topLevelDirectFromSellerSignalsForSeller| be the result of running
+      1. Set |topLevelDirectFromSellerSignalsForSeller| to the result of running
         [=get direct from seller signals for a seller=] given |topLevelDirectFromSellerSignals|.
       1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
     1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
       [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
       [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicScript|,
-      |directFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|, and
-      |realTimeContributionsMap|.
+      |topLevelDirectFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|,
+      and |realTimeContributionsMap|.
     1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is not null, then
       run [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
       [=leading bid info/leading non-k-anon-enforced bid=], |leadingBidInfo|, |decisionLogicScript|,
-      |directFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|, and
-      |realTimeContributionsMap|.
+      |topLevelDirectFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|,
+      and |realTimeContributionsMap|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
   1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1717,6 +1712,9 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
   1. Let |multiBidLimit| be the result of [=looking up per-buyer multi-bid limit=] with |auctionConfig| and |buyer|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}"]
     to the result of running [=is debugging only in cooldown or lockout=] with |buyer|.
+  1. Let |optedInForRealTimeReporting| be true if |auctionConfig|'s
+    [=auction config/per buyer real time reporting config=][|buyer|] is "`default-local-reporting`",
+    false otherwise.
   1. [=map/For each=] |slotSizeQueryParam| → |perSlotSizeQueryParam| of |perBuyerGenerator|:
     1. [=map/For each=] |signalsUrl| → |perSignalsUrlGenerator| of |perSlotSizeQueryParam|:
       1. Let |trustedBiddingSignalsBatcher| be a new [=trusted bidding signals batcher=].
@@ -1753,9 +1751,10 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               [=trusted bidding signals batcher/data versions=][|igName|].
             1. Set |allTrustedBiddingSignals| to [=trusted bidding signals batcher/all trusted bidding signals=].
           1. Otherwise if |trustedBiddingSignalsBatcher|'s
-            [=trusted bidding signals batcher/no signals flags=][|igName|] is "fetch-failed", then
-            [=add a platform contribution=] with [=trusted bidding signals failure bucket=],
-            |realTimeContributionsMap|, and |igName|.
+            [=trusted bidding signals batcher/no signals flags=][|igName|] is "fetch-failed", and
+            |optedInForRealTimeReporting| is true, then:
+            1. [=Add a platform contribution=] with [=trusted bidding signals failure bucket=],
+              |realTimeContributionsMap|, and |igName|.
           1. If |dataVersion| is not null, then [=map/set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to |dataVersion|.
           1. Otherwise, [=map/remove=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"].
           1. Let |generateBidResult| be the result of running [=generate potentially multiple bids=]
@@ -1763,10 +1762,10 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
             |expectedCurrency|, |multiBidLimit|, |ig|, and |auctionStartTime|.
           1. If |generateBidResult| is failure, then:
-            1. [=add a platform contribution=] with [=bidding script failure bucket=],
-              |realTimeContributionsMap| and |buyer|.
+            1. If |optedInForRealTimeReporting| is true, then [=add a platform contribution=] with
+              [=bidding script failure bucket=], |realTimeContributionsMap| and |buyer|.
             1. [=iteration/Continue=].
-          1. Let « |bidsBatch|, |bidDebugReportInfo|, |realTimeContributions| » be result.
+          1. Let « |bidsBatch|, |bidDebugReportInfo|, |realTimeContributions| » be |generateBidResult|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
             [=environment settings object/current monotonic time=], in milliseconds.
           1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
@@ -1824,8 +1823,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               1. [=list/Append=] |generatedBid| to |bidsToScore|.
           1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |bidDebugReportInfo|, and
                |bidDebugReportInfoList|.
-          1. If |auctionConfig|[=auction config/per buyer real time reporting config=][|buyer|] is
-            "`default-local-reporting`", then [=insert entries to map=] given
+          1. If |auctionConfig|'s [=auction config/per buyer real time reporting config=][|buyer|]
+            is "`default-local-reporting`", then [=insert entries to map=] given
             |realTimeContributionsMap|, |buyer|, and |realTimeContributions|.
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
@@ -1949,12 +1948,14 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 
   The network response has to be parsed to pull out the pieces relevant to each
   [=evaluating a scoring script|evaluation of a scoring script=].
+1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. Let |trustedScoringSignals| be null.
 1. Let «|allTrustedScoringSignals|, ignored, |scoringDataVersion|» be the result of [=fetching
   trusted signals=] with |fullSignalsUrl| and false.
-1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
-1. If |allTrustedScoringSignals| is null, then [=add a platform contribution=] with
-  [=trusted scoring signals failure bucket=], |realTimeContributionsMap|, and |seller|.
+1. If |allTrustedScoringSignals| is null, and |auctionConfig|'s
+  [=auction config/seller real time reporting config=] is "`default-local-reporting`",then:
+  1. [=Add a platform contribution=] with [=trusted scoring signals failure bucket=],
+    |realTimeContributionsMap|, and |seller|.
 1. Otherwise if |allTrustedScoringSignals| is an [=ordered map=]:
   1. Set |trustedScoringSignals| to a new empty [=map=].
   1. [=map/Set=] |trustedScoringSignals|["`renderURL`"] to a new empty [=map=].
@@ -2906,7 +2907,7 @@ Initial implementation of this specification defines
     either scoreAd() or generateBid().
 
 <div id="real-time-report-example" class=example>
-  <p> Each real time report is a cbor message using the following data structure:</p>
+  <p> Each real time report is a [[RFC8949|CBOR]] message using the following data structure:</p>
   <pre highlight="js">
   {
     "version": 1,
@@ -2933,11 +2934,11 @@ Initial implementation of this specification defines
     1. Increment |priorityWeightSum| by |contribution|'s
       [=real time reporting contribution/priority weight=].
   1. Let |sampleRand| be a random {{double}}, 0 &le; sampleRand &lt; 1.
-  1. Set |sampleRand| be |sampleRand| multiplied by |priorityWeightSum|.
+  1. Set |sampleRand| to |sampleRand| multiplied by |priorityWeightSum|.
   1. Set |priorityWeightSum| to 0.
   1. Let |selectedBucket| be -1.
   1. [=list/For each=] |contribution| of |contributions|:
-    1. Increment |priorityWeightSum| by|contribution|'s
+    1. Increment |priorityWeightSum| by |contribution|'s
       [=real time reporting contribution/priority weight=].
     1. If |priorityWeightSum| &ge; |sampleRand|, then set |selectedBucket| to |contribution|'s
       [=real time reporting contribution/bucket=], and [=iteration/break=];
@@ -2948,10 +2949,8 @@ Initial implementation of this specification defines
 <div algorithm>
   To <dfn>bit pack</dfn> a [=list=] of [=booleans=] |input|:
 
-  Note: See [=the order of transmission=] for more information about the bit ordering this algorithm
-    follows.
   1. Let |inputSize| be |input|'s [=list/size=].
-  1. Let |packed| be a new [=list=] of [=bytes=], whose [=list/size=] is (|inputSize| + 7) / 8.0.
+  1. Let |packed| be a new [=list=] of [=bytes=].
   1. Let |currentByte| be 0.
   1. Let |numBits| be 0.
   1. [=list/For each=] |i| in [=the range=] from 0 to |inputSize|, exclusive:
@@ -2965,6 +2964,7 @@ Initial implementation of this specification defines
         1. Set |currentByte| to |currentByte| * 2.
         1. [=list/Append=] |currentByte| to |packed|.
         1. Increment |numBits| by 1.
+  1. [=Assert=] that |packed|'s [=list/size=] is (|inputSize| + 7) / 8.0.
   1. Return |packed|.
 </div>
 
@@ -2974,10 +2974,7 @@ Initial implementation of this specification defines
 
   1. Let |totalBuckets| be the sum of [=number of user buckets=] and [=number of platform buckets=].
   1. [=Assert=] |histogram|'s [=list/size=] is |totalBuckets|.
-  1. Let |userHistogram| be a new [=list=] of [=booleans=], whose [=list/size=] is
-    [=number of user buckets=].
-  1. Let |platformHistogram| be a new [=list=] of [=booleans=], whose [=list/size=] is
-    [=number of platform buckets=].
+  1. Let |userHistogram| and |platformHistogram| be new [=lists=] of [=booleans=].
   1. [=list/For each=] |i| in [=the range=] 0 to |totalBuckets|, exclusive:
     1. If |i| &lt; |userHistogram|, then [=list/append=] |histogram|[|i|] to |userHistogram|.
     1. Otherwise, [=list/append=] |histogram|[|i|] to |platformHistogram|.
@@ -3001,11 +2998,12 @@ Initial implementation of this specification defines
     :   [=request/URL=]
     ::  |url|
     :   [=request/header list=]
-    ::  «`Accept`: `application/cbor`»
+    ::  «`Content-Type`: `application/cbor`»
     :   [=request/method=]
     ::  `POST`
     :   [=request/body=]
-    ::  the [=byte sequence=] resulting from [=CBOR encoding=] |body|
+    ::  the [=byte sequence=] resulting from [[RFC8949#name-specification-of-the-cbor-e|CBOR encoding]]
+        |body|
     :   [=request/client=]
     ::  `null`
     :   [=request/mode=]
@@ -3050,23 +3048,24 @@ Initial implementation of this specification defines
 *This first introductory paragraph is non-normative.*
 
 There are some errors not visible in either `scoreAd()` or `generateBid()`, like failures to fetch
-the bidding or scoring script, trusted real-time signals. In these cases, a certain portion of the
-resulting histogram are used for platform errors.
+the bidding or scoring script, trusted bidding or scoring signals. Certain buckets are used for
+these errors.
 
-Platform contributions have a hardcoded <dfn>platform contribution priority weight</dfn>. The
-initial implementation uses a value of 1.
-
-The initial implementation supports four platform contributions with buckets starting from
+The initial implementation supports four <dfn>platform contribution buckets</dfn> starting from
 [=number of user buckets=]:
 * <dfn>bidding script failure bucket</dfn>: [=number of user buckets=]
 * <dfn>scoring script failure bucket</dfn>: [=number of user buckets=] plus 1
 * <dfn>trusted bidding signals failure bucket</dfn>: [=number of user buckets=] plus 2
 * <dfn>trusted scoring signals failure bucket</dfn>: [=number of user buckets=] plus 3
 
+Platform contributions have a hardcoded <dfn>platform contribution priority weight</dfn>. The
+initial implementation uses a value of 1.
+
 <div algorithm>
   To <dfn>add a platform contribution</dfn> given a {{long}} |bucket|, a
   [=real time reporting contributions map=] |realTimeContributionsMap|, and an [=origin=] |origin|:
 
+  1. [=Assert=] |bucket| is one of [=platform contribution buckets=].
   1. Let |contribution| be a new [=real time reporting contribution=] with the following [=struct/items=]:
     : [=real time reporting contribution/bucket=]
     :: |bucket|
@@ -3763,7 +3762,7 @@ of the following global objects:
   |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=]-or-null
   |trustedBiddingSignals|, a {{BiddingBrowserSignals}} |browserSignals|,
   a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer| and an integer millisecond
-  [=duration=] |timeout|, , perform the following steps. They return a [=tuple=]
+  [=duration=] |timeout|, perform the following steps. They return a [=tuple=]
   « [=list=] of [=generated bids=], [=bid debug reporting info=], [=list=] of 
     [=real time reporting contributions=] ».
 
