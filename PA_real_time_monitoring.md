@@ -225,7 +225,7 @@ Given that sellers have significant existing control over the auction, we deemed
 
 ## Privacy considerations
 
-At the `epsilon` we are proposing ($\epsilon$ = 1), the entropy leaked is limited to approximately 0.18 bits per auction. This makes it very difficult for a bad actor to gain any meaningful user identifying information from an auction using this API. 
+At the `epsilon` we are proposing ($\epsilon$ = 1), the information leaked is limited to approximately 0.18 bits per auction[^1]. This makes it very difficult for a bad actor to gain any meaningful user identifying information from an auction using this API. 
 
 While the tight privacy parameters provide strong protections, there are two privacy considerations of note:
 
@@ -268,3 +268,5 @@ The proposal suggested in this document is limited in scope due to the strong pr
 *   Address the privacy concern that this proposal leaks the auction participation
 
 The two solutions we are considering are 1) add a local shuffle and IP address proxy mechanism to the Real Time Monitoring API, or 2) replace the Real Time Monitoring API with a low-latency Private Aggregation solution.
+
+[^1]: Wang, Shaowei et al. “Mutual Information Optimally Local Private Discrete Distribution Estimation.” https://arxiv.org/abs/1607.08025 (2016): Theorem 2.1
