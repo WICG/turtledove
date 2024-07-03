@@ -1486,8 +1486,10 @@ a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=dur
     1. [=map/Set=] |prevWinIDL|["{{PreviousWin/adJSON}}"] to |prevWin|'s [=previous win/ad json=].
     1. [=list/Append=] |prevWinIDL| to |prevWins|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/prevWinsMs}}"] to |prevWins|.
-  1. Let « |biddingScript|, <var ignore>ignored</var> » be the result of [=fetching script=] with
+  1. Let |biddingScriptFetcher| be the result of [=creating a new script fetcher=] with
     |ig|'s [=interest group/bidding url=].
+  1. Let |biddingScript| be the result of [=waiting for script body from a fetcher=] given
+     |biddingScriptFetcher|.
   1. If |biddingScript| is failure, return failure.
   1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
     1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
@@ -1527,9 +1529,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 |bidDebugReportInfoList|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |auctionStartTime| be the [=current wall time=].
-1. Let « |decisionLogicScript|, |allowCrossOriginTrustedScoringSignalsFrom| » be the result of
-  [=fetching script=] with |auctionConfig|'s [=auction config/decision logic url=].
-1. If |decisionLogicScript| is failure, return null.
+1. Let |decisionLogicFetcher| be the result of [=creating a new script fetcher=] with
+  |auctionConfig|'s [=auction config/decision logic url=].
 1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. Let « |bidGenerators|, |negativeTargetInfo| » be the result of running
   [=build bid generators map=] with |auctionConfig|.
@@ -1559,12 +1560,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
     1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
       [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
-      [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicScript|,
-      |allowCrossOriginTrustedScoringSignalsFrom|, null, "top-level-auction", null, and |topLevelOrigin|.
+      [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicFetcher|,
+      null, "top-level-auction", null, and |topLevelOrigin|.
     1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
       is not null, then run [=score and rank a bid=] with |auctionConfig|,
       |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
-      |leadingBidInfo|, |decisionLogicScript|, |allowCrossOriginTrustedScoringSignalsFrom|, null,
+      |leadingBidInfo|, |decisionLogicFetcher|, null,
       "top-level-auction", null, and |topLevelOrigin|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
@@ -1631,7 +1632,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
   1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
-    |decisionLogicScript|, |allowCrossOriginTrustedScoringSignalsFrom|, null, |auctionLevel|,
+    |decisionLogicFetcher|, null, |auctionLevel|,
     |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
   1. Decrement |pendingAdditionalBids| by 1.
 1. Let |settings| be |global|'s [=relevant settings object=].
@@ -1789,9 +1790,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
             1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
-              |decisionLogicScript|, |allowCrossOriginTrustedScoringSignalsFrom|,
-              |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
-              |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
+              |decisionLogicFetcher|, |directFromSellerSignalsForSeller|, |dataVersion|,
+              |auctionLevel|, |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1876,8 +1876,8 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 
 <div algorithm>
 To <dfn>fetch and decode trusted scoring signals</dfn> given an [=auction config=] |auctionConfig|,
-a [=generated bid=] |generatedBid|, a [=list=] of [=origins=]
-|allowCrossOriginTrustedScoringSignalsFrom|, and an [=origin=] |topLevelOrigin|:
+a [=generated bid=] |generatedBid|, a [=script fetcher=] |decisionLogicFetcher|, and an [=origin=]
+|topLevelOrigin|:
 
 1. Let |crossOriginTrustedScoringSignalsOrigin| be null.
 1. Let |sameOriginTrustedScoringSignals| be null.
@@ -1916,6 +1916,8 @@ a [=generated bid=] |generatedBid|, a [=list=] of [=origins=]
   1. If |fullSignalsUrl|'s [=url/origin=] is not [=same origin=] with |auctionConfig|'s
      [=auction config/seller=], then:
       1. Set |crossOriginTrustedScoringSignalsOrigin| to |fullSignalsUrl|'s [=url/origin=].
+      1. Let |allowCrossOriginTrustedScoringSignalsFrom| be the result of [=wait for cross origin
+        trusted scoring signals authorization from a fetcher=] given |decisionLogicFetcher|.
       1. If |allowCrossOriginTrustedScoringSignalsFrom| does not [=list/contain=]
         |crossOriginTrustedScoringSignalsOrigin|:
         1. Set |crossOriginTrustedScoringSignalsOrigin| to null.
@@ -1955,7 +1957,7 @@ a [=generated bid=] |generatedBid|, a [=list=] of [=origins=]
 <div algorithm>
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
 |generatedBid|, a [=bid debug reporting info=] |bidDebugReportInfo|, a [=leading bid info=] |leadingBidInfo|,
-a [=string=] |decisionLogicScript|, a [=list=] or [=origins=] |allowCrossOriginTrustedScoringSignalsFrom|,
+a [=script fetcher=] |decisionLogicFetcher|,
 a {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
 |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
 or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, and an [=origin=]
@@ -1963,8 +1965,8 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
 
 1. Let «|crossOriginTrustedScoringSignalsOrigin|, |sameOriginTrustedScoringSignals|,
   |crossOriginTrustedScoringSignals|, |scoringDataVersion|» be the result of [=fetch and
-  decode trusted scoring signals=] given |auctionConfig|, |generatedBid|,
-  |allowCrossOriginTrustedScoringSignalsFrom|, |topLevelOrigin|.
+  decode trusted scoring signals=] given |auctionConfig|, |generatedBid|, |decisionLogicFetcher|,
+  |topLevelOrigin|.
 1. Let |adMetadata| be |generatedBid|'s [=generated bid/ad=].
 1. Let |bidValue| be |generatedBid|'s [=generated bid/bid=].
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null, then set |bidValue| to
@@ -2000,6 +2002,9 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     <dd>The result of running [=is debugging only in cooldown or lockout=] with |seller|
   </dl>
 
+1. Let |decisionLogicScript| be the result of [=wait for script body from a fetcher=] given
+  |decisionLogicFetcher|.
+1. If |decisionLogicScript| is falure, return.
 1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl| » be the result of
   [=evaluating a scoring script=] with |decisionLogicScript|, |adMetadata|,
   |bidValue|'s [=bid with currency/value=], |auctionConfig|'s [=auction config/config idl=],
@@ -2178,74 +2183,6 @@ To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, 
   1. If the result of [=validating fetching response mime and body=] given |response|,
      |responseBody|, |mimeType| is false, then return false.
   1. Return true.
-</div>
-
-The <dfn http-header><code>Ad-Auction-Allow-Trusted-Scoring-Signals-From</code></dfn> HTTP response header is a
-[=structured header=] whose value must be a [=structured header/list=] of [=structured header/strings=].
-
-<div algorithm>
-To <dfn>parse allowed trusted scoring signals origins</dfn> given a [=header list=] |headerList|:
-
-  1. Let |parsedHeader| be the result of [=header list/getting a structured field value=]
-    given [:Ad-Auction-Allow-Trusted-Scoring-Signals-From:] and "`list`" from |headerList|.
-  1. If |parsedHeader| is null, return an empty [=list=].
-  1. Let |result| be a new [=list=] of [=origins=].
-  1. [=list/For each=] |entry| in |parsedHeader|:
-    1. If |entry| is not a [=string=], return an empty [=list=].
-    1. Let |parsedEntry| be the result of [=parsing an https origin=] on |entry|.
-    1. If |parsedEntry| is failure, return an empty [=list=].
-    1. [=list/Append=] |parsedEntry| to |result|.
-  1. Return |result|.
-</div>
-
-<div algorithm>
-To <dfn>fetch script</dfn> given a [=URL=] |url|:
-  1. Let |request| be a new [=request=] with the following properties:
-    :   [=request/URL=]
-    ::  |url|
-    :   [=request/header list=]
-    ::  «`Accept`: `text/javascript`»
-    :   [=request/client=]
-    ::  `null`
-    :   [=request/mode=]
-    ::  "`no-cors`"
-    :   [=request/referrer=]
-    :: "`no-referrer`"
-    :   [=request/credentials mode=]
-    ::  "`omit`"
-    :   [=request/redirect mode=]
-    :: "`error`"
-
-    Issue: One of the side-effects of a `null` client for this subresource request is it neuters all
-    service worker interceptions, despite not having to set the service workers mode.
-
-    Issue: Stop using "`no-cors`" mode where possible
-    (<a href="https://github.com/WICG/turtledove/issues/667">WICG/turtledove#667</a>).
-  1. Let |script| be null.
-  1. Let |allowCrossOriginTrustedScoringSignalsFrom| be an empty [=list=].
-  1. Let |fetchController| be the result of [=fetching=] |request| with [=fetch/useParallelQueue=]
-    set to true, and [=fetch/processResponse=] set to the following steps given
-    a [=response=] |response|:
-    1. If the result of [=validating fetching response headers=] given |response| is false:
-      1. [=fetch controller/Abort=] |fetchController|.
-      1. Set |script| to failure.
-      1. Return.
-    1. Set |allowCrossOriginTrustedScoringSignalsFrom| to the result of [=parsing allowed trusted
-      scoring signals origins=] given |response|'s [=response/header list=].
-    1. Let |bodyStream| be |response|’s [=response/body=]’s [=body/stream=].
-    1. Let |bodyReader| be result of [=ReadableStream/getting a reader=] from |bodyStream|.
-    1. Let |successSteps| be a set of steps that take a [=byte sequence=] |responseBody|, and
-      perform the following:
-      1. If [=validate fetching response mime and body=] with |response|, |responseBody| and
-        "`text/javascript`" returns false, set |script| to failure.
-      1. Otherwise, set |script| to |responseBody|.
-    1. Let |failureSteps| be a set of steps that take an [=exception=] <var ignore>e</var>, and
-      perform the following:
-      1. Set |script| to failure.
-    1. [=ReadableStreamDefaultReader/Read all bytes=] from |bodyReader|, given |successSteps|
-      and |failureSteps|.
-  1. Wait for |script| to be set.
-  1. Return « |script|, |allowCrossOriginTrustedScoringSignalsFrom| ».
 </div>
 
 <div algorithm>
@@ -2621,8 +2558,10 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
      given |winner|'s [=generated bid/interest group=] and |igAd| is true, then [=map/set=]
      |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s
      [=interest group ad/buyer and seller reporting ID=].
-  1. Let « |sellerReportingScript|, <var ignore>ignored</var> » be the result of [=fetching script=]
-    with |config|'s [=auction config/decision logic url=].
+  1. Let |sellerReportingScriptFetcher| be the result of [=creating a new script fetcher=] with
+     |config|'s [=auction config/decision logic url=].
+  1. Let |sellerReportingScript| be the result of [=waiting for script body from a fetcher=] given
+     |sellerReportingScriptFetcher|.
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored » be the result of
     [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`", |config|'s
     [=auction config/config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
@@ -2690,8 +2629,10 @@ a {{ReportingBrowserSignals}} |browserSignals|, and a [=direct from seller signa
       |igAd|'s [=interest group ad/buyer reporting ID=].
     1. Otherwise, [=map/Set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/interestGroupName}}"]
       to |winner|'s [=generated bid/interest group=] [=interest group/name=].
-  1. Let « |buyerReportingScript|, <var ignore>ignored</var> » be the result of [=fetching script=]
-    with |winner|'s [=generated bid/interest group=]'s [=interest group/bidding url=].
+  1. Let |buyerReportingScriptFetcher| be the result of [=creating a new script fetcher=] with
+     |winner|'s [=generated bid/interest group=]'s [=interest group/bidding url=].
+  1. Let |buyerReportingScript| be the result of [=waiting for script body from a fetcher=] given
+     |buyerReportingScriptFetcher|.
   1. Let |reportFunctionName| be "`reportWin`".
   1. If |winner|'s [=generated bid/provided as additional bid=] is true:
     1. Set |reportFunctionName| be "`reportAdditionalBidWin`".
@@ -5604,6 +5545,113 @@ specify a [=interest group/trusted bidding signals url=].
 A <dfn>per signals url bid generator</dfn> is an [=ordered map=] whose [=map/keys=] are [=origins=]
 representing [=interest group/joining origins=], and whose [=map/values=] are [=lists=] of
 [=interest groups=].
+
+<h3 id="script-fetcher-section">Script fetcher</h3>
+
+A <dfn>script fetcher</dfn> helps manage asynchronous fetching of scripts and handling of their
+headers. It's a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="script fetcher">
+  : <dfn>script body</dfn>
+  :: A [=byte sequence=], null or failure. Initially null. The body of the script.
+  : <dfn>origins authorized for cross origin trusted signals</dfn>
+  :: A [=list=] of [=origins=] or null. Initially null. Parsed value of
+     [:Ad-Auction-Allow-Trusted-Scoring-Signals-From:].</dfn>
+</dl>
+
+<div algorithm>
+To <dfn>create a new script fetcher</dfn> given a [=URL=] |url|:
+
+  1. Let |fetcher| be a new [=script fetcher=].
+  1. Let |queue| be the result of [=starting a new parallel queue=].
+  1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
+    1. [=Fetch script=] given |url| and |fetcher|.
+  1. Return |fetcher|.
+</div>
+
+<div algorithm>
+To <dfn>wait for script body from a fetcher</dfn> given a [=script fetcher=] |fetcher|:
+
+  1. Wait until |fetcher|'s [=script fetcher/script body=] is not null.
+  1. Return |fetcher|'s [=script fetcher/script body=].
+</div>
+
+<div algorithm>
+To <dfn>wait for cross origin trusted scoring signals authorization from a fetcher</dfn> given a
+[=script fetcher=] |fetcher|:
+
+  1. Wait until |fetcher|'s [=script fetcher/origins authorized for cross origin trusted signals=].
+    is not null.
+  1. Return |fetcher|'s [=script fetcher/origins authorized for cross origin trusted signals=].
+</div>
+
+The <dfn http-header><code>Ad-Auction-Allow-Trusted-Scoring-Signals-From</code></dfn> HTTP response
+header is a [=structured header=] whose value must be a [=structured header/list=] of [=structured
+header/strings=].
+
+<div algorithm>
+To <dfn>parse allowed trusted scoring signals origins</dfn> given a [=header list=] |headerList|:
+
+  1. Let |parsedHeader| be the result of [=header list/getting a structured field value=]
+    given [:Ad-Auction-Allow-Trusted-Scoring-Signals-From:] and "`list`" from |headerList|.
+  1. If |parsedHeader| is null, return an empty [=list=].
+  1. Let |result| be a new [=list=] of [=origins=].
+  1. [=list/For each=] |entry| in |parsedHeader|:
+    1. If |entry| is not a [=string=], return an empty [=list=].
+    1. Let |parsedEntry| be the result of [=parsing an https origin=] on |entry|.
+    1. If |parsedEntry| is failure, return an empty [=list=].
+    1. [=list/Append=] |parsedEntry| to |result|.
+  1. Return |result|.
+</div>
+
+<div algorithm>
+To <dfn>fetch script</dfn> given a [=URL=] |url| and a [=script fetcher=] |fetcher|:
+  1. Let |request| be a new [=request=] with the following properties:
+    :   [=request/URL=]
+    ::  |url|
+    :   [=request/header list=]
+    ::  «`Accept`: `text/javascript`»
+    :   [=request/client=]
+    ::  `null`
+    :   [=request/mode=]
+    ::  "`no-cors`"
+    :   [=request/referrer=]
+    :: "`no-referrer`"
+    :   [=request/credentials mode=]
+    ::  "`omit`"
+    :   [=request/redirect mode=]
+    :: "`error`"
+
+    Issue: One of the side-effects of a `null` client for this subresource request is it neuters all
+    service worker interceptions, despite not having to set the service workers mode.
+
+    Issue: Stop using "`no-cors`" mode where possible
+    (<a href="https://github.com/WICG/turtledove/issues/667">WICG/turtledove#667</a>).
+  1. Let |fetchController| be the result of [=fetching=] |request| with [=fetch/useParallelQueue=]
+    set to true, and [=fetch/processResponse=] set to the following steps given
+    a [=response=] |response|:
+    1. If the result of [=validating fetching response headers=] given |response| is false:
+      1. [=fetch controller/Abort=] |fetchController|.
+        1. Set |fetcher|'s [=script fetcher/origins authorized for cross origin trusted signals=] to
+          an empty [=list=] of [=origins=].
+        1. Set |fetcher|'s [=script fetcher/script body=] to failure.
+    1. Set |fetcher|'s [=script fetcher/origins authorized for cross origin trusted signals=] to the
+      result of [=parsing allowed trusted scoring signals origins=] given |response|'s [=response/
+      header list=].
+    1. Let |bodyStream| be |response|’s [=response/body=]’s [=body/stream=].
+    1. Let |bodyReader| be result of [=ReadableStream/getting a reader=] from |bodyStream|.
+    1. Let |successSteps| be a set of steps that take a [=byte sequence=] |responseBody|, and
+      perform the following:
+      1. If [=validate fetching response mime and body=] with |response|, |responseBody| and
+        "`text/javascript`" returns false, set |fetcher|'s [=script fetcher/script body=] to
+        failure.
+      1. Otherwise, set set |fetcher|'s [=script fetcher/script body=] to |responseBody|.
+    1. Let |failureSteps| be a set of steps that take an [=exception=] <var ignore>e</var>, and
+      perform the following:
+      1. Set set |fetcher|'s [=script fetcher/script body=] to failure.
+    1. [=ReadableStreamDefaultReader/Read all bytes=] from |bodyReader|, given |successSteps|
+      and |failureSteps|.
+</div>
 
 <h3 id=trusted-bidder-signals-batcher>Trusted bidding signals batcher</h3>
 
