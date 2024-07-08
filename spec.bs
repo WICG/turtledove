@@ -2389,34 +2389,6 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
 </div>
 
 <div algorithm>
-
-To <dfn>build trusted scoring signals url</dfn> given a [=URL=] |signalsUrl|, a [=list=] of
-[=strings=] |renderURLs|, an [=ordered set=] of [=strings=] |adComponentRenderURLs|, an
-{{unsigned short}} |experimentGroupId|, and an [=origin=] |topLevelOrigin|:
-
-Note: When trusted scoring signals fetches are not batched, |renderURLs|'s [=list/size=] is 1.
-
-1. Let |queryParamsList| be a new empty [=list=].
-1. [=list/Append=] "hostname=" to |queryParamsList|.
-1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
-  [=component percent-encode set=] to |queryParamsList|.
-1. If |renderURLs| is not [=set/is empty|empty=]:
-  1. [=list/Append=] "`&renderURLs=`" to |queryParamsList|.
-  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
-    |renderURLs|.
-1. If |adComponentRenderURLs| is not [=set/is empty|empty=]:
-  1. [=list/Append=] "`&adComponentRenderURLs=`" to |queryParamsList|.
-  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
-    |adComponentRenderURLs|.
-1. If |experimentGroupId| is not null:
-  1. [=list/Append=] "`&experimentGroupId=`" to |queryParamsList|.
-  1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
-1. Set |signalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
-1. return |signalsUrl|.
-
-</div>
-
-<div algorithm>
 To <dfn>send report</dfn> given a [=URL=] |url|:
 
   1. Let |request| be a new [=request=] with the following properties:
@@ -5803,6 +5775,143 @@ an [=origin=] |topLevelOrigin|, and a [=string=] |slotSizeQueryParam|:
         « |ig|'s [=interest group/name=] ».
     1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=] to
       |ig|'s [=interest group/max trusted bidding signals url length=].
+
+</div>
+
+<h3 id=trusted-seller-signals-batcher>Trusted scoring signals batcher</h3>
+
+A <dfn>trusted scoring signals batcher</dfn> helps manage merging multiple trusted scoring signals
+requests into smaller number of fetches. It's a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="trusted scoring signals batcher">
+  : <dfn>request queue</dfn>
+  :: A [=list=] of [=trusted scoring signals requests=].
+  : <dfn>request map</dfn>
+  :: A [=map=] from a tuple of [=origin=], [=URL=], {{unsigned short}} or null, and [=origin=] to
+    a [=list=] of [=trusted scoring signals requests=].
+</dl>
+
+A <dfn>trusted scoring signals request</dfn> is a [=struct=] with the following [=struct/items=],
+representing all information needed to produce a trusted scoring signals fetch for a single scoring
+invocation:
+
+<dl dfn-for="trusted scoring signals request">
+  : <dfn>seller</dfn>
+  :: An [=origin=] of the seller the fetch is on behalf of.
+  : <dfn>base url</dfn>
+  :: An [=URL=], the base URL for trusted seller signals to fetch.
+  : <dfn>seller experiment group id</dfn>
+  :: Null or an {{unsigned short}}, initially null.
+  : <dfn>top level origin</dfn>
+  :: An [=origin=]. XXX
+  : <dfn>render URL</dfn>
+  :: A [=string=], the serialization of the main URL of creative to pass with the fetch.
+  : <dfn>ad component URLs</dfn>
+  :: A [=set=] of [=strings=], list of serializations of component URLs of the creative to pass with
+    the fetch.
+  : <dfn>reply</dfn>
+  :: A [=trusted scoring signals reply=] or null, initially null. Set when the fetch has been
+     completed.
+</dl>
+
+A <dfn>trusted scoring signals reply</dfn> is a [=struct=] with the following [=struct/items=]
+<dl dfn-for="trusted scoring signals reply">
+  : <dfn>all trusted scoring signals</dfn>
+  :: A [=ordered map=] or failure.
+  : <dfn>data version</dfn>
+  :: An {{unsigned long}} or null.
+</dl>
+
+<div algorithm>
+
+To <dfn>create a trusted scoring signals batcher</dfn>:
+
+1. Let |batcher| be a new [=trusted scoring signals batcher=].
+1. Let |queue| be the result of [=starting a new parallel queue=].
+1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
+  1. [=Batch and fetch trusted scoring signals=] given |batcher|.
+1. Return |batcher|.
+
+</div>
+
+<div algorithm>
+
+To <dfn>fetch trusted scoring signals with batching</dfn> given a [=trusted scoring signals
+batcher=] |batcher| and a [=trusted scoring signals request=] |request|:
+1. [=list/Append=] |request| to |batcher|'s [=trusted scoring signals batcher/request queue=].
+1. Wait until |request|'s [=trusted scoring signals request/reply=] is non-null.
+1. Return |request|'s [=trusted scoring signals request/reply=].
+
+</div>
+
+<div algorithm>
+
+To <dfn>build trusted scoring signals url</dfn> given a [=URL=] |signalsUrl|, a [=list=] of
+[=strings=] |renderURLs|, an [=ordered set=] of [=strings=] |adComponentRenderURLs|, an
+{{unsigned short}} |experimentGroupId|, and an [=origin=] |topLevelOrigin|:
+
+Note: When trusted scoring signals fetches are not batched, |renderURLs|'s [=list/size=] is 1.
+
+1. Let |queryParamsList| be a new empty [=list=].
+1. [=list/Append=] "hostname=" to |queryParamsList|.
+1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
+  [=component percent-encode set=] to |queryParamsList|.
+1. If |renderURLs| is not [=set/is empty|empty=]:
+  1. [=list/Append=] "`&renderURLs=`" to |queryParamsList|.
+  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
+    |renderURLs|.
+1. If |adComponentRenderURLs| is not [=set/is empty|empty=]:
+  1. [=list/Append=] "`&adComponentRenderURLs=`" to |queryParamsList|.
+  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
+    |adComponentRenderURLs|.
+1. If |experimentGroupId| is not null:
+  1. [=list/Append=] "`&experimentGroupId=`" to |queryParamsList|.
+  1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
+1. Set |signalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
+1. return |signalsUrl|.
+
+</div>
+
+<div algorithm>
+
+To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring signals batcher=]
+|batcher|:
+
+1. Until this object is no longer needed:
+  1. Wait until |batcher|'s [=trusted scoring signals batcher/request queue=] is no longer empty.
+  1. Atomically transfer all entries in |batcher|'s [=trusted scoring signals batcher/
+    request queue=] to |incomingRequests|, leaving |batcher|'s [=trusted scoring signals batcher/
+    request queue=] empty.
+  1. For each |request| in |incomingRequests|:
+    1. Let |key| be (|request|'s [=trusted scoring signals request/seller=], |request|'s [=trusted
+      scoring signals request/base url=], |request|'s [=trusted scoring signals request/seller
+      experiment group id=], |request|'s [=trusted scoring signals request/top level origin=]).
+    1. If |batcher|'s [=trusted scoring signals batcher/request map=][|key|] does not [=map/exist=],
+      then [=map/set=] |batcher|'s [=trusted scoring signals batcher/request map=][|key|] to an
+      empty [=list=].
+    1. [=list/Append=] |request| to |batcher|'s [=trusted scoring signals batcher/request map=]
+      [|key|].
+  1. Some number of times, heuristically, select a |key| and a non-empty sublist of |batcher|'s
+    [=trusted scoring signals batcher/request map=] [|key|], called |entriesToBatch|:
+
+      Note: XXX pontificate on this trading off number of requests vs. queuing delay.
+
+      1. Let |firstEntry| be |entriesToBatch|[0].
+      1. Let |renderURLs| be an empty [=ordered set=] of [=strings=].
+      1. Let |adComponentRenderURLs| be an empty [=ordered set=] of [=strings=]
+        |adComponentRenderURLs|
+      1. [=list/For each=] |entry| of |entriesToBatch|:
+        1. [=set/Append=] |entry|'s [=trusted scoring signals request/render URL=] to |renderURLs|.
+        1. [=list/Extend=] |adComponentRenderURLs| with |entry|'s [=trusted scoring signals request/
+          ad component URLs=].
+      1. Let |fullSignalsUrl| be the result of [=building trusted scoring signals url=] with
+        |firstEntry|'s [=trusted scoring signals request/base URL=], |renderURLs|,
+        |adComponentRenderURLs|, |firstEntry|'s [=trusted scoring signals request/seller experiment
+        group id=], |firstEntry|'s [=trusted scoring signals request/top level origin=].
+      1. If |fullSignalsUrl| is too long (XXX wire in the proper limit), [=iteration/continue=].
+      1. Splice out |entriesToBatch| from the map.
+      1. Do the cross-origin check if needed (XXX wire in the script fetcher).
+      1. Do the actual fetch, make a reply object, set it on |entriesToBatch|.
 
 </div>
 
