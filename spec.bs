@@ -1531,6 +1531,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicFetcher| be the result of [=creating a new script fetcher=] with
   |auctionConfig|'s [=auction config/decision logic url=].
+1. Let |trustedScoringSignalsBatcher| be the result of [=creating a trusted scoring signals
+  batcher=] with |auctionConfig|'s [=auction config/max trusted scoring signals url length=].
 1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. Let « |bidGenerators|, |negativeTargetInfo| » be the result of running
   [=build bid generators map=] with |auctionConfig|.
@@ -1561,11 +1563,11 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
       [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
       [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicFetcher|,
-      null, "top-level-auction", null, and |topLevelOrigin|.
+      |trustedScoringSignalsBatcher|, null, "top-level-auction", null, and |topLevelOrigin|.
     1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
       is not null, then run [=score and rank a bid=] with |auctionConfig|,
       |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
-      |leadingBidInfo|, |decisionLogicFetcher|, null,
+      |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|, null,
       "top-level-auction", null, and |topLevelOrigin|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
@@ -1632,7 +1634,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
   1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
-    |decisionLogicFetcher|, null, |auctionLevel|,
+    |decisionLogicFetcher|, |trustedScoringSignalsBatcher|, null, |auctionLevel|,
     |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
   1. Decrement |pendingAdditionalBids| by 1.
 1. Let |settings| be |global|'s [=relevant settings object=].
@@ -1790,7 +1792,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
             1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
-              |decisionLogicFetcher|, |directFromSellerSignalsForSeller|, |dataVersion|,
+              |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
+              |directFromSellerSignalsForSeller|, |dataVersion|,
               |auctionLevel|, |componentAuctionExpectedCurrency|, and |topLevelOrigin|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
@@ -1875,59 +1878,54 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 </div>
 
 <div algorithm>
-To <dfn>fetch and decode trusted scoring signals</dfn> given an [=auction config=] |auctionConfig|,
-a [=generated bid=] |generatedBid|, a [=script fetcher=] |decisionLogicFetcher|, and an [=origin=]
-|topLevelOrigin|:
+To <dfn>fetch and decode trusted scoring signals</dfn> given a [=trusted scoring signals batcher=]
+|batcher|, an [=auction config=] |auctionConfig|, a [=generated bid=] |generatedBid|, a
+[=script fetcher=] |decisionLogicFetcher|, and an [=origin=] |topLevelOrigin|:
 
-1. Let |crossOriginTrustedScoringSignalsOrigin| be null.
+1. Let |isCrossOrigin| be false.
 1. Let |sameOriginTrustedScoringSignals| be null.
 1. Let |crossOriginTrustedScoringSignals| be null.
 1. Let |scoringDataVersion| be null.
 1. Let |renderURL| be [=URL serializer|serialized=] |generatedBid|'s
   [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
 1. Let |adComponentRenderURLs| be a new empty [=list=].
-1. If |generatedBid|'s [=generated bid/ad component descriptors=] is not null:
-  1. [=list/For each=] |adComponentDescriptor| in |generatedBid|'s [=generated bid/ad component
-    descriptors=]:
+ 1. If |generatedBid|'s [=generated bid/ad component descriptors=] is not null:
+   1. [=list/For each=] |adComponentDescriptor| in |generatedBid|'s [=generated bid/ad component
+     descriptors=]:
     1. [=list/Append=] [=URL serializer|serialized=] |adComponentDescriptor|'s [=ad descriptor/url=]
       to |adComponentRenderURLs|.
-1. Let |fullSignalsUrl| be null.
+1. Let |request| be a new [=trusted scoring signals request=] with the following [=struct/items=]:
+    : [=trusted scoring signals request/seller=]
+    :: |auctionConfig|'s [=auction config/seller=]
+
+    : [=trusted scoring signals request/seller script fetcher=]
+    :: |decisionLogicFetcher|
+
+    : [=trusted scoring signals request/base url=]
+    :: |auctionConfig|'s [=auction config/trusted scoring signals url=]
+
+    : [=trusted scoring signals request/seller experiment group id=]
+    :: |auctionConfig|'s [=auction config/seller experiment group id=]
+
+    : [=trusted scoring signals request/top level origin=]
+    :: |topLevelOrigin|
+
+    : [=trusted scoring signals request/render URL=]
+    :: |renderURL|
+
+    : [=trusted scoring signals request/ad component URLs=]
+    :: |adComponentRenderURLs|
+
 1. If |auctionConfig|'s [=auction config/trusted scoring signals url=] is not null:
-  1. Set |fullSignalsUrl| be the result of [=building trusted scoring signals url=] with |auctionConfig|'s
-    [=auction config/trusted scoring signals url=], «|renderURL|», |adComponentRenderURLs|,
-    |auctionConfig|'s [=auction config/seller experiment group id=], and |topLevelOrigin|.
-
-    Implementations may batch <a href="#trusted-scoring-signals-fetch">trusted scoring signals
-    requests</a> with same [=auction config/trusted scoring signals url=], |auctionConfig|'s
-    [=auction config/seller experiment group id=], and |topLevelOrigin| by collecting render URLs
-    and ad component render URLs from multiple invocations of [=score and rank a bid=] and passing
-    them all to a single invocation of [=building trusted scoring signals url=] to get a
-    |scoringSignalsUrl|. Requests may not be combined if the resulting combination's
-    [=string/length=] of [=URL serializer|serialized=] |scoringSignalsUrl| exceeds the [=auction
-    config/max trusted scoring signals url length=] of the auction; however this limit does not
-    apply if no combining has taken place.
-
-    The network response has to be parsed to pull out the pieces relevant to each
-    [=evaluating a scoring script|evaluation of a scoring script=].
-
-    These requests may also begin before the script fetch, but requests cross-origin to the
-    script origin must not happen until [:Ad-Auction-Allow-Trusted-Scoring-Signals-From:] header on
-    the script is received, parsed, and determined to authorize such a fetch.
-  1. If |fullSignalsUrl|'s [=url/origin=] is not [=same origin=] with |auctionConfig|'s
-     [=auction config/seller=], then:
-      1. Set |crossOriginTrustedScoringSignalsOrigin| to |fullSignalsUrl|'s [=url/origin=].
-      1. Let |allowCrossOriginTrustedScoringSignalsFrom| be the result of [=wait for cross origin
-        trusted scoring signals authorization from a fetcher=] given |decisionLogicFetcher|.
-      1. If |allowCrossOriginTrustedScoringSignalsFrom| does not [=list/contain=]
-        |crossOriginTrustedScoringSignalsOrigin|:
-        1. Set |crossOriginTrustedScoringSignalsOrigin| to null.
-        1. Set |fullSignalsUrl| to null.
-1. If |fullSignalsUrl| is not null:
-  1. Let |allTrustedScoringSignals| be null.
-  1. <i id="trusted-scoring-signals-fetch">Set</i> «|allTrustedScoringSignals|,
-    <var ignore>ignored</var>, |scoringDataVersion|» to the result of [=fetching trusted signals=]
-    with |fullSignalsUrl|, |auctionConfig|'s [=auction config/seller=], and false.
-  1. If |allTrustedScoringSignals| is an [=ordered map=]:
+  1. If |auctionConfig|'s [=auction config/trusted scoring signals url=]'s [=url/origin=] is not
+    [=same origin=] with |auctionConfig|'s [=auction config/seller=], then set |isCrossOrigin| to
+    true.
+  1. Let |result| be the result of [=fetching trusted scoring signals with batching=] with
+    |batcher| and |request|.
+  1. If |request| is not failure:
+    1. Let |allTrustedScoringSignals| be |result|'s [=trusted scoring signals reply/all trusted
+        scoring signals=]:
+    1. Set |scoringDataVersion| to |result|'s [=trusted scoring signals reply/data version=].
     1. Let |trustedScoringSignals| be a new empty [=map=].
     1. [=map/Set=] |trustedScoringSignals|["`renderURL`"] to a new empty [=map=].
     1. If |allTrustedScoringSignals|["`renderURLs`"] [=map/exists=] and
@@ -1942,31 +1940,31 @@ a [=generated bid=] |generatedBid|, a [=script fetcher=] |decisionLogicFetcher|,
           [=map/exists=], then [=map/set=] |adComponentRenderURLsValue|[|adComponentRenderURL|] to
           |allTrustedScoringSignals|["`adComponentRenderURLs`"][|adComponentRenderURL|].
       1. [=map/Set=] |trustedScoringSignals|["`adComponentRenderURLs`"] to |adComponentRenderURLsValue|.
-    1. If |crossOriginTrustedScoringSignalsOrigin| is null, set |sameOriginTrustedScoringSignals|
+    1. If |isCrossOrigin| is false, set |sameOriginTrustedScoringSignals|
       to |trustedScoringSignals|.
     1. Otherwise:
       1. Set |crossOriginTrustedScoringSignals| to a new [=map=].
       1. Let |originKey| be the [=serialization of an origin|serialization=] given
-          |crossOriginTrustedScoringSignalsOrigin|.
+          |auctionConfig|'s [=auction config/trusted scoring signals url=]'s [=url/origin=].
       1. [=map/Set=] |crossOriginTrustedScoringSignals|[|originKey|] to |trustedScoringSignals|.
-1. Return «|crossOriginTrustedScoringSignalsOrigin|, |sameOriginTrustedScoringSignals|,
-    |crossOriginTrustedScoringSignals|, |scoringDataVersion|»
+1. Return «|isCrossOrigin|, |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals|,
+  |scoringDataVersion|»
 
 </div>
 
 <div algorithm>
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
 |generatedBid|, a [=bid debug reporting info=] |bidDebugReportInfo|, a [=leading bid info=] |leadingBidInfo|,
-a [=script fetcher=] |decisionLogicFetcher|,
+a [=script fetcher=] |decisionLogicFetcher|, a [=trusted scoring signals batcher=] |trustedScoringSignalsBatcher|
 a {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
 |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
 or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, and an [=origin=]
 |topLevelOrigin|:
 
-1. Let «|crossOriginTrustedScoringSignalsOrigin|, |sameOriginTrustedScoringSignals|,
+1. Let «|trustedScoringSignalsAreCrossOrigin|, |sameOriginTrustedScoringSignals|,
   |crossOriginTrustedScoringSignals|, |scoringDataVersion|» be the result of [=fetch and
-  decode trusted scoring signals=] given |auctionConfig|, |generatedBid|, |decisionLogicFetcher|,
-  |topLevelOrigin|.
+  decode trusted scoring signals=] given |trustedScoringSignalsBatcher|, |auctionConfig|,
+  |generatedBid|, |decisionLogicFetcher|, |topLevelOrigin|.
 1. Let |adMetadata| be |generatedBid|'s [=generated bid/ad=].
 1. Let |bidValue| be |generatedBid|'s [=generated bid/bid=].
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null, then set |bidValue| to
@@ -1991,11 +1989,11 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     <dd>The result of [=serializing a currency tag=] with |generatedBid|'s [=generated bid/bid=]'s
       [=bid with currency/currency=]
     <dt>{{ScoringBrowserSignals/dataVersion}}
-    <dd>|scoringDataVersion| if it is not null and |crossOriginTrustedScoringSignalsOrigin| is null,
+    <dd>|scoringDataVersion| if it is not null and |trustedScoringSignalsAreCrossOrigin| is false,
         unset otherwise.
     <dt>{{ScoringBrowserSignals/crossOriginDataVersion}}
-    <dd>|scoringDataVersion| if it is not null and |crossOriginTrustedScoringSignalsOrigin| is not
-        null, unset otherwise.
+    <dd>|scoringDataVersion| if it is not null and |trustedScoringSignalsAreCrossOrigin| is true,
+        unset otherwise.
     <dt>{{ScoringBrowserSignals/adComponents}}
     <dd>|generatedBid|'s [=generated bid/ad component descriptors=] [=converted to a string sequence=]
     <dt>{{ScoringBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}
@@ -2348,43 +2346,6 @@ To <dfn>calculate the ad slot size query param</dfn> given an [=interest group=]
     1.  Return the result of [=string/concatenating=] « "&amp;allSlotsRequestedSizes=",
       |allSizes| ».
   </dl>
-
-</div>
-
-<div algorithm>
-
-To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
-[=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, an {{unsigned short}}-or-null
-|experimentGroupId|, an [=origin=] |topLevelOrigin|, and a [=string=] |slotSizeQueryParam|:
-1. Let |queryParamsList| be a new empty [=list=].
-
-  Note: These steps create a [=url/query=] of the form "`&<name>=<values in comma-delimited list>`".
-  E.g., "`hostname=publisher1.com&keys=key1,key2&interestGroupNames=ad+platform,name2&experimentGroupId=1234`".
-    <br><br>These steps don't use the [=urlencoded serializer|application/x-www-form-urlencoded
-    serializer=] to construct the query string because it repeats a key if it has multiple values
-    instead of a comma-demilited list (e.g., "`keys=key1&keys=key2`", instead of
-    "`keys=key1,key2`"), and it also uses a different percent encode set from the Chrome
-    implementation.
-
-1. [=list/Append=] "hostname=" to |queryParamsList|.
-1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] the
-  [=serialization of an origin|serialized=] |topLevelOrigin| using [=component percent-encode set=]
-  to |queryParamsList|.
-1. If |keys| is not [=set/is empty|empty=]:
-  1. [=list/Append=] "`&keys=`" to |queryParamsList|.
-  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
-    |keys|.
-1. If |igNames| is not [=set/is empty|empty=]:
-  1. [=list/Append=] "`&interestGroupNames=`" to |queryParamsList|.
-  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
-    |igNames|.
-1. If |experimentGroupId| is not null:
-  1. [=list/Append=] "`&experimentGroupId=`" to |queryParamsList|.
-  1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
-1. [=list/Append=] |slotSizeQueryParam| to |queryParamsList|.
-1. Let |fullSignalsUrl| be |signalsUrl|.
-1. Set |fullSignalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
-1. return |fullSignalsUrl|.
 
 </div>
 
@@ -5690,6 +5651,42 @@ To <dfn>append to a bidding signals per-interest group data map</dfn> given an [
 
 </div>
 
+<div algorithm>
+
+To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an [=ordered set=] of
+[=strings=] |keys|, an [=ordered set=] of [=strings=] |igNames|, an {{unsigned short}}-or-null
+|experimentGroupId|, an [=origin=] |topLevelOrigin|, and a [=string=] |slotSizeQueryParam|:
+1. Let |queryParamsList| be a new empty [=list=].
+
+  Note: These steps create a [=url/query=] of the form "`&<name>=<values in comma-delimited list>`".
+  E.g., "`hostname=publisher1.com&keys=key1,key2&interestGroupNames=ad+platform,name2&experimentGroupId=1234`".
+    <br><br>These steps don't use the [=urlencoded serializer|application/x-www-form-urlencoded
+    serializer=] to construct the query string because it repeats a key if it has multiple values
+    instead of a comma-demilited list (e.g., "`keys=key1&keys=key2`", instead of
+    "`keys=key1,key2`"), and it also uses a different percent encode set from the Chrome
+    implementation.
+
+1. [=list/Append=] "hostname=" to |queryParamsList|.
+1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] the
+  [=serialization of an origin|serialized=] |topLevelOrigin| using [=component percent-encode set=]
+  to |queryParamsList|.
+1. If |keys| is not [=set/is empty|empty=]:
+  1. [=list/Append=] "`&keys=`" to |queryParamsList|.
+  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
+    |keys|.
+1. If |igNames| is not [=set/is empty|empty=]:
+  1. [=list/Append=] "`&interestGroupNames=`" to |queryParamsList|.
+  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
+    |igNames|.
+1. If |experimentGroupId| is not null:
+  1. [=list/Append=] "`&experimentGroupId=`" to |queryParamsList|.
+  1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
+1. [=list/Append=] |slotSizeQueryParam| to |queryParamsList|.
+1. Let |fullSignalsUrl| be |signalsUrl|.
+1. Set |fullSignalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
+1. return |fullSignalsUrl|.
+
+</div>
 
 <div algorithm>
 To <dfn>fetch the current outstanding trusted signals batch</dfn> given a
@@ -5785,10 +5782,15 @@ requests into smaller number of fetches. It's a [=struct=] with the following [=
 
 <dl dfn-for="trusted scoring signals batcher">
   : <dfn>request queue</dfn>
-  :: A [=list=] of [=trusted scoring signals requests=].
+  :: A [=list=] of [=trusted scoring signals requests=] that hasn't yet been organized to aid
+    batching.
   : <dfn>request map</dfn>
-  :: A [=map=] from a tuple of [=origin=], [=URL=], {{unsigned short}} or null, and [=origin=] to
-    a [=list=] of [=trusted scoring signals requests=].
+  :: A [=map=] from a tuple of [=script fetcher=], [=URL=], {{unsigned short}} or null, and
+    [=origin=] to a [=list=] of [=trusted scoring signals requests=]. This organizes fetches that
+    can possibly be merged together.
+  : <dfn>url length limit</dfn>
+  :: A {{long}} denoting a user-configured limit which should not be exceeded due to combining of
+    fetches. 0 denotes no limit, and is the initial value.
 </dl>
 
 A <dfn>trusted scoring signals request</dfn> is a [=struct=] with the following [=struct/items=],
@@ -5798,6 +5800,8 @@ invocation:
 <dl dfn-for="trusted scoring signals request">
   : <dfn>seller</dfn>
   :: An [=origin=] of the seller the fetch is on behalf of.
+  : <dfn>seller script fetcher</dfn>.
+  :: A [=script fetcher=] for the seller's decision logic script.
   : <dfn>base url</dfn>
   :: An [=URL=], the base URL for trusted seller signals to fetch.
   : <dfn>seller experiment group id</dfn>
@@ -5810,8 +5814,8 @@ invocation:
   :: A [=set=] of [=strings=], list of serializations of component URLs of the creative to pass with
     the fetch.
   : <dfn>reply</dfn>
-  :: A [=trusted scoring signals reply=] or null, initially null. Set when the fetch has been
-     completed.
+  :: A [=trusted scoring signals reply=], null, or failure. Initially null. Set to a non-null value
+    when the fetch has been completed.
 </dl>
 
 A <dfn>trusted scoring signals reply</dfn> is a [=struct=] with the following [=struct/items=]
@@ -5824,9 +5828,10 @@ A <dfn>trusted scoring signals reply</dfn> is a [=struct=] with the following [=
 
 <div algorithm>
 
-To <dfn>create a trusted scoring signals batcher</dfn>:
+To <dfn>create a trusted scoring signals batcher</dfn> given a {{long}} |urlLengthLimit|:
 
 1. Let |batcher| be a new [=trusted scoring signals batcher=].
+1. Set |batcher|'s [=trusted scoring signals batcher/url length limit=] to |urlLengthLimit|.
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. [=Batch and fetch trusted scoring signals=] given |batcher|.
@@ -5873,45 +5878,98 @@ Note: When trusted scoring signals fetches are not batched, |renderURLs|'s [=lis
 </div>
 
 <div algorithm>
+To <dfn>build batched trusted scoring signals url</dfn> given a non-empty [=list=] of [=trusted
+scoring signals requests=] |entriesToBatch|:
+
+1. Let |firstEntry| be |entriesToBatch|[0].
+1. Let |renderURLs| be an empty [=ordered set=] of [=strings=].
+1. Let |adComponentRenderURLs| be an empty [=ordered set=] of [=strings=]
+  |adComponentRenderURLs|
+1. [=list/For each=] |entry| of |entriesToBatch|:
+  1. [=Assert=] that |entry|'s [=trusted scoring signals request/base URL=] is equal to
+    |firstEntry|'s [=trusted scoring signals request/base URL=].
+  1. [=Assert=] that |entry|'s [=trusted scoring signals request/seller experiment group id=] is
+    equal to |firstEntry|'s [=trusted scoring signals request/seller experiment group id=].
+  1. [=Assert=] that |entry|'s [=trusted scoring signals request/top level origin=] is equal to
+    |firstEntry|'s [=trusted scoring signals request/top level origin=].
+  1. [=Assert=] that |entry|'s [=trusted scoring signals request/seller script fetcher=] is equal to
+    |firstEntry|'s [=trusted scoring signals request/seller script fetcher=].
+  1. [=set/Append=] |entry|'s [=trusted scoring signals request/render URL=] to |renderURLs|.
+  1. [=list/Extend=] |adComponentRenderURLs| with |entry|'s [=trusted scoring signals request/
+    ad component URLs=].
+1. Return the result of [=building trusted scoring signals url=] with |firstEntry|'s [=trusted
+  scoring signals request/base URL=], |renderURLs|, |adComponentRenderURLs|, |firstEntry|'s
+  [=trusted scoring signals request/seller experiment group id=],
+  |firstEntry|'s [=trusted scoring signals request/top level origin=].
+
+</div>
+
+<div algorithm>
+To <dfn>check if trusted scoring signals batch honors URL length limit</dfn> given a
+[=trusted scoring signals batcher=] |batcher| and a non-empty [=list=] of [=trusted
+scoring signals requests=] |entriesToBatch|:
+
+1. If the [=list/size=] of |entriesToBatch| is 1, return true.
+1. If |batcher|'s [=trusted scoring signals batcher/url length limit=] is 0, return true.
+1. Return whether the [=string/length=] of the result of [=building batched trusted scoring signals
+  url=] for |entriesToBatch| is &le; |batcher|'s [=trusted scoring signals batcher/url length
+  limit=].
+
+</div>
+
+<div algorithm>
 
 To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring signals batcher=]
 |batcher|:
 
 1. Until this object is no longer needed:
-  1. Wait until |batcher|'s [=trusted scoring signals batcher/request queue=] is no longer empty.
+  1. Wait until |batcher|'s [=trusted scoring signals batcher/request queue=] is no longer empty or
+    some heuristically chosen amount of time has passed.
   1. Atomically transfer all entries in |batcher|'s [=trusted scoring signals batcher/
     request queue=] to |incomingRequests|, leaving |batcher|'s [=trusted scoring signals batcher/
     request queue=] empty.
   1. For each |request| in |incomingRequests|:
-    1. Let |key| be (|request|'s [=trusted scoring signals request/seller=], |request|'s [=trusted
-      scoring signals request/base url=], |request|'s [=trusted scoring signals request/seller
-      experiment group id=], |request|'s [=trusted scoring signals request/top level origin=]).
+    1. Let |key| be (|request|'s [=trusted scoring signals request/seller script fetcher=],
+      |request|'s [=trusted scoring signals request/base url=], |request|'s [=trusted scoring
+      signals request/seller experiment group id=], |request|'s [=trusted scoring signals request/
+      top level origin=]).
     1. If |batcher|'s [=trusted scoring signals batcher/request map=][|key|] does not [=map/exist=],
       then [=map/set=] |batcher|'s [=trusted scoring signals batcher/request map=][|key|] to an
       empty [=list=].
     1. [=list/Append=] |request| to |batcher|'s [=trusted scoring signals batcher/request map=]
       [|key|].
   1. Some number of times, heuristically, select a |key| and a non-empty sublist of |batcher|'s
-    [=trusted scoring signals batcher/request map=] [|key|], called |entriesToBatch|:
+    [=trusted scoring signals batcher/request map=] [|key|], called |entriesToBatch|, such that
+    [=checking if trusted scoring signals batch honors URL length limit=] on |batcher| and
+    |entriesToBatch| returns true:
 
-      Note: XXX pontificate on this trading off number of requests vs. queuing delay.
+      Note: implementations are free to wait to collect more requests to merge or send them
+      individually, but need to take into account the configured URL length limit if they do combine
+      requests.
 
-      1. Let |firstEntry| be |entriesToBatch|[0].
-      1. Let |renderURLs| be an empty [=ordered set=] of [=strings=].
-      1. Let |adComponentRenderURLs| be an empty [=ordered set=] of [=strings=]
-        |adComponentRenderURLs|
-      1. [=list/For each=] |entry| of |entriesToBatch|:
-        1. [=set/Append=] |entry|'s [=trusted scoring signals request/render URL=] to |renderURLs|.
-        1. [=list/Extend=] |adComponentRenderURLs| with |entry|'s [=trusted scoring signals request/
-          ad component URLs=].
-      1. Let |fullSignalsUrl| be the result of [=building trusted scoring signals url=] with
-        |firstEntry|'s [=trusted scoring signals request/base URL=], |renderURLs|,
-        |adComponentRenderURLs|, |firstEntry|'s [=trusted scoring signals request/seller experiment
-        group id=], |firstEntry|'s [=trusted scoring signals request/top level origin=].
-      1. If |fullSignalsUrl| is too long (XXX wire in the proper limit), [=iteration/continue=].
-      1. Splice out |entriesToBatch| from the map.
-      1. Do the cross-origin check if needed (XXX wire in the script fetcher).
-      1. Do the actual fetch, make a reply object, set it on |entriesToBatch|.
+      1. [=list/Remove=] |entriesToBatch| from |batcher|'s [=trusted scoring signals batcher/
+        request map=] [|key|]
+      1. Let |fullSignalsUrl| be the result of [=building batched trusted scoring signals url=] for
+        |entriesToBatch|.
+      1. Let |seller| be |entriesToBatch|[0]'s [=trusted scoring signals request/seller=].
+      1. Let |scriptFetcher| be |entriesToBatch|[0]'s [=trusted scoring signals request/seller
+        script fetcher=].
+      1. If |fullSignalsUrl|'s [=url/origin=] is not [=same origin=] with |seller| then:
+        1. Let |allowCrossOriginTrustedScoringSignalsFrom| be the result of [=wait for cross origin
+          trusted scoring signals authorization from a fetcher=] given |scriptFetcher|.
+        1. If |allowCrossOriginTrustedScoringSignalsFrom| does not [=list/contain=]
+          |fullSignalsUrl|'s [=url/origin=], set |fullSignalsUrl| to null.
+      1. Let |result| be failure.
+      1. If |fullSignalsUrl| is not null:
+        1. Let</i> «|allTrustedScoringSignals|, <var ignore>ignored</var>, |scoringDataVersion|» be
+          the result of [=fetching trusted signals=] with |fullSignalsUrl|, |seller|, and false.
+        1. If |allTrustedScoringSignals| is an [=ordered map=]:
+          1. Set |result| to a new [=trusted scoring signals reply=]
+          1. Set |result|'s [=trusted scoring signals reply/all trusted scoring signals=] to
+            |allTrustedScoringSignals|.
+          1. Set |result|'s [=trusted scoring signals reply/data version=] to |scoringDataVersion|.
+      1. For each |entry| in |entriesToBatch|:
+        1. Set |entry|'s [=trusted scoring signals request/reply=] to |result|.
 
 </div>
 
