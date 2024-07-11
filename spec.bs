@@ -724,6 +724,8 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     1. Run [=update bid counts=] with |bidIgs|.
     1. Run [=interest group update=] with |auctionConfig|'s
       [=auction config/interest group buyers=].
+1. Let |frameOrigin| be |settings|'s [=environment settings object/origin=].
+1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |bidDebugReportInfoList| be a new [=list=] of [=bid debug reporting info=].
@@ -746,11 +748,11 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       [=auction report info/debug loss report urls=]:
       1. [=Send report=] to |reportUrl|.
     1. [=Send real time reports=] with |auctionReportInfo|'s
-      [=auction report info/real time reporting contributions map=].
+      [=auction report info/real time reporting contributions map=] and |frameOrigin|.
   1. Otherwise:
     1. Let |winner| be |winnerInfo|'s [=leading bid info/leading bid=].
     1. Let |fencedFrameConfig| be the result of [=filling in a pending fenced frame config=] with
-       |pendingConfig|, |auctionConfig|, |winnerInfo|, and |auctionReportInfo|.
+       |pendingConfig|, |auctionConfig|, |winnerInfo|, |auctionReportInfo|, and |frameOrigin|.
     1. [=fenced frame config mapping/Finalize a pending config=] on |configMapping| with |urn| and
        |fencedFrameConfig|.
     1. Wait until |auctionConfig|'s [=auction config/resolve to config=] is a boolean.
@@ -840,8 +842,8 @@ To <dfn>construct a pending fenced frame config</dfn> given an [=auction config=
 <div algorithm>
 
 To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame config=]
-|pendingConfig|, [=auction config=] |auctionConfig|, [=leading bid info=] |winningBidInfo|, and
-[=auction report info=] |auctionReportInfo|:
+|pendingConfig|, [=auction config=] |auctionConfig|, [=leading bid info=] |winningBidInfo|,
+[=auction report info=] |auctionReportInfo|, and an [=origin=] |frameOrigin|:
 1. Let |winningBid| be |winningBidInfo|'s [=leading bid info/leading bid=].
 1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are [=strings=].
@@ -912,8 +914,8 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
    1. [=Asynchronously finish reporting=] with |pendingConfig|'s
       [=fenced frame config/fenced frame reporting metadata=]'s
       [=fenced frame reporting metadata/value=]'s
-      [=fenced frame reporting metadata/fenced frame reporting map=], |winningBidInfo| and
-      |auctionReportInfo|.
+      [=fenced frame reporting metadata/fenced frame reporting map=], |winningBidInfo|,
+      |auctionReportInfo| and |frameOrigin|.
 1. Let |adComponentDescriptorsWithReplacements| be a new [=list=] of [=ad descriptors=].
 1. If |winningBid|'s [=generated bid/ad component descriptors=] is not null:
   1. [=list/For each=] |adComponentDescriptor| of |winningBid|'s
@@ -935,7 +937,7 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 
 To <dfn>asynchronously finish reporting</dfn> given a
 [=fencedframetype/fenced frame reporting map=] |reportingMap|, [=leading bid info=] |leadingBidInfo|,
-and [=auction report info=] |auctionReportInfo|.
+[=auction report info=] |auctionReportInfo|, and an [=origin=] |frameOrigin|:
 1. [=Increment a winning bid's k-anonymity count=] given |leadingBidInfo|'s [=leading bid info/leading bid=].
 1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is
    not null, and |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/id=]
@@ -990,7 +992,7 @@ and [=auction report info=] |auctionReportInfo|.
 1. [=list/For each=] |reportUrl| of |auctionReportInfo|'s [=auction report info/debug loss report urls=]:
   1. [=Send report=] to |report|.
 1. [=Send real time reports=] with |auctionReportInfo|'s
-  [=auction report info/real time reporting contributions map=].
+  [=auction report info/real time reporting contributions map=] and |frameOrigin|.
 
 </div>
 
@@ -2970,8 +2972,8 @@ Initial implementation of this specification defines
 </div>
 
 <div algorithm>
-  To <dfn>send a real time report</dfn> given a [=URL=] |url| and a [=list=] of [=booleans=]
-  |histogram|:
+  To <dfn>send a real time report</dfn> given a [=URL=] |url|, a [=list=] of [=booleans=]
+  |histogram|, and an [=origin=] |frameOrigin|:
 
   1. Let |totalBuckets| be the sum of [=number of user buckets=] and [=number of platform buckets=].
   1. [=Assert=] |histogram|'s [=list/size=] is |totalBuckets|.
@@ -3007,6 +3009,8 @@ Initial implementation of this specification defines
         |body|
     :   [=request/client=]
     ::  `null`
+    :   [=request/origin=]
+    ::  |frameOrigin|
     :   [=request/mode=]
     ::  "`no-cors`"
     :   [=request/referrer=]
@@ -3023,7 +3027,7 @@ Initial implementation of this specification defines
 
 <div algorithm>
   To <dfn>send real time reports</dfn> given a [=real time reporting contributions map=]
-  |contributionsMap|:
+  |contributionsMap| and an [=origin=] |frameOrigin|:
 
   1. [=map/For each=] |origin| → |contributions| of |contributionsMap|:
     1. Let |maybeBucket| be the result of [=sampling real time contributions=] with |contributions|.
@@ -3037,7 +3041,7 @@ Initial implementation of this specification defines
       ::  |origin|'s [=origin/port=]
       :   [=url/path=]
       ::  « ".well-known", "interest-group", "real-time-report" »
-    1. [=Send a real time report=] with |reportUrl| and |histogram|.
+    1. [=Send a real time report=] with |reportUrl|, |histogram| and |frameOrigin|.
 
       Issue: TODO: Spec rate limiting.
       (<a href="https://github.com/WICG/turtledove/issues/1215">WICG/turtledove#1215</a>)
