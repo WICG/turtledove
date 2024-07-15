@@ -173,10 +173,12 @@ Example:
 ```json
 {
   "version": 1,
-  "histogram": {"buckets": [8, 9, …, 0, 1, 132], "length": 1024},  // buckets vector length is 128. The number of bucekts before bit packing is 1024.
-  "platformHistogram": {"buckets": [144], "length": 4}, // buckets vector is [1,0,0,1] before bit packing
+  "histogram": {"buckets": [8, 9, …, 0, 1, 132], "length": 1024},
+  "platformHistogram": {"buckets": [144], "length": 4}, 
 }
 ```
+
+In this example above, `histogram` field's buckets vector length is 128, and the number of bucekts before bit packing is 1024. `platformHistogram`'s buckets vector is [1,0,0,1] before bit packing.
 
 ## Histogram contributions and the RAPPOR noise algorithm
 
@@ -192,7 +194,6 @@ buyer2.example: [0, 0, 0, 0, 0, ..., 0, 1, 0]
 buyer3.example: [0, 0, 0, 0, 0, ..., 0, 0, 0]
 buyer4.example: [1, 0, 0, 0, 0, ..., 0, 0, 0]
 seller.example: [0, 0, 0, 0, 0, ..., 0, 0, 1]
-
 ```
 
 i.e. each auction participant holds a bit vector of length 1028, with at most one "1". This encoding is important to describe the noise mechanism: RAPPOR ([Erlingsson et al 2014](https://research.google/pubs/rappor-randomized-aggregatable-privacy-preserving-ordinal-response/)). Basic RAPPOR noises each coordinate of the bit vector independently, and it is parameterized by `epsilon`, a measure of privacy loss. Here is an reference python implementation of the algorithm:
