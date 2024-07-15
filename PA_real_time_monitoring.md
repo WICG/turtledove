@@ -178,7 +178,7 @@ Example:
 }
 ```
 
-In this example above, `histogram` field's buckets vector length is 128, and the number of bucekts before bit packing is 1024. `platformHistogram`'s buckets vector is [1,0,0,1] before bit packing.
+In this example above, `histogram` field's buckets vector length is 128, and the number of buckets before bit packing is 1024. `platformHistogram`'s buckets vector is [1,0,0,1] before bit packing.
 
 ## Histogram contributions and the RAPPOR noise algorithm
 
