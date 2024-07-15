@@ -117,7 +117,7 @@ David Dabbs - Is it beyond the pale of privacy protection.
 
 Jeremey Bao - Negative IG are tiny.  Is there any reason why you just do not use negative IG.
 
-Michael - [Please add your comment] Positive and negative roles are separate from each other.  It seems wise to keep them that way.  I don't want to deal with questions of what happens when positive IG A is filtered out because of a negative IG B but is also being used as a negative IG by positive IG C.
+Michael - Positive and negative roles are separate from each other.  It seems wise to keep them that way.  I don't want to deal with questions of what happens when positive IG A is filtered out because of a negative IG B but is also being used as a negative IG by positive IG C.
 
 Brian May - What is the implication for k-anon.  
 
