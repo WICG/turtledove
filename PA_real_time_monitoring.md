@@ -131,7 +131,7 @@ After the auction completes, all opted-in participants (sellers, and buyers with
 
 Participants who did not call `contributeToRealTimeHistogram()` will contribute an array of zeros by default, which will still require the input going through the noising mechanism to satisfy the privacy requirements. After the noise mechanism, it is very unlikely that output will be all zeros. Even still, if we encounter a contribution of all zeros post-noising, we will still report on it. This is important for debiasing the noisy results, as explained below.
 
-Real time reports sent as the body of an HTTP POST request to ad techs and are encoded as [CBOR](https://www.rfc-editor.org/rfc/rfc8949.html) with the following schema (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
+Real time reports are sent as the body of an HTTP POST request to ad techs and are encoded as [CBOR](https://www.rfc-editor.org/rfc/rfc8949.html) with the following schema (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
 
 ```json
 {
