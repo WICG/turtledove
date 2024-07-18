@@ -127,11 +127,11 @@ Fetch errors include non-2xx response code, response header does not have “Ad-
 
 ## Sending reports after an auction
 
-After the auction completes, all opted-in participants (sellers, and buyers with interest groups present on device) will always emit one report per participant per auction, even if no ad wins or no `contributeToRealTimeHistogram()` calls are made. These reports will be sent to `domain.example/.well-known/interest-group/real-time-report` where `domain.example` would be replaced with the seller’s origin or the buyer’s interest group owner origin. These reports are not tied to specific interest groups, they are aggregated over all interest groups.The serialization format of the report is TBD, but see [below](#histogram-contributions-and-the-rappor-noise-algorithm) for the high level description of the encoding. Reporting domains may be configurable in the future. 
+After the auction completes, all opted-in participants (sellers, and buyers with interest groups present on device) will always emit one report per participant per auction, even if no ad wins or no `contributeToRealTimeHistogram()` calls are made. These reports will be sent to `domain.example/.well-known/interest-group/real-time-report` where `domain.example` would be replaced with the seller’s origin or the buyer’s interest group owner origin. These reports are not tied to specific interest groups, they are aggregated over all interest groups. See [below](#histogram-contributions-and-the-rappor-noise-algorithm) for the high level description of the encoding. Reporting domains may be configurable in the future. 
 
 Participants who did not call `contributeToRealTimeHistogram()` will contribute an array of zeros by default, which will still require the input going through the noising mechanism to satisfy the privacy requirements. After the noise mechanism, it is very unlikely that output will be all zeros. Even still, if we encounter a contribution of all zeros post-noising, we will still report on it. This is important for debiasing the noisy results, as explained below.
 
-Real time reports sent to ad techs are encoded as [CBOR](https://www.rfc-editor.org/rfc/rfc8949.html) with the following schema (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
+Real time reports sent through a post request to ad techs are encoded as [CBOR](https://www.rfc-editor.org/rfc/rfc8949.html) with the following schema (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
 
 ```json
 {
@@ -167,18 +167,18 @@ Real time reports sent to ad techs are encoded as [CBOR](https://www.rfc-editor.
 }
 ```
 
-Each histogram bucket value is encoded as a bit in a CBOR byte string ("buckets" byte strings in histogram and platformHistogram objects). Histogram bucket 0's value will be indicated by the most-significant bit in the first byte of the CBOR byte array. For example, [1,0,0,0,0,0,1,1, 1] will be packed to [131, 128]. See the "Data Notations" section of https://www.rfc-editor.org/rfc/rfc1700 for more information.
+Each histogram bucket value is encoded as a bit in a CBOR byte string ("buckets" byte strings in histogram and platformHistogram objects). Histogram bucket 0's value will be indicated by the most-significant bit in the first byte of the CBOR byte array. For example, [1,0,0,0,0,0,1,1, 1] will be packed to [0x83, 0x80] (or [131, 128]). See the "Data Notations" section of https://www.rfc-editor.org/rfc/rfc1700 for more information.
 
 Example:
 ```json
 {
   "version": 1,
-  "histogram": {"buckets": [8, 9, …, 0, 1, 132], "length": 1024},
-  "platformHistogram": {"buckets": [144], "length": 4}, 
+  "histogram": {"buckets": [0x08, 0x09, …, 0x00, 0x84], "length": 1024},
+  "platformHistogram": {"buckets": [0x90], "length": 4}, 
 }
 ```
 
-In this example above, `histogram` field's buckets vector length is 128, and the number of buckets before bit packing is 1024. `platformHistogram`'s buckets vector is [1,0,0,1] before bit packing.
+In this example above, `histogram` field's buckets vector length is 128, and the number of buckets before bit packing is 1024. `platformHistogram`'s buckets vector is [1,0,0,1] (0x90 = 144 = 0b10010000) before bit packing.
 
 ## Histogram contributions and the RAPPOR noise algorithm
 
