@@ -84,6 +84,14 @@ and both versions should be accepted.
 
 It should be noted that the `fetch()` request using `adAuctionHeaders` can also be used to send `auctionBlob` (e.g. in the request body) and receive the response blob (e.g. in the response body).
 
+#### Alternate header to facilitate delaying response blobs to response body
+
+The aforementioned Step 3 includes the hash of the response blob in an `Ad-Auction-Result` HTTP response header, which requires that the response blob be available before the HTTP response headers are sent back to the device.  If the server operator wants to instead delay inclusion of the response blob until the HTTP response body is sent back to the device, they can instead omit the `Ad-Auction-Result` HTTP header and instead:
+
+1. Generate a [version 4 UUID](https://www.ietf.org/rfc/rfc4122.html) nonce on their server.
+2. Instead of returning the `Ad-Auction-Result` header, return a `Ad-Auction-Result-Nonce` header passing the nonce, e.g. `Ad-Auction-Result-Nonce: 5b3e87f7-d48c-4376-908f-623f92f13740`.  Like `Ad-Auction-Result`, `Ad-Auction-Result-Nonce` can accept a comma-separated list instead of a single value if desired.
+3. Pass the nonce in a TBD field of the [SelectAdRequest](https://github.com/privacysandbox/bidding-auction-servers/blob/4a7accd09a7dabf891b5953e5cdbb35d038c83c6/api/bidding_auction_servers.proto#L282) to the [SellerFrontEnd service](https://github.com/privacysandbox/bidding-auction-servers/blob/4a7accd09a7dabf891b5953e5cdbb35d038c83c6/api/bidding_auction_servers.proto#L267).
+
 ### Step 4: Complete auction in browser
 
 Now the auction can be completed by passing the response blob to `runAdAuction()` as part of a specially configured auction configuration:
