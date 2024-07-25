@@ -1848,7 +1848,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
             1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
-              |decisionLogicScript|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
+              |decisionLogicFetcher|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
@@ -1934,8 +1934,8 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 
 <div algorithm>
 To <dfn>fetch and decode trusted scoring signals</dfn> given an [=auction config=] |auctionConfig|,
-a [=generated bid=] |generatedBid|, a [=script fetcher=] |decisionLogicFetcher|, and an [=origin=]
-|topLevelOrigin|:
+a [=generated bid=] |generatedBid|, a [=script fetcher=] |decisionLogicFetcher|, an [=origin=]
+|topLevelOrigin|, and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 
 1. Let |crossOriginTrustedScoringSignalsOrigin| be null.
 1. Let |sameOriginTrustedScoringSignals| be null.
@@ -1987,7 +1987,7 @@ a [=generated bid=] |generatedBid|, a [=script fetcher=] |decisionLogicFetcher|,
     <var ignore>ignored</var>, |scoringDataVersion|» to the result of [=fetching trusted signals=]
     with |fullSignalsUrl|, |auctionConfig|'s [=auction config/seller=], and false.
   1. If |allTrustedScoringSignals| is null, and |auctionConfig|'s
-  [=auction config/seller real time reporting config=] is "`default-local-reporting`",then:
+    [=auction config/seller real time reporting config=] is "`default-local-reporting`",then:
     1. [=Add a platform contribution=] with [=trusted scoring signals failure bucket=],
       |realTimeContributionsMap|, and |seller|.
   1. Otherwise if |allTrustedScoringSignals| is an [=ordered map=]:
@@ -2029,7 +2029,7 @@ which is "single-level-auction", "top-level-auction", or "component-auction", a 
 1. Let «|crossOriginTrustedScoringSignalsOrigin|, |sameOriginTrustedScoringSignals|,
   |crossOriginTrustedScoringSignals|, |scoringDataVersion|» be the result of [=fetch and
   decode trusted scoring signals=] given |auctionConfig|, |generatedBid|, |decisionLogicFetcher|,
-  |topLevelOrigin|.
+  |topLevelOrigin|, and |realTimeContributionsMap|.
 1. Let |adMetadata| be |generatedBid|'s [=generated bid/ad=].
 1. Let |bidValue| be |generatedBid|'s [=generated bid/bid=].
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null, then set |bidValue| to
@@ -2066,7 +2066,11 @@ which is "single-level-auction", "top-level-auction", or "component-auction", a 
 
 1. Let |decisionLogicScript| be the result of [=wait for script body from a fetcher=] given
   |decisionLogicFetcher|.
-1. If |decisionLogicScript| is falure, return.
+1. If |decisionLogicScript| is failure, then:
+  1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
+    "`default-local-reporting`", then [=add a platform contribution=] with
+    [=scoring script failure bucket=], |realTimeContributionsMap| and |seller|.
+  1. Return.
 1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions| » be
   the result of [=evaluating a scoring script=] with |decisionLogicScript|, |adMetadata|,
   |bidValue|'s [=bid with currency/value=], |auctionConfig|'s [=auction config/config idl=],
