@@ -1149,7 +1149,7 @@ The `browserSignals` argument must be handled carefully to avoid tracking.  It c
 
 In the short-term, the `reportResult()` function's reporting happens by calling a `sendReportTo()` API which takes a single string argument representing a URL. The `sendReportTo()` function can be called at most once during a worklet function's execution. The URL is fetched when the frame displaying the ad begins navigating to the ad. Callers of `sendReportTo()` should avoid assembling URLs longer than browser's URL length limits (e.g. [2MB for Chrome](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/security/url_display_guidelines/url_display_guidelines.md#url-length)) as these may not be reported. The URL is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). Eventually reporting will go through the Private Aggregation API once it has been developed.
 
-The output of `reportResult()` is not used for reporting, but rather as an input to the buyer's reporting function. If there is no output or the output is not JSON serializable, it will be passed as null to `reportWin()`'s sellerSignals.
+The output of `reportResult()` is not used for reporting, but rather as an input to the buyer's reporting function. If there is no output or the output is not JSON-serializable (i.e. supported by JSON.stringify()), it will be `null` in `reportWin()`'s `sellerSignals`.
 
 #### 5.2 Buyer Reporting on Render and Ad Events
 
