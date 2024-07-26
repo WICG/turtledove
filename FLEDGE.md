@@ -137,7 +137,10 @@ const myGroup = {
   'userBiddingSignals': {...},
   'ads': [{renderURL: shoesAd1, sizeGroup: 'group1', ...},
           {renderURL: shoesAd2, sizeGroup: 'group2', ...},
-          {renderURL: shoesAd3, sizeGroup: 'size3', ...}],
+          {renderURL: shoesAd3, sizeGroup: 'size3',
+            selectableBuyerAndSellerReportingId: [ 'deal1', 'deal2', 'deal3' ],
+            buyerReportingId: 'buyerSpecificInfo1',
+            buyerAndSellerReportingId: 'seatId', ...}],
   'adComponents': [{renderURL: runningShoes1, sizeGroup: 'group2', ...},
                    {renderURL: runningShoes2, sizeGroup: 'group2', ...},
                    {renderURL: gymShoes, sizeGroup; 'group2', ...},
@@ -240,9 +243,35 @@ The `ads` list contains the various ads that the interest group might show.  Eac
 
  * `adRenderId`: A short [DOMString](https://webidl.spec.whatwg.org/#idl-DOMString) up to 12 characters long serving as an identifier for this ad in this interest group. When this field is specified it will be sent instead of the full ad object for [B&A server auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
 
- * `buyerAndSellerReportingId`: If set, the value is used instead of the interest group name or `buyerReportingId` for reporting in `reportWin` and `reportResult`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
+ * `selectableBuyerAndSellerReportingId`: An array of strings, one of which is
+   selected by `generateBid()` to be reported to `reportWin()` and `reportResult()`
+   along with `buyerAndSellerReportingId` and `buyerReportingId` when all three values
+   are jointly k-anonymous along with the interest group owner, bidding script URL,
+   and render URL to be provided to these reporting fuctions.
 
- * `buyerReportingId`: If set, the value is used instead of the interest group name for reporting in `reportWin`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
+ * `buyerAndSellerReportingId`: If set and `selectableBuyerAndSellerReportingId` is
+   unset, the value is used instead of the interest group name or `buyerReportingId`
+   for reporting in `reportWin()` and `reportResult()`. Note that this field needs to
+   be jointly k-anonymous with the interest group owner, bidding script URL, and
+   render URL to be provided to these reporting fuctions (in the same way that the
+   interest group name would have needed to be). If set and
+   `selectableBuyerAndSellerReportingId` is also set, the value is reported to
+   `reportWin()` and `reportResult()` along with the selected
+   `selectablebuyerAndSellerReportingId` and `buyerReportingId` when all three values
+   are jointly k-anonymous along with the interest group owner, bidding script URL,
+   and render URL to be provided to these reporting fuctions.
+
+ * `buyerReportingId`: If set and `selectableBuyerAndSellerReportingId` is unset, the
+   value is used instead of the interest group name for reporting in `reportWin`. Note
+   that this field needs to be jointly k-anonymous with the interest group owner,
+   bidding script URL, and render URL to be provided to these reporting fuctions (in
+   the same way that the interest group name would have needed to be). If set and
+   `selectableBuyerAndSellerReportingId` is also set, the value is reported to
+   `reportWin()` along with the selected `selectablebuyerAndSellerReportingId` and
+   `buyerAndSellerReportingId` when all three values are jointly k-anonymous along
+   with the interest group owner, bidding script URL, and render URL to be provided to
+   these reporting fuctions.
+
 
  * `metadata`: Arbitrary metadata that can be used at bidding time.
 
@@ -534,6 +563,11 @@ The function gets called once for each candidate ad in the auction.  The argumen
       'biddingDurationMsec': 12,
       'bidCurrency': 'USD', /* bidCurrency returned by generateBid, or '???' if none */
       'dataVersion': 1, /* Data-Version value from the trusted scoring signals server's response */
+      'selectedBuyerAndSellerReportingId': 'deal2', /* Value returned by generateBid. */
+      'selectedbuyerAndSellerReportingIdRequired': true, /* Value returned by generateBid. */
+         /* Sellers may want to ignore bids if this is false but selectedBuyerAndSellerReportingId
+            is necessary in reportResult() to properly report on this bid. */
+      'buyerAndSellerReportingId': 'seatId',
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
@@ -860,7 +894,9 @@ generateBid(interestGroup, auctionSignals, perBuyerSignals,
           'allowComponentAuction': false,
           'targetNumAdComponents': 3,
           'numMandatoryAdComponents': 1,
-          'modelingSignals': 123};
+          'modelingSignals': 123,
+          'selectedBuyerAndSellerReportingId': 'deal2',
+          'selectedBuyerAndSellerReportingIdRequired': true,};
 }
 ```
 
@@ -924,6 +960,8 @@ The output of `generateBid()` contains the following fields:
     browser to select only some of the returned adComponents in order to help
     make the ad k-anonymous. See [Flexible Component Ad Selection Considering k-Anonymity](#341-flexible-component-ad-selection-considering-k-anonymity)
     for more details.
+*   selectedBuyerAndSellerReportingId: (optional) A string from the interest group's ad's `selectableBuyerAndSellerReportingId` array.  If present and jointly k-anonymous with `buyerAndSellerReportingId`, `buyerReportingId`, the interest group owner, bidding script URL, and render URL, then it will be presented to `reportWin()` and `reportResult()`.
+*   buyerAndSellerReportingIdRequired: (optional) A boolean that when true, indicates this bid should be thrown away if the k-anonymity check on the `selectedBuyerAndSellerReportingId` fails. Setting this to true indicates that reporting of this bid would not operate correctly were the `selectedBuyerAndSellerReportingId` not presented to `reportWin()` and `reportResult()`.
 
 In case returning multiple bids is supported by the implementation in use,
 `generateBid` may also return up to `browserSignals.multiBidLimit` valid bid
@@ -1138,6 +1176,8 @@ The arguments to this function are:
       'modifiedBid': modifiedBidValue,
       'highestScoringOtherBid': highestScoringOtherBidValue,
       'highestScoringOtherBidCurrency': 'EUR'
+      'buyerAndSellerReportingId': 'seatId',
+      'selectedBuyerAndSellerReportingId': 'deal2',
     }
     ```
     * `bidCurrency` and `highestScoringOtherBidCurrency` provide (highly redacted) information on what currency the corresponding numbers are in. Please refer to the section on [Currencies in Reporting](#53-currencies-in-reporting) for more details.
@@ -1168,7 +1208,7 @@ The arguments to this function are:
 
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
-*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `adCost`, `seller`, `madeHighestScoringOtherBid` and potentially `interestGroupName` fields:
+*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `adCost`, `seller`, `madeHighestScoringOtherBid` and potentially `buyerReportingId` or `interestGroupName` fields:
     *   The `adCost` field contains the value that was returned by `generateBid()`, stochastically rounded to fit into a floating point number with an 8 bit mantissa and 8 bit exponent. This field is only present if `adCost` was returned by `generateBid()`.
     *   The `interestGroupName` may be included if the tuple of interest group owner, name, bidding script URL, ad creative URL, and ad creative size (if specified by `generateBid`) were jointly k-anonymous. (Note: until [Q1 2025](https://developer.chrome.com/docs/privacy-sandbox/protected-audience-api/feature-status/#k-anonymity), in the implementation, the ad creative size is excluded from this check.)
     *   The `madeHighestScoringOtherBid` field is true if the interest group owner was the only bidder that made bids with the second highest score.
