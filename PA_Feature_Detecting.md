@@ -70,7 +70,7 @@ beacon, and then the ad frame can set the same automatic beacon data for both ev
 `top_navigation_commit` and `top_navigation` beacons, and filter out duplicate beacons that have the same exact data.
 
 ## Increase in limit to number of component ads
-[Intent to Ship](TBD)
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/3RUQk0GCC9Q/m/wmbXOOB8AAAJ)
 
 Inside `generateBid` one can determine the currently active limit on number of components ads as follows:
 ```
@@ -82,4 +82,78 @@ From the context of a web page, the limit can also be queried as follows:
 ```
 const maxAdComponents = navigator.protectedAudience ?
     navigator.protectedAudience.queryFeatureSupport("adComponentsLimit") : 20;
+```
+
+## Reporting timeout
+[Intent to Ship](TBD)
+
+Inside `reportWin` one can determine its reporting timeout as follows:
+```
+const reportingTimeout = browserSignals.reportingTimeout ?
+                        browserSignals.reportingTimeout : 50;
+```
+
+Inside `reportResult` one can determine its reporting timeout as follows:
+```
+const reportingTimeout = auctionConfig.reportingTimeout ?
+                        auctionConfig.reportingTimeout : 50;
+```
+
+From the context of a web page, whether custom reporting timeout is enabled can be queried as follows:
+```
+const reportingTimeoutEnabled = navigator.protectedAudience ?
+    navigator.protectedAudience.queryFeatureSupport("reportingTimeout") : false;
+```
+
+## Returning multiple bids from generateBid()
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/ZdZXN1D-MtI/)
+
+Inside `generateBid()`, if `browserSignals.multiBidLimit` exists then returning
+an array of bids is supported. The value of `browserSignals.multiBidLimit`
+returns the maximum numbers of bids that can be returned, which may be as low as
+1.
+
+## Component ad subsetting with targetNumAdComponents
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/ZdZXN1D-MtI/)
+
+Inside `generateBid()`, if `browserSignals.multiBidLimit` exist then
+the `targetNumAdComponents` and `numMandatoryAdComponents` bid fields will be
+considered.
+
+## Cross-origin trusted signals
+[Intent to Ship](TBD)
+
+From context of a web page:
+```
+navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
+    "permitCrossOriginTrustedSignals")
+```
+
+## Getting browser-side detectable features as an object
+Sometimes it's desirable to get status of all features detectable via `queryFeatureSupport` in a
+forward-compatible way. Sufficiently recent versions provide this functionality via
+`queryFeatureSupport('*')`, which returns a dictionary describing state of various features. Since
+that functionality isn't available in older versions, backwards-compatibility polyfilling is
+suggested:
+
+```
+let qfs = navigator.protectedAudience ?
+    navigator.protectedAudience.queryFeatureSupport.bind(navigator.protectedAudience) : null;
+
+let allFeatureStatus = qfs ?
+  (qfs("*") || {
+    adComponentsLimit: qfs("adComponentsLimit"),
+    deprecatedRenderURLReplacements: qfs("deprecatedRenderURLReplacements"),
+    reportingTimeout: qfs("reportingTimeout")
+   }) : {}
+```
+
+An example return value would be:
+```
+{
+  "adComponentsLimit":40,
+  "deprecatedRenderURLReplacements":false,
+  "reportingTimeout":true,
+  "permitCrossOriginTrustedSignals":true
+}
 ```

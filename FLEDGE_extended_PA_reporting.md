@@ -181,8 +181,11 @@ The parameters consist of:
 * an `eventType` which is a string identifying the event type that triggers this report to
 be sent (see [Triggering reports](#triggering-reports) below), and
 * a `contribution` object which contains:
-  * a `bucket` which is a 128bit ID or a `signalBucket`  which tells the browser how to calculate the bucket (represented as BigInt) and
-  * a `value` which is a non-negative integer or a `signalValue` which tells the browser how to calculate the value.
+  * a `bucket` which is a 128bit ID or a `signalBucket`  which tells the browser how to calculate the bucket (represented as BigInt),
+  * a `value` which is a non-negative integer or a `signalValue` which tells the browser how to calculate the value, and
+  * a `filteringId` which is an optional integer in the range [0, 255] used to allow for separating aggregation service queries. For
+     more detail, please see the [flexible filtering
+     explainer](https://github.com/patcg-individual-drafts/private-aggregation-api/blob/main/flexible_filtering.md#proposal-filtering-id-in-the-encrypted-payload).
 
 
 Where `signalBucket` and `signalValue` is a dictionary which consists of:

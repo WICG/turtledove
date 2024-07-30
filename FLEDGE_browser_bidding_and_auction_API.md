@@ -1,21 +1,27 @@
 > FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
 
-# FLEDGE Browser Bidding & Auction API
+# Protected Audience Browser Bidding & Auction API
 
 ## Background
 
-This document seeks to propose an API for web pages to perform FLEDGE auctions using Bidding and Auction (B&A) servers running in Trusted Execution Environments (TEE), as was announced [here](https://developer.chrome.com/blog/bidding-and-auction-services-availability/). This document seeks to document the web-exposed JavaScript API. The browser is responsible for formatting the data sent to the B&A servers using the B&A server API documented in [this explainer](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md).
+This document seeks to propose an API for web pages to perform Protected Audience auctions using Bidding and Auction (B&A) servers running in Trusted Execution Environments (TEE), as was announced [here](https://developer.chrome.com/blog/bidding-and-auction-services-availability/). This document seeks to document the web-exposed JavaScript API. The browser is responsible for formatting the data sent to the B&A servers using the B&A server API documented in [this explainer](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md).
 
-## Steps to perform a FLEDGE auction using B&A
+## Steps to perform a Protected Audience auction using B&A
 
 ### Step 1: Get auction blob from browser
 
-To execute an on-server FLEDGE auction, sellers begin by calling `navigator.getInterestGroupAdAuctionData()` with returns a `Promise<AdAuctionData>`:
+To execute an on-server Protected Audience auction, sellers begin by calling `navigator.getInterestGroupAdAuctionData()` with returns a `Promise<AdAuctionData>`:
 
 ```javascript
 const auctionBlob = navigator.getInterestGroupAdAuctionData({
   // ‘seller’ works the same as for runAdAuction.
   'seller': 'https://www.example-ssp.com',
+  // 'coordinatorOrigin' of the TEE coordinator, defaults to
+  //'https://publickeyservice.gcp.privacysandboxservices.com' (for now). Used to
+  // select which key to use for the encrypted blob. Will eventually be
+  // required.
+  'coordinatorOrigin':
+    'https://publickeyservice.gcp.privacysandboxservices.com',
 });
 ```
 The returned `auctionBlob` is a Promise that will resolve to an `AdAuctionData` object. This object contains `requestId` and `request` fields.
@@ -28,6 +34,8 @@ stored in the browser to be provided to [the B&A API](https://github.com/privacy
 The request includes the contents of the interest groups, and information that the B&A server can pass
 unmodified in `browserSignals` for bidding like `joinCount`, `bidCount`, and `prevWins`.
 More details on the request format are given in [the appendix](#request-blob-format).
+
+The `seller` is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model).
 
 ### Step 2: Send auction blob to servers
 
@@ -137,7 +145,7 @@ Another way to prevent the encrypted blob’s size from being a leak is to have 
 
 1.  This would hugely complicate the B&A server’s interactions and API, making adoption likely infeasible. The B&A API would no longer be a RESTful API as it would have to coordinate communication from both the browser and other servers (e.g. contextual auction server).
 
-1.  This would also require the on-device JavaScript to determine whether to send the FLEDGE request to the B&A server, perhaps at a time before it has the results of the contextual auction which might influence the decision. Without this information the device would have to send the encrypted blob for every ad request, even in cases where the contextual call indicated it was wasteful to do so.
+1.  This would also require the on-device JavaScript to determine whether to send the Protected Audience request to the B&A server, perhaps at a time before it has the results of the contextual auction which might influence the decision. Without this information the device would have to send the encrypted blob for every ad request, even in cases where the contextual call indicated it was wasteful to do so.
 
 Exposing size of the blob is a temporary leak that we hope to mitigate in the future:
 
@@ -157,6 +165,34 @@ information related to the request when it finds the value in the request
 matches the server value. Note that you should use a unique value for the
 `consented_debug_token` to avoid subjecting other servers involved in handling
 the request to additional load from logging.
+
+## Testing with alternate Coordinators
+
+The coordinators used by Chrome are controlled by two feature flags. The
+'FledgeBiddingAndAuctionKeyURL' feature parameter controls the key URL used for
+the default coordinator (with the origin
+'https://publickeyservice.gcp.privacysandboxservices.com'). The
+'FledgeBiddingAndAuctionKeyConfig' feature parameter allows full control of the
+set of coordinator origins and their corresponding key URLs used by Chrome by
+specifying a JSON dict where the keys are the coordinator origins and the values
+are the corresponding key URL. You should only need to use one of these feature
+parameters, but if both are specified the 'FledgeBiddingAndAuctionKeyURL' will
+override the key URL for the default coordinator.
+
+Examples of the command line for setting the coordinator for testing is shown
+below:
+
+Set the default key URL to 'http://127.0.0.1:50072/static/test_keys.json':
+```
+chrome --enable-features='FledgeBiddingAndAuctionServerAPI,FledgeBiddingAndAuctionServer:FledgeBiddingAndAuctionKeyURL/http%3A%2F%2F127%2E0%2E0%2E1%3A50072%2Fstatic%2Ftest_keys.json'
+```
+
+Add a new coordinator for origin 'https://new.coordinator.example.com' with key
+URL of 'http://127.0.0.1:50072/static/test_keys.json'. Note that you still need
+to specify the default values:
+```
+chrome --enable-features='FledgeBiddingAndAuctionServerAPI,FledgeBiddingAndAuctionServer:FledgeBiddingAndAuctionKeyConfig/{"https%3A%2F%2Fpublickeyservice.gcp.privacysandboxservices.com"%3A"https%3A%2F%2Fpublickeyservice.pa.gcp.privacysandboxservices.com%2F.well-known%2Fprotected-auction%2Fv1%2Fpublic-keys"%2C"https%3A%2F%2Fpublickeyservice.pa.gcp.privacysandboxservices.com"%3A"https%3A%2F%2Fpublickeyservice.pa.gcp.privacysandboxservices.com%2F.well-known%2Fprotected-auction%2Fv1%2Fpublic-keys"%2C"https%3A%2F%2Fnew.coordinator.example.com"%3A"http%3A%2F%2F127.0.0.1%3A50072%2Fstatic%2Ftest_keys.json"}'
+```
 
 # Appendix
 
