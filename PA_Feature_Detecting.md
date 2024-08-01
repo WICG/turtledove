@@ -130,7 +130,7 @@ navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
 ```
 
 ## Real time reporting
-[Intent to Ship](TBD)
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/9_dR-BdyeWE)
 
 From context of a web page:
 ```
