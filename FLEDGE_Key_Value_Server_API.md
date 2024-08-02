@@ -378,6 +378,10 @@ The content of each compressed blob is a CBOR list of partition outputs. This ob
         "description": "Unique id of the partition from the request",
         "type": "unsigned integer"
       },
+      "dataVersion" {
+        "description": "An optional field to indicate the state of the data that generated this response, which will then be available in bid generation/scoring and reporting.",
+        "type": "unsigned integer"
+      },
       "keyGroupOutputs": {
         "type": "array",
         "items": {
@@ -414,10 +418,6 @@ The content of each compressed blob is a CBOR list of partition outputs. This ob
                   ]
                 }
               }
-            },
-            "dataVersion" {
-              "description": "An optional field to indicate the state of the data that generated this response, which will then be available in bid generation/scoring and reporting.",
-              "type": "unsigned integer"
             }
           }
         }
@@ -434,6 +434,7 @@ Example:
 [
   {
     "id": 0,
+    "dataVersion": 102,
     "keyGroupOutputs": [
       {
         "tags": [
@@ -443,8 +444,7 @@ Example:
           "InterestGroup1": {
             "value": "{\"priorityVector\":{\"signal1\":1}}"
           }
-        },
-        "dataVersion": 102
+        }
       },
       {
         "tags": [
