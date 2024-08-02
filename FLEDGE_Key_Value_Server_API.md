@@ -414,6 +414,10 @@ The content of each compressed blob is a CBOR list of partition outputs. This ob
                   ]
                 }
               }
+            },
+            "dataVersion" {
+              "description": "An optional field to indicate the state of the data that generated this response, which will then be available in bid generation/scoring and reporting.",
+              "type": "unsigned integer"
             }
           }
         }
@@ -439,7 +443,8 @@ Example:
           "InterestGroup1": {
             "value": "{\"priorityVector\":{\"signal1\":1}}"
           }
-        }
+        },
+        "dataVersion": 102
       },
       {
         "tags": [
