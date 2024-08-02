@@ -73,8 +73,8 @@ We will use [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-oh
 *   0x0001 HKDF-SHA256 for KDF (key derivation functions)
 *   AES256GCM for AEAD scheme.
 
-* The OHTTP request has media type “message/ad-auction-trusted-signals-request; v=2.0”
-* The OHTTP response has media type “message/ad-auction-trusted-signals-response; v=2.0”
+* The OHTTP request has media type “message/ad-auction-trusted-signals-request”
+* The OHTTP response has media type “message/ad-auction-trusted-signals-response”
 
 The version information is of the format `major.minor` where `major` and `minor` are integers.
 
