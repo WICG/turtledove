@@ -73,8 +73,10 @@ We will use [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-oh
 *   0x0001 HKDF-SHA256 for KDF (key derivation functions)
 *   AES256GCM for AEAD scheme.
 
-* The OHTTP request has media type “message/ad-auction-trusted-signals-request”
-* The OHTTP response has media type “message/ad-auction-trusted-signals-response”
+Since we are [repurposing the OHTTP encapsulation mechanism, we are required to define new media types](https://www.rfc-editor.org/rfc/rfc9458.html#name-repurposing-the-encapsulati):
+* The OHTTP request media type is “message/ad-auction-trusted-signals-request”
+* The OHTTP response media type is “message/ad-auction-trusted-signals-response”
+Note that these media types are [concatenated with other fields when creating the HPKE encryption context](https://www.rfc-editor.org/rfc/rfc9458.html#name-encapsulation-of-requests), and are not HTTP content or media types.
 
 The version information is of the format `major.minor` where `major` and `minor` are integers.
 
