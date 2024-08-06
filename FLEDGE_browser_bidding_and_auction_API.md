@@ -92,6 +92,8 @@ The aforementioned Step 3 includes the hash of the response blob in an `Ad-Aucti
 2. Instead of returning the `Ad-Auction-Result` header, return a `Ad-Auction-Result-Nonce` header passing the nonce, e.g. `Ad-Auction-Result-Nonce: 5b3e87f7-d48c-4376-908f-623f92f13740`.  Like `Ad-Auction-Result`, `Ad-Auction-Result-Nonce` can accept a comma-separated list instead of a single value if desired.
 3. Pass the nonce in a TBD field of the [SelectAdRequest](https://github.com/privacysandbox/bidding-auction-servers/blob/4a7accd09a7dabf891b5953e5cdbb35d038c83c6/api/bidding_auction_servers.proto#L282) to the [SellerFrontEnd service](https://github.com/privacysandbox/bidding-auction-servers/blob/4a7accd09a7dabf891b5953e5cdbb35d038c83c6/api/bidding_auction_servers.proto#L267).
 
+Behind the scenes, the Bidding and Auction servers will pass back the nonce to the browser which verifies that it matches nonce from the `Ad-Auction-Result-Nonce` header.
+
 ### Step 4: Complete auction in browser
 
 Now the auction can be completed by passing the response blob to `runAdAuction()` as part of a specially configured auction configuration:
@@ -474,7 +476,11 @@ Prior to compression and encryption, the AuctionResult is encoded as CBOR with t
       "description": "Boolean to indicate that there is no remarketing winner from the auction. AuctionResult may be ignored by the client (after decryption) if this is set to true."
     },
     "winReportingUrls": { "$ref": "#/$defs/winReportingUrlsDef" },
-    "error": { "$ref": "#/$defs/errorDef" }
+    "error": { "$ref": "#/$defs/errorDef" },
+    "nonce": {
+      "type": "byte string",
+      "description": "32 byte UUIDv4 nonce that was passed to SelectAdRequest. Browser enforces that this matches value passed via Ad-Auction-Result-Nonce header."
+    }
   }
 }
 ```
