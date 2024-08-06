@@ -442,7 +442,7 @@ Example:
         ],
         "keyValues": {
           "InterestGroup1": {
-            "value": "{\"priorityVector\":{\"signal1\":1}}"
+            "value": "{\"priorityVector\":{\"signal1\":1},\"updateIfOlderThanMs\": 10000}"
           }
         }
       },
@@ -489,6 +489,10 @@ For values for keys from the `interestGroupNames` namespace, they must conform t
           "type": "number"
         }
       }
+    },
+    "updateIfOlderThanMs": {
+      "description": "This optional field specifies that the interest group should be updated if the interest group hasn't been joined or updated in a duration of time exceeding `updateIfOlderThanMs` milliseconds. Updates that ended in failure, either parse or network failure, are not considered to increment the last update or join time. An `updateIfOlderThanMs` that's less than 10 minutes will be clamped to 10 minutes.",
+      "type": "unsigned integer"
     }
   }
 }
@@ -501,7 +505,8 @@ Example:
   "priorityVector": {
     "signal1": 1,
     "signal2": 2
-  }
+  },
+  "updateIfOlderThanMs": 10000
 }
 ```
 
