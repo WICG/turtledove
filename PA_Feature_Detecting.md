@@ -163,7 +163,7 @@ An example return value would be:
   "adComponentsLimit":40,
   "deprecatedRenderURLReplacements":false,
   "permitCrossOriginTrustedSignals":true,
-  "realTimeReporting": true,
+  "realTimeReporting":true,
   "reportingTimeout":true
 }
 ```
