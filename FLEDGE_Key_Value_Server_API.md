@@ -76,6 +76,7 @@ We will use [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-oh
 Since we are [repurposing the OHTTP encapsulation mechanism, we are required to define new media types](https://www.rfc-editor.org/rfc/rfc9458.html#name-repurposing-the-encapsulati):
 * The OHTTP request media type is “message/ad-auction-trusted-signals-request”
 * The OHTTP response media type is “message/ad-auction-trusted-signals-response”
+
 Note that these media types are [concatenated with other fields when creating the HPKE encryption context](https://www.rfc-editor.org/rfc/rfc9458.html#name-encapsulation-of-requests), and are not HTTP content or media types.
 
 Inside the ciphertext, the request/response is framed with a 5 byte header, where the first byte is the format+compression byte, and the following 4 bytes are the length of the request message in network byte order. Then the request is zero padded to a set of pre-configured lengths.
