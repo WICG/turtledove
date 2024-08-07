@@ -85,7 +85,7 @@ const maxAdComponents = navigator.protectedAudience ?
 ```
 
 ## Reporting timeout
-[Intent to Ship](TBD)
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/ZdZXN1D-MtI/)
 
 Inside `reportWin` one can determine its reporting timeout as follows:
 ```
@@ -101,8 +101,8 @@ const reportingTimeout = auctionConfig.reportingTimeout ?
 
 From the context of a web page, whether custom reporting timeout is enabled can be queried as follows:
 ```
-const reportingTimeoutEnabled = navigator.protectedAudience ?
-    navigator.protectedAudience.queryFeatureSupport("reportingTimeout") : false;
+const reportingTimeoutEnabled = navigator.protectedAudience &&
+    navigator.protectedAudience.queryFeatureSupport("reportingTimeout");
 ```
 
 ## Returning multiple bids from generateBid()
@@ -121,12 +121,21 @@ the `targetNumAdComponents` and `numMandatoryAdComponents` bid fields will be
 considered.
 
 ## Cross-origin trusted signals
-[Intent to Ship](TBD)
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/5nvBAjmoO2g)
 
 From context of a web page:
 ```
 navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
     "permitCrossOriginTrustedSignals")
+```
+
+## Real time reporting
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/9_dR-BdyeWE)
+
+From context of a web page:
+```
+navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
+    "realTimeReporting")
 ```
 
 ## Getting browser-side detectable features as an object
@@ -153,7 +162,8 @@ An example return value would be:
 {
   "adComponentsLimit":40,
   "deprecatedRenderURLReplacements":false,
-  "reportingTimeout":true,
-  "permitCrossOriginTrustedSignals":true
+  "permitCrossOriginTrustedSignals":true,
+  "realTimeReporting":true,
+  "reportingTimeout":true
 }
 ```
