@@ -330,7 +330,7 @@ For fenced frames rendering the ad components under the top-level ad fenced fram
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
-  'eventType': 'reserved.top_navigation',
+  'eventType': 'reserved.top_navigation_commit',
   'destination':['seller', 'buyer']
 });
 ```
