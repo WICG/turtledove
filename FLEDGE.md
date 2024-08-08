@@ -1100,7 +1100,7 @@ Reports are only sent and most interest group state changes (e.g. updating `prev
 
 ### 5. Event-Level Reporting (for now)
 
-Once the winning ad has rendered in its Fenced Frame, the seller and the winning buyer each have an opportunity to perform logging and reporting on the auction outcome.  The browser will call one reporting function in the seller's auction worklet and one in the winning buyer's bidding worklet.
+Once the winning ad has rendered in its Fenced Frame, the seller(s) and the winning buyer each have an opportunity to perform logging and reporting on the auction outcome.  The browser will call one reporting function in the seller's auction worklet and one in the winning buyer's bidding worklet; in the case of a multi-seller auction both the top-level and winning component seller's reporting function will be invoked.
 
 _As a temporary mechanism,_ these reporting functions will be able to send event-level reports to their servers.  These reports can include contextual information, and can include information about the winning interest group if it is over an anonymity threshold.  This reporting will happen synchronously, while the page with the ad is still open in the browser.
 
@@ -1109,7 +1109,7 @@ In the long term, we need a mechanism to ensure that the after-the-fact reportin
 
 #### 5.1 Seller Reporting on Render
 
-A seller's JavaScript (i.e. the same script, loaded from `decisionLogicURL`, that provided the `scoreAd()` function) can also expose a `reportResult()` function. This is called with the bid that won the auction, if applicable. For component auction seller scripts, `reportResult()` is only invoked if the bid that won the component auction also went on to win the top-level auction.
+A seller's JavaScript (i.e. the same script, loaded from `decisionLogicURL`, that provided the `scoreAd()` function) can also expose a `reportResult()` function. This is called with the bid that won the auction, if applicable. 
 
 
 ```
@@ -1118,6 +1118,8 @@ reportResult(auctionConfig, browserSignals, directFromSellerSignals) {
   return signalsForWinner;
 }
 ```
+
+In a multi-seller auction `reportResult` will be called for both the top-level-seller and winning component seller. For the component auction sellers, `reportResult()` is only invoked if the bid that won their component auction also went on to win the top-level auction. The `signalsForWinner` passed to `reportWin` will come from the output of the winning component seller's `reportResult`.
 
 
 The arguments to this function are:
