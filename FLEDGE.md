@@ -420,9 +420,9 @@ The values of some signals (those configured by fields `auctionSignals`, `seller
 #### 2.2 Auction Participants
 
 Each interest group the browser has joined with: 
-* `owner`in the list of `interestGroupBuyers`.
-*  Non null `biddingLogicUrl`.
-*  At least one registered creative in the `ads` element.
+* `owner` in the list of `interestGroupBuyers`.
+*  Non null `biddingLogicURL`. The fetch of `biddingLogicURL` and `biddingWasmHelperURL` (if specified) must succeed to bid.
+*  At least one registered creative in the `ads` element. This implies that [negative interest groups](#621-negative-interest-groups) cannot bid as they cannot contain `ads`.  
 *  Priority, as stated by `priority` or calculated via `priorityVector`, is greater than or equal to 0.
 
 will have an opportunity to bid in the auction.  See the "Buyers Provide Ads and Bidding Functions" section, below, for how interest groups bid.
