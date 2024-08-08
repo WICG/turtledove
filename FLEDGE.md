@@ -1278,19 +1278,25 @@ The following table summarizes which APIs get original and which get converted b
 
 #### 5.4 Reporting IDs
 
-Protected Audience provides several interest group fields that can be used to report details about a bid.  Which of `selectableBuyerAndSellerReportingId`, `buyerAndSellerReportingId`, `buyerReportingId`, or the interest group name gets passed to `reportWin()` and `reportResult()` is determined by the browser with the following logic:
+Protected Audience provides several interest group fields that can be used to report details about a bid.  These fields needs to
+be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to the reporting fuctions.
+Which of `selectableBuyerAndSellerReportingId`, `buyerAndSellerReportingId`, `buyerReportingId`, and the interest group name gets
+passed to `reportWin()` and `reportResult()` is determined by the browser with the following logic:
 
-If `selectableBuyerAndSellerReportingId` defined in interest group:<br>
-&nbsp;&nbsp;If `selectableBuyerAndSellerReportingId` in bid:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Then `selectableBuyerAndSellerReportingId`, `buyerAndSellerReportingId` (if present in interest group), and `buyerReportingId` (if present in interest group) will all be available to reporting.<br>
-&nbsp;&nbsp;Otherwise (i.e. when If `selectableBuyerAndSellerReportingId` not in bid):<br>
-&nbsp;&nbsp;&nbsp;&nbsp;No reporting IDs. If you want reporting IDs, consider including and selecting an empty `selectableBuyerAndSellerReportingId`.<br>
-Otherwise (i.e. when selectableBaRSI not defined in IG):<br>
-&nbsp;&nbsp;If `buyerAndSellerReportingId` defined in interest group: `buyerAndSellerReportingId` available to reporting.<br>
-&nbsp;&nbsp;Otherwise, if `buyerReportingId` defined in interest group: `buyerReportingId` available to reporting.<br>
-&nbsp;&nbsp;Otherwise, interest group `name` available to reporting.<br>
+If `selectableBuyerAndSellerReportingId` defined in interest group:
+* If `selectableBuyerAndSellerReportingId` in bid:
+    * Then `selectableBuyerAndSellerReportingId`, `buyerAndSellerReportingId` (if present in interest group), and `buyerReportingId`
+      (if present in interest group) will all be available to reporting.
+* Otherwise (i.e. when If `selectableBuyerAndSellerReportingId` not in bid):
+    * No reporting IDs. If you want reporting IDs, consider including and selecting an empty `selectableBuyerAndSellerReportingId`.
 
-Here's a table representation of the above logic: (selectableBuyerAndSellerReportingId abreviated to selectableBASRI, buyerAndSellerReportingId abreviated to BASRI, buyerReportingId abreviated to BRI)
+Otherwise (i.e. when selectableBaRSI not defined in IG):
+* If `buyerAndSellerReportingId` defined in interest group: `buyerAndSellerReportingId` available to reporting.
+* Otherwise, if `buyerReportingId` defined in interest group: `buyerReportingId` available to reporting.
+* Otherwise, interest group `name` available to reporting.
+
+Here's a table representation of the above logic: (`selectableBuyerAndSellerReportingId` abreviated to selectableBASRI,
+`buyerAndSellerReportingId` abreviated to BASRI, `buyerReportingId` abreviated to BRI)
 <table>
   <thead>
     <tr>
