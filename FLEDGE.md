@@ -41,7 +41,8 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [5.2 Buyer Reporting on Render and Ad Events](#52-buyer-reporting-on-render-and-ad-events)
       - [5.2.1 Noised and Bucketed Signals](#521-noised-and-bucketed-signals)
     - [5.3 Currencies in Reporting](#53-currencies-in-reporting)
-    - [5.4 Losing Bidder Reporting](#54-losing-bidder-reporting)
+    - [5.4 Reporting IDs](#54-reporting-ids-in-reporting)
+    - [5.5 Losing Bidder Reporting](#55-losing-bidder-reporting)
   - [6. Additional Bids](#6-additional-bids)
     - [6.1 Auction Nonce](#61-auction-nonce)
     - [6.2 Negative Targeting](#62-negative-targeting)
@@ -1275,7 +1276,47 @@ The following table summarizes which APIs get original and which get converted b
 | Private Aggregation `winning-bid` | Original value | Converted value |
 | Private Aggregation `highest-scoring-other-bid` | Original value | Converted value |
 
-#### 5.4 Losing Bidder Reporting
+#### 5.4 Reporting IDs
+
+Protected Audience provides several interest group fields that can be used to report details about a bid.  Which of `selectableBuyerAndSellerReportingId`, `buyerAndSellerReportingId`, `buyerReportingId`, or the interest group name gets passed to `reportWin()` and `reportResult()` is determined by the browser with the following logic:
+
+If `selectableBuyerAndSellerReportingId` defined in interest group:
+&nbsp;&nbsp;If `selectableBuyerAndSellerReportingId` in bid:
+&nbsp;&nbsp;&nbsp;&nbsp;Then `selectableBuyerAndSellerReportingId`, `buyerAndSellerReportingId` (if present in interest group), and `buyerReportingId` (if present in interest group) will all be available to reporting.
+&nbsp;&nbsp;Otherwise (i.e. when If `selectableBuyerAndSellerReportingId` not in bid):
+&nbsp;&nbsp;&nbsp;&nbsp;No reporting IDs. If you want reporting IDs, consider including and selecting an empty `selectableBuyerAndSellerReportingId`.
+Otherwise (i.e. when selectableBaRSI not defined in IG):
+&nbsp;&nbsp;If `buyerAndSellerReportingId` defined in interest group: `buyerAndSellerReportingId` available to reporting.
+&nbsp;&nbsp;Otherwise, if `buyerReportingId` defined in interest group: `buyerReportingId` available to reporting.
+&nbsp;&nbsp;Otherwise, interest group `name` available to reporting.
+
+Here's a table representation of the above logic:
+<table>
+  <thead>
+    <tr>
+      <th colspan=3>When interest group contains:</th>
+      <th colspan=2>then reports get:</th>
+    </tr>
+    <tr>
+      <th>selectableBuyerAndSellerReportingId</th>
+      <th>buyerAndSellerReportingId</th>
+      <th>buyerReportingId</th>
+      <th>reportWin()</th>
+      <th>reportResult()</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>yes and in bid</td>
+      <td>optional</td>
+      <td>optional</td>
+      <td>selectableBuyerAndSellerReportingId, buyerAndSellerReportingId, buyerReportingId</td>
+      <td>selectableBuyerAndSellerReportingId, buyerAndSellerReportingId</td>
+    </tr>
+  </tbody>
+</table>
+
+#### 5.5 Losing Bidder Reporting
 
 We also need to provide a mechanism for the _losing_ bidders in the auction to learn aggregate outcomes.  Certainly they should be able to count the number of times they bid, and losing ads should also be able to learn (in aggregate) some seller-provided information about e.g. the auction clearing price.  Likewise, a reporting mechanism should be available to buyers who attempted to bid with a creative that had not yet reached the k-anonymity threshold.
 
