@@ -1290,7 +1290,7 @@ Otherwise (i.e. when selectableBaRSI not defined in IG):
 &nbsp;&nbsp;Otherwise, if `buyerReportingId` defined in interest group: `buyerReportingId` available to reporting.
 &nbsp;&nbsp;Otherwise, interest group `name` available to reporting.
 
-Here's a table representation of the above logic:
+Here's a table representation of the above logic: (selectableBuyerAndSellerReportingId abreviated to selectableBASRI, buyerAndSellerReportingId abreviated to BASRI, buyerReportingId abreviated to BRI)
 <table>
   <thead>
     <tr>
@@ -1298,9 +1298,9 @@ Here's a table representation of the above logic:
       <th colspan=2>then reports get:</th>
     </tr>
     <tr>
-      <th>selectableBuyerAndSellerReportingId</th>
-      <th>buyerAndSellerReportingId</th>
-      <th>buyerReportingId</th>
+      <th>selectableBASRI</th>
+      <th>BASRI</th>
+      <th>BRI</th>
       <th>reportWin()</th>
       <th>reportResult()</th>
     </tr>
@@ -1310,8 +1310,36 @@ Here's a table representation of the above logic:
       <td>yes and in bid</td>
       <td>optional</td>
       <td>optional</td>
-      <td>selectableBuyerAndSellerReportingId, buyerAndSellerReportingId, buyerReportingId</td>
-      <td>selectableBuyerAndSellerReportingId, buyerAndSellerReportingId</td>
+      <td>selectableBASRI, BASRI, BRI</td>
+      <td>selectableBASRI, BRI</td>
+    </tr>
+    <tr>
+      <td>yes but not in bid</td>
+      <td>optional</td>
+      <td>optional</td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>no</td>
+      <td>yes</td>
+      <td>optional</td>
+      <td>BASRI</td>
+      <td>BASRI</td>
+    </tr>
+    <tr>
+      <td>no</td>
+      <td>no</td>
+      <td>yes</td>
+      <td></td>
+      <td>BRI</td>
+    </tr>
+    <tr>
+      <td>no</td>
+      <td>no</td>
+      <td>no</td>
+      <td></td>
+      <td>interest group name</td>
     </tr>
   </tbody>
 </table>
