@@ -971,9 +971,9 @@ The output of `generateBid()` contains the following fields:
     bidding script URL, and render URL, then it will be presented to
     `reportWin()` and `reportResult()`. See
     [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
-*   buyerAndSellerReportingIdRequired: (optional) A boolean that when true,
+*   selectedBuyerAndSellerReportingIdRequired: (optional) A boolean that when `true`,
     indicates this bid should be thrown away if the k-anonymity check on the
-    `selectedBuyerAndSellerReportingId` fails. Setting this to true indicates
+    `selectedBuyerAndSellerReportingId` fails. Setting this to `true` indicates
     that reporting of this bid would not operate correctly were the
     `selectedBuyerAndSellerReportingId` not presented to `reportWin()` and
     `reportResult()`. See [Reporting IDs](#54-reporting-ids-in-reporting)
@@ -985,9 +985,12 @@ objects of the format above in an array.
 
 Note: Chrome currently imposes an internal limit of 100 for the length of returned bids sequences.
 
-If none of the produced bids pass the k-anonymity checks, `generateBid` will be
+If none of the produced bids pass the k-anonymity checks (the check on the
+render `url` or, when `selectedBuyerAndSellerReportingIdRequired` is `true`, the
+check on `selectedBuyerAndSellerReportingId`), `generateBid` will be
 re-run with the input `interestGroup` filtered to contain only k-anonymous ads
-and component ads. Such re-runs are limited to returning only a single bid,
+and component ads and `selectableBuyerAndSellerReportingIds`. Such re-runs are
+limited to returning only a single bid,
 even if multiple bid support is otherwise on, so they will have
 `browserSignals.multiBidLimit === 1`, regardless of the value of
 `perBuyerMultiBidLimits`.
