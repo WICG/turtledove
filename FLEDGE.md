@@ -1365,6 +1365,36 @@ Here's a table representation of the above logic: (`selectableBuyerAndSellerRepo
   </tbody>
 </table>
 
+`generateBid()` is passed all reporting IDs in each entry in the interst group's `ads` list, though in cases where `generateBid()`
+is re-run, after the first invocation didn't produced any bids with ads that passed the k-anonymity checks, reporting IDs that
+don't pass the k-anonymity check will not be present in the interest group.
+
+`scoreAd()` is passed the same reporting IDs as `reportResult()`, but without the k-anonymity requirement.  If the seller
+requires `selectedBuyerAndSellerReportingId` for accurate reporting, hence being presented to `reportResult()`, then
+`scoreAd()` should only assign positive scores to bids when `browserSignals.selectedbuyerAndSellerReportingIdRequired` is `true`.
+
+One use for these reporting IDs is to facilitate deals (private marketplace) in Protected Audience auctions.  Here's a couple
+examples of using the reporting IDs to convey deals used in bids. In these examples, the ‘s’ prefix might be used to connote seat
+ID and the ‘d’ prefix might connote deal ID.
+
+If the same seat ID is always presented for bids on an ad:
+```
+joinAdInterestGroup({...
+  'ads': [{renderURL: Ad1URL, 
+           buyerReportingId: ‘buyerInfo123’,
+           buyerAndSellerReportingId: ‘s456’,
+           selectableBuyerAndSellerReportingIds: [ ‘d123’, ‘d234’, ‘d345’ ],
+  ...})
+```
+If different seat IDs are presented for bids on an ad:
+```
+joinAdInterestGroup({...
+  'ads': [{renderURL: Ad1URL, 
+           buyerReportingId: ‘buyerInfo123’,
+           selectableBuyerAndSellerReportingIds: [ ‘d123s456’, ‘d234s567’, ‘d345s567’ ],
+  ...})
+```
+
 #### 5.5 Losing Bidder Reporting
 
 We also need to provide a mechanism for the _losing_ bidders in the auction to learn aggregate outcomes.  Certainly they should be able to count the number of times they bid, and losing ads should also be able to learn (in aggregate) some seller-provided information about e.g. the auction clearing price.  Likewise, a reporting mechanism should be available to buyers who attempted to bid with a creative that had not yet reached the k-anonymity threshold.
