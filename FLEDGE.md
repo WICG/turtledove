@@ -952,7 +952,7 @@ The output of `generateBid()` contains the following fields:
 *   bid: A numerical bid that will enter the auction. The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand"). If the bid is zero or negative, then this interest group will not participate in the seller's auction at all. With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear. While this returned value is expected to be a JavaScript Number, internal calculations dealing with currencies should be done with integer math that more accurately represent powers of ten.
 *   bidCurrency: (optional) The currency for the bid, used for [currency-checking](#36-currency-checking).
 *   render: A dictionary describing the creative that should be rendered if this bid wins the auction. This includes:
-    * url: The creative's URL.
+    * url: The creative's URL. This must match the `renderUrl` of an ad in the interest group's `ads` list, otherwise the bid is ignore.
     * width: The creative's width. This size will be matched against the declaration in the interest group and substituted into any ad size macros present in the ad creative URL. When the ad is loaded in a fenced frame, the fenced frame's inner frame (i.e. the size visible to the ad creative) will be frozen to this size, and it will be unable to see changes to the rame size made by the embedder.
     * height: The creative's height. See elaboration in `width` above.
     
@@ -965,10 +965,11 @@ The output of `generateBid()` contains the following fields:
     make the ad k-anonymous. See [Flexible Component Ad Selection Considering k-Anonymity](#341-flexible-component-ad-selection-considering-k-anonymity)
     for more details.
 *   selectedBuyerAndSellerReportingId: (optional) A string from the interest
-    group's ad's `selectableBuyerAndSellerReportingIds` array.  If present and
-    jointly k-anonymous with `buyerAndSellerReportingId`, `buyerReportingId`,
-    the interest group owner, bidding script URL, and render URL, then it will
-    be presented to `reportWin()` and `reportResult()`. See
+    group's ad's `selectableBuyerAndSellerReportingIds` array; if it's not in
+    the array, the bid is ignored.  If present and jointly k-anonymous with
+    `buyerAndSellerReportingId`, `buyerReportingId`, the interest group owner,
+    bidding script URL, and render URL, then it will be presented to
+    `reportWin()` and `reportResult()`. See
     [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
 *   buyerAndSellerReportingIdRequired: (optional) A boolean that when true,
     indicates this bid should be thrown away if the k-anonymity check on the
