@@ -248,30 +248,30 @@ The `ads` list contains the various ads that the interest group might show.  Eac
    selected by `generateBid()` to be reported to `reportWin()` and `reportResult()`
    along with `buyerAndSellerReportingId` and `buyerReportingId` when all three values
    are jointly k-anonymous along with the interest group owner, bidding script URL,
-   and render URL to be provided to these reporting fuctions.
+   and render URL to be provided to these reporting functions.
 
  * `buyerAndSellerReportingId`: If set and `selectableBuyerAndSellerReportingIds` is
    unset, the value is used instead of the interest group name or `buyerReportingId`
    for reporting in `reportWin()` and `reportResult()`. Note that this field needs to
    be jointly k-anonymous with the interest group owner, bidding script URL, and
-   render URL to be provided to these reporting fuctions (in the same way that the
+   render URL to be provided to these reporting functions (in the same way that the
    interest group name would have needed to be). If set and
    `selectableBuyerAndSellerReportingIds` is also set, the value is reported to
    `reportWin()` and `reportResult()` along with the selected
    `selectablebuyerAndSellerReportingIds` and `buyerReportingId` when all three values
    are jointly k-anonymous along with the interest group owner, bidding script URL,
-   and render URL to be provided to these reporting fuctions.
+   and render URL to be provided to these reporting functions.
 
  * `buyerReportingId`: If set and `selectableBuyerAndSellerReportingIds` is unset, the
    value is used instead of the interest group name for reporting in `reportWin`. Note
    that this field needs to be jointly k-anonymous with the interest group owner,
-   bidding script URL, and render URL to be provided to these reporting fuctions (in
+   bidding script URL, and render URL to be provided to these reporting functions (in
    the same way that the interest group name would have needed to be). If set and
    `selectableBuyerAndSellerReportingIds` is also set, the value is reported to
    `reportWin()` along with the selected `selectablebuyerAndSellerReportingIds` and
    `buyerAndSellerReportingId` when all three values are jointly k-anonymous along
    with the interest group owner, bidding script URL, and render URL to be provided to
-   these reporting fuctions.
+   these reporting functions.
 
 
  * `metadata`: Arbitrary metadata that can be used at bidding time.
@@ -1279,22 +1279,22 @@ The following table summarizes which APIs get original and which get converted b
 #### 5.4 Reporting IDs
 
 Protected Audience provides several interest group fields that can be used to report details about a bid.  These fields needs to
-be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to the reporting fuctions.
+be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to the reporting functions.
 Which of `selectableBuyerAndSellerReportingId`, `buyerAndSellerReportingId`, `buyerReportingId`, and the interest group name gets
 passed to `reportWin()` and `reportResult()` is determined by the browser with the following logic:
 
-* If `selectableBuyerAndSellerReportingId` defined in interest group:
-    * If `selectableBuyerAndSellerReportingId` in bid:
-        * Then `selectableBuyerAndSellerReportingId`, `buyerAndSellerReportingId` (if present in interest group), and `buyerReportingId`
+* If `selectableBuyerAndSellerReportingIds` defined in interest group:
+    * If `selectedBuyerAndSellerReportingId` in bid:
+        * Then `selectedBuyerAndSellerReportingId`, `buyerAndSellerReportingId` (if present in interest group), and `buyerReportingId`
           (if present in interest group) will all be available to reporting.
-    * Otherwise (i.e. when If `selectableBuyerAndSellerReportingId` not in bid):
+    * Otherwise (i.e. when `selectedBuyerAndSellerReportingId` not in bid):
         * No reporting IDs. If you want reporting IDs, consider including and selecting an empty `selectableBuyerAndSellerReportingId`.
-* Otherwise (i.e. when selectableBaRSI not defined in IG):
+* Otherwise (i.e. when `selectableBuyerAndSellerReportingIds` not defined in interest group):
     * If `buyerAndSellerReportingId` defined in interest group: `buyerAndSellerReportingId` available to reporting.
     * Otherwise, if `buyerReportingId` defined in interest group: `buyerReportingId` available to reporting.
     * Otherwise, interest group `name` available to reporting.
 
-Here's a table representation of the above logic: (`selectableBuyerAndSellerReportingId` abreviated to selectableBASRI,
+Here's a table representation of the above logic: (`selectableBuyerAndSellerReportingIds` abreviated to selectableBASRI,
 `buyerAndSellerReportingId` abreviated to BASRI, `buyerReportingId` abreviated to BRI)
 <table>
   <thead>
