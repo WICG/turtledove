@@ -244,7 +244,7 @@ The `ads` list contains the various ads that the interest group might show.  Eac
 
  * `adRenderId`: A short [DOMString](https://webidl.spec.whatwg.org/#idl-DOMString) up to 12 characters long serving as an identifier for this ad in this interest group. When this field is specified it will be sent instead of the full ad object for [B&A server auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
 
- * `selectableBuyerAndSellerReportingIds`: An array of strings, one of which is
+ * `selectableBuyerAndSellerReportingIds`: An array of strings, one of which may be
    selected by `generateBid()` to be reported to `reportWin()` and `reportResult()`
    along with `buyerAndSellerReportingId` and `buyerReportingId` when all three values
    are jointly k-anonymous along with the interest group owner, bidding script URL,
@@ -306,7 +306,7 @@ same-origin with `owner`. Additionally, to be used in an auction, the HTTP respo
 header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
 loading Protected Audience resources. The `trustedBiddingSignalsURL` must also not have a [query](https://url.spec.whatwg.org/#concept-url-query). (See 6.13 [here](https://wicg.github.io/turtledove/#dom-navigator-joinadinterestgroup)).
 
-The `renderUrl` property of an `ad` must be also be a valid and credentialless HTTPs URL, but does _not_
+The `renderURL` property of an `ad` must be also be a valid and credentialless HTTPs URL, but does _not_
 have the same origin, response header, fragment, or query requirements.
 
 (You can find detailed error conditions for all fields in step 6 of [the `joinAdInterestGroup()` section of the spec](https://wicg.github.io/turtledove/#dom-navigator-joinadinterestgroup)).
@@ -952,7 +952,7 @@ The output of `generateBid()` contains the following fields:
 *   bid: A numerical bid that will enter the auction. The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand"). If the bid is zero or negative, then this interest group will not participate in the seller's auction at all. With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear. While this returned value is expected to be a JavaScript Number, internal calculations dealing with currencies should be done with integer math that more accurately represent powers of ten.
 *   bidCurrency: (optional) The currency for the bid, used for [currency-checking](#36-currency-checking).
 *   render: A dictionary describing the creative that should be rendered if this bid wins the auction. This includes:
-    * url: The creative's URL. This must match the `renderUrl` of an ad in the interest group's `ads` list, otherwise the bid is ignore.
+    * url: The creative's URL. This must match the `renderURL` of an ad in the interest group's `ads` list, otherwise the bid is ignored.
     * width: The creative's width. This size will be matched against the declaration in the interest group and substituted into any ad size macros present in the ad creative URL. When the ad is loaded in a fenced frame, the fenced frame's inner frame (i.e. the size visible to the ad creative) will be frozen to this size, and it will be unable to see changes to the rame size made by the embedder.
     * height: The creative's height. See elaboration in `width` above.
     
@@ -1307,7 +1307,9 @@ passed to `reportWin()` and `reportResult()` is determined by the browser with t
         * Then `selectedBuyerAndSellerReportingId`, `buyerAndSellerReportingId` (if present in interest group), and `buyerReportingId`
           (if present in interest group) will all be available to reporting.
     * Otherwise (i.e. when `selectedBuyerAndSellerReportingId` not in bid):
-        * No reporting IDs. If you want reporting IDs, consider including and selecting an empty `selectableBuyerAndSellerReportingIds`.
+        * No reporting IDs. If a buyer wants reporting IDs, they can consider including and selecting an empty string (`''`) member
+          `selectableBuyerAndSellerReportingIds`, for example `selectableBuyerAndSellerReportingIds: [ '', ...` in the interest group
+          and `'selectedBuyerAndSellerReportingId': ''` returned from `generateBid()`.
 * Otherwise (i.e. when `selectableBuyerAndSellerReportingIds` not defined in interest group):
     * If `buyerAndSellerReportingId` defined in interest group: `buyerAndSellerReportingId` available to reporting.
     * Otherwise, if `buyerReportingId` defined in interest group: `buyerReportingId` available to reporting.
