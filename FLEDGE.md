@@ -248,7 +248,8 @@ The `ads` list contains the various ads that the interest group might show.  Eac
    selected by `generateBid()` to be reported to `reportWin()` and `reportResult()`
    along with `buyerAndSellerReportingId` and `buyerReportingId` when all three values
    are jointly k-anonymous along with the interest group owner, bidding script URL,
-   and render URL to be provided to these reporting functions.
+   and render URL to be provided to these reporting functions. See
+   [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
 
  * `buyerAndSellerReportingId`: If set and `selectableBuyerAndSellerReportingIds` is
    unset, the value is used instead of the interest group name or `buyerReportingId`
@@ -260,7 +261,8 @@ The `ads` list contains the various ads that the interest group might show.  Eac
    `reportWin()` and `reportResult()` along with the selected
    `selectablebuyerAndSellerReportingIds` and `buyerReportingId` when all three values
    are jointly k-anonymous along with the interest group owner, bidding script URL,
-   and render URL to be provided to these reporting functions.
+   and render URL to be provided to these reporting functions. See
+   [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
 
  * `buyerReportingId`: If set and `selectableBuyerAndSellerReportingIds` is unset, the
    value is used instead of the interest group name for reporting in `reportWin`. Note
@@ -271,7 +273,8 @@ The `ads` list contains the various ads that the interest group might show.  Eac
    `reportWin()` along with the selected `selectablebuyerAndSellerReportingIds` and
    `buyerAndSellerReportingId` when all three values are jointly k-anonymous along
    with the interest group owner, bidding script URL, and render URL to be provided to
-   these reporting functions.
+   these reporting functions. See [Reporting IDs](#54-reporting-ids-in-reporting) for
+   more details.
 
 
  * `metadata`: Arbitrary metadata that can be used at bidding time.
@@ -961,8 +964,19 @@ The output of `generateBid()` contains the following fields:
     browser to select only some of the returned adComponents in order to help
     make the ad k-anonymous. See [Flexible Component Ad Selection Considering k-Anonymity](#341-flexible-component-ad-selection-considering-k-anonymity)
     for more details.
-*   selectedBuyerAndSellerReportingId: (optional) A string from the interest group's ad's `selectableBuyerAndSellerReportingIds` array.  If present and jointly k-anonymous with `buyerAndSellerReportingId`, `buyerReportingId`, the interest group owner, bidding script URL, and render URL, then it will be presented to `reportWin()` and `reportResult()`.
-*   buyerAndSellerReportingIdRequired: (optional) A boolean that when true, indicates this bid should be thrown away if the k-anonymity check on the `selectedBuyerAndSellerReportingId` fails. Setting this to true indicates that reporting of this bid would not operate correctly were the `selectedBuyerAndSellerReportingId` not presented to `reportWin()` and `reportResult()`.
+*   selectedBuyerAndSellerReportingId: (optional) A string from the interest
+    group's ad's `selectableBuyerAndSellerReportingIds` array.  If present and
+    jointly k-anonymous with `buyerAndSellerReportingId`, `buyerReportingId`,
+    the interest group owner, bidding script URL, and render URL, then it will
+    be presented to `reportWin()` and `reportResult()`. See
+    [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
+*   buyerAndSellerReportingIdRequired: (optional) A boolean that when true,
+    indicates this bid should be thrown away if the k-anonymity check on the
+    `selectedBuyerAndSellerReportingId` fails. Setting this to true indicates
+    that reporting of this bid would not operate correctly were the
+    `selectedBuyerAndSellerReportingId` not presented to `reportWin()` and
+    `reportResult()`. See [Reporting IDs](#54-reporting-ids-in-reporting)
+    for more details.
 
 In case returning multiple bids is supported by the implementation in use,
 `generateBid` may also return up to `browserSignals.multiBidLimit` valid bid
