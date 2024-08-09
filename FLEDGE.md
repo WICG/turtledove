@@ -1295,7 +1295,7 @@ The following table summarizes which APIs get original and which get converted b
 
 Protected Audience provides several interest group fields that can be used to report details about a bid.  These fields needs to
 be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to the reporting functions.
-Which of `selectableBuyerAndSellerReportingId`, `buyerAndSellerReportingId`, `buyerReportingId`, and the interest group name gets
+Which of `selectableBuyerAndSellerReportingIds`, `buyerAndSellerReportingId`, `buyerReportingId`, and the interest group name gets
 passed to `reportWin()` and `reportResult()` is determined by the browser with the following logic:
 
 * If `selectableBuyerAndSellerReportingIds` defined in interest group:
@@ -1303,7 +1303,7 @@ passed to `reportWin()` and `reportResult()` is determined by the browser with t
         * Then `selectedBuyerAndSellerReportingId`, `buyerAndSellerReportingId` (if present in interest group), and `buyerReportingId`
           (if present in interest group) will all be available to reporting.
     * Otherwise (i.e. when `selectedBuyerAndSellerReportingId` not in bid):
-        * No reporting IDs. If you want reporting IDs, consider including and selecting an empty `selectableBuyerAndSellerReportingId`.
+        * No reporting IDs. If you want reporting IDs, consider including and selecting an empty `selectableBuyerAndSellerReportingIds`.
 * Otherwise (i.e. when `selectableBuyerAndSellerReportingIds` not defined in interest group):
     * If `buyerAndSellerReportingId` defined in interest group: `buyerAndSellerReportingId` available to reporting.
     * Otherwise, if `buyerReportingId` defined in interest group: `buyerReportingId` available to reporting.
