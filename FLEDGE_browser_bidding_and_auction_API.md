@@ -1,16 +1,16 @@
 > FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
 
-# FLEDGE Browser Bidding & Auction API
+# Protected Audience Browser Bidding & Auction API
 
 ## Background
 
-This document seeks to propose an API for web pages to perform FLEDGE auctions using Bidding and Auction (B&A) servers running in Trusted Execution Environments (TEE), as was announced [here](https://developer.chrome.com/blog/bidding-and-auction-services-availability/). This document seeks to document the web-exposed JavaScript API. The browser is responsible for formatting the data sent to the B&A servers using the B&A server API documented in [this explainer](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md).
+This document seeks to propose an API for web pages to perform Protected Audience auctions using Bidding and Auction (B&A) servers running in Trusted Execution Environments (TEE), as was announced [here](https://developer.chrome.com/blog/bidding-and-auction-services-availability/). This document seeks to document the web-exposed JavaScript API. The browser is responsible for formatting the data sent to the B&A servers using the B&A server API documented in [this explainer](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md).
 
-## Steps to perform a FLEDGE auction using B&A
+## Steps to perform a Protected Audience auction using B&A
 
 ### Step 1: Get auction blob from browser
 
-To execute an on-server FLEDGE auction, sellers begin by calling `navigator.getInterestGroupAdAuctionData()` with returns a `Promise<AdAuctionData>`:
+To execute an on-server Protected Audience auction, sellers begin by calling `navigator.getInterestGroupAdAuctionData()` with returns a `Promise<AdAuctionData>`:
 
 ```javascript
 const auctionBlob = navigator.getInterestGroupAdAuctionData({
@@ -206,7 +206,7 @@ Another way to prevent the encrypted blob’s size from being a leak is to have 
 
 1.  This would hugely complicate the B&A server’s interactions and API, making adoption likely infeasible. The B&A API would no longer be a RESTful API as it would have to coordinate communication from both the browser and other servers (e.g. contextual auction server).
 
-1.  This would also require the on-device JavaScript to determine whether to send the FLEDGE request to the B&A server, perhaps at a time before it has the results of the contextual auction which might influence the decision. Without this information the device would have to send the encrypted blob for every ad request, even in cases where the contextual call indicated it was wasteful to do so.
+1.  This would also require the on-device JavaScript to determine whether to send the Protected Audience request to the B&A server, perhaps at a time before it has the results of the contextual auction which might influence the decision. Without this information the device would have to send the encrypted blob for every ad request, even in cases where the contextual call indicated it was wasteful to do so.
 
 Exposing size of the blob is a temporary leak that we hope to mitigate in the future:
 

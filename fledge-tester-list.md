@@ -86,6 +86,8 @@ The usefulness of this page depends on testers sharing information and updates.
 | Media.net | SSP & DSP | Testing in progress | | privacysandbox@media.net |
 | Kargo | SSP | H2 2024 | | privacysandbox@kargo.com |
 | Lucead | DSP & SSP | Testing in progress | | privacysandbox@lucead.com |
+| Optable | DSP & SSP | Testing in progress | | privacysandbox@optable.co |
+| Taboola | DSP & SSP | Testing in progress | | privacy-sandbox@taboola.com |
 
 ## Table - Publishers and Advertisers Interested in Testing or Early Adoption
 Companies who may be interested in participating in tests and early adoption opportunities provided by ad tech companies.
