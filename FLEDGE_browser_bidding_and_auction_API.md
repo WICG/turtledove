@@ -26,7 +26,8 @@ const auctionBlob = navigator.getInterestGroupAdAuctionData({
   'requestSize': 51200,
   // 'perBuyerConfig' specifies per-buyer options for size optimizations when
   // constructing the blob (optional).
-  'perBuyerConfig': {'https://buyer1.origin.example.com': {
+  'perBuyerConfig': {
+    'https://buyer1.origin.example.com': {
       // 'targetSize' specifies the size of the blob to devote to this buyer
       // (optional).
       "targetSize": 8192,
@@ -37,7 +38,7 @@ const auctionBlob = navigator.getInterestGroupAdAuctionData({
 ```
 
 The `seller` field will be checked to ensure it matches the `seller` specified
-in the AuctionConfig passed to `runAdAuction()` with the response. The
+in the auction configuration passed to `runAdAuction()` with the response. The
 `coordinatorOrigin` selects which set of TEE keys should be used to encrypt this
 request. The `coordinatorOrigin` must be a coordinator that is known to Chrome.
 The `requestSize` and `perBuyerConfig` fields are described in more detail in
@@ -154,8 +155,7 @@ possible to run the on-device auction in parallel with the B&A auction.
 ### Request Size Controls
 The `requestSize` field provided to `navigator.getInterestGroupAdAuctionData()`
 can be used to specify the maximum size of the returned request. If the
-`perBuyerConfig` field is not present (or is empty) then the `requestSize` field
-sets the maximum size for the returned encrypted blob. If the blob fits into a
+`perBuyerConfig` field is not present and the blob fits into a
 size bucket smaller than `requestSize` then that size will be used instead.
 
 If the `perBuyerConfig` field is specified and non-empty, the returned encrypted
@@ -170,7 +170,8 @@ specified then the sum of the `targetSize` of each buyer will be used for the
 decreasing order by the interest group's `priority` field -- until the next
 interest group does not fit.
 
-Space can be allocated between different buyers in several different modes:
+Space can be allocated between different buyers in several different modes, depending
+on what options are specified in the `perBuyerConfig`:
 
 1. Equally - Space is divided equally between buyers when `targetSize` is not specified.
 
@@ -183,7 +184,7 @@ Space can be allocated between different buyers in several different modes:
    They get up to `targetSize` bytes. The remaining space is divided equally
    between the buyers that did not have `targetSize` specified.
 
-The browser will process first process buyers with `targetSize` specified before
+The browser will first process buyers with `targetSize` specified before
 processing buyers without that field specified. Within either of these groups
 buyers are processed in random order. Space that was allocated to a buyer but
 was not used is divided up among remaining buyers based on the active allocation
