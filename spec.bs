@@ -1091,7 +1091,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. Set |auctionConfig|'s [=auction config/server response=] to |config|["{{AuctionAdConfig/serverResponse}}"].
   1. Set |auctionConfig|'s [=auction config/server response id=] to |config|["{{AuctionAdConfig/requestId}}"].
 1. Otherwise:
-  1. If |config|["{{AuctionAdConfig/requestId}}"] does [=map/exists=], then [=exception/throw=]
+  1. If |config|["{{AuctionAdConfig/requestId}}"] [=map/exists=], then [=exception/throw=]
     a {{TypeError}}.
   1. Let |decisionLogicURL| be the result of running the [=URL parser=] on
     |config|["{{AuctionAdConfig/decisionLogicURL}}"].
@@ -2873,23 +2873,23 @@ A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=
 
 A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="server auction browser signals">
-  : <dfn>bidCount</dfn>
+  : <dfn>bid count</dfn>
   :: A count of the number of bids for this interest group in the last 30 days.
     Calculated by summing the [=interest group/bid counts=] where the .
-  : <dfn>joinCount</dfn>
+  : <dfn>join count</dfn>
   :: A count of the number of joins for this interest group in the last 30 days.
     Calculated by summing the [=interest group/join counts=].
-  : <dfn>recencyMs</dfn>
+  : <dfn>recency ms</dfn>
   :: A [=duration=], in milliseconds, representing the [=current wall time=] at
     the time this object was constructed minus the corresponding [=interest group=]'s
     [=interest group/join time=], in milliseconds.
-  : <dfn>prevWins</dfn>
+  : <dfn>previous wins</dfn>
   :: A <code>[=sequence=]<[=server auction previous win=]></code>
 </dl>
 
 A <dfn>server auction previous win</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="server auction previous win">
-  : <dfn>timeDelta</dfn>
+  : <dfn>time delta</dfn>
   :: A [=duration=], in milliseconds, representing the [=current wall time=] at
     the time this object was constructed minus the corresponding [=previous win=]'s [=previous win/time=], in seconds.
   : <dfn>ad render ID</dfn>
@@ -2898,11 +2898,11 @@ A <dfn>server auction previous win</dfn> is a [=struct=] with the following [=st
 
 A <dfn>server auction request context</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="server auction request context">
-  : <dfn>requestId</dfn>
+  : <dfn>request ID</dfn>
   :: A unique identifier associated with this and only this invocation of
     {{Window/navigator}}.{{Navigator/getInterestGroupAdAuctionData()}}. This is
     used to look-up a specific request context.
-  : <dfn>requestContext</dfn>
+  : <dfn>request context</dfn>
   :: An opaque context used to handle the request.
 </dl>
 
@@ -2934,19 +2934,19 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
       1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
         otherwise.
       1. Let |serverPrevWin| be a new [=server auction previous win=] with the following [=struct/items=]:
-        : [=server auction previous win/timeDelta=]
+        : [=server auction previous win/time delta=]
         :: |timeDelta|
         : [=server auction previous win/ad render ID=]
         :: the value of the "adRenderId" field in |prevWin|'s [=previous win/ad json=], or the empty string if not present
       1. [=list/Append=] |serverPrevWin| to |prevWins|.
     1. Let |browserSignals| be a new [=server auction browser signals=] with the following [=struct/items=]:
-      : [=server auction browser signals/bidCount=]
+      : [=server auction browser signals/bid count=]
       :: the sum of |ig|'s [=interest group/bid counts=] with a bid day within the last 30 days
-      : [=server auction browser signals/joinCount=]
+      : [=server auction browser signals/join count=]
       :: the sum of |ig|'s [=interest group/join counts=] with a join day within the last 30 days
-      : [=server auction browser signals/recencyMs=]
+      : [=server auction browser signals/recency ms=]
       :: the [=current wall time=] minus |ig|'s [=interest group/join time=] in millseconds
-      : [=server auction browser signals/prevWins=]
+      : [=server auction browser signals/previous wins=]
       :: |prevWins|
     1. Let |serverIg| be a new [=server auction interest group=] with the following [=struct/items=]:
       : [=server auction interest group/name=]
@@ -2969,8 +2969,8 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
   1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
     resolve |p| with |result|.
   1. Let |requestContext| be a new [=server auction request context=].
-  1. Set |requestContext|'s [=server auction request context/requestId=] field to the value of |result|'s {{AdAuctionData/requestId}} field.
-  1. Set |requestContext|'s [=server auction request context/requestContext=] field to |context|.
+  1. Set |requestContext|'s [=server auction request context/request ID=] field to the value of |result|'s {{AdAuctionData/requestId}} field.
+  1. Set |requestContext|'s [=server auction request context/request context=] field to |context|.
   1. [=map/set=] |global|'s [=associated Document's=] [=node navigable's=]
     [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=][|requestId|] to |requestContext|.
 1. Return p
