@@ -530,7 +530,7 @@ dictionary AuctionAdInterestGroupKey {
 The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps are:
 
 1. Let |global| be [=this=]'s [=relevant global object=].
-1. Let |frameOrigin| be |global|'s [=environment settings object/origin=].
+1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s [=environment settings object/origin=].
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
 1. Let |p| be [=a new promise=].
 1. If |group| [=map/is empty=]:
@@ -744,7 +744,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       |p| with null.
     1. [=list/For each=] |reportUrl| of |auctionReportInfo|'s
       [=auction report info/debug loss report urls=]:
-      1. [=Send report=] to |reportUrl|.
+      1. [=Send report=] with |reportUrl| and |frameOrigin|.
     1. [=Send real time reports=] with |auctionReportInfo|'s
       [=auction report info/real time reporting contributions map=] and |frameOrigin|.
   1. Otherwise:
@@ -961,8 +961,8 @@ To <dfn>asynchronously finish reporting</dfn> given a
          [=reporting result/reporting macro map=].
       1. [=Finalize a reporting destination=] with |reportingMap|,
          {{FenceReportingDestination/buyer}}, |buyerMap|, and |macroMap|.
-      1. [=Send report=] to |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
-         [=reporting result/report url=].
+      1. [=Send report=] with |leadingBidInfo|'s [=leading bid info/buyer reporting result=]'s
+         [=reporting result/report url=] and |frameOrigin|.
       1. Set |buyerDone| to true.
    1. If |sellerDone| is false and |leadingBidInfo|'s [=leading bid info/seller reporting result=]
       is not null:
@@ -971,8 +971,8 @@ To <dfn>asynchronously finish reporting</dfn> given a
       1. If |sellerMap| is null, set |sellerMap| to an empty [=map=] «[]».
       1. [=Finalize a reporting destination=] with |reportingMap|,
          {{FenceReportingDestination/seller}}, and |sellerMap|.
-      1. [=Send report=] to |leadingBidInfo|'s [=leading bid info/seller reporting result=]'s
-         [=reporting result/report url=].
+      1. [=Send report=] with |leadingBidInfo|'s [=leading bid info/seller reporting result=]'s
+         [=reporting result/report url=] and |frameOrigin|.
       1. Set |sellerDone| to true.
    1. If |componentSellerDone| is false and |leadingBidInfo|'s
       [=leading bid info/component seller reporting result=] is not null:
@@ -982,13 +982,13 @@ To <dfn>asynchronously finish reporting</dfn> given a
       1. If |componentSellerMap| is null, set |componentSellerMap| to an empty [=map=] «[]».
       1. [=Finalize a reporting destination=] with |reportingMap|,
          {{FenceReportingDestination/component-seller}}, and |componentSellerMap|.
-      1. [=Send report=] to |leadingBidInfo|'s [=leading bid info/component seller reporting result=]'s
-         [=reporting result/report url=].
+      1. [=Send report=] with |leadingBidInfo|'s [=leading bid info/component seller reporting result=]'s
+         [=reporting result/report url=] and |frameOrigin|.
       1. Set |componentSellerDone| to true.
 1. [=list/For each=] |reportUrl| of |auctionReportInfo|'s [=auction report info/debug win report urls=]:
-  1. [=Send report=] to |report|.
+  1. [=Send report=] with |report| and |frameOrigin|.
 1. [=list/For each=] |reportUrl| of |auctionReportInfo|'s [=auction report info/debug loss report urls=]:
-  1. [=Send report=] to |report|.
+  1. [=Send report=] with |report| and |frameOrigin|.
 1. [=Send real time reports=] with |auctionReportInfo|'s
   [=auction report info/real time reporting contributions map=] and |frameOrigin|.
 
@@ -1499,12 +1499,12 @@ To <dfn>generate potentially multiple bids</dfn> given an [=ordered map=]-or-nul
 a [=string=] |auctionSignals|, a {{BiddingBrowserSignals}} |browserSignals|, a [=string=]-or-null |perBuyerSignals|,
 a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=duration=]
 |perBuyerTimeout| in milliseconds, a [=currency tag=] |expectedCurrency|, an {{unsigned short}}
-|multiBidLimit|, an [=interest group=] |ig|, and a [=moment=] |auctionStartTime|, perform the
-following steps. They return a failure if failing to fetch the script or wasm, otherwise a [=tuple=]
-([=list=] of [=generated bids=], [=bid debug reporting info=], [=list=] of
- [=real time reporting contributions=]).
-  1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=]
-    with |ig|.
+|multiBidLimit|, an [=interest group=] |ig|, and a [=moment=] |auctionStartTime|, and an
+[=origin=] |frameOrigin|, perform the following steps. They return a failure if failing to fetch
+the script or wasm, otherwise a [=tuple=] of ([=list=] of [=generated bids=],
+[=bid debug reporting info=], [=list=] of [=real time reporting contributions=]).
+  1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=] with
+    |ig|.
   1. Set |browserSignals|["{{BiddingBrowserSignals/joinCount}}"] to the sum of |ig|'s
      [=interest group/join counts=] for all days within the last 30 days.
   1. Set |browserSignals|["{{BiddingBrowserSignals/recency}}"] to the [=current wall time=]
@@ -1525,13 +1525,13 @@ following steps. They return a failure if failing to fetch the script or wasm, o
     1. [=list/Append=] |prevWinIDL| to |prevWins|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/prevWinsMs}}"] to |prevWins|.
   1. Let |biddingScriptFetcher| be the result of [=creating a new script fetcher=] with
-    |ig|'s [=interest group/bidding url=].
+    |ig|'s [=interest group/bidding url=], and |frameOrigin|.
   1. Let |biddingScript| be the result of [=waiting for script body from a fetcher=] given
      |biddingScriptFetcher|.
   1. If |biddingScript| is failure, return failure.
   1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
     1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
-      [=interest group/bidding wasm helper url=].
+      [=interest group/bidding wasm helper url=] and |frameOrigin|.
     1. If |wasmModuleObject| is not failure, then [=map/set=]
       |browserSignals|["{{BiddingBrowserSignals/wasmHelper}}"] to |wasmModuleObject|.
     1. Otherwise, return failure.
@@ -1567,10 +1567,12 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 |topLevelOrigin|, a [=list=] of [=interest groups=] |bidIgs|, a [=list=] of [=bid debug reporting info=]
 |bidDebugReportInfoList|, and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. [=Assert=] that these steps are running [=in parallel=].
+1. Let |settings| be |global|'s [=relevant settings object=].
+1. Let |frameOrigin| be |settings|'s [=environment settings object/origin=].
 1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicFetcher| be the result of [=creating a new script fetcher=] with
-  |auctionConfig|'s [=auction config/decision logic url=].
+  |auctionConfig|'s [=auction config/decision logic url=] and |frameOrigin|.
 1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. Let « |bidGenerators|, |negativeTargetInfo| » be the result of running
   [=build bid generators map=] with |auctionConfig|.
@@ -1634,8 +1636,8 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     [=interest group/owner=].
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
     [=report result=] with |leadingBidInfo|, |directFromSellerSignalsForSeller|, null, and |global|.
-  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|, and
-    |directFromSellerSignalsForBuyer|.
+  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|,
+    |directFromSellerSignalsForBuyer|, and |frameOrigin|.
   1. Return |leadingBidInfo|.
 
 1. If [=waiting until configuration input promises resolve=] given |auctionConfig| returns failure,
@@ -1676,7 +1678,6 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
     |decisionLogicFetcher|, |directFromSellerSignalsForSeller|, null, |auctionLevel|,
     |componentAuctionExpectedCurrency|, |topLevelOrigin| , and |realTimeContributionsMap|.
   1. Decrement |pendingAdditionalBids| by 1.
-1. Let |settings| be |global|'s [=relevant settings object=].
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
   1. Let |perBuyerCumulativeTimeout| be |auctionConfig|'s
@@ -1774,11 +1775,11 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
                |browserSignals|["{{BiddingBrowserSignals/crossOriginDataVersion}}"] to |dataVersion|.
             1. Otherwise, [=map/set=] |browserSignals|["{{BiddingBrowserSignals/dataVersion}}"] to
                |dataVersion|.
-          1. Let « |bidsBatch|, |bidDebugReportInfo| » be the result of [=generate potentially multiple bids=] given
-            |allTrustedBiddingSignals|, |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|,
-            a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
-            |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
-            |expectedCurrency|, |multiBidLimit|, |ig|, and |auctionStartTime|.
+          1. Let « |bidsBatch|, |bidDebugReportInfo| » be the result of
+            [=generate potentially multiple bids=] given |allTrustedBiddingSignals|,
+            |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|, a [=map/clone=] of
+            |browserSignals|, |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|,
+            |expectedCurrency|, |multiBidLimit|, |ig|, |auctionStartTime|, and |frameOrigin|.
           1. If |generateBidResult| is failure, then:
             1. If |optedInForRealTimeReporting| is true, then [=add a platform contribution=] with
               [=bidding script failure bucket=], |realTimeContributionsMap| and |buyer|.
@@ -1824,7 +1825,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
               of running [=generate potentially multiple bids=] with |allTrustedBiddingSignals|,
               |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
               |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
-              1 (for multiBidLimit), |ig|, and |auctionStartTime|.
+              1 (for multiBidLimit), |ig|, |auctionStartTime|, and |frameOrigin|.
 
               Note: passing 1 for multiBidLimit limits the rerun to producing at most a single bid.
 
@@ -1860,18 +1861,23 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
       [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and
       |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/interest group=]'s
       [=interest group/owner=].
-  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|, and
-    |directFromSellerSignalsForWinner|.
+  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|,
+    |directFromSellerSignalsForWinner|, and |frameOrigin|.
 1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=]
     are [=strings=].
-  1. [=list/For each=] [=ad keyword replacement=], |replacement|, within [=auction config/deprecated render url replacements=]:
+  1. [=list/For each=] [=ad keyword replacement=], |replacement|, within
+    [=auction config/deprecated render url replacements=]:
     1. Let |k| be |replacement|'s [=ad keyword replacement/match=].
     1. Let |v| be |replacement|'s [=ad keyword replacement/replacement=].
     1. [=map/Set=] |replacements|[|k|] to |v|.
-1. Set |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/ad descriptor=] to the result of [=fencedframeutil/substitute macros=] with |replacements| and [=leading bid info/leading bid=]'s [=generated bid/ad descriptor=].
+1. Set |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/ad descriptor=] to the
+  result of [=fencedframeutil/substitute macros=] with |replacements| and [=leading bid info/leading bid=]'s
+  [=generated bid/ad descriptor=].
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/ad descriptors=] is not null:
-  1. [=list/For each=] [=generated bid/ad descriptor=], |adDescriptor|, within [=leading bid info/leading bid=]'s [=generated bid/ad descriptors=]:
-    1. Set |adDescriptor| to the result of [=fencedframeutil/substitute macros=] with |replacements| and |adDescriptor|.
+  1. [=list/For each=] [=generated bid/ad descriptor=], |adDescriptor|, within
+    [=leading bid info/leading bid=]'s [=generated bid/ad descriptors=]:
+    1. Set |adDescriptor| to the result of [=fencedframeutil/substitute macros=] with |replacements|
+      and |adDescriptor|.
 1. Return |leadingBidInfo|.
 
 </div>
@@ -2255,7 +2261,7 @@ To <dfn>validate fetching response</dfn> given a [=response=] |response|, null, 
 </div>
 
 <div algorithm>
-To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
+To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url| and an [=origin=] |frameOrigin|:
 
   1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
@@ -2264,6 +2270,8 @@ To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url|:
     ::  «`Accept`: `application/wasm`»
     :   [=request/client=]
     ::  `null`
+    :   [=request/origin=]
+    ::  |frameOrigin|
     :   [=request/mode=]
     ::  "`no-cors`"
     :   [=request/referrer=]
@@ -2486,13 +2494,15 @@ Note: When trusted scoring signals fetches are not batched, |renderURLs|'s [=lis
 </div>
 
 <div algorithm>
-To <dfn>send report</dfn> given a [=URL=] |url|:
+To <dfn>send report</dfn> given a [=URL=] |url|, and an [=origin=] |frameOrigin|:
 
   1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
     ::  |url|
     :   [=request/client=]
     ::  `null`
+    :   [=request/origin=]
+    ::  |frameOrigin|
     :   [=request/mode=]
     ::  "`no-cors`"
     :   [=request/referrer=]
@@ -2501,6 +2511,9 @@ To <dfn>send report</dfn> given a [=URL=] |url|:
     ::  "`omit`"
     :   [=request/redirect mode=]
     :: "`error`"
+
+    Issue: One of the side-effects of a `null` client for this subresource request is it neuters
+    all service worker interceptions, despite not having to set the service workers mode.
 
     Issue: Stop using "`no-cors`" mode where possible
     (<a href="https://github.com/WICG/turtledove/issues/667">WICG/turtledove#667</a>).
@@ -2628,7 +2641,8 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
      |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s
      [=interest group ad/buyer and seller reporting ID=].
   1. Let |sellerReportingScriptFetcher| be the result of [=creating a new script fetcher=] with
-     |config|'s [=auction config/decision logic url=].
+     |config|'s [=auction config/decision logic url=] and |global|'s [=relevant settings object=]'s
+     [=environment settings object/origin=].
   1. Let |sellerReportingScript| be the result of [=waiting for script body from a fetcher=] given
      |sellerReportingScriptFetcher|.
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored » be the result of
@@ -2658,8 +2672,8 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
 
 <div algorithm>
 To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=string=] |sellerSignals|,
-a {{ReportingBrowserSignals}} |browserSignals|, and a [=direct from seller signals=]-or-null
-|directFromSellerSignals|:
+a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]-or-null
+|directFromSellerSignals|, and an [=origin=] |frameOrigin|:
 
   1. Let |config| be |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Let |winner| be |leadingBidInfo|'s [=leading bid info/leading bid=].
@@ -2699,7 +2713,7 @@ a {{ReportingBrowserSignals}} |browserSignals|, and a [=direct from seller signa
     1. Otherwise, [=map/Set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/interestGroupName}}"]
       to |winner|'s [=generated bid/interest group=] [=interest group/name=].
   1. Let |buyerReportingScriptFetcher| be the result of [=creating a new script fetcher=] with
-     |winner|'s [=generated bid/interest group=]'s [=interest group/bidding url=].
+     |winner|'s [=generated bid/interest group=]'s [=interest group/bidding url=] and |frameOrigin|.
   1. Let |buyerReportingScript| be the result of [=waiting for script body from a fetcher=] given
      |buyerReportingScriptFetcher|.
   1. Let |reportFunctionName| be "`reportWin`".
@@ -3058,6 +3072,9 @@ Initial implementation of this specification defines
     ::  "`omit`"
     :   [=request/redirect mode=]
     :: "`error`"
+
+    Issue: One of the side-effects of a `null` client for this subresource request is it neuters
+    all service worker interceptions, despite not having to set the service workers mode.
 
     Issue: Stop using "`no-cors`" mode where possible
     (<a href="https://github.com/WICG/turtledove/issues/667">WICG/turtledove#667</a>).
@@ -4552,6 +4569,8 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
       ::  «`Accept`: `application/json`»
       :   [=request/client=]
       ::  `null`
+      :   [=request/origin=]
+      ::  |owner|
       :   [=request/mode=]
       ::  "`no-cors`"
       :   [=request/referrer=]
@@ -5981,12 +6000,12 @@ headers. It's a [=struct=] with the following [=struct/items=]:
 </dl>
 
 <div algorithm>
-To <dfn>create a new script fetcher</dfn> given a [=URL=] |url|:
+To <dfn>create a new script fetcher</dfn> given a [=URL=] |url| and an [=origin=] |frameOrigin|:
 
   1. Let |fetcher| be a new [=script fetcher=].
   1. Let |queue| be the result of [=starting a new parallel queue=].
   1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-    1. [=Fetch script=] given |url| and |fetcher|.
+    1. [=Fetch script=] given |url|, |frameOrigin| and |fetcher|.
   1. Return |fetcher|.
 </div>
 
@@ -6026,7 +6045,8 @@ To <dfn>parse allowed trusted scoring signals origins</dfn> given a [=header lis
 </div>
 
 <div algorithm>
-To <dfn>fetch script</dfn> given a [=URL=] |url| and a [=script fetcher=] |fetcher|:
+To <dfn>fetch script</dfn> given a [=URL=] |url|, an [=origin=] |frameOrigin|, and a
+[=script fetcher=] |fetcher|:
   1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
     ::  |url|
@@ -6034,14 +6054,16 @@ To <dfn>fetch script</dfn> given a [=URL=] |url| and a [=script fetcher=] |fetch
     ::  «`Accept`: `text/javascript`»
     :   [=request/client=]
     ::  `null`
+    :   [=request/origin=]
+    ::  |frameOrigin|
     :   [=request/mode=]
     ::  "`no-cors`"
     :   [=request/referrer=]
-    :: "`no-referrer`"
+    ::  "`no-referrer`"
     :   [=request/credentials mode=]
     ::  "`omit`"
     :   [=request/redirect mode=]
-    :: "`error`"
+    ::  "`error`"
 
     Issue: One of the side-effects of a `null` client for this subresource request is it neuters all
     service worker interceptions, despite not having to set the service workers mode.
