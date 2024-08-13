@@ -196,7 +196,6 @@ dictionary AuctionAd {
 dictionary GenerateBidInterestGroup {
   required USVString owner;
   required USVString name;
-  required double lifetimeMs;
 
   boolean enableBiddingSignalsPrioritization = false;
   record<DOMString, double> priorityVector;
@@ -218,6 +217,7 @@ dictionary GenerateBidInterestGroup {
 dictionary AuctionAdInterestGroup : GenerateBidInterestGroup {
   double priority = 0.0;
   record<DOMString, double> prioritySignalsOverrides;
+  required double lifetimeMs;
   DOMString additionalBidKey;
 };
 </xmp>
@@ -226,7 +226,11 @@ dictionary AuctionAdInterestGroup : GenerateBidInterestGroup {
 when an interest group is stored to [=interest group set=].
 `priority` and `prioritySignalsOverrides` are not passed to `generateBid()` because they can be
 modified by `generatedBid()` calls, so could theoretically be used to create a cross-site profile of
-a user accessible to `generateBid()` methods, otherwise.
+a user accessible to `generateBid()` methods, otherwise. `lifetimeMs` is not passed to `generateBid()`
+because it's ambiguous what should be passed: the lifetime when the group was joined, or the
+remaining lifetime. Providing the remaining lifetime would also potentially give access to more
+granular timing information than the API would otherwise allow, when state is shared across interest
+groups.
 
 <div algorithm="joinAdInterestGroup()">
 
