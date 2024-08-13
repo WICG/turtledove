@@ -1063,11 +1063,13 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. If |seller| is failure, then return failure.
 1. Set |auctionConfig|'s [=auction config/seller=] to |seller|.
 1. If |config|["{{AuctionAdConfig/serverResponse}}"] [=map/exists=]:
-  1. If not |config|["{{AuctionAdConfig/requestId}}"] [=map/exists=] then [=exception/throw=]
+  1. If |config|["{{AuctionAdConfig/requestId}}"] does not [=map/exist=], then [=exception/throw=]
     a {{TypeError}}.
   1. Set |auctionConfig|'s [=auction config/server response=] to |config|["{{AuctionAdConfig/serverResponse}}"].
   1. Set |auctionConfig|'s [=auction config/server response id=] to |config|["{{AuctionAdConfig/requestId}}"].
 1. Otherwise:
+  1. If |config|["{{AuctionAdConfig/requestId}}"] does [=map/exists=], then [=exception/throw=]
+    a {{TypeError}}.
   1. Let |decisionLogicURL| be the result of running the [=URL parser=] on
     |config|["{{AuctionAdConfig/decisionLogicURL}}"].
   1. If |decisionLogicURL| is failure, or it is not [=same origin=] with |auctionConfig|'s
@@ -1619,7 +1621,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/topWindowHostname}}"] to |topLevelHost|.
 1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/seller}}"] to the [=serialization of an
   origin|serialization=] of |seller|.
-1. If |auctionConfig|'s [=auction config/requested size=] is not null, [=map/set=] 
+1. If |auctionConfig|'s [=auction config/requested size=] is not null, [=map/set=]
    |browserSignals|["{{BiddingBrowserSignals/requestedSize}}"] to the result of running
    [=convert an ad size to a map=] with |auctionConfig|'s [=auction config/requested size=].
 1. Let |auctionLevel| be "single-level-auction".
@@ -2651,6 +2653,16 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
 
 <h3 id="getInterestGroupAdAuctionData">getInterestGroupAdAuctionData()</h3>
 
+*This first introductory paragraph is non-normative.*
+
+When a website or someone working on behalf of the website (e.g. a supply side platform, SSP) wants
+to conduct an auction using a trusted auction server to select an advertisement to display to the
+user, they can call the {{Window/navigator}}.{{Navigator/getInterestGroupAdAuctionData()}} function.
+This function returns an opaque {{Uint8Array}} as the request and a request ID string. The request
+can be sent to a trusted auction server through the JS [[FETCH]] API, which returns a response.
+The response along with the request ID can be then passed as part of an auction configuration to
+{{Window/navigator}}.{{Navigator/runAdAuction()}} to extract the results of the auction.
+
 <xmp class="idl">
 [SecureContext]
 partial interface Navigator {
@@ -2672,9 +2684,9 @@ A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=
 <dl dfn-for="server auction interest group">
   : <dfn>name</dfn>
   :: A [=string=] that uniquely defines each interest group, as in [=interest group/name=].
-  : <dfn>biddingSignalsKeys</dfn>
+  : <dfn>bidding signals keys</dfn>
   :: Null or a [=list=] of [=string=], as in [=interest group/trusted bidding signals keys=]
-  : <dfn>userBiddingSignals</dfn>
+  : <dfn>user bidding signals</dfn>
   :: Null or a [=string=], as in [=interest group/user bidding signals=]
   : <dfn>ads</dfn>
   :: A [=list=] of [=strings=] containing the corresponding [=interest group ad/ad render IDs=]
@@ -2682,7 +2694,7 @@ A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=
   : <dfn>components</dfn>
   ::  A [=list=] of [=strings=] containing the corresponding [=interest group ad/ad render IDs=]
     from the [=interest group/ad components=] field.
-  : <dfn>browserSignals</dfn>
+  : <dfn>browser signals</dfn>
   :: A [=server auction browser signals=] object.
 </dl>
 
@@ -2731,41 +2743,52 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
 1. Let |p| be [=a new promise=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. Let |igMap| be a new [=map=].
+  1. Let |igMap| be a new [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are [=lists=].
   1. Let |startTime| be a [=moment=] equal to the [=current wall time=].
   1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
-    1. If |ig|'s [=interest group/ads] is Null or [=list/is empty=], continue.
-    1. Set |owner| to the value of |ig's [=interest group/owner=] field.
-    1. If not |igMap|[|owner|] [=map/exists=]:
-      1. [=map/set=] |igMap|[|owner|] to a new [=list=]>.
-    1. Let |serverIg| be a new [=server auction interest group=].
-    1. Set |serverIg|'s [=server auction interest group/name=] to the value of |ig|'s [=interest group/name=] field.
-    1. Set |serverIg|'s [=server auction interest group/biddingSignalsKeys=] to the value of |ig|'s [=interest group/trusted bidding signals keys=] field.
-    1. Set |serverIg|'s [=server auction interest group/userBiddingSignals=] to the value of |ig|'s [=interest group/user bidding signals=] field.
+    1. If |ig|'s [=interest group/ads] is null or [=list/is empty=], [=iteration/continue=].
+    1. Let |owner| be |ig|'s [=interest group/owner=].
+    1. If |igMap|[|owner|] does not [=map/exist=]:
+      1. [=map/Set=] |igMap|[|owner|] to a new [=list=].
     1. Let |ads| be a new [=list=].
-    1. For each |ad| in |ig|'s [=interest group/ads=] field, [=list/append=] the value of |ad|'s [=interest group ad/ad render ID=] to |ads|.
-    1. Set |serverIg|'s [=server auction interest group/ads=] to |ads|.
+    1. [=list/For each=] |ad| in |ig|'s [=interest group/ads=], [=list/Append=] |ad|'s [=interest group ad/ad render ID=] to |ads|.
     1. Let |components| be a new [=list=].
-    1. For each |component| in |ig|'s [=interest group/ad components=] field, [=list/append=] the value of |component|'s [=interest group ad/ad render ID=] to |components|.
-    1. Set |serverIg|'s [=server auction interest group/components=] to |components|.
-    1. Let |browserSignals be a new [=server auction browser signals=].
-    1. Set |browserSignals|' [=server auction browser signals/bidCount=] to the sum of |ig|'s [=interest group/bid counts=] with a bid day within the last 30 days.
-    1. Set |browserSignals|' [=server auction browser signals/joinCount=] to the sum of |ig|'s [=interest group/join counts=] with a join day within the last 30 days.
-    1. Set |browserSignals|' [=server auction browser signals/recencyMs=] to the [=current wall time=] minus |ig|'s [=interest group/join time=] in millseconds.
+    1. [=list/For each=] |component| in |ig|'s [=interest group/ad components=], [=list/append=] |component|'s [=interest group ad/ad render ID=] to |components|.
     1. Let |prevWins| be a new <code>[=sequence=]<[=server auction previous win=]></code>.
     1. [=list/For each=] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
       the last 30 days:
       1. Let |timeDelta| be |startTime| minus |prevWin|'s [=previous win/time=].
       1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
         otherwise.
-      1. Let |serverPrevWin| be a new [=server auction previous win=].
-      1. Set |serverPrevWin|'s [=server auction previous win/timeDelta=] to |timeDelta|.
-      1. Let |adRenderId| be the value of the "adRenderId" field in |prevWin|'s [=previous win/ad json=], or the empty string if not present.
-      1. Set |serverPrevWin|'s [=server auction previous win/ad render ID=] to |adRenderId|.
-      1. [=list/append=] |serverPrevWin| to |prevWins|.
-    1. Set |browserSignals|' [=server auction browser signals/prevWins=] to |prevWins|.
-    1. Set |serverIg|'s [=server auction interest group/browserSignals=] to |browserSignals|.
-    1. [=list/append=] |serverIg| to |igMap|[|owner|].
+      1. Let |serverPrevWin| be a new [=server auction previous win=] with the following [=struct/items=]:
+        : [=server auction previous win/timeDelta=]
+        :: |timeDelta|
+        : [=server auction previous win/ad render ID=]
+        :: the value of the "adRenderId" field in |prevWin|'s [=previous win/ad json=], or the empty string if not present
+      1. [=list/Append=] |serverPrevWin| to |prevWins|.
+    1. Let |browserSignals| be a new [=server auction browser signals=] with the following [=struct/items=]:
+      : [=server auction browser signals/bidCount=]
+      :: the sum of |ig|'s [=interest group/bid counts=] with a bid day within the last 30 days
+      : [=server auction browser signals/joinCount=]
+      :: the sum of |ig|'s [=interest group/join counts=] with a join day within the last 30 days
+      : [=server auction browser signals/recencyMs=]
+      :: the [=current wall time=] minus |ig|'s [=interest group/join time=] in millseconds
+      : [=server auction browser signals/prevWins=]
+      :: |prevWins|
+    1. Let |serverIg| be a new [=server auction interest group=] with the following [=struct/items=]:
+      : [=server auction interest group/name=]
+      :: |ig|'s [=interest group/name=]
+      : [=server auction interest group/bidding signals keys=]
+      :: |ig|'s [=interest group/trusted bidding signals keys=]
+      : [=server auction interest group/user bidding signals=]
+      :: |ig|'s [=interest group/user bidding signals=]
+      : [=server auction interest group/ads=]
+      :: |ads|
+      : [=server auction interest group/components=]
+      :: |components|
+      : [=server auction interest group/browser signals=]
+      :: |browserSignals|
+    1. [=list/Append=] |serverIg| to |igMap|[|owner|].
   1. Let |result| be a new {{AdAuctionData}}.
   1. Let |requestId} be the [=string representation=] of a [=version 4 UUID=]
   1. Set |result|'s {{AdAuctionData/requestId}} field to |requestId|.
@@ -4794,12 +4817,12 @@ with the {{RequestInit/adAuctionHeaders}} option set to `true`, or during an
 <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
 request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a>
 set to `true`, as described in the [:Ad-Auction-Additional-Bid:] header description.
-</div>
 
 Each [=traversable navigable=] has a <dfn for="traversable navigable">saved Bidding
 and Auction request context</dfn>, which is a [=map=] whose [=map/keys=] are
 the [=string representation=] of a [=version 4 UUID=] and whose [=map/values=]
 are [=server auction request contexts=].
+</div>
 
 <div algorithm="fetch capture adAuctionHeaders boolean patch">
 Modify the definition of a [=request=]:
@@ -5047,7 +5070,7 @@ dictionary ScoringBrowserSignals {
 
 <div algorithm>
   To <dfn>convert an ad size to a map</dfn> given an [=ad size=] |adSize|:
-  
+
   1. Let |dict| be a new empty [=map=].
   1. Let |jsWidth| be |adSize|'s [=ad size/width=], [=converted to an ECMAScript value=].
   1. [=map/Set=] |dict|["width"] to the result of [=string/concatenating=] « [$ToString$](|jsWidth|),
@@ -5572,8 +5595,7 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
     Specifies whether some bids will be provided as signed exchanges. Sets to failure if the
     {{AuctionAdConfig/additionalBids}} {{Promise}} is [=rejected=].
   : <dfn>server response</dfn>
-  :: Null or a {{Promise}} or a {{Uint8Array}} containing an encrypted response from the server.
-    Response from a trusted auction server.
+  :: Null or a {{Promise}} or a {{Uint8Array}} containing an encrypted response from the trusted auction server.
   : <dfn>server response id</dfn>
   :: Null or a [=version 4 UUID=]
     A UUID used to match a request from
