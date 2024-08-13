@@ -52,7 +52,7 @@ There are two variants of the `reportEvent` API for event-level reporting that a
 
 This API is available from all documents in a fenced frame tree (i.e., the ad creative URL that won the Protected Audience auction). Child iframe or redirected documents that are same-origin to the mapped URL of the fenced frame config can call this API without any restrictions. Cross-origin child iframe documents can only call this API if there is opt-in from both the fenced frame root and the cross-origin document. The fenced frame root opts in by being served with a new `Allow-Cross-Origin-Event-Reporting` response header set to `true`. The cross-origin document opts in by calling `reportEvent` with `crossOriginExposed=true`. [See TURTLEDOVE issue #1077](https://github.com/WICG/turtledove/issues/1077) for the motivation behind cross-origin support.
 
-The browser processes the beacon by sending an HTTP POST request, like the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon).
+The browser processes the beacon by sending an HTTP POST request, like the existing [navigator.sendBeacon](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon). The POST request is sent immediately or as soon as the corresponding registerAdBeacon is invoked, and is done asynchronously to avoid blocking other actions.
 
 Note `window.fence` here is a new namespace for APIs that are only available from within a fenced frame. In the interim period when FLEDGE supports rendering the winning ad in an iframe, `window.fence` will also be available in such an iframe.
 
@@ -330,7 +330,7 @@ For fenced frames rendering the ad components under the top-level ad fenced fram
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
-  'eventType': 'reserved.top_navigation',
+  'eventType': 'reserved.top_navigation_commit',
   'destination':['seller', 'buyer']
 });
 ```
