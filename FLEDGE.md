@@ -569,7 +569,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
       'dataVersion': 1, /* Data-Version value from the trusted scoring signals server's response */
       'selectedBuyerAndSellerReportingId': 'deal2', /* Value returned by generateBid. */
       'selectedbuyerAndSellerReportingIdRequired': true, /* Value returned by generateBid. */
-         /* Sellers may want to ignore bids if this is false but selectedBuyerAndSellerReportingId
+         /* Sellers may want to ignore bids if this is false but the selectedBuyerAndSellerReportingId
             is necessary in reportResult() to properly report on this bid. */
       'buyerAndSellerReportingId': 'seatId',
     }
@@ -972,9 +972,9 @@ The output of `generateBid()` contains the following fields:
     `reportWin()` and `reportResult()`. See
     [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
 *   selectedBuyerAndSellerReportingIdRequired: (optional) A boolean that when `true`,
-    indicates this bid should be thrown away if the k-anonymity check on the
-    `selectedBuyerAndSellerReportingId` fails. Setting this to `true` indicates
-    that reporting of this bid would not operate correctly were the
+    indicates this bid should be thrown away if `selectedBuyerAndSellerReportingId`
+    is not present or if the k-anonymity check on it fails. Setting this to `true`
+    indicates that reporting of this bid would not operate correctly were the
     `selectedBuyerAndSellerReportingId` not presented to `reportWin()` and
     `reportResult()`. See [Reporting IDs](#54-reporting-ids-in-reporting)
     for more details.
