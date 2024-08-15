@@ -730,10 +730,10 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |bidDebugReportInfoList| be a new [=list=] of [=bid debug reporting info=].
-  1. If |auctionConfig|'s serverResponse member is not null
+  1. If |auctionConfig|'s [=auction config/server response=] is not null:
     1. Let |winnerInfo| be the result of running [=parse and validate server response=] with |auctionConfig|,
       null, |global|, |bidIgs|, and |bidDebugReportInfoList|.
-  1. Else
+  1. Otherwise:
     1. Let |realTimeContributionsMap| be a new [=real time reporting contributions map=].
     1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
       null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|,
@@ -2765,7 +2765,7 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
 1. Let |requestId| be the value of |auctionConfig|'s [=auction config/server response id=].
 1. Let |requestContexts| be the value of |global|'s [=associated Document's=] [=node navigable's=]
   [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=].
-1. If not [=map/exists=] |requestContexts|[|requestId|] return null.
+1. If |requestContexts|[|requestId|] does not [=map/exist=], return null.
 1. TODO(behamilton) Let |response| be the result of deserializing |auctionConfig|'s [=auction config/server response=]
   according to the Bidding and Auction Services IETF standard (TODO).
 1. Construct bids based on |response|.
@@ -2868,7 +2868,7 @@ A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=
   ::  A [=list=] of [=strings=] containing the corresponding [=interest group ad/ad render IDs=]
     from the [=interest group/ad components=] field.
   : <dfn>browser signals</dfn>
-  :: A [=server auction browser signals=] object.
+  :: A [=server auction browser signals=].
 </dl>
 
 A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [=struct/items=]:
@@ -2919,12 +2919,11 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
   1. Let |igMap| be a new [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are [=lists=].
   1. Let |startTime| be a [=moment=] equal to the [=current wall time=].
   1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
-    1. If |ig|'s [=interest group/ads] is null or [=list/is empty=], [=iteration/continue=].
+    1. If |ig|'s [=interest group/ads=] is null or [=list/is empty=], [=iteration/continue=].
     1. Let |owner| be |ig|'s [=interest group/owner=].
-    1. If |igMap|[|owner|] does not [=map/exist=]:
-      1. [=map/Set=] |igMap|[|owner|] to a new [=list=].
+    1. If |igMap|[|owner|] does not [=map/exist=], then [=map/set=] |igMap|[|owner|] to a new [=list=].
     1. Let |ads| be a new [=list=].
-    1. [=list/For each=] |ad| in |ig|'s [=interest group/ads=], [=list/Append=] |ad|'s [=interest group ad/ad render ID=] to |ads|.
+    1. [=list/For each=] |ad| in |ig|'s [=interest group/ads=], [=list/append=] |ad|'s [=interest group ad/ad render ID=] to |ads|.
     1. Let |components| be a new [=list=].
     1. [=list/For each=] |component| in |ig|'s [=interest group/ad components=], [=list/append=] |component|'s [=interest group ad/ad render ID=] to |components|.
     1. Let |prevWins| be a new <code>[=sequence=]<[=server auction previous win=]></code>.
@@ -2963,7 +2962,7 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
       :: |browserSignals|
     1. [=list/Append=] |serverIg| to |igMap|[|owner|].
   1. Let |result| be a new {{AdAuctionData}}.
-  1. Let |requestId} be the [=string representation=] of a [=version 4 UUID=]
+  1. Let |requestId| be the [=string representation=] of a [=version 4 UUID=].
   1. Set |result|'s {{AdAuctionData/requestId}} field to |requestId|.
   1. Let |context| be the result of serializing |igMap| using |config| according to the Bidding and Auction Services IETF standard into |result|'s {{AdAuctionData/request}} field.
   1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
@@ -2973,7 +2972,7 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
   1. Set |requestContext|'s [=server auction request context/request context=] field to |context|.
   1. [=map/set=] |global|'s [=associated Document's=] [=node navigable's=]
     [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=][|requestId|] to |requestContext|.
-1. Return p
+1. Return p.
 
 </div>
 
@@ -5873,7 +5872,7 @@ An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/item
     with registered macros. Each origin's [=origin/scheme=] must be "`https`" and each origin must be
     <a href="https://github.com/privacysandbox/attestation">enrolled</a>. Only meaningful in
     [=interest group/ads=], but ignored in [=interest group/ad components=].
-  : <dfn> ad render ID</dfn>
+  : <dfn>ad render ID</dfn>
   :: A [=string=] containing up to 12 [=ASCII bytes=] uniquely identifying this ad. Sent instead
     of the full [=interest group ad=] for auctions executed on a server.
 </dl>
