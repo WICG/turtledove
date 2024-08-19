@@ -156,7 +156,7 @@ The browser will only allow the `joinAdInterestGroup()` operation with the permi
 
 The returned `joinPromise` is resolved if the group is successfully joined, and rejected with an error if the join operation fails. The error message and the resolution time must _not_ depend on what interest groups a user is in, or any cross-origin browser state, apart from the results of the .well-known fetch, to avoid leaking any data across sites.
 
-There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which looks only at `myGroup.name` and `myGroup.owner`. As with join calls, `leaveAdInterestGroup()` also returns a promise. As a special case to support in-ad UIs, invoking `navigator.leaveAdInterestGroup()` from inside an ad that is being targeted at a particular interest group will cause the browser to leave that group, irrespective of permission policies. Note that calling `navigator.leaveAdInterestGroup()` without arguments inside a [component ad](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces) frame isn't supported until Chrome M120. Starting from Chrome M120, calling `navigator.leaveAdInterestGroup()` without arguments inside a component ad frame is supported. The ad component frame is required to be same-origin with the interest group owner for the leave to succeed, same as calling `leaveAdInterestGroup()` without arguments in a non-ad-component frame. 
+There is a complementary API `navigator.leaveAdInterestGroup(myGroup)` which looks only at `myGroup.name` and `myGroup.owner`. As with join calls, `leaveAdInterestGroup()` also returns a promise. As a special case to support in-ad UIs, invoking `navigator.leaveAdInterestGroup()` from inside an ad that is being targeted at a particular interest group will cause the browser to leave that group, irrespective of permission policies. Note that calling `navigator.leaveAdInterestGroup()` without arguments inside a [component ad](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces) frame isn't supported until Chrome M120. Starting from Chrome M120, calling `navigator.leaveAdInterestGroup()` without arguments inside a component ad frame is supported. The ad component frame is required to be same-origin with the interest group owner for the leave to succeed, same as calling `leaveAdInterestGroup()` without arguments in a non-ad-component frame.
 
 There is a related API `navigator.clearOriginJoinedAdInterestGroups(owner, [<groupNamesToKeep>])` that leaves all interest groups owned by `owner` that were joined on the current top-level frame's origin, and also returns a Promise. The `[<groupNamesToKeep>]` argument is an optional list of interest group names that will not be left, and if not present, it will act as if an empty array was passed. This method has no effect on joined interest groups owned by `owner` that were most recently joined on different top-level origins.
 
@@ -178,7 +178,7 @@ The `updateURL` provides a mechanism for the group's owner to update the attribu
 of the interest group: any new values returned in this way overwrite the values
 previously stored (except that the `name` and `owner` cannot be changed, and
 `prioritySignalsOverrides` will be merged with the previous value, with `null`
-meaning a value should be removed from the interest group's old dictionary). The HTTP request 
+meaning a value should be removed from the interest group's old dictionary). The HTTP request
 will not include any metadata, so data such as the interest group `name` should be
 included within the URL. Note that the lifetime of an Interest Group is not affected by the update mechanism — ad targeting based on a person's activity on a site remains limited to 30 days after the most recent site visit.
 
@@ -255,8 +255,10 @@ At some point in the future -  no earlier than Q1 2025 -  when the sizes are dec
 
 The `auctionServerRequestFlags` field is optional and is only used for auctions [run on an auction server](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
 This field contains a list of enumerated values that change what data is sent in the auction blob:
- * The `omit-ads` enumeration causes the request to omit the `ads` and `adComponents` fields for
-this interest group from the auction blob.
+  * The `omit-ads` enumeration causes the request to omit the `ads` and
+    `adComponents` fields for this interest group from the auction blob.
+  * The `omit-user-bidding-signals` enumeration causes the request to omit the
+    `userBiddingSignals` field for this interest group from the auction blob.
   * The `include-full-ads` enumeration causes the request to include the full ad object in place of
 anywhere in the request where a plain `adRenderId` would have been sent (such as in the `ads`
 and `adComponents` fields as well as `prevWins`). Note that `include-full-ads` is not compatible
@@ -465,7 +467,7 @@ While `joinAdInterestGroup()` has strict requirements about the calling origin
 matching the interest group’s owner (or a prescribed delegate), `runAdAuction()`
 does not require the calling origin matches the seller’s origin.  This means
 there can be times when `runAdAuction()` is not called from the seller’s origin,
-for example: 
+for example:
 
 1. when a top-level seller calls `runAdAuction()` from the publisher’s site context,
    or
@@ -493,10 +495,10 @@ bid a positive score.
 
 #### 2.2 Auction Participants
 
-Each interest group the browser has joined with: 
+Each interest group the browser has joined with:
 * `owner` in the list of `interestGroupBuyers`.
 *  Non null `biddingLogicURL`. The fetch of `biddingLogicURL` and `biddingWasmHelperURL` (if specified) must succeed to bid.
-*  At least one registered creative in the `ads` element. This implies that [negative interest groups](#621-negative-interest-groups) cannot bid as they cannot contain `ads`.  
+*  At least one registered creative in the `ads` element. This implies that [negative interest groups](#621-negative-interest-groups) cannot bid as they cannot contain `ads`.
 *  Priority, as stated by `priority` or calculated via `priorityVector`, is greater than or equal to 0.
 
 will have an opportunity to bid in the auction.  See the "Buyers Provide Ads and Bidding Functions" section, below, for how interest groups bid.
@@ -677,7 +679,7 @@ Note that only the `Ad-Auction-Signals` response header from the server will onl
 
 Like `directFromSellerSignals`, `directFromSellerSignalsHeaderAdSlot` may be passed as a promise that resolves to the ad slot string -- the auction perform loading, but delays execution until the promise is resolved.
 
-The signals are only guaranteed to be available to `navigator.runAdAuction()` after the `fetch()` promise has resolved. Therefore, to avoid races, either `runAdAuction()` should be called after resolving the `fetch()` promise, or `directFromSellerSignalsHeaderAdSlot` should be passed a promise that only resolves after the `fetch()` promise resolves. 
+The signals are only guaranteed to be available to `navigator.runAdAuction()` after the `fetch()` promise has resolved. Therefore, to avoid races, either `runAdAuction()` should be called after resolving the `fetch()` promise, or `directFromSellerSignalsHeaderAdSlot` should be passed a promise that only resolves after the `fetch()` promise resolves.
 
 ### 3. Buyers Provide Ads and Bidding Functions (BYOS for now)
 
@@ -734,7 +736,7 @@ The `perInterestGroupData` dictionary contains optional data for interest groups
 
 The `updateIfOlderThanMs` optional field specifies that the interest group should be updated via the `updateURL` mechanism (see the [interest group attributes](#12-interest-group-attributes) section) if the interest group hasn't been joined or updated in a duration of time exceeding `updateIfOlderThanMs` milliseconds. Updates that ended in failure, either parse or network failure, are not considered to increment the last update or join time. An `updateIfOlderThanMs` that's less than 10 minutes will be clamped to 10 minutes.
 
-Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way as [`trustedBiddingSignalsURL`](#31-fetching-real-time-data-from-a-trusted-server), with the base URL coming from the `trustedScoringSignalsURL` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderURLs bids offered in the auction. Note that the query params use "Urls" instead of "URLs". It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders. 
+Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way as [`trustedBiddingSignalsURL`](#31-fetching-real-time-data-from-a-trusted-server), with the base URL coming from the `trustedScoringSignalsURL` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderURLs bids offered in the auction. Note that the query params use "Urls" instead of "URLs". It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.
 
 Similarly to `trustedBiddingSignalsURL`, scoring signals requests may also be coalesced across a certain number of bids that share a `trustedScoringSignalsURL`. The number of bids in a single request is limited by the auction configuration's `maxTrustedScoringSignalsURLLength` field. For example, if an auction configuration has a `maxTrustedScoringSignalsURLLength` of 1000, it means that the length of each trusted scoring signals request URL for this auction cannot exceed 1000 characters. If an auction configuration wants an infinite length for the request URL, it can specify 0 for the `maxTrustedScoringSignalsURLLength`.
 
@@ -922,7 +924,7 @@ The output of `generateBid()` contains the following fields:
     * url: The creative's URL.
     * width: The creative's width. This size will be matched against the declaration in the interest group and substituted into any ad size macros present in the ad creative URL. When the ad is loaded in a fenced frame, the fenced frame's inner frame (i.e. the size visible to the ad creative) will be frozen to this size, and it will be unable to see changes to the rame size made by the embedder.
     * height: The creative's height. See elaboration in `width` above.
-    
+
     Optionally, if you don't want to hook into interest group size declarations (e.g., if you don't want to use size macros), you can have `render` be just the URL, rather than a dictionary with `url` and `size`.
 *   adComponents: (optional) A list of up to 20 (in process of being increased to 40 starting from M122) adComponent strings from the InterestGroup's adComponents field. Each value must match one of `interestGroup`'s `adComponent`'s `renderURL` and sizes exactly. This field must not be present if `interestGroup` has no `adComponent` field. It is valid for this field not to be present even when `adComponents` is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
 *   allowComponentAuction: If this buyer is taking part of a component auction, this value must be present and true, or the bid is ignored. This value is ignored (and may be absent) if the buyer is part of a top-level auction.
@@ -1110,7 +1112,7 @@ In the long term, we need a mechanism to ensure that the after-the-fact reportin
 
 #### 5.1 Seller Reporting on Render
 
-A seller's JavaScript (i.e. the same script, loaded from `decisionLogicURL`, that provided the `scoreAd()` function) can also expose a `reportResult()` function. This is called with the bid that won the auction, if applicable. 
+A seller's JavaScript (i.e. the same script, loaded from `decisionLogicURL`, that provided the `scoreAd()` function) can also expose a `reportResult()` function. This is called with the bid that won the auction, if applicable.
 
 
 ```
@@ -1449,8 +1451,8 @@ For additional bids that win the auction, event-level win reporting is supported
 
 #### 7.1 forDebuggingOnly (fDO) APIs
 
-`generateBid()` and `scoreAd()` may call a `forDebuggingOnly.reportAdAuctionLoss()` API for event-level reporting for losing bids, which takes a single string argument representing a URL. 
-If the bid being generated or scored loses the auction, the URL will be fetched. These worklets may also call a `forDebuggingOnly.reportAdAuctionWin()` API which operates similarly to `forDebuggingOnly.reportAdAuctionLoss()` API but only fetches the URL after a winning bid or score. The forDebuggingOnly APIs support text placeholders `${}` in the reporting URL's query parameters, which will be replaced with the corresponding value from the auction (see [7.1.1 Post Auction Signals](#711-post-auction-signals)). Callers of these APIs should avoid assembling URLs longer than browser's URL length limits (e.g. [2MB for Chrome](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/security/url_display_guidelines/url_display_guidelines.md#url-length)) as these may not be reported. 
+`generateBid()` and `scoreAd()` may call a `forDebuggingOnly.reportAdAuctionLoss()` API for event-level reporting for losing bids, which takes a single string argument representing a URL.
+If the bid being generated or scored loses the auction, the URL will be fetched. These worklets may also call a `forDebuggingOnly.reportAdAuctionWin()` API which operates similarly to `forDebuggingOnly.reportAdAuctionLoss()` API but only fetches the URL after a winning bid or score. The forDebuggingOnly APIs support text placeholders `${}` in the reporting URL's query parameters, which will be replaced with the corresponding value from the auction (see [7.1.1 Post Auction Signals](#711-post-auction-signals)). Callers of these APIs should avoid assembling URLs longer than browser's URL length limits (e.g. [2MB for Chrome](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/security/url_display_guidelines/url_display_guidelines.md#url-length)) as these may not be reported.
 
 ```
 generateBid(interestGroup, auctionSignals, perBuyerSignals,
@@ -1471,7 +1473,7 @@ In order to accomplish our dual goals of helping with adoption and preserving us
 
 The URL passed to forDebuggingOnly.reportAdAuctionLoss() or forDebuggingOnly.reportAdAuctionWin()  is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model).
 
-##### 7.1.1 Post Auction Signals   
+##### 7.1.1 Post Auction Signals
 
 A post auction signal is a signal which is only available after the auction completes, such as the highest scoring other bid. The forDebuggingOnly APIs support the text placeholders below, which will be replaced with the corresponding value from the auction when found in the reporting URL's query parameters.
 
