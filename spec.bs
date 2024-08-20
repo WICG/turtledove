@@ -263,9 +263,8 @@ This is detectable because it can change the set of fields that are read from th
 1. Let |global| be [=this=]'s [=relevant global object=].
 1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=join-ad-interest-group=]"
   [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
-1. Let |settings| be [=this=]'s [=relevant settings object=].
-1. [=Assert=] that |settings|'s [=environment settings object/origin=] is not an [=opaque origin=]
-  and its [=origin/scheme=] is "`https`".
+1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s [=environment settings object/origin=].
+1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
   1. Set |interestGroup|'s [=interest group/expiry=] to the [=current wall time=] plus
@@ -440,7 +439,7 @@ This is detectable because it can change the set of fields that are read from th
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |permission| be the result of [=checking interest group permissions=] with
-    |interestGroup|'s [=interest group/owner=], |settings|, and "`join`".
+    |interestGroup|'s [=interest group/owner=], |frameOrigin|, and "`join`".
   1. If |permission| is false, then [=queue a global task=] on [=DOM manipulation task source=],
     given |global|, to [=reject=] |p| with a "{{NotAllowedError}}" {{DOMException}} and abort these
     steps.
@@ -575,8 +574,7 @@ dictionary AuctionAdInterestGroupKey {
 The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps are:
 
 1. Let |global| be [=this=]'s [=relevant global object=].
-1. Let |settings| be [=this=]'s [=relevant settings object=].
-1. Let |frameOrigin| be |settings|'s [=environment settings object/origin=].
+1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s [=environment settings object/origin=].
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
 1. Let |p| be [=a new promise=].
 1. If |group| [=map/is empty=]:
@@ -603,7 +601,7 @@ The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps are
   1. If |owner| is failure, [=exception/throw=] a {{TypeError}}.
   1. Run these steps [=in parallel=]:
     1. Let |permission| be the result of [=checking interest group permissions=] with
-      |owner|, |settings|, and "`leave`".
+      |owner|, |frameOrigin|, and "`leave`".
     1. If |permission| is false, then [=queue a global task=] on [=DOM manipulation task source=],
       given |global|, to [=reject=] |p| with a "{{NotAllowedError}}" {{DOMException}} and abort
       these steps.
@@ -638,8 +636,8 @@ partial interface Navigator {
 The <dfn for=Navigator method>clearOriginJoinedAdInterestGroups(|owner|, |interestGroupsToKeep|)</dfn>
 method steps are:
 
-1. Let |settings| be [=this=]'s [=relevant settings object=].
-1. Let |frameOrigin| be |settings|'s [=environment settings object/origin=].
+1. Let |frameOrigin| be [=this=]'s [=relevant settings object=]'s
+  [=environment settings object/origin=].
 1. [=Assert=] that |frameOrigin| is not an [=opaque origin=] and its [=origin/scheme=] is "`https`".
 1. Let |p| be [=a new promise=].
 1. Let |global| be [=this=]'s [=relevant global object=].
@@ -652,7 +650,7 @@ method steps are:
 1. If |ownerOrigin| is failure, [=exception/throw=] a {{TypeError}}.
 1. Run these steps [=in parallel=]:
   1. Let |permission| be the result of [=checking interest group permissions=] with
-    |ownerOrigin|, |settings|, and "`leave`".
+    |ownerOrigin|, |frameOrigin|, and "`leave`".
   1. If |permission| is false, then [=queue a global task=] on the [=DOM manipulation task source=]
     given |global|, [=reject=] |p| with a "{{NotAllowedError}}" {{DOMException}} and abort these steps.
   1. [=Queue a global task=] on the [=DOM manipulation task source=] given |global|, to [=resolve=] |p|
@@ -1619,7 +1617,6 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |settings| be |global|'s [=relevant settings object=].
 1. Let |topLevelOrigin| be |settings|'s [=environment/top-level origin=].
-1. Let |policyContainer| be |settings|'s [=environment settings object/policy container=].
 1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. Let |auctionStartTime| be the [=current wall time=].
 1. Let |decisionLogicFetcher| be the result of [=creating a new script fetcher=] with
@@ -1653,12 +1650,12 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
     1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
       [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
       [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicFetcher|,
-      null, "top-level-auction", null, |topLevelOrigin|, and |policyContainer|.
+      null, "top-level-auction", null, and |topLevelOrigin|.
     1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
       is not null, then run [=score and rank a bid=] with |auctionConfig|,
       |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
       |leadingBidInfo|, |decisionLogicFetcher|, |topLevelDirectFromSellerSignalsForSeller|, null,
-      "top-level-auction", null, |topLevelOrigin|, |realTimeContributionsMap|, and |policyContainer|.
+      "top-level-auction", null, |topLevelOrigin|, and |realTimeContributionsMap|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
   1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1725,7 +1722,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
   1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
     |decisionLogicFetcher|, |directFromSellerSignalsForSeller|, null, |auctionLevel|,
-    |componentAuctionExpectedCurrency|, |topLevelOrigin|, |realTimeContributionsMap| and |policyContainer|.
+    |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
   1. Decrement |pendingAdditionalBids| by 1.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -1900,8 +1897,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
             1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
               |decisionLogicFetcher|, |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
-              |componentAuctionExpectedCurrency|, |topLevelOrigin|, |realTimeContributionsMap|, and
-              |policyContainer|.
+              |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
@@ -1994,8 +1990,7 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 <div algorithm>
 To <dfn>fetch and decode trusted scoring signals</dfn> given an [=auction config=] |auctionConfig|,
 a [=generated bid=] |generatedBid|, a [=script fetcher=] |decisionLogicFetcher|, an [=origin=]
-|topLevelOrigin|, a [=real time reporting contributions map=] |realTimeContributionsMap|, and a
-[=policy container=] |policyContainer|:
+|topLevelOrigin|, and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 
 1. Let |crossOriginTrustedScoringSignalsOrigin| be null.
 1. Let |sameOriginTrustedScoringSignals| be null.
@@ -2045,7 +2040,7 @@ a [=generated bid=] |generatedBid|, a [=script fetcher=] |decisionLogicFetcher|,
   1. Let |allTrustedScoringSignals| be null.
   1. <i id="trusted-scoring-signals-fetch">Set</i> «|allTrustedScoringSignals|,
     <var ignore>ignored</var>, |scoringDataVersion|» to the result of [=fetching trusted signals=]
-    with |fullSignalsUrl|, |auctionConfig|'s [=auction config/seller=], |policyContainer|, and false.
+    with |fullSignalsUrl|, |auctionConfig|'s [=auction config/seller=], and false.
   1. If |allTrustedScoringSignals| is null, and |auctionConfig|'s
     [=auction config/seller real time reporting config=] is "`default-local-reporting`",then:
     1. [=Add a platform contribution=] with [=trusted scoring signals failure bucket=],
@@ -2083,14 +2078,13 @@ To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, 
 a [=script fetcher=] |decisionLogicFetcher|, a {{DirectFromSellerSignalsForSeller}}
 |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null |biddingDataVersion|, an enum |auctionLevel|,
 which is "single-level-auction", "top-level-auction", or "component-auction", a [=currency tag=]
-|componentAuctionExpectedCurrency|, an [=origin=] |topLevelOrigin|, a
-[=real time reporting contributions map=] |realTimeContributionsMap|, and a [=policy container=]
-|policyContainer|:
+|componentAuctionExpectedCurrency|, an [=origin=] |topLevelOrigin|, and a
+[=real time reporting contributions map=] |realTimeContributionsMap|:
 
 1. Let «|crossOriginTrustedScoringSignalsOrigin|, |sameOriginTrustedScoringSignals|,
   |crossOriginTrustedScoringSignals|, |scoringDataVersion|» be the result of [=fetch and
   decode trusted scoring signals=] given |auctionConfig|, |generatedBid|, |decisionLogicFetcher|,
-  |topLevelOrigin|, |realTimeContributionsMap|, and a |policyContainer|.
+  |topLevelOrigin|, and |realTimeContributionsMap|.
 1. Let |adMetadata| be |generatedBid|'s [=generated bid/ad=].
 1. Let |bidValue| be |generatedBid|'s [=generated bid/bid=].
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null, then set |bidValue| to
@@ -2327,8 +2321,6 @@ To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url| and an [=environment setti
     ::  `null`
     :   [=request/origin=]
     ::  |settings|'s [=environment settings object/origin=]
-    :   [=request/policy container=]
-    ::  |settings|'s [=environment settings object/policy container=]
     :   [=request/mode=]
     ::  "`no-cors`"
     :   [=request/referrer=]
@@ -2337,6 +2329,14 @@ To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url| and an [=environment setti
     ::  "`omit`"
     :   [=request/redirect mode=]
     :: "`error`"
+    :   [=request/policy container=]
+    ::  A new [=policy container=] whose [=policy container/embedder policy=] is |settings|'s
+      [=environment settings object/policy container=]'s [=policy container/embedder policy=]
+
+      Issue: It should not use the frame's embedder policy. Changing the request mode to "`cors`"
+      (<a href="https://github.com/WICG/turtledove/issues/1257">WICG/turtledove#1257</a>) should
+      effectively fix it by
+      <a href="https://fetch.spec.whatwg.org/#cross-origin-embedder-policy-allows-credentials">ignoring the embedder policy</a>.
 
     Issue: One of the side-effects of a `null` client for this subresource request is it neuters all
     service worker interceptions, despite not having to set the service workers mode.
@@ -2361,8 +2361,8 @@ The <dfn http-header><code>X-fledge-bidding-signals-format-version</code></dfn> 
 is a [=structured header=] whose value must be an [=structured header/integer=].
 
 <div algorithm>
-To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |scriptOrigin|, a
-[=policy container=] |policyContainer|, and a [=boolean=] |isBiddingSignal|:
+To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |scriptOrigin|, and a
+[=boolean=] |isBiddingSignal|:
 
   1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
@@ -2373,8 +2373,6 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |script
     ::  «`Accept`: `application/json`»
     :   [=request/client=]
     ::  `null`
-    :   [=request/policy container=]
-    ::  |policyContainer|
     :   [=request/mode=]
     ::  "`cors`"
     :   [=request/referrer=]
@@ -2562,8 +2560,6 @@ To <dfn>send report</dfn> given a [=URL=] |url|, and an [=environment settings o
     ::  `null`
     :   [=request/origin=]
     ::  |settings|'s [=environment settings object/origin=]
-    :   [=request/policy container=]
-    ::  |settings|'s [=environment settings object/policy container=]
     :   [=request/mode=]
     ::  "`no-cors`"
     :   [=request/referrer=]
@@ -2572,6 +2568,14 @@ To <dfn>send report</dfn> given a [=URL=] |url|, and an [=environment settings o
     ::  "`omit`"
     :   [=request/redirect mode=]
     :: "`error`"
+    :   [=request/policy container=]
+    ::  A new [=policy container=] whose [=policy container/embedder policy=] is |settings|'s
+      [=environment settings object/policy container=]'s [=policy container/embedder policy=]
+
+      Issue: It should not use the frame's embedder policy. Changing the request mode to "`cors`"
+      (<a href="https://github.com/WICG/turtledove/issues/1257">WICG/turtledove#1257</a>) should
+      effectively fix it by
+      <a href="https://fetch.spec.whatwg.org/#cross-origin-embedder-policy-allows-credentials">ignoring the embedder policy</a>.
 
     Issue: One of the side-effects of a `null` client for this subresource request is it neuters
     all service worker interceptions, despite not having to set the service workers mode.
@@ -3124,8 +3128,6 @@ Initial implementation of this specification defines
     ::  `null`
     :   [=request/origin=]
     ::  |settings|'s [=environment settings object/origin=]
-    :   [=request/policy container=]
-    ::  |settings|'s [=environment settings object/policy container=]
     :   [=request/mode=]
     ::  "`no-cors`"
     :   [=request/referrer=]
@@ -3134,6 +3136,14 @@ Initial implementation of this specification defines
     ::  "`omit`"
     :   [=request/redirect mode=]
     :: "`error`"
+    :   [=request/policy container=]
+    ::  A new [=policy container=] whose [=policy container/embedder policy=] is |settings|'s
+      [=environment settings object/policy container=]'s [=policy container/embedder policy=]
+
+      Issue: It should not use the frame's embedder policy. Changing the request mode to "`cors`"
+      (<a href="https://github.com/WICG/turtledove/issues/1257">WICG/turtledove#1257</a>) should
+      effectively fix it by
+      <a href="https://fetch.spec.whatwg.org/#cross-origin-embedder-policy-allows-credentials">ignoring the embedder policy</a>.
 
     Issue: One of the side-effects of a `null` client for this subresource request is it neuters
     all service worker interceptions, despite not having to set the service workers mode.
@@ -4641,8 +4651,6 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
       ::  `null`
       :   [=request/origin=]
       ::  |owner|
-      :   [=request/policy container=]
-      ::  |policyContainer|
       :   [=request/mode=]
       ::  "`no-cors`"
       :   [=request/referrer=]
@@ -4651,6 +4659,14 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
       ::  "`omit`"
       :   [=request/redirect mode=]
       :: "`error`"
+      :   [=request/policy container=]
+      ::  A new [=policy container=] whose [=policy container/embedder policy=] is |policyContainer|'s
+        [=policy container/embedder policy=]
+
+        Issue: It should not use the frame's embedder policy. Changing the request mode to "`cors`"
+        (<a href="https://github.com/WICG/turtledove/issues/1257">WICG/turtledove#1257</a>) should
+        effectively fix it by
+        <a href="https://fetch.spec.whatwg.org/#cross-origin-embedder-policy-allows-credentials">ignoring the embedder policy</a>.
 
       Issue: One of the side-effects of a `null` client for this subresource request is it neuters
       all service worker interceptions, despite not having to set the service workers mode.
@@ -5143,9 +5159,8 @@ Issue: Move from "`*`" to "`self`"
 
 <div algorithm>
 
-To <dfn>check interest group permissions</dfn> given an [=origin=] |ownerOrigin|, an
-[=environment settings object=] |settings|, and an enum |joinOrLeave| which is "`join`" or "`leave`":
-1. Let |frameOrigin| be |settings|'s [=environment settings object/origin=].
+To <dfn>check interest group permissions</dfn> given an [=origin=] |ownerOrigin|, an [=origin=]
+|frameOrigin|, and an enum |joinOrLeave| which is "`join`" or "`leave`":
 1. If |ownerOrigin| is [=same origin=] with |frameOrigin|, then return true.
 1. Let |encodedFrameOrigin| be the result of [=string/UTF-8 percent-encoding=] the
   [=serialization of an origin|serialized=] |frameOrigin| using [=component percent-encode set=].
@@ -5169,8 +5184,6 @@ To <dfn>check interest group permissions</dfn> given an [=origin=] |ownerOrigin|
   ::  `null`
   :   [=request/origin=]
   ::  |frameOrigin|
-  :   [=request/policy container=]
-  ::  |settings|'s [=environment settings object/policy container=]
   :   [=request/mode=]
   ::  "`cors`"
   :   [=request/referrer=]
@@ -6184,8 +6197,6 @@ a [=script fetcher=] |fetcher|:
     ::  `null`
     :   [=request/origin=]
     ::  |settings|'s [=environment settings object/origin=]
-    :   [=request/policy container=]
-    ::  |settings|'s [=environment settings object/policy container=]
     :   [=request/mode=]
     ::  "`no-cors`"
     :   [=request/referrer=]
@@ -6194,6 +6205,14 @@ a [=script fetcher=] |fetcher|:
     ::  "`omit`"
     :   [=request/redirect mode=]
     ::  "`error`"
+    :   [=request/policy container=]
+    ::  A new [=policy container=] whose [=policy container/embedder policy=] is |settings|'s
+      [=environment settings object/policy container=]'s [=policy container/embedder policy=]
+
+      Issue: It should not use the frame's embedder policy. Changing the request mode to "`cors`"
+      (<a href="https://github.com/WICG/turtledove/issues/1257">WICG/turtledove#1257</a>) should
+      effectively fix it by
+      <a href="https://fetch.spec.whatwg.org/#cross-origin-embedder-policy-allows-credentials">ignoring the embedder policy</a>.
 
     Issue: One of the side-effects of a `null` client for this subresource request is it neuters all
     service worker interceptions, despite not having to set the service workers mode.
@@ -6297,7 +6316,7 @@ To <dfn>append to a bidding signals per-interest group data map</dfn> given an [
 To <dfn>fetch the current outstanding trusted signals batch</dfn> given a
 [=trusted bidding signals batcher=] |trustedBiddingSignalsBatcher|, a [=URL=] |signalsUrl|,
 an [=origin=] |scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=]
-|topLevelOrigin|, a [=string=] |slotSizeQueryParam|, and a [=policy container=] |policyContainer|:
+|topLevelOrigin|, and a [=string=] |slotSizeQueryParam|:
 
   1. If |signalsUrl| is null, return.
   1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
@@ -6305,8 +6324,7 @@ an [=origin=] |scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|,
      |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=],
      |experimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
   1. Let « |partialTrustedBiddingSignals|, |partialPerInterestGroupData|, |dataVersion| » be the
-     result of [=fetching trusted signals=] with |biddingSignalsUrl|, |scriptOrigin|,
-     |policyContainer| and true.
+     result of [=fetching trusted signals=] with |biddingSignalsUrl|, |scriptOrigin|, and true.
   1. If |partialTrustedBiddingSignals| is not null:
     1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|, [=map/set=]
       |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding
@@ -6328,8 +6346,8 @@ an [=origin=] |scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|,
 <div algorithm>
 To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding signals batcher=]
 |trustedBiddingSignalsBatcher|, [=interest group=] |ig|, a [=URL=] |signalsUrl|, an [=origin=]
-|scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|, a
-[=string=] |slotSizeQueryParam|, and a [=policy container=] |policyContainer|:
+|scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|,
+and a [=string=] |slotSizeQueryParam|:
 
   1. Let |igName| be |ig|'s [=interest group/name=].
   1. If |signalsUrl| is null:
@@ -6368,8 +6386,7 @@ To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding s
         |putativeLengthLimit|.
   1. Otherwise:
     1. [=Fetch the current outstanding trusted signals batch=] given |trustedBiddingSignalsBatcher|,
-      |signalsUrl|, |scriptOrigin|, |experimentGroupId|, |topLevelOrigin|, |slotSizeQueryParam|, and
-      |policyContainer|.
+      |signalsUrl|, |scriptOrigin|, |experimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
     1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, set
       |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
       [=list/clone=] of |ig|'s [=interest group/trusted bidding signals keys=].
