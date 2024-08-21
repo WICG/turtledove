@@ -35,9 +35,9 @@ The [Private Aggregation API](https://github.com/patcg-individual-drafts/private
 currently allows auction winners to generate histogram contributions within their
 reportResult()/reportWin() methods using a new API available in the worklet:
 
-```
+```js
 function reportResult(auctionConfig, browserSignals) {
-  …
+  // ...
   privateAggregation.contributeToHistogram({
       bucket: convertBuyerToBucketId(browserSignals.interestGroupOwner),
       value: convertBidToReportingValue(browserSignals.bid)
@@ -69,33 +69,30 @@ with an arbitrary `event_key` within `generateBid`, `scoreAd`, `reportWin`, and 
 
 ### Example 1: Correlating bidding signals with click information.
 
-We consider the scenario where a buyer wants to learn the click through rate of ads when a user has
+We consider the scenario where a buyer wants to learn the click-through rate of ads when a user has
 been in an interest group for a given time.
 
-The buyer may implement `getImpressionReportBucket()` and `getClickReportBucket()` which map an
-interest group and the time the user has spent in that interest group to a 128-bit integer.
+To generate the bucket that represent interest group age, the buyer may implement `getImpressionReportBucket()` and `getClickReportBucket()` functions which return buckets that map an interest group and the time the user has spent in that interest group to a 128-bit integer as `BigInt`. The `browserSignals.recency` value inside `generateBid()` specifies the duration in minutes since the user joined the interest group.
 
-The buyer can then do the following during generateBid (when the above information is available)
+Once the buckets have been derived, the buyer can call Private Aggregation inside `generateBid()`:  
 
-```
+```js
 function generateBid(interestGroup, auctionSignals, perBuyerSignals, trustedBiddingSignals, browserSignals) {
- …
-  privateAggregation.contributeToHistogramOnEvent(“reserved.win”, {
-      bucket: getImpressionReportBucket(),
+  // ...
+  privateAggregation.contributeToHistogramOnEvent("reserved.win", {
+      bucket: getImpressionReportBucket(), // 128-bit integer as BigInt
       value: 1
   });
   privateAggregation.contributeToHistogramOnEvent("click", {
       bucket: getClickReportBuckets(), // 128-bit integer as BigInt
       value: 1
   });
+}
 ```
 
-The above logic will trigger a report if the generated bid wins (see
-[reserved.win](#reporting-bidding-data-for-wins)). And another one, if the user later clicks on the
-winning ad (this needs to be triggered by the fenced frame itself, see
-[reportPrivateAggregationEvent](#reporting-bidding-data-associated-with-an-event-in-a-frame). When
-the buyer receives an aggregated report they can infer what the click-through-rate (CTR) was for
-users on different “interest group age” buckets.
+The impression report will be sent if the [`reserved.win`](#reporting-bidding-data-for-wins) event is triggered, which is a reserved event for when the bid wins the auction. The click report will be sent if the `click` event is triggered by the [`window.fence.reportEvent("click")`](#reporting-bidding-data-associated-with-an-event-in-a-frame) call originating from the fenced frame of the ad.
+
+The buyer can then generate the summary report of the impression count and click count to infer the click-through rate of the users in different interest group age buckets. 
 
 ### Example 2: Getting the average bid gap for an ad. 
 
@@ -115,7 +112,7 @@ before `offset` is added.
 After the auction happens, the final value of the generated report is (`baseValue` * `scale`) + `offset`.
 The following example shows how to return the gap between an ad bid and the winning bid:
 
-```
+```js
 function generateBid(...) {
   bid = 100;
   privateAggregation.contributeToHistogramOnEvent(
@@ -152,7 +149,7 @@ The final bucket id of the bucket will depend on the outcome of the auction. The
 example allows the buyer to keep track of how many times their bid was rejected for particular reasons.
 
 
-```
+```js
 function generateBid(...) {
   privateAggregation.contributeToHistogramOnEvent(
     "reserved.loss",
@@ -176,7 +173,7 @@ value: 1
 
 ## Reporting API informal specification
 
-```
+```js
 privateAggregation.contributeToHistogramOnEvent(eventType, contribution)
 ```
 
@@ -184,8 +181,11 @@ The parameters consist of:
 * an `eventType` which is a string identifying the event type that triggers this report to
 be sent (see [Triggering reports](#triggering-reports) below), and
 * a `contribution` object which contains:
-  * a `bucket` which is a 128bit ID or a `signalBucket`  which tells the browser how to calculate the bucket (represented as BigInt) and
-  * a `value` which is a non-negative integer or a `signalValue` which tells the browser how to calculate the value.
+  * a `bucket` which is a 128bit ID or a `signalBucket`  which tells the browser how to calculate the bucket (represented as BigInt),
+  * a `value` which is a non-negative integer or a `signalValue` which tells the browser how to calculate the value, and
+  * a `filteringId` which is an optional integer in the range [0, 255] used to allow for separating aggregation service queries. For
+     more detail, please see the [flexible filtering
+     explainer](https://github.com/patcg-individual-drafts/private-aggregation-api/blob/main/flexible_filtering.md#proposal-filtering-id-in-the-encrypted-payload).
 
 
 Where `signalBucket` and `signalValue` is a dictionary which consists of:
@@ -204,6 +204,12 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
     * 6: indicates seller rejected bid because “Creative Filtered - Language Exclusions”
     * 7: indicates seller rejected bid because “Creative Filtered - Category Exclusions”
     * 8: indicates seller rejected bid because "Creative Filtered - Did Not Meet The K-anonymity Threshold"
+    * 9: indicates bid produced by `generateBid()` was rejected because it failed a currency check (e.g. the bid returned by `generateBid()` doesn't match
+    what's specified by `perBuyerCurrency`)
+    * 10: indicates bid passed through or altered by `scoreAd()` was rejected
+    because it failed a currency check (e.g. the bid returned or passed through
+    by `scoreAd()` in a component auction doesn't match the `sellerCurrency` of
+    its auction or the `perBuyerCurrency` required by the top-level auction)
     * Perhaps other values indicating:
       * generateBid() hitting timeout
       * The auction was aborted (i.e. calling endAdAuction())
@@ -219,7 +225,7 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
 A fenced frame can trigger the sending of contributions associated with an arbitrary event
 by calling into a new API:
 
-```
+```js
 window.fence.reportEvent("click");
 ```
 
@@ -269,24 +275,25 @@ auction.
 For the seller to declare reporting, the `auctionConfig` passed to `runAdAuction` is amended to
 contain a configuration for the seller latency report.
 
-```
+```js
 const auctionConfig = {
   'seller': 'https://www.example-ssp.com',
-  …
-  ‘interestGroupBuyers’: ['https://buyer1.com', 'https://buyer2.com', …],
+  // ...
+  'interestGroupBuyers': ['https://buyer1.com', 'https://buyer2.com', /* ... */],
   // An aggregation key for each buyer. This represents the starting contribution bucket
   // associated with the corresponding buyer.
-  ‘auctionReportBuyerKeys’: [100n, // key for buyer1.com
+  'auctionReportBuyerKeys': [100n, // key for buyer1.com
                              105n, // key for buyer2.com
-                             …],
+                                   // ...
+                             ],
   // Configures what values will be reported for each buyer. The key declares what signal will be
   // measured, and the bucket declares the bucket this will be placed relative to the
   // buyer key and the scale determines how the value is scaled.
-  `auctionReportBuyers`: {
-    `interestGroupCount`:       { `bucket`: 0n, `scale`: 1,  },
-    ‘bidCount’:                 { `bucket`: 1n, `scale`: 1,  },
-    ‘totalGenerateBidLatency’:  { `bucket`: 2n, `scale`: 1,  },
-    ‘totalSignalsFetchLatency’: { `bucket`: 3n, `scale`: .1, },
+  'auctionReportBuyers': {
+    'interestGroupCount':       { 'bucket': 0n, 'scale': 1,  },
+    'bidCount':                 { 'bucket': 1n, 'scale': 1,  },
+    'totalGenerateBidLatency':  { 'bucket': 2n, 'scale': 1,  },
+    'totalSignalsFetchLatency': { 'bucket': 3n, 'scale': .1, },
   }
 }
 
@@ -294,7 +301,7 @@ const auctionConfig = {
 
 The seller is able to measure the following for each buyer, assuming permission is granted via the indicated `sellerCapabilities` for that seller:
 * `interestGroupCount`: The number of the interest groups which could participate in the auction
-(i.e. the number of intererest groups on the machine for this buyer -- note the count *isn't* limited by the auction config's `perBuyerGroupLimits`). This requires the `interest-group-counts` `sellerCapabilities` permission.
+(i.e. the number of interest groups on the machine for this buyer -- note the count *isn't* limited by the auction config's `perBuyerGroupLimits`). This requires the `interest-group-counts` `sellerCapabilities` permission.
 * `bidCount`: The number of valid bids generated by this buyer. This requires the `interest-group-counts` `sellerCapabilities` permission.
 * `totalGenerateBidLatency`: The sum of execution time for all generateBids() in milliseconds. This requires the `latency-stats` `sellerCapabilities` permission.
 * `totalSignalsFetchLatency`: The total time spent fetching trusted buyer signals in milliseconds. If the interest group didn't fetch any trusted signals, then 0 milliseconds is reported. This requires the `latency-stats` `sellerCapabilities` permission.
@@ -328,6 +335,47 @@ Here's an example of what the `sellerCapabilities` interest group field could lo
 This would grant both `interest-group-counts` and `latency-stats` permission to https://seller.com, `latency-stats` to https://seller2.com, and `interest-group-counts` to all other sellers.
 
 NOTE: the permission names `interestGroupCounts` and `latencyStats` are *deprecated* and will be removed in a future Chrome release, as they do not follow the documented WebIDL [naming conventions](https://webidl.spec.whatwg.org/#idl-enums).
+
+### Temporary debugging mechanism
+
+_While third-party cookies are still available_, we plan to have a temporary
+mechanism available that allows for easier debugging. This mechanism is
+described in detail in the [Private Aggregation
+explainer](https://github.com/patcg-individual-drafts/private-aggregation-api?tab=readme-ov-file#temporary-debugging-mechanism).
+
+However, one key difference here is that this reporting does not use the
+`privateAggregation` object and so the method described to use this mechanism
+(`privateAggregation.enableDebugMode()`) is not available for this reporting.
+Instead, we add a new (temporary) parameter to the `auctionConfig` passed to
+`runAdAuction()`:
+
+```js
+const auctionConfig = {
+  'seller': 'https://www.example-ssp.com',
+  ...
+  'interestGroupBuyers': ['https://buyer1.com', 'https://buyer2.com', ...],
+
+  // The API described above
+  'auctionReportBuyerKeys': [100n, 105n, ...],
+  'auctionReportBuyers': {
+    'interestGroupCount': { 'bucket': 0n, 'scale': 1 },
+    ...
+  }
+
+  // Additional parameter for configuring the debug mode
+  'auctionReportBuyerDebugModeConfig': { 'enabled': true, debugKey: 1234n },
+}
+```
+
+Note that `enabled` defaults to false if not provided. Also, as with
+`privateAggregation.enableDebugMode()`, `debugKey` is an optional unsigned
+64-bit integer that allows sites to associate reports with the contexts that
+triggered them. 
+
+Otherwise, the details of this debug mode are the same as other uses of Private
+Aggregation. For example, this debug mode is generally only available to callers
+eligibile to set third-party cookies and will automatically become deprecated
+when third-party cookies are.
 
 ## Data Volume
 
