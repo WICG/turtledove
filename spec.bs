@@ -198,6 +198,7 @@ dictionary AuctionAd {
   USVString buyerReportingId;
   USVString buyerAndSellerReportingId;
   sequence<USVString> allowedReportingOrigins;
+  sequence<DOMString> adRenderId;
 };
 
 dictionary AuctionAdInterestGroupSize {
@@ -408,6 +409,10 @@ This is detectable because it can change the set of fields that are read from th
         |igAd|'s [=interest group ad/metadata=] be the result of
         [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
         This can [=exception/throw=] a {{TypeError}}.
+      1. If |ad|["{{AuctionAd/adRenderId}}"] [=map/exists=]:
+        1. If |ad|["{{AuctionAd/adRenderId}}"]'s [=string/length=] is greater than 12, [=exception/throw=] a {{TypeError}}.
+        1. If any [=code point=] in |ad|["{{AuctionAd/adRenderId}}"] is not an [=ASCII code point=], [=exception/throw=] a {{TypeError}}.
+        1. Set |igAd|'s [=interest group ad/ad render id=] to |ad|["{{AuctionAd/adRenderId}}"].
       1. If |groupMember| is "{{GenerateBidInterestGroup/ads}}":
         1. If |ad|["{{AuctionAd/buyerReportingId}}"] [=map/exists=], then set
           |igAd|'s [=interest group ad/buyer reporting ID=] to it.
@@ -1482,8 +1487,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     [=interest group ad/metadata=] is |bid|'s [=generated bid/bid ad=]'s
     [=interest group ad/metadata=], and whose [=interest group ad/ad render ID=] is
     |bid|'s [=generated bid/bid ad=]'s [=interest group ad/ad render ID=].
-  1. Set |win|'s [=previous win/ad json=] to the result of
-    [=serializing an Infra value to a JSON string=] given |ad|.
+  1. Set |win|'s [=previous win/ad=] to |ad|.
   1. [=list/Append=] |win| to |loadedIg|'s [=interest group/previous wins=].
   1. [=list/Replace=] the [=interest group=] that has |loadedIg|'s [=interest group/owner=] and
     [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |loadedIg|.
@@ -1585,10 +1589,8 @@ the script or wasm, otherwise a [=tuple=] of ([=list=] of [=generated bids=],
     1. Let |timeDelta| be |auctionStartTime| minus |prevWin|'s [=previous win/time=].
     1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
       otherwise.
-    1. Let |prevWinIDL| be a new {{PreviousWin}}.
-    1. [=map/Set=] |prevWinIDL|["{{PreviousWin/timeDelta}}"] to |timeDelta|.
-    1. [=map/Set=] |prevWinIDL|["{{PreviousWin/adJSON}}"] to |prevWin|'s [=previous win/ad json=].
-    1. [=list/Append=] |prevWinIDL| to |prevWins|.
+    1. Let |prevWin| be the <code>[=sequence=]<{{PreviousWinElement}}></code> «|timeDelta|, |prevWin|'s [=previous win/ad=]».
+    1. [=list/Append=] |prevWin| to |prevWins|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/prevWinsMs}}"] to |prevWins|.
   1. Let |biddingScriptFetcher| be the result of [=creating a new script fetcher=] with
     |ig|'s [=interest group/bidding url=], and |frameOrigin|.
@@ -3000,7 +3002,7 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
         : [=server auction previous win/time delta=]
         :: |timeDelta|
         : [=server auction previous win/ad render ID=]
-        :: the value of the "adRenderId" field in |prevWin|'s [=previous win/ad json=], or the empty string if not present
+        :: the value of the [=interest group ad/ad render ID=] field in |prevWin|'s [=previous win/ad=], or the empty string if not present
       1. [=list/Append=] |serverPrevWin| to |prevWins|.
     1. Let |browserSignals| be a new [=server auction browser signals=] with the following [=struct/items=]:
       : [=server auction browser signals/bid count=]
@@ -5657,10 +5659,8 @@ To <dfn>handle ad auction signals header value</dfn> given a [=byte sequence=] |
 # Structures # {#structures}
 
 <xmp class="idl">
-dictionary PreviousWin {
-  required long long timeDelta;
-  required DOMString adJSON;
-};
+typedef (long long or AuctionAd) PreviousWinElement;
+typedef sequence<PreviousWinElement> PreviousWin;
 
 dictionary BiddingBrowserSignals {
   required DOMString topWindowHostname;
@@ -6011,8 +6011,8 @@ frequency capping. It's a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="previous win">
   : <dfn>time</dfn>
   :: A [=moment=]. Approximate time the [=interest group=] won an auction.
-  : <dfn>ad json</dfn>
-  :: A [=string=]. A JSON serialized object corresponding to the ad that won the auction.
+  : <dfn>ad</dfn>
+  :: An [=interest group ad=]. The ad that won the auction.
 </dl>
 
 A <dfn>seller capability</dfn> is a permission granted by an [=interest group=] to sellers. It's
