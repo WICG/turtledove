@@ -255,8 +255,10 @@ At some point in the future -  no earlier than Q1 2025 -  when the sizes are dec
 
 The `auctionServerRequestFlags` field is optional and is only used for auctions [run on an auction server](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
 This field contains a list of enumerated values that change what data is sent in the auction blob:
- * The `omit-ads` enumeration causes the request to omit the `ads` and `adComponents` fields for
-this interest group from the auction blob.
+  * The `omit-ads` enumeration causes the request to omit the `ads` and
+    `adComponents` fields for this interest group from the auction blob.
+  * The `omit-user-bidding-signals` enumeration causes the request to omit the
+    `userBiddingSignals` field for this interest group from the auction blob.
   * The `include-full-ads` enumeration causes the request to include the full ad object in place of
 anywhere in the request where a plain `adRenderId` would have been sent (such as in the `ads`
 and `adComponents` fields as well as `prevWins`). Note that `include-full-ads` is not compatible
