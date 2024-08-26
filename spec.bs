@@ -1989,7 +1989,8 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
 <div algorithm>
 To <dfn>fetch and decode trusted scoring signals</dfn> given an [=auction config=] |auctionConfig|,
 a [=generated bid=] |generatedBid|, a [=script fetcher=] |decisionLogicFetcher|, an [=origin=]
-|topLevelOrigin|, and a [=real time reporting contributions map=] |realTimeContributionsMap|:
+|topLevelOrigin|, a [=real time reporting contributions map=] |realTimeContributionsMap|, and a
+[=policy container=] |policyContainer|:
 
 1. Let |crossOriginTrustedScoringSignalsOrigin| be null.
 1. Let |sameOriginTrustedScoringSignals| be null.
@@ -2039,7 +2040,7 @@ a [=generated bid=] |generatedBid|, a [=script fetcher=] |decisionLogicFetcher|,
   1. Let |allTrustedScoringSignals| be null.
   1. <i id="trusted-scoring-signals-fetch">Set</i> «|allTrustedScoringSignals|,
     <var ignore>ignored</var>, |scoringDataVersion|» to the result of [=fetching trusted signals=]
-    with |fullSignalsUrl|, |auctionConfig|'s [=auction config/seller=], and false.
+    with |fullSignalsUrl|, |auctionConfig|'s [=auction config/seller=], |policyContainer|, and false.
   1. If |allTrustedScoringSignals| is null, and |auctionConfig|'s
     [=auction config/seller real time reporting config=] is "`default-local-reporting`",then:
     1. [=Add a platform contribution=] with [=trusted scoring signals failure bucket=],
@@ -2360,8 +2361,8 @@ The <dfn http-header><code>X-fledge-bidding-signals-format-version</code></dfn> 
 is a [=structured header=] whose value must be an [=structured header/integer=].
 
 <div algorithm>
-To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |scriptOrigin|, and a
-[=boolean=] |isBiddingSignal|:
+To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |scriptOrigin|, a
+[=policy container=] |policyContainer|, and a [=boolean=] |isBiddingSignal|:
 
   1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
@@ -2380,6 +2381,9 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |script
     ::  "`omit`"
     :   [=request/redirect mode=]
     :: "`error`"
+    :   [=request/policy container=]
+    ::  A new [=policy container=] whose [=policy container/IP address space=] is |policyContainer|'s
+      [=policy container/IP address space=]
 
     Issue: One of the side-effects of a `null` client for this subresource request is it neuters all
     service worker interceptions, despite not having to set the service workers mode.
@@ -6316,8 +6320,8 @@ To <dfn>append to a bidding signals per-interest group data map</dfn> given an [
 <div algorithm>
 To <dfn>fetch the current outstanding trusted signals batch</dfn> given a
 [=trusted bidding signals batcher=] |trustedBiddingSignalsBatcher|, a [=URL=] |signalsUrl|,
-an [=origin=] |scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|,
-an [=origin=] |topLevelOrigin|, and a [=string=] |slotSizeQueryParam|:
+an [=origin=] |scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=]
+|topLevelOrigin|, a [=string=] |slotSizeQueryParam|, and a [=policy container=] |policyContainer|:
 
   1. If |signalsUrl| is null, return.
   1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
@@ -6325,7 +6329,8 @@ an [=origin=] |topLevelOrigin|, and a [=string=] |slotSizeQueryParam|:
      |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=],
      |experimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
   1. Let « |partialTrustedBiddingSignals|, |partialPerInterestGroupData|, |dataVersion| » be the
-     result of [=fetching trusted signals=] with |biddingSignalsUrl|, |scriptOrigin|, and true.
+     result of [=fetching trusted signals=] with |biddingSignalsUrl|, |scriptOrigin|,
+     |policyContainer| and true.
   1. If |partialTrustedBiddingSignals| is not null:
     1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|, [=map/set=]
       |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding
@@ -6347,8 +6352,8 @@ an [=origin=] |topLevelOrigin|, and a [=string=] |slotSizeQueryParam|:
 <div algorithm>
 To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding signals batcher=]
 |trustedBiddingSignalsBatcher|, [=interest group=] |ig|, a [=URL=] |signalsUrl|, an [=origin=]
-|scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|,
-and a [=string=] |slotSizeQueryParam|:
+|scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|, a
+[=string=] |slotSizeQueryParam|, and a [=policy container=] |policyContainer|:
 
   1. Let |igName| be |ig|'s [=interest group/name=].
   1. If |signalsUrl| is null:
@@ -6387,7 +6392,8 @@ and a [=string=] |slotSizeQueryParam|:
         |putativeLengthLimit|.
   1. Otherwise:
     1. [=Fetch the current outstanding trusted signals batch=] given |trustedBiddingSignalsBatcher|,
-      |signalsUrl|, |scriptOrigin|, |experimentGroupId|, |topLevelOrigin|, |slotSizeQueryParam|.
+      |signalsUrl|, |scriptOrigin|, |experimentGroupId|, |topLevelOrigin|, |slotSizeQueryParam|, and
+      |policyContainer|.
     1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, set
       |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
       [=list/clone=] of |ig|'s [=interest group/trusted bidding signals keys=].
