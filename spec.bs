@@ -6364,7 +6364,7 @@ scoring signals requests=] |entriesToBatch|:
 1. If the [=list/size=] of |entriesToBatch| is 1, return true.
 1. If |batcher|'s [=trusted scoring signals batcher/url length limit=] is 0, return true.
 1. Return whether the [=string/length=] of the result of [=building batched trusted scoring signals
-  url=] for |entriesToBatch| is &le; |batcher|'s [=trusted scoring signals batcher/url length
+  url=] for |entriesToBatch| &le; |batcher|'s [=trusted scoring signals batcher/url length
   limit=].
 
 </div>
@@ -6374,36 +6374,36 @@ scoring signals requests=] |entriesToBatch|:
 To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring signals batcher=]
 |batcher|:
 
-1. Until this object is no longer needed:
+1. Until |batcher| is no longer needed:
   1. Wait until at least one of the following is true:
-    1. |batcher|'s [=trusted scoring signals batcher/request queue=] [=map/is not empty=].
-    1. |batcher|'s [=trusted scoring signals batcher/request map=] [=map/is not empty=] and some
+    * |batcher|'s [=trusted scoring signals batcher/request queue=] [=map/is not empty=].
+    * |batcher|'s [=trusted scoring signals batcher/request map=] [=map/is not empty=] and some
       heuristically chosen amount of time has passed.
   1. Atomically transfer all entries in |batcher|'s [=trusted scoring signals batcher/
     request queue=] to |incomingRequests|, leaving |batcher|'s [=trusted scoring signals batcher/
     request queue=] empty.
-  1. For each |request| in |incomingRequests|:
+  1. [=list/For each=] |request| in |incomingRequests|:
     1. Let |key| be (|request|'s [=trusted scoring signals request/seller script fetcher=],
       |request|'s [=trusted scoring signals request/base url=], |request|'s [=trusted scoring
       signals request/seller experiment group id=], |request|'s [=trusted scoring signals request/
       top level origin=]).
     1. If |batcher|'s [=trusted scoring signals batcher/request map=][|key|] does not [=map/exist=],
       then [=map/set=] |batcher|'s [=trusted scoring signals batcher/request map=][|key|] to an
-      empty [=list=].
-    1. [=list/Append=] |request| to |batcher|'s [=trusted scoring signals batcher/request map=]
-      [|key|].
-  1. Some number of times, heuristically, select a |key| and a non-empty sublist of |batcher|'s
-    [=trusted scoring signals batcher/request map=] [|key|], called |entriesToBatch|, such that
-    [=checking if trusted scoring signals batch honors URL length limit=] on |batcher| and
-    |entriesToBatch| returns true:
+      [=list/is empty|empty=] [=list=].
+    1. [=list/Append=] |request| to |batcher|'s [=trusted scoring signals batcher/request
+      map=][|key|].
+  1. Some number of times, heuristically, select a |key| and a non-[=list/is empty|empty=] [=set/
+    subset=] of |batcher|'s [=trusted scoring signals batcher/request map=][|key|], called
+    |entriesToBatch|, such that [=checking if trusted scoring signals batch honors URL length
+    limit=] on |batcher| and |entriesToBatch| returns true:
 
       Note: implementations are free to wait to collect more requests to merge or send them
       individually, but need to take into account the configured URL length limit if they do combine
       requests.
 
       1. [=list/Remove=] |entriesToBatch| from |batcher|'s [=trusted scoring signals batcher/
-        request map=] [|key|].
-      1. If |batcher|'s [=trusted scoring signals batcher/request map=] [|key|] is [=list/empty=],
+        request map=][|key|].
+      1. If |batcher|'s [=trusted scoring signals batcher/request map=][|key|] [=list/is empty=],
         then [=map/remove=] |key| from |batcher|'s [=trusted scoring signals batcher/request map=].
       1. Let |fullSignalsUrl| be the result of [=building batched trusted scoring signals url=] for
         |entriesToBatch|.
@@ -6417,14 +6417,14 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
           |fullSignalsUrl|'s [=url/origin=], set |fullSignalsUrl| to null.
       1. Let |result| be failure.
       1. If |fullSignalsUrl| is not null:
-        1. Let</i> «|allTrustedScoringSignals|, <var ignore>ignored</var>, |scoringDataVersion|» be
+        1. Let «|allTrustedScoringSignals|, <var ignore>ignored</var>, |scoringDataVersion|» be
           the result of [=fetching trusted signals=] with |fullSignalsUrl|, |seller|, and false.
         1. If |allTrustedScoringSignals| is an [=ordered map=]:
           1. Set |result| to a new [=trusted scoring signals reply=]
           1. Set |result|'s [=trusted scoring signals reply/all trusted scoring signals=] to
             |allTrustedScoringSignals|.
           1. Set |result|'s [=trusted scoring signals reply/data version=] to |scoringDataVersion|.
-      1. For each |entry| in |entriesToBatch|:
+      1. [=list/For each=] |entry| in |entriesToBatch|:
         1. Set |entry|'s [=trusted scoring signals request/reply=] to |result|.
 
 </div>
