@@ -178,6 +178,12 @@ advertisement relevant to this interest to this user in the future. The [=user a
 
 <h3 id="join-ad-interest-groups">joinAdInterestGroup()</h3>
 
+Issue: TODO: Currently, several of the IDL fields in {{AuctionAdInterestGroup}} are specified to use
+USVString rather than DOMString, only because the initial implementation currently does. This may
+contradict <a href="https://webidl.spec.whatwg.org/#idl-USVString">the recommended use of
+DOMString</a>.
+(<a href="https://github.com/WICG/turtledove/issues/1250">WICG/turtledove#1250</a>)
+
 <xmp class="idl">
 [SecureContext]
 partial interface Navigator {
@@ -186,11 +192,17 @@ partial interface Navigator {
 
 dictionary AuctionAd {
   required USVString renderURL;
+  USVString sizeGroup;
   any metadata;
 
   USVString buyerReportingId;
   USVString buyerAndSellerReportingId;
   sequence<USVString> allowedReportingOrigins;
+};
+
+dictionary AuctionAdInterestGroupSize {
+  required USVString width;
+  required USVString height;
 };
 
 dictionary GenerateBidInterestGroup {
@@ -212,6 +224,8 @@ dictionary GenerateBidInterestGroup {
   any userBiddingSignals;
   sequence<AuctionAd> ads;
   sequence<AuctionAd> adComponents;
+  record<DOMString, AuctionAdInterestGroupSize> adSizes;
+  record<DOMString, sequence<DOMString>> sizeGroups;
 };
 
 dictionary AuctionAdInterestGroup : GenerateBidInterestGroup {
@@ -343,6 +357,26 @@ This is detectable because it can change the set of fields that are read from th
     "slot-size", or "all-slots-requested-sizes", set |interestGroup|'s
     [=interest group/trusted bidding signals slot size mode=] to
     |group|["{{GenerateBidInterestGroup/trustedBiddingSignalsSlotSizeMode}}"].
+  1. Let |adSizes| be a new [=map=] whose [=map/keys=] are [=strings=] and [=map/values=] are
+     [=ad sizes=].
+  1. If |group|["{{GenerateBidInterestGroup/adSizes}}"] [=map/exists=]:
+    1. [=map/For each=] |sizeName| → |size| of |group|["{{GenerateBidInterestGroup/adSizes}}"]:
+      1. If |sizeName| is "", [=exception/throw=] a {{TypeError}}.
+      1. Let |parsedSize| be the result from running [=parse an AdRender ad size=] with |size|.
+      1. If |parsedSize| is null, [=exception/throw=] a {{TypeError}}.
+      1. [=map/Set=] |adSizes|[|sizeName|] to |parsedSize|.
+    1. Set |interestGroup|'s [=interest group/ad sizes=] to |adSizes|.
+  1. Let |sizeGroups| be a new [=map=] whose [=map/keys=] are [=strings=] and [=map/values=]
+     are [=lists=] of [=strings=]
+  1. If |group|["{{GenerateBidInterestGroup/sizeGroups}}"] [=map/exists=]:
+    1. [=map/For each=] |sizeGroupName| → |sizeList| of
+       |group|["{{GenerateBidInterestGroup/sizeGroups}}"]:
+      1. If |sizeGroupName| is "", [=exception/throw=] a {{TypeError}}.
+      1. [=list/For each=] |sizeName| of |sizeList|:
+        1. If |sizeName| is "" or |adSizes|[|sizeName|] does not [=map/exist=],
+           [=exception/throw=] a {{TypeError}}.
+      1. [=map/Set=] |sizeGroups|[|sizeGroupName|] to |sizeList|.
+    1. Set |interestGroup|'s [=interest group/size groups=] to |sizeGroups|.
   1. For each |groupMember| and |interestGroupField| in the following table
     <table class="data">
       <thead><tr><th>Group member</th><th>Interest group field</th></tr></thead>
@@ -364,6 +398,12 @@ This is detectable because it can change the set of fields that are read from th
         * |renderURL| [=url/scheme=] is not "`https`";
         * |renderURL| [=includes credentials=].
       1. Set |igAd|'s [=interest group ad/render url=] to |renderURL|.
+      1. If |ad|["{{AuctionAd/sizeGroup}}"] [=map/exists=]:
+        1. Let |sizeGroup| be |ad|["{{AuctionAd/sizeGroup}}}].
+        1. [=exception/Throw=] a {{TypeError}} if none of the following conditions hold:
+           * |adSizes|[|sizeGroup|] [=map/exists=].
+           * |sizeGroups|[|sizeGroup|] [=map/exists=].
+        1. Set |igAd|'s [=interest group ad/size group=] to |sizeGroup|.
       1. If |ad|["{{AuctionAd/metadata}}"] [=map/exists=], then let
         |igAd|'s [=interest group ad/metadata=] be the result of
         [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
@@ -678,6 +718,9 @@ dictionary AuctionAdConfig {
   sequence<AuctionAdConfig> componentAuctions = [];
   AbortSignal? signal;
   Promise<boolean> resolveToConfig;
+
+  Promise<Uint8Array> serverResponse;
+  USVString requestId;
 };
 </xmp>
 
@@ -731,10 +774,14 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |bidDebugReportInfoList| be a new [=list=] of [=bid debug reporting info=].
-  1. Let |realTimeContributionsMap| be a new [=real time reporting contributions map=].
-  1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
-    null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|,
-    |bidDebugReportInfoList|, and |realTimeContributionsMap|.
+  1. If |auctionConfig|'s [=auction config/server response=] is not null:
+    1. Let |winnerInfo| be the result of running [=parse and validate server response=] with |auctionConfig|,
+      null, |global|, |bidIgs|, and |bidDebugReportInfoList|.
+  1. Otherwise:
+    1. Let |realTimeContributionsMap| be a new [=real time reporting contributions map=].
+    1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
+      null, |global|, |settings|'s [=environment/top-level origin=], |bidIgs|,
+      |bidDebugReportInfoList|, and |realTimeContributionsMap|.
   1. Let |auctionReportInfo| be a new [=auction report info=].
   1. If |winnerInfo| is not failure, then:
     1. Set |auctionReportInfo| to the result of running [=collect forDebuggingOnly reports=] with
@@ -783,7 +830,10 @@ To <dfn>construct a pending fenced frame config</dfn> given an [=auction config=
     :: "<a for=visibility>`opaque`</a>"
 
   : [=fenced frame config/container size=]
-  :: TODO: fill this in once container size is spec'd to be in |config|
+  :: the result of
+
+   Issue: converting |config|'s [=auction config/requested size=] to pixel values
+   (<a href="https://github.com/WICG/turtledove/issues/986">WICG/turtledove#986</a>)
 
   : [=fenced frame config/content size=]
   :: null
@@ -804,12 +854,12 @@ To <dfn>construct a pending fenced frame config</dfn> given an [=auction config=
   : [=fenced frame config/on navigate callback=]
   :: null
 
-  : [=fenced frame config/effective sandbox flags=]
+  : [=fenced frame config/effective sandboxing flags=]
   :: a [=struct=] with the following [=struct/items=]:
-    : [=effective sandbox flags/value=]
+    : [=effective sandboxing flags/value=]
     :: TODO: fill this in once fenced frame sandbox flags are more fully specified
 
-    : [=effective sandbox flags/visibility=]
+    : [=effective sandboxing flags/visibility=]
     :: "<a for=visibility>`opaque`</a>"
 
   : [=fenced frame config/effective enabled permissions=]
@@ -1034,12 +1084,12 @@ To <dfn>create nested configs</dfn> given [=generated bid/ad component descripto
     : [=fenced frame config/on navigate callback=]
     :: null
 
-    : [=fenced frame config/effective sandbox flags=]
+    : [=fenced frame config/effective sandboxing flags=]
     :: a [=struct=] with the following [=struct/items=]:
-      : [=effective sandbox flags/value=]
+      : [=effective sandboxing flags/value=]
       :: TODO: fill this in once fenced frame sandbox flags are more fully specified
 
-      : [=effective sandbox flags/visibility=]
+      : [=effective sandboxing flags/visibility=]
       :: "<a for=visibility>`opaque`</a>"
 
     : [=fenced frame config/effective enabled permissions=]
@@ -1082,11 +1132,22 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. Let |seller| be the result of [=parsing an https origin=] with |config|["{{AuctionAdConfig/seller}}"].
 1. If |seller| is failure, then return failure.
 1. Set |auctionConfig|'s [=auction config/seller=] to |seller|.
-1. Let |decisionLogicURL| be the result of running the [=URL parser=] on
-  |config|["{{AuctionAdConfig/decisionLogicURL}}"].
-1. If |decisionLogicURL| is failure, or it is not [=same origin=] with |auctionConfig|'s
-  [=auction config/seller=], then return failure.
-1. Set |auctionConfig|'s [=auction config/decision logic url=] to |decisionLogicURL|.
+1. If |config|["{{AuctionAdConfig/serverResponse}}"] [=map/exists=]:
+  1. If |config|["{{AuctionAdConfig/requestId}}"] does not [=map/exist=], then [=exception/throw=]
+    a {{TypeError}}.
+  1. Set |auctionConfig|'s [=auction config/server response=] to |config|["{{AuctionAdConfig/serverResponse}}"].
+  1. Set |auctionConfig|'s [=auction config/server response id=] to |config|["{{AuctionAdConfig/requestId}}"].
+1. Otherwise:
+  1. If |config|["{{AuctionAdConfig/requestId}}"] [=map/exists=], then [=exception/throw=]
+    a {{TypeError}}.
+  1. If |config|["{{AuctionAdConfig/decisionLogicURL}}"] does not [=map/exist=],
+    then [=exception/throw=] a {{TypeError}}.
+1. If |config|["{{AuctionAdConfig/decisionLogicURL}}"] [=map/exists=]:
+  1. Let |decisionLogicURL| be the result of running the [=URL parser=] on
+    |config|["{{AuctionAdConfig/decisionLogicURL}}"].
+  1. If |decisionLogicURL| is failure, or it is not [=same origin=] with |auctionConfig|'s
+    [=auction config/seller=], then return failure.
+  1. Set |auctionConfig|'s [=auction config/decision logic url=] to |decisionLogicURL|.
 1. If |config|["{{AuctionAdConfig/trustedScoringSignalsURL}}"] [=map/exists=]:
   1. Let |trustedScoringSignalsURL| be the result of [=parse and verify a trusted signals URL=] on
     |config|["{{AuctionAdConfig/trustedScoringSignalsURL}}"].
@@ -1417,9 +1478,10 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. Let |win| be a new [=previous win=].
   1. Set |win|'s [=previous win/time=] to the [=current wall time=].
   1. Let |ad| be an [=interest group ad=] whose [=interest group ad/render url=] is |bid|'s
-    [=generated bid/bid ad=]'s [=interest group ad/render url=], and whose
+    [=generated bid/bid ad=]'s [=interest group ad/render url=], whose
     [=interest group ad/metadata=] is |bid|'s [=generated bid/bid ad=]'s
-    [=interest group ad/metadata=].
+    [=interest group ad/metadata=], and whose [=interest group ad/ad render ID=] is
+    |bid|'s [=generated bid/bid ad=]'s [=interest group ad/ad render ID=].
   1. Set |win|'s [=previous win/ad json=] to the result of
     [=serializing an Infra value to a JSON string=] given |ad|.
   1. [=list/Append=] |win| to |loadedIg|'s [=interest group/previous wins=].
@@ -1940,6 +2002,8 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
     1. Let |adIDL| be a new {{AuctionAd}}.
     1. [=map/Set=] |adIDL|["{{AuctionAd/renderURL}}"] to the [=URL serializer|serialization=] of
       |ad|'s [=interest group ad/render url=].
+    1. If |ad|'s [=interest group ad/size group=] is not null, then [=map/set=]
+       |adIDL|["{{AuctionAd/sizeGroup}}"] to |ad|'s [=interest group ad/size group=].
     1. If |ad|'s [=interest group ad/metadata=] is not null, then [=map/set=]
       |adIDL|["{{AuctionAd/metadata}}"] to the result of
       [=parsing a JSON string to a JavaScript value=] given |ad|'s [=interest group ad/metadata=].
@@ -2677,6 +2741,35 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
      :: |reportingMacroMap|
 </div>
 
+<div algorithm>
+To <dfn>parse and validate server response</dfn> given an [=auction config=] |auctionConfig|, an
+[=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|,
+a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug reporting info=]
+|bidDebugReportInfoList|:
+
+1. [=Assert=] that these steps are running [=in parallel=].
+1. [=Assert=] that |topLevelAuctionConfig| is null.
+
+    Issue: TODO: Support multi-level auctions.
+    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+1. Let |requestId| be the value of |auctionConfig|'s [=auction config/server response id=].
+1. Let |requestContexts| be the value of |global|'s [=associated Document's=] [=node navigable's=]
+  [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=].
+1. If |requestContexts|[|requestId|] does not [=map/exist=], return null.
+1. Let |response| be the result of deserializing |auctionConfig|'s [=auction config/server response=]
+  according to the Bidding and Auction Services IETF standard.
+
+    Issue: TODO: Link deserialization to IETF standard when available.
+    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+1. Construct bids based on |response|.
+1. Add the bids form the |response| to |bidIgs|.
+1. Insert the debug reporting URLs from |response| into |bidDebugReportInfoList|.
+
+    Issue: TODO: Spec out last few steps starting from constructing bids.
+    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+
+</div>
+
 <h3 id="canloadadauctionfencedframe">canLoadAdAuctionFencedFrame()</h3>
 
 *This first introductory paragraph is non-normative.*
@@ -2726,6 +2819,165 @@ The <dfn for=Navigator method>canLoadAdAuctionFencedFrame()</dfn> method steps a
    (<a href="https://github.com/WICG/turtledove/issues/1206">WICG/turtledove#1206</a>)
 
 1. Return true.
+
+<h3 id="getInterestGroupAdAuctionData">getInterestGroupAdAuctionData()</h3>
+
+*This first introductory paragraph is non-normative.*
+
+When a website or someone working on behalf of the website (e.g. a supply side platform, SSP) wants
+to conduct an auction using a trusted auction server to select an advertisement to display to the
+user, they can call the {{Window/navigator}}.{{Navigator/getInterestGroupAdAuctionData()}} function.
+This function returns an opaque {{Uint8Array}} as the request and a request ID string. The request
+can be sent to a trusted auction server through the JS [[FETCH]] API, which returns a response.
+The response along with the request ID can be then passed as part of an auction configuration to
+{{Window/navigator}}.{{Navigator/runAdAuction()}} to extract the results of the auction.
+
+<xmp class="idl">
+[SecureContext]
+partial interface Navigator {
+  Promise<AdAuctionData> getInterestGroupAdAuctionData(AdAuctionDataConfig config);
+};
+
+dictionary AdAuctionDataConfig {
+  required USVString seller;
+  required USVString coordinatorOrigin;
+};
+
+dictionary AdAuctionData {
+  required Uint8Array request;
+  required USVString requestId;
+};
+</xmp>
+
+A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction interest group">
+  : <dfn>name</dfn>
+  :: A [=string=] that uniquely defines each interest group, as in [=interest group/name=].
+  : <dfn>bidding signals keys</dfn>
+  :: Null or a [=list=] of [=string=], as in [=interest group/trusted bidding signals keys=]
+  : <dfn>user bidding signals</dfn>
+  :: Null or a [=string=], as in [=interest group/user bidding signals=]
+  : <dfn>ads</dfn>
+  :: A [=list=] of [=strings=] containing the corresponding [=interest group ad/ad render IDs=]
+    from the [=interest group/ads=] field.
+  : <dfn>components</dfn>
+  ::  A [=list=] of [=strings=] containing the corresponding [=interest group ad/ad render IDs=]
+    from the [=interest group/ad components=] field.
+  : <dfn>browser signals</dfn>
+  :: A [=server auction browser signals=].
+</dl>
+
+A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction browser signals">
+  : <dfn>bid count</dfn>
+  :: A count of the number of bids for this interest group in the last 30 days.
+    Calculated by summing the [=interest group/bid counts=] for all days within the last 30 days.
+  : <dfn>join count</dfn>
+  :: A count of the number of joins for this interest group in the last 30 days.
+    Calculated by summing the [=interest group/join counts=].
+  : <dfn>recency ms</dfn>
+  :: A [=duration=], in milliseconds, representing the [=current wall time=] at
+    the time this object was constructed minus the corresponding [=interest group=]'s
+    [=interest group/join time=], in milliseconds.
+  : <dfn>previous wins</dfn>
+  :: A <code>[=sequence=]<[=server auction previous win=]></code>
+</dl>
+
+A <dfn>server auction previous win</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction previous win">
+  : <dfn>time delta</dfn>
+  :: A [=duration=], in milliseconds, representing the [=current wall time=] at
+    the time this object was constructed minus the corresponding [=previous win=]'s [=previous win/time=], in seconds.
+  : <dfn>ad render ID</dfn>
+  :: A [=string=] containing the [=interest group ad/ad render ID=] for the ad represented by this entry.
+</dl>
+
+A <dfn>server auction request context</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction request context">
+  : <dfn>request ID</dfn>
+  :: A unique identifier associated with this and only this invocation of
+    {{Window/navigator}}.{{Navigator/getInterestGroupAdAuctionData()}}. This is
+    used to look-up a specific request context.
+  : <dfn>request context</dfn>
+  :: An opaque context used to handle the request.
+
+    Issue: TODO: Link to the IETF Internet Draft that defines the context when it's available.
+    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+</dl>
+
+<div algorithm="getInterestGroupAdAuctionData()">
+
+The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> method steps are:
+
+1. Let |global| be [=this=]'s [=relevant global object=].
+1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=run-ad-auction=]"
+  [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
+1. Let |p| be [=a new promise=].
+1. Let |queue| be the result of [=starting a new parallel queue=].
+1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
+  1. Let |igMap| be a new [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are [=lists=].
+  1. Let |startTime| be a [=moment=] equal to the [=current wall time=].
+  1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
+    1. If |ig|'s [=interest group/ads=] is null or [=list/is empty=], [=iteration/continue=].
+    1. Let |owner| be |ig|'s [=interest group/owner=].
+    1. If |igMap|[|owner|] does not [=map/exist=], then [=map/set=] |igMap|[|owner|] to a new [=list=].
+    1. Let |ads| be a new [=list=].
+    1. [=list/For each=] |ad| in |ig|'s [=interest group/ads=], [=list/append=] |ad|'s [=interest group ad/ad render ID=] to |ads|.
+    1. Let |components| be a new [=list=].
+    1. [=list/For each=] |component| in |ig|'s [=interest group/ad components=], [=list/append=] |component|'s [=interest group ad/ad render ID=] to |components|.
+    1. Let |prevWins| be a new <code>[=sequence=]<[=server auction previous win=]></code>.
+    1. [=list/For each=] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
+      the last 30 days:
+      1. Let |timeDelta| be |startTime| minus |prevWin|'s [=previous win/time=].
+      1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
+        otherwise.
+      1. Let |serverPrevWin| be a new [=server auction previous win=] with the following [=struct/items=]:
+        : [=server auction previous win/time delta=]
+        :: |timeDelta|
+        : [=server auction previous win/ad render ID=]
+        :: the value of the "adRenderId" field in |prevWin|'s [=previous win/ad json=], or the empty string if not present
+      1. [=list/Append=] |serverPrevWin| to |prevWins|.
+    1. Let |browserSignals| be a new [=server auction browser signals=] with the following [=struct/items=]:
+      : [=server auction browser signals/bid count=]
+      :: the sum of |ig|'s [=interest group/bid counts=] with a bid day within the last 30 days
+      : [=server auction browser signals/join count=]
+      :: the sum of |ig|'s [=interest group/join counts=] with a join day within the last 30 days
+      : [=server auction browser signals/recency ms=]
+      :: the [=current wall time=] minus |ig|'s [=interest group/join time=] in millseconds
+      : [=server auction browser signals/previous wins=]
+      :: |prevWins|
+    1. Let |serverIg| be a new [=server auction interest group=] with the following [=struct/items=]:
+      : [=server auction interest group/name=]
+      :: |ig|'s [=interest group/name=]
+      : [=server auction interest group/bidding signals keys=]
+      :: |ig|'s [=interest group/trusted bidding signals keys=]
+      : [=server auction interest group/user bidding signals=]
+      :: |ig|'s [=interest group/user bidding signals=]
+      : [=server auction interest group/ads=]
+      :: |ads|
+      : [=server auction interest group/components=]
+      :: |components|
+      : [=server auction interest group/browser signals=]
+      :: |browserSignals|
+    1. [=list/Append=] |serverIg| to |igMap|[|owner|].
+  1. Let |result| be a new {{AdAuctionData}}.
+  1. Let |requestId| be the [=string representation=] of a [=version 4 UUID=].
+  1. Set |result|'s {{AdAuctionData/requestId}} field to |requestId|.
+  1. Let |context| be the result of serializing |igMap| using |config| into |result|'s
+    {{AdAuctionData/request}} field.
+
+    Issue: TODO: Link to the IETF Internet Draft that defines the serialization when it's available.
+    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+  1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
+    resolve |p| with |result|.
+  1. Let |requestContext| be a new [=server auction request context=].
+  1. Set |requestContext|'s [=server auction request context/request ID=] field to the value of |result|'s {{AdAuctionData/requestId}} field.
+  1. Set |requestContext|'s [=server auction request context/request context=] field to |context|.
+  1. [=map/Set=] |global|'s [=associated Document's=] [=node navigable's=]
+    [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=][|requestId|] to |requestContext|.
+1. Return p.
+
+</div>
 
 # Reporting # {#reporting}
 
@@ -4276,6 +4528,8 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   1. Let |dimension| be the result of parsing |dimensionString| using the
     [=rules for parsing floating-point number values=].
   1. If |dimension| is an error, then return null as the dimension and the empty string as the dimension unit.
+  1. If |dimension| is less than 0, then return null as the dimension and the empty string as the
+     dimension unit.
   1. [=Collect a sequence of code points=] that are [=ASCII lower alpha=], given |position|. Let
     that be |dimensionUnit|.
   1. If |position| is not past the end of |input|, then return null as the dimension and the empty
@@ -4314,11 +4568,16 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 
   1. Let |adUrl| be |adDescriptor|'s [=ad descriptor/url=].
   1. If |adUrl|'s [=url/scheme=] is not "`https`", return null.
-  1. TODO: Need to check [=ad descriptor/size=] as well.
-  1. If |isComponent|, [=list/for each=] |ad| in |ig|'s [=interest group/ad components=]:
-    1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return |ad|.
-  1. Otherwise, [=list/for each=] |ad| in |ig|'s [=interest group/ads=]:
-    1. If |ad|'s [=interest group ad/render url=] equals |adUrl|, return |ad|.
+  1. Let |adSize| be |adDescriptor|'s [=ad descriptor/size=].
+  1. Let |adList| be |ig|'s [=interest group/ad components=] if |isComponent|, otherwise |ig|'s
+     [=interest group/ads=].
+  1. [=list/For each=] |ad| in |adList|:
+    1. If |ad|'s [=interest group ad/render url=] does not equal |adUrl|, [=iteration/continue=].
+    1. If |ad|'s [=interest group ad/size group=] is null, return |ad|.
+    1. If |adSize| is null, return |ad|.
+    1. [=list/For each=] |igSize| in (|ig|'s [=interest group/size groups=])[|ad|'s
+       [=interest group ad/size group=]]:
+      1. If |igSize| equals |adSize|, return |ad|.
   1. Return null.
 </div>
 
@@ -4669,6 +4928,30 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
         Issue:  Serializing an Infra value to JSON bytes expects to be called within a valid ES realm. See
         <a href="https://github.com/whatwg/infra/issues/625">infra/625</a>
 
+        <dt>"`adSizes`"
+        <dd>
+        1. Let |adSizes| be a new [=map=] whose [=map/keys=] are [=strings=] and [=map/values=] are
+           [=ad sizes=].
+        1. [=map/For each=] |sizeName| → |size| of |value|:
+          1. If |sizeName| is "", jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+          1. Let |adSize| be the result from running [=parse an AdRender ad size=] with |size|.
+          1. If |adSize| is null, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+          1. [=map/Set=] |adSizes|[|sizeName|] to |adSize|.
+        1. Set |ig|'s [=interest group/ad sizes=] to |adSizes|.
+
+        <dt>"`sizeGroups`"
+        <dd>
+        1. Let |adSizes| be |ig|'s [=interest group/ad sizes=].
+        1. Let |sizeGroups| be a new [=map=] whose [=map/keys=] are [=strings=] and [=map/values=]
+           are [=strings=].
+        1. [=map/For each=] |sizeGroupName| → |sizeList| of |value|:
+          1. If |sizeGroupName| is "", jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+          1. [=list/For each=] |sizeName| of |sizeList|:
+            1. If |sizeName| is "" or |adSizes|[|sizeName|] does not [=map/exist=],
+               jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
+          1. [=map/Set=] |sizeGroups|[|sizeGroupName|] to |sizeList|.
+        1. Set |ig|'s [=interest group/size groups=] to |sizeGroups|.
+
         <dt>"`ads`"
         <dt>"`adComponents`"
         <dd>
@@ -4698,6 +4981,13 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
               * |renderURL| [=url/scheme=] is not "`https`";
               * |renderURL| [=includes credentials=].
             1. Set |igAd|'s [=interest group ad/render url=] to |renderURL|.
+            1. If |ad|["{{AuctionAd/sizeGroup}}"] [=map/exists=]:
+              1. Let |sizeGroup| be |ad|["{{AuctionAd/sizeGroup}}}].
+              1. Jump to the step labeled <i><a href=#abort-update>Abort update</a></i> if none of
+                 the following conditions hold:
+                * |adSizes|[|sizeGroup|] [=map/exists=].
+                * |sizeGroups|[|sizeGroup|] [=map/exists=].
+              1. Set |igAd|'s [=interest group ad/size group=] to |sizeGroup|.
             1. If |ad|["{{AuctionAd/metadata}}"] [=map/exists=], then let
               |igAd|'s [=interest group ad/metadata=] be the result of
               [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
@@ -4788,7 +5078,7 @@ The <dfn for=ProtectedAudience method>queryFeatureSupport(feature)</dfn> method 
     :   "permitCrossOriginTrustedSignals"
     ::  true
     :   "realTimeReporting"
-    ::  true    
+    ::  true
     :   "reportingTimeout"
     ::  true
 1. If |feature| is "*", then return |featuresTable|.
@@ -4845,6 +5135,7 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 1. If |ig|'s [=interest group/ads=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
     [=interest group ad/render url=].
+  1. The [=string/length=] of |ad|'s [=interest group ad/size group=] if the field is not null.
   1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
   1. The [=string/length=] of |ad|'s [=interest group ad/buyer reporting ID=] if the field is not null.
   1. The [=string/length=] of |ad|'s [=interest group ad/buyer and seller reporting ID=] if the
@@ -4855,7 +5146,18 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 1. If |ig|'s [=interest group/ad components=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
     [=interest group ad/render url=].
+  1. The [=string/length=] of |ad|'s [=interest group ad/size group=] if the field is not null.
   1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
+1. If |ig|'s [=interest group/ad sizes=] is not null, [=map/for each=] |sizeName| → |size| of it:
+  1. The sum of the [=string/length=] of |sizeName| and 18 (representing the fixed length of |size|).
+
+  Note: 10 represents the size of 2 doubles for [=ad size/width=] and [=ad size/height=] (each 8
+  bytes), and 2 bytes for enums for [=ad size/width units=] and [=ad size/height units=] (each 1 byte).
+1. If |ig|'s [=interest group/size groups=] is not null, [=map/for each=] |sizeGroupName| → |sizeList|
+   of it:
+  1. The sum of the [=string/length=] of |sizeGroupName| and the following:
+  1. [=list/For each=] |sizeName| of |sizeList|:
+    1. The [=string/length=] of |sizeName|.
 1. If |ig|'s [=interest group/additional bid key=] is not null:
   1. 32, which is its size (number of bytes).
 
@@ -5034,6 +5336,9 @@ prevents a leak of the user's ad interest group membership to the server.
 
 # Fetch Patch for Auction Headers # {#fetch-patch-for-auction-headers}
 
+    Issue: TODO: Handle Bidding and Auction Server header.
+    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+
 This section specifies a manner by which some data, including [=additional bids=] and
 [=direct from seller signals=], may be provided to auctions such that the data is only used within
 their intended auction.
@@ -5072,6 +5377,11 @@ with the {{RequestInit/adAuctionHeaders}} option set to `true`, or during an
 <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
 request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a>
 set to `true`, as described in the [:Ad-Auction-Additional-Bid:] header description.
+
+Each [=traversable navigable=] has a <dfn for="traversable navigable">saved Bidding
+and Auction request context</dfn>, which is a [=map=] whose [=map/keys=] are
+the [=string representation=] of a [=version 4 UUID=] and whose [=map/values=]
+are [=server auction request contexts=].
 </div>
 
 <div algorithm="fetch capture adAuctionHeaders boolean patch">
@@ -5558,6 +5868,13 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
   :: Null or a [=list=] of [=interest group ad=]. Contains various ad components (or "products") that
     can be used to construct ads composed of multiple pieces — a top-level ad template "container"
     which includes some slots that can be filled in with specific "products".
+  : <dfn>ad sizes</dfn>
+  :: Null or a [=map=] whose [=map/keys=] are [=strings=] and [=map/values=] are [=ad sizes=].
+     Contains named sizes (width and height) that can be bound to ads to specify their render size.
+  : <dfn>size groups</dfn>
+  :: Null or a [=map=] whose [=map/keys=] are [=strings=] and [=map/values=] are [=lists=] of
+     [=strings=]. Contains named collections of ad sizes that can be used to declare a bundle of
+     possible sizes which all apply to one ad url.
   : <dfn>additional bid key</dfn>
   :: Null or a [=byte sequence=] of length 32. Must be null if [=interest group/ads=] or
     [=interest group/update url=] is not null. The Ed25519 public key (a 256-bit EdDSA public key)
@@ -5600,6 +5917,8 @@ An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/item
   :: A [=URL=]. If this ad wins the auction, this URL (or a [=urn uuid=] that maps to this URL) will
     be returned by {{Navigator/runAdAuction()}}. This URL is intended to be loaded into an ad
     <{iframe}> (or a <{fencedframe}>).
+  : <dfn>size group</dfn>
+  :: Null or a [=string=], initially null. The name of the size group (collection of render sizes) bound to this ad.
   : <dfn>metadata</dfn>
   :: Null or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
   : <dfn>buyer reporting ID</dfn>
@@ -5616,6 +5935,9 @@ An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/item
     with registered macros. Each origin's [=origin/scheme=] must be "`https`" and each origin must be
     <a href="https://github.com/privacysandbox/attestation">enrolled</a>. Only meaningful in
     [=interest group/ads=], but ignored in [=interest group/ad components=].
+  : <dfn>ad render ID</dfn>
+  :: A [=string=] containing up to 12 [=ASCII bytes=] uniquely identifying this ad. Sent instead
+    of the full [=interest group ad=] for auctions executed on a server.
 </dl>
 
 A <dfn>previous win</dfn> is the [=interest group=]'s auction win history, to allow on-device
@@ -5672,8 +5994,9 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
   :: An [=origin=].
     The origin of the seller running the ad auction. The [=origin/scheme=] must be "`https`".
   : <dfn>decision logic url</dfn>
-  :: A [=URL=].
-    The URL to fetch the seller's JavaScript from.
+  :: Null or a [=URL=].
+    The URL to fetch the seller's JavaScript from. May be null when a
+    [=auction config/server response=] is specified, otherwise is required.
     <p class="note">
       The [=auction config/decision logic url=]'s [=origin=] will always be [=same origin=] with
       [=auction config/seller=].
@@ -5844,7 +6167,15 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
     Each buyer's real time reporting type. Currently the only supported type is
     "default-local-reporting" indicating local differential privacy. All buyers in the map opted in
     to receive real time reports.
-
+  : <dfn>server response</dfn>
+  :: Null or a {{Promise}} or a {{Uint8Array}} containing an encrypted response from the trusted auction server.
+  : <dfn>server response id</dfn>
+  :: Null or a [=version 4 UUID=]
+    A UUID used to match a request from
+    {{Window/navigator}}.{{Navigator/getInterestGroupAdAuctionData()}} to the
+    encrypted response stored in [=auction config=]'s [=auction config/server response=] field.
+    Must be null when [=auction config=]'s [=auction config/server response=] is null,
+    and non-null otherwise.
 </dl>
 
 <div algorithm>
