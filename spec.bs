@@ -198,7 +198,7 @@ dictionary AuctionAd {
   USVString buyerReportingId;
   USVString buyerAndSellerReportingId;
   sequence<USVString> allowedReportingOrigins;
-  sequence<DOMString> adRenderId;
+  DOMString adRenderId;
 };
 
 dictionary AuctionAdInterestGroupSize {
@@ -1482,11 +1482,13 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     [=interest group/name=] is |ig|'s [=interest group/name=], return if none found.
   1. Let |win| be a new [=previous win=].
   1. Set |win|'s [=previous win/time=] to the [=current wall time=].
-  1. Let |ad| be an [=interest group ad=] whose [=interest group ad/render url=] is |bid|'s
-    [=generated bid/bid ad=]'s [=interest group ad/render url=], whose
-    [=interest group ad/metadata=] is |bid|'s [=generated bid/bid ad=]'s
-    [=interest group ad/metadata=], and whose [=interest group ad/ad render ID=] is
-    |bid|'s [=generated bid/bid ad=]'s [=interest group ad/ad render ID=].
+  1. Let |ad| be a new [=interest group ad=] with the following [=struct/items=]:
+    : [=interest group ad/render url=]
+    :: |bid|'s [=generated bid/bid ad=]'s [=interest group ad/render url=]
+    : [=interest group ad/metadata=]
+    :: |bid|'s [=generated bid/bid ad=]'s [=interest group ad/metadata=]
+    : [=interest group ad/ad render ID=]
+    :: |bid|'s [=generated bid/bid ad=]'s [=interest group ad/ad render ID=]
   1. Set |win|'s [=previous win/ad=] to |ad|.
   1. [=list/Append=] |win| to |loadedIg|'s [=interest group/previous wins=].
   1. [=list/Replace=] the [=interest group=] that has |loadedIg|'s [=interest group/owner=] and
@@ -1589,6 +1591,13 @@ the script or wasm, otherwise a [=tuple=] of ([=list=] of [=generated bids=],
     1. Let |timeDelta| be |auctionStartTime| minus |prevWin|'s [=previous win/time=].
     1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
       otherwise.
+    1. Let |prevWinIDL| be a new {{AuctionAd}} with the following [=struct/items=]:
+      : [=AuctionAd/renderURL=]
+      :: |prevWin|'s [=interest group ad/render url=]
+      : [=AuctionAd/metadata=]
+      :: |prevWin|'s [=interest group ad/metadata=]
+      : [=AuctionAd/adRenderId=]
+      :: |prevWin|'s [=ad render ID=]
     1. Let |prevWin| be the <code>[=sequence=]<{{PreviousWinElement}}></code> «|timeDelta|, |win|'s [=previous win/ad=]».
     1. [=list/Append=] |prevWin| to |prevWins|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/prevWinsMs}}"] to |prevWins|.
