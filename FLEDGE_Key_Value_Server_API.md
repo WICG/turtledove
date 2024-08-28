@@ -73,10 +73,11 @@ We will use [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-oh
 *   0x0001 HKDF-SHA256 for KDF (key derivation functions)
 *   AES256GCM for AEAD scheme.
 
-* The OHTTP request has media type “message/ad-auction-trusted-signals-request; v=2.0”
-* The OHTTP response has media type “message/ad-auction-trusted-signals-response; v=2.0”
+Since we are [repurposing the OHTTP encapsulation mechanism, we are required to define new media types](https://www.rfc-editor.org/rfc/rfc9458.html#name-repurposing-the-encapsulati):
+* The OHTTP request media type is “message/ad-auction-trusted-signals-request”
+* The OHTTP response media type is “message/ad-auction-trusted-signals-response”
 
-The version information is of the format `major.minor` where `major` and `minor` are integers.
+Note that these media types are [concatenated with other fields when creating the HPKE encryption context](https://www.rfc-editor.org/rfc/rfc9458.html#name-encapsulation-of-requests), and are not HTTP content or media types.
 
 Inside the ciphertext, the request/response is framed with a 5 byte header, where the first byte is the format+compression byte, and the following 4 bytes are the length of the request message in network byte order. Then the request is zero padded to a set of pre-configured lengths.
 
@@ -378,6 +379,10 @@ The content of each compressed blob is a CBOR list of partition outputs. This ob
         "description": "Unique id of the partition from the request",
         "type": "unsigned integer"
       },
+      "dataVersion" {
+        "description": "An optional field to indicate the state of the data that generated this response, which will then be available in bid generation/scoring and reporting.",
+        "type": "unsigned integer"
+      },
       "keyGroupOutputs": {
         "type": "array",
         "items": {
@@ -430,6 +435,7 @@ Example:
 [
   {
     "id": 0,
+    "dataVersion": 102,
     "keyGroupOutputs": [
       {
         "tags": [
@@ -437,7 +443,7 @@ Example:
         ],
         "keyValues": {
           "InterestGroup1": {
-            "value": "{\"priorityVector\":{\"signal1\":1}}"
+            "value": "{\"priorityVector\":{\"signal1\":1},\"updateIfOlderThanMs\": 10000}"
           }
         }
       },
@@ -484,6 +490,10 @@ For values for keys from the `interestGroupNames` namespace, they must conform t
           "type": "number"
         }
       }
+    },
+    "updateIfOlderThanMs": {
+      "description": "This optional field specifies that the interest group should be updated if the interest group hasn't been joined or updated in a duration of time exceeding `updateIfOlderThanMs` milliseconds. Updates that ended in failure, either parse or network failure, are not considered to increment the last update or join time. An `updateIfOlderThanMs` that's less than 10 minutes will be clamped to 10 minutes.",
+      "type": "unsigned integer"
     }
   }
 }
@@ -496,7 +506,8 @@ Example:
   "priorityVector": {
     "signal1": 1,
     "signal2": 2
-  }
+  },
+  "updateIfOlderThanMs": 10000
 }
 ```
 
