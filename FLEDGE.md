@@ -244,38 +244,44 @@ The `ads` list contains the various ads that the interest group might show.  Eac
  * `selectableBuyerAndSellerReportingIds`: An array of
    [USVString](https://webidl.spec.whatwg.org/#idl-USVString)s, one of which may be
    selected by `generateBid()` to be reported to `reportWin()` and `reportResult()`
-   along with `buyerAndSellerReportingId` and `buyerReportingId` when all three values
-   are jointly k-anonymous along with the interest group owner, bidding script URL,
-   and render URL to be provided to these reporting functions. See
+   along with `buyerAndSellerReportingId` and `buyerReportingId`.
+   When `generateBid()` selects a value from `selectablebuyerAndSellerReportingIds`,
+   the resulting bid may only win the auction if the selected value is jointly k-anonymous
+   along with `buyerAndSellerReportingId`, `buyerReportingId`, the interest group owner,
+   bidding script URL, and render URL. See
    [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
 
  * `buyerAndSellerReportingId`: A 
    [USVString](https://webidl.spec.whatwg.org/#idl-USVString), no character limit.
    If set and `selectableBuyerAndSellerReportingIds` is
-   unset, the value is used instead of the interest group name or `buyerReportingId`
+   unset or not selected, the value is used instead of the interest group name or `buyerReportingId`
    for reporting in `reportWin()` and `reportResult()`. Note that this field needs to
    be jointly k-anonymous with the interest group owner, bidding script URL, and
    render URL to be provided to these reporting functions (in the same way that the
-   interest group name would have needed to be). If set and
-   `selectableBuyerAndSellerReportingIds` is also set, the value is reported to
-   `reportWin()` and `reportResult()` along with the selected
-   `selectablebuyerAndSellerReportingIds` and `buyerReportingId` when all three values
-   are jointly k-anonymous along with the interest group owner, bidding script URL,
-   and render URL to be provided to these reporting functions. See
+   interest group name would have needed to be). If set and a value from
+   `selectableBuyerAndSellerReportingIds` is selected by `generateBid()`, the value of
+   this is reported to `reportWin()` and `reportResult()` along with the selected
+   `selectablebuyerAndSellerReportingIds` and `buyerReportingId`. When `generateBid()`
+   selects a value from `selectablebuyerAndSellerReportingIds`, the resulting bid may
+   only win the auction if the selected value is jointly k-anonymous along with
+   `buyerAndSellerReportingId`, `buyerReportingId`, the interest group owner, bidding
+   script URL, and render URL. See
    [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
 
  * `buyerReportingId`: A [USVString](https://webidl.spec.whatwg.org/#idl-USVString),
-   no character limit. If set and `selectableBuyerAndSellerReportingIds` is unset, the
+   no character limit. If set and `selectableBuyerAndSellerReportingIds` is unset or not selected, the
    value is used instead of the interest group name for reporting in `reportWin`. Note
    that this field needs to be jointly k-anonymous with the interest group owner,
    bidding script URL, and render URL to be provided to these reporting functions (in
-   the same way that the interest group name would have needed to be). If set and
-   `selectableBuyerAndSellerReportingIds` is also set, the value is reported to
-   `reportWin()` along with the selected `selectablebuyerAndSellerReportingIds` and
-   `buyerAndSellerReportingId` when all three values are jointly k-anonymous along
-   with the interest group owner, bidding script URL, and render URL to be provided to
-   these reporting functions. See [Reporting IDs](#54-reporting-ids-in-reporting) for
-   more details.
+   the same way that the interest group name would have needed to be). If set and a
+   value from `selectableBuyerAndSellerReportingIds` is selected by `generateBid()`,
+   the value of this is reported to `reportWin()` and `reportResult()` along with the
+   selected `selectablebuyerAndSellerReportingIds` and `buyerAndSellerReportingId`.
+   When `generateBid()` selects a value from `selectablebuyerAndSellerReportingIds`,
+   the resulting bid may only win the auction if the selected value is jointly
+   k-anonymous along with `buyerAndSellerReportingId`, `buyerReportingId`, the
+   interest group owner, bidding script URL, and render URL. See
+   [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
 
  * `metadata`: Arbitrary metadata that can be used at bidding time.
 
@@ -1366,7 +1372,8 @@ Here's a table representation of the above logic: (`selectableBuyerAndSellerRepo
   </tbody>
 </table>
 
-`generateBid()` is passed all reporting IDs in each entry in the interest group's `ads` list, though in cases where `generateBid()`
+When `selectableBuyerAndSellerReportingIds` is set, `generateBid()` is passed all
+reporting IDs in each entry in the interest group's `ads` list, though in cases where `generateBid()`
 is re-run, after the first invocation didn't produced any bids with ads that passed the k-anonymity checks,
 `selectableBuyerAndSellerReportingIds` that don't pass the k-anonymity check will not be present in the interest group.
 
