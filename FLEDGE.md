@@ -308,7 +308,7 @@ same-origin with `owner`. Additionally, to be used in an auction, the HTTP respo
 header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
 loading Protected Audience resources. The `trustedBiddingSignalsURL` must also not have a [query](https://url.spec.whatwg.org/#concept-url-query). (See 6.13 [here](https://wicg.github.io/turtledove/#dom-navigator-joinadinterestgroup)).
 
-The `renderURL` property of an `ad` must be also be a valid and credentialless HTTPs URL, but does _not_
+The `renderURL` property of an `ad` must be also be a valid and credentialless HTTPS URL, but does _not_
 have the same origin, response header, fragment, or query requirements.
 
 (You can find detailed error conditions for all fields in step 6 of [the `joinAdInterestGroup()` section of the spec](https://wicg.github.io/turtledove/#dom-navigator-joinadinterestgroup)).
@@ -576,9 +576,6 @@ The function gets called once for each candidate ad in the auction.  The argumen
       'bidCurrency': 'USD', /* bidCurrency returned by generateBid, or '???' if none */
       'dataVersion': 1, /* Data-Version value from the trusted scoring signals server's response */
       'selectedBuyerAndSellerReportingId': 'deal2', /* Value returned by generateBid. */
-      'selectedbuyerAndSellerReportingIdRequired': true, /* Value returned by generateBid. */
-         /* Sellers may want to ignore bids if this is false but the selectedBuyerAndSellerReportingId
-            is necessary in reportResult() to properly report on this bid. */
       'buyerAndSellerReportingId': 'seatId',
     }
     ```
@@ -907,8 +904,7 @@ generateBid(interestGroup, auctionSignals, perBuyerSignals,
           'targetNumAdComponents': 3,
           'numMandatoryAdComponents': 1,
           'modelingSignals': 123,
-          'selectedBuyerAndSellerReportingId': 'deal2',
-          'selectedBuyerAndSellerReportingIdRequired': true,};
+          'selectedBuyerAndSellerReportingId': 'deal2'};
 }
 ```
 
@@ -978,18 +974,15 @@ The output of `generateBid()` contains the following fields:
     for more details.
 *   selectedBuyerAndSellerReportingId: (optional) A string from the interest
     group's ad's `selectableBuyerAndSellerReportingIds` array; if it's not in
-    the array, the bid is ignored.  If present and jointly k-anonymous with
-    `buyerAndSellerReportingId`, `buyerReportingId`, the interest group owner,
-    bidding script URL, and render URL, then it will be presented to
+    the array, the bid is ignored. If present, this is reported to `reportWin()`
+    and `reportResult()` along with `buyerAndSellerReportingId` and
+    `buyerReportingId`; the resulting bid may only win the auction if the
+    selected value is jointly k-anonymous along with `buyerAndSellerReportingId`,
+    `buyerReportingId`, the interest group owner, bidding script URL, and render
+    URL. If present, it indicates the reporting of this bid would not operate
+    correctly were the `selectedBuyerAndSellerReportingId` not presented to
     `reportWin()` and `reportResult()`. See
     [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
-*   selectedBuyerAndSellerReportingIdRequired: (optional) A boolean that when `true`,
-    indicates this bid should be thrown away if `selectedBuyerAndSellerReportingId`
-    is not present or if the k-anonymity check on it fails. Setting this to `true`
-    indicates that reporting of this bid would not operate correctly were the
-    `selectedBuyerAndSellerReportingId` not presented to `reportWin()` and
-    `reportResult()`. See [Reporting IDs](#54-reporting-ids-in-reporting)
-    for more details.
 
 In case returning multiple bids is supported by the implementation in use,
 `generateBid` may also return up to `browserSignals.multiBidLimit` valid bid
@@ -998,8 +991,10 @@ objects of the format above in an array.
 Note: Chrome currently imposes an internal limit of 100 for the length of returned bids sequences.
 
 If none of the produced bids pass the k-anonymity checks (the check on the
-render `url` or, when `selectedBuyerAndSellerReportingIdRequired` is `true`, the
-check on `selectedBuyerAndSellerReportingId`), `generateBid` will be
+render `url` or, when `selectedBuyerAndSellerReportingId` is returned, the
+check on its value along with selected value is jointly k-anonymous along with
+`buyerAndSellerReportingId`, `buyerReportingId`, the interest group owner,
+bidding script URL, and render URL), `generateBid` will be
 re-run with the input `interestGroup` filtered to contain only k-anonymous ads
 and component ads and `selectableBuyerAndSellerReportingIds`. Such re-runs are
 limited to returning only a single bid,
@@ -1316,18 +1311,12 @@ be jointly k-anonymous with the interest group owner, bidding script URL, and re
 Which of `selectableBuyerAndSellerReportingIds`, `buyerAndSellerReportingId`, `buyerReportingId`, and the interest group name gets
 passed to `reportWin()` and `reportResult()` is determined by the browser with the following logic:
 
-* If `selectableBuyerAndSellerReportingIds` defined in interest group:
-    * If `selectedBuyerAndSellerReportingId` in bid:
-        * Then `selectedBuyerAndSellerReportingId`, `buyerAndSellerReportingId` (if present in interest group), and `buyerReportingId`
-          (if present in interest group) will all be available to reporting.
-    * Otherwise (i.e. when `selectedBuyerAndSellerReportingId` not in bid):
-        * No reporting IDs. If a buyer wants reporting IDs, they can consider including and selecting an empty string (`''`) member
-          `selectableBuyerAndSellerReportingIds`, for example `selectableBuyerAndSellerReportingIds: [ '', ...` in the interest group
-          and `'selectedBuyerAndSellerReportingId': ''` returned from `generateBid()`.
-* Otherwise (i.e. when `selectableBuyerAndSellerReportingIds` not defined in interest group):
-    * If `buyerAndSellerReportingId` defined in interest group: `buyerAndSellerReportingId` available to reporting.
-    * Otherwise, if `buyerReportingId` defined in interest group: `buyerReportingId` available to reporting.
-    * Otherwise, interest group `name` available to reporting.
+* If `selectedBuyerAndSellerReportingId` in bid:
+    * Then `selectedBuyerAndSellerReportingId`, `buyerAndSellerReportingId` (if present in interest group), and `buyerReportingId`
+      (if present in interest group) will all be available to reporting.
+* Otherwise, if `buyerAndSellerReportingId` defined in interest group: `buyerAndSellerReportingId` available to reporting.
+* Otherwise, if `buyerReportingId` defined in interest group: `buyerReportingId` available to reporting.
+* Otherwise, interest group `name` available to reporting.
 
 Here's a table representation of the above logic: (`selectableBuyerAndSellerReportingIds` abreviated to selectableBASRI,
 `buyerAndSellerReportingId` abreviated to BASRI, `buyerReportingId` abreviated to BRI)
@@ -1354,28 +1343,21 @@ Here's a table representation of the above logic: (`selectableBuyerAndSellerRepo
       <td>selectableBASRI, BASRI</td>
     </tr>
     <tr>
-      <td>yes but not in bid</td>
-      <td>optional</td>
-      <td>optional</td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td>no</td>
+      <td>no or not in bid</td>
       <td>yes</td>
       <td>optional</td>
       <td>BASRI</td>
       <td>BASRI</td>
     </tr>
     <tr>
-      <td>no</td>
+      <td>no or not in bid</td>
       <td>no</td>
       <td>yes</td>
       <td>BRI</td>
       <td></td>
     </tr>
     <tr>
-      <td>no</td>
+      <td>no or not in bid</td>
       <td>no</td>
       <td>no</td>
       <td>interest group name</td>
@@ -1384,13 +1366,17 @@ Here's a table representation of the above logic: (`selectableBuyerAndSellerRepo
   </tbody>
 </table>
 
-`generateBid()` is passed all reporting IDs in each entry in the interst group's `ads` list, though in cases where `generateBid()`
-is re-run, after the first invocation didn't produced any bids with ads that passed the k-anonymity checks, reporting IDs that
-don't pass the k-anonymity check will not be present in the interest group.
+`generateBid()` is passed all reporting IDs in each entry in the interest group's `ads` list, though in cases where `generateBid()`
+is re-run, after the first invocation didn't produced any bids with ads that passed the k-anonymity checks,
+`selectableBuyerAndSellerReportingIds` that don't pass the k-anonymity check will not be present in the interest group.
 
-`scoreAd()` is passed the same reporting IDs as `reportResult()`, but without the k-anonymity requirement.  If the seller
-requires `selectedBuyerAndSellerReportingId` for accurate reporting, hence being presented to `reportResult()`, then
-`scoreAd()` should only assign positive scores to bids when `browserSignals.selectedbuyerAndSellerReportingIdRequired` is `true`.
+For bids with a value for `selectedbuyerAndSellerReportingId`, `scoreAd` is passed
+the same reporting IDs as would be passed to `reportResult()`
+(`selectedBuyerAndSellerReportingId` and `buyerAndSellerReportingId`).
+To ensure accurate reporting, a bid with a value for `selectedbuyerAndSellerReportingId` may only win the auction if the value of
+`selectedbuyerAndSellerReportingId` is jointly k-anonymous along with `buyerAndSellerReportingId`, `buyerReportingId`, the interest
+group owner, bidding script URL, and render URL, so that `reportResult()` will always receive the value of
+`selectedbuyerAndSellerReportingId` for bids that provided a value.
 
 One use for these reporting IDs is to facilitate deals (private marketplace) in Protected Audience auctions.  Here's a couple
 examples of using the reporting IDs to convey deals used in bids. In these examples, the ‘s’ prefix might be used to connote seat
