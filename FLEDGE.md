@@ -967,7 +967,7 @@ The output of `generateBid()` contains the following fields:
 *   bidCurrency: (optional) The currency for the bid, used for [currency-checking](#36-currency-checking).
 *   render: A dictionary describing the creative that should be rendered if this bid wins the auction. This includes:
     * url: The creative's URL. This must match the `renderURL` of an ad in the interest group's `ads` list, otherwise the bid is ignored.
-    * width: The creative's width. This size will be matched against the declaration in the interest group and substituted into any ad size macros present in the ad creative URL. When the ad is loaded in a fenced frame, the fenced frame's inner frame (i.e. the size visible to the ad creative) will be frozen to this size, and it will be unable to see changes to the rame size made by the embedder.
+    * width: The creative's width. This size will be matched against the declaration in the interest group and substituted into any ad size macros present in the ad creative URL. When the ad is loaded in a fenced frame, the fenced frame's inner frame (i.e. the size visible to the ad creative) will be frozen to this size, and it will be unable to see changes to the frame size made by the embedder.
     * height: The creative's height. See elaboration in `width` above.
 
     Optionally, if you don't want to hook into interest group size declarations (e.g., if you don't want to use size macros), you can have `render` be just the URL, rather than a dictionary with `url` and `size`.
@@ -1351,7 +1351,7 @@ Here's a table representation of the above logic: (`selectableBuyerAndSellerRepo
     <tr>
       <td>no or not in bid</td>
       <td>yes</td>
-      <td>optional</td>
+      <td>ignored</td>
       <td>BASRI</td>
       <td>BASRI</td>
     </tr>
@@ -1374,7 +1374,7 @@ Here's a table representation of the above logic: (`selectableBuyerAndSellerRepo
 
 When `selectableBuyerAndSellerReportingIds` is set, `generateBid()` is passed all
 reporting IDs in each entry in the interest group's `ads` list, though in cases where `generateBid()`
-is re-run, after the first invocation didn't produced any bids with ads that passed the k-anonymity checks,
+is re-run, after the first invocation didn't produce any bids with ads that passed the k-anonymity checks,
 `selectableBuyerAndSellerReportingIds` that don't pass the k-anonymity check will not be present in the interest group.
 
 For bids with a value for `selectedbuyerAndSellerReportingId`, `scoreAd` is passed
