@@ -996,11 +996,9 @@ objects of the format above in an array.
 
 Note: Chrome currently imposes an internal limit of 100 for the length of returned bids sequences.
 
-If none of the produced bids pass the k-anonymity checks (the check on the
-render `url` or, when `selectedBuyerAndSellerReportingId` is returned, the
-check on its value along with selected value is jointly k-anonymous along with
-`buyerAndSellerReportingId`, `buyerReportingId`, the interest group owner,
-bidding script URL, and render URL), `generateBid` will be
+If none of the produced bids pass the k-anonymity checks (the check that
+includes the render `url` and, when `selectedBuyerAndSellerReportingId` is
+returned, the check that includes its value also), `generateBid` will be
 re-run with the input `interestGroup` filtered to contain only k-anonymous ads
 and component ads and `selectableBuyerAndSellerReportingIds`. Such re-runs are
 limited to returning only a single bid,
