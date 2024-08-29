@@ -457,6 +457,7 @@ This is detectable because it can change the set of fields that are read from th
     the current day in UTC, increment its count. If not, [=list/insert=] a new [=tuple=]
     the time set to the current UTC day and a count of 1.
   1. Store |interestGroup| in the [=user agent=]'s [=interest group set=].
+  1. Run [=update k-anonymity cache for interest group=] for |interestGroup|.
 1. Return |p|.
 
 </div>
@@ -1873,16 +1874,16 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
             1. If |originalAds| is not null:
               1. Set |ig|'s [=interest group/ads=] to a new [=list=] of [=interest group ad=].
               1. [=list/For each=] |ad| in |originalAds|:
-                1. If [=query ad k-anonymity count=] given |ig| and |ad|'s
-                  [=interest group ad/render url=] returns true, [=list/append=] |ad| to |ig|'s
-                  [=interest group/ads=].
+                1. Compute |adHashCode| by getting the result of [=compute the key hash of ad=] given |ig| and |ad|.
+                1. If [=query k-anonymity cache=] given |adHashCode| returns true,
+                  [=list/append=] |ad| to |ig|'s [=interest group/ads=].
             1. Let |originalAdComponents| be |ig|'s [=interest group/ad components=].
             1. If |originalAdComponents| is not null:
               1. Set |ig|'s [=interest group/ad components=] to a new [=list=] of [=interest group ad=].
               1. [=list/For each=] |adComponent| in |originalAdComponents|:
-                1. If [=query component ad k-anonymity count=] given |adComponent|'s
-                  [=interest group ad/render url=] returns true, [=list/append=] |adComponent| to |ig|'s
-                  [=interest group/ad components=].
+                1. Compute |componentAdHashCode| by getting the result of [=compute the key hash of component ad=] given |adComponent|.
+                1. If [=query k-anonymity cache=] given |componentAdHashCode| returns true,
+                  [=list/append=] |adComponent| to |ig|'s [=interest group/ad components=].
             1. If |perBuyerCumulativeTimeout| is not null and is &lt; |perBuyerTimeout|, then set
               |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
             1. Let |generateBidStartTime| be |settings|'s
@@ -3849,70 +3850,80 @@ might choose to require a [=k-anonymity=] threshold of fifty users over a seven 
 will maintain the count over the chosen duration and compare the count to the chosen [=k-anonymity=]
 threshold when responding to [=query k-anonymity count=].
 
+The [=user agent=] must maintain a <dfn>k-anonymity cache</dfn> as a [=map=] whose [=map/keys=] are
+[=SHA-256=] hashes of the [=k-anonymity keys=] for all of the [=interest group/ads=] and [=interest group/ad components=]
+in the [=user agent=]'s [=interest group set=] and whose [=map/values=] are [=k-anonymity records=].
+This allows the browser to rerun portions of an auction without incurring the delay (and added side channels)
+from querying the server during an auction.
+
 <div algorithm>
-  To <dfn>query k-anonymity count</dfn> given a |hashCode|:
+  To <dfn>query k-anonymity count</dfn> given a [=SHA-256=] |hashCode|:
     1. If the [=k-anonymity server=] has recorded at least [=k-anonymity threshold=] users
         seeing |hashCode| over the last [=k-anonymity duration=], return true.
-        Otherwise return false.
+        Otherwise, return false.
     1. Return true if it is above the threshold, otherwise return false.
 </div>
 
 <div algorithm>
-  To <dfn>query ad k-anonymity count</dfn> given an [=interest group=] |ig| and a [=URL=] |ad|:
-    1. Let |keyString| be the [=string/concatenation=] of the following strings separated with U+000A LF:
-      1. "AdBid"
-      1. the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
-      1. the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
-      1. the [=URL serializer|serialization=] of |ad|.
-    1. Let |keyHash| be the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
+  To <dfn>query k-anonymity cache</dfn> given a [=SHA-256=] |hashCode|:
+    1. If the [=user agent=]'s [=k-anonymity cache=] does not [=map/contain=] |hashCode|, then return false.
+    1. Let |record| be the [=user agent=]'s [=k-anonymity cache=][|hashCode|].
+    1. If the difference between [=current wall time=] and |record|'s [=k-anonymity record/timestamp=] is more than 7 days then return false.
+    1. Return |record|'s [=k-anonymity record/is k-anonymous=].
+</div>
 
-    1. Return the result of [=query k-anonymity count|querying the k-anonymity count=] given |keyHash|.
+<div algorithm>
+ To <dfn>compute the key hash of ad</dfn> given an [=interest group=] |ig| and an [=interest group ad=] |igAd|:
+   1. Let |keyString| be the [=k-anonymity key=] formed from the [=string/concatenation=] of the following strings separated with U+000A LF:
+      * "AdBid"
+      * the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
+      * the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
+      * the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=].
+   1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
 </div>
 
 <div algorithm>
   To <dfn>compute the key hash of reporting ID</dfn> given an [=interest group=] |ig| and an
   [=interest group ad=] |igAd|:
-    1. Let |keyString| be the [=string/concatenation=] of the following strings separated with U+000A (LF):
+    1. Let |keyString| be a [=k-anonymity key=] formed from the [=string/concatenation=] of the following strings separated with U+000A (LF):
 
-      1. "NameReport"
-      1. the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
-      1. the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
-      1. the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=]
-      1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
+      * "NameReport"
+      * the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
+      * the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
+      * the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=]
+      * If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
           [=map/exists=]:
-        1. "BuyerAndSellerReportingId"
-        1. |igAd|'s [=interest group ad/buyer and seller reporting ID=]
-      1. Otherwise, if |igAd|'s [=interest group ad/buyer reporting ID=]
+         * "BuyerAndSellerReportingId"
+         * |igAd|'s [=interest group ad/buyer and seller reporting ID=]
+      * Otherwise, if |igAd|'s [=interest group ad/buyer reporting ID=]
           [=map/exists=]:
-        1. "BuyerReportingId"
-        1. |igAd|'s [=interest group ad/buyer reporting ID=]
-      1. Otherwise:
-        1. "IgName"
-        1. |ig|'s [=interest group/name=].
-    1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
+         * "BuyerReportingId"
+         * |igAd|'s [=interest group ad/buyer reporting ID=]
+      * Otherwise:
+         * "IgName"
+         * |ig|'s [=interest group/name=].
+   1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
 </div>
 
 <div algorithm>
-  To <dfn>query component ad k-anonymity count</dfn> given a [=URL=] |ad|:
-    1. Let |keyString| be the [=string/concatenation=] of the following strings separated with U+000A LF:
+ To <dfn>compute the key hash of component ad</dfn> given an [=interest group ad=] |igAd|:
+   1. Let |keyString| be the [=string/concatenation=] of the following strings separated with U+000A LF:
       1. "ComponentBid"
-      1. the [=URL serializer|serialization=] of |ad|.
-    1. Let |keyHash| be the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
-
-    1. Return the result of [=query k-anonymity count|querying the k-anonymity count=] given |keyHash|.
+      1. the [=URL serializer|serialization=] of |igAd|.
+   1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
 </div>
 
 <div algorithm>
   To <dfn>query generated bid k-anonymity count</dfn> given a [=generated bid=] |bid|:
-    1. If [=query ad k-anonymity count=] given |bid|'s [=generated bid/ad descriptor=]'s
-      [=ad descriptor/url=] returns false, return false.
+    1. Compute the |adHashCode| following [=compute the key hash of ad=] with the |bid|'s [=generated bid/interest group=] and |bid|'s [=generated bid/ad descriptor=].
+    1. If [=query k-anonymity cache=] for |adHashCode| returns false, return false.
     1. If |bid|'s [=generated bid/ad component descriptors=] is not null:
       1. [=set/For each=] |adComponentDescriptor| in |bid|'s
         [=generated bid/ad component descriptors=]:
-        1. If [=query component ad k-anonymity count=] given |adComponentDescriptor|'s
-          [=ad descriptor/url=] returns false, return false.
+        1. Compute the |componentAdHashCode| by getting the result of [=compute the key hash of component ad=] with |adComponentDescriptor|'s
+          [=ad descriptor/url=].
+        1. If [=query k-anonymity cache=] for |componentAdHashCode| returns false, return false.
     1. Return true.
-
 </div>
 
 <div algorithm>
@@ -3920,6 +3931,26 @@ threshold when responding to [=query k-anonymity count=].
   |ig| and [=interest group ad=] |igAd|:
     1. Let |keyHash| be the result of [=computing the key hash of reporting ID=] given |ig| and |igAd|.
     1. Return the result of [=query k-anonymity count|querying the k-anonymity count=] given |keyHash|.
+</div>
+
+<div algorithm>
+  To <dfn>update k-anonymity cache for key</dfn> given a [=SHA-256=] |hashCode|:
+    1. Let |record| be a new [=k-anonymity record=].
+    1. Set |record|'s [=k-anonymity record/timestamp=] field to the [=current wall time=].
+    1. Set |record|'s [=k-anonymity record/is k-anonymous=] field to the result of executing [=query k-anonymity count=] for |hashCode|.
+    1. [=map/Set=] |record|[|hashCode|] to |record|.
+</div>
+
+<div algorithm>
+  To <dfn>update k-anonymity cache for interest group</dfn> given an [=interest group=] |ig|:
+    1. [=list/For each=] |igAd| of |ig|'s [=interest group/ads=]:
+      1. Compute the |adHashCode| following [=compute the key hash of ad=] for |ig| and |igAd|.
+      1. Run [=update k-anonymity cache for key=] on |adHashCode|.
+      1. Compute the |adReportingHashCode| following [=compute the key hash of reporting ID=].
+      1. Run [=update k-anonymity cache for key=] on |adReportingHashCode|.
+    1. [=list/For each=] |componentAd| of |ig|'s [=interest group/ad components=]:
+      1. Compute the |componentAdHashCode| following [=compute the key hash of component ad=] for |componentAd|.
+      1. Run [=update k-anonymity cache for key=] on |componentAdHashCode|.
 </div>
 
 <div algorithm>
@@ -4825,6 +4856,7 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
     Note: Implementations can consider loading only a portion of these interest groups
     at a time to avoid issuing too many requests at once.
     1. Let |ig| be a deep copy of |originalInterestGroup|.
+    1. Run [=update k-anonymity cache for interest group=] for |ig|.
     1. Let |request| be a new [=request=] with the following properties:
       :   [=request/URL=]
       ::  |ig|'s [=interest group/update url=]
@@ -6665,10 +6697,8 @@ To <dfn>try to reach component ads target considering k-anonymity</dfn>, given a
 1. Let |selectedComponents| be a new [=list=] of [=ad descriptors=].
 1. [=set/For each=] |i| of [=list/get the indices=] of |generatedBid|:
   1. Let |candidateComponent| be |generatedBid|'s [=generated bid/ad component descriptors=][|i|].
-  1. If [=query component ad k-anonymity count=] given |candidateComponent|'s [=interest group ad/render url=] returns true:
-
-      Issue: TODO: change to query k-anonymity cache instead.
-      (<a href="https://github.com/WICG/turtledove/issues/1150">WICG/turtledove#1150</a>)
+  1. Compute |componentAdHashCode| by getting the result of [=compute the key hash of component ad=] given |candidateComponent|'s [=interest group ad/render url=].
+  1. If [=query k-anonymity cache=] given |componentAdHashCode| returns true:
     1. [=list/Append=] |candidateComponent| to |selectedComponents|.
   1. Otherwise:
     1. If |i| &lt; |generatedBid|'s [=generated bid/number of mandatory ad components=], return false.
@@ -7011,6 +7041,19 @@ A <dfn>real time reporting contribution</dfn> is a [=struct=] with the following
   : <dfn>latency threshold</dfn>
   :: Null or a [=duration=] in milliseconds. Initially null.
     Reports when a latency (e.g., `generateBid()` execution latency) is greater than this threshold.
+</dl>
+
+<h3 id=k-anonymity-records>K-Anonymity Records</h3>
+A <dfn>k-anonymity key</dfn> is a [=string=] used as a key for tracking k-anonymity status.
+
+A <dfn>k-anonymity record</dfn> is a timestamped cache of the k-anonymity status
+for a given [=k-anonymity key=]. These records are stored in the [=user agent=].
+
+<dl dfn-for="k-anonymity record">
+  : <dfn>is k-anonymous</dfn>
+  :: A {{boolean}} indicating whether the [=k-anonymity key=] indicated by this record was reported as k-anonymous.
+  : <dfn>timestamp</dfn>
+  :: The [=moment=] when the k-anonymity status in this record was last fetched.
 </dl>
 
 # Privacy Considerations # {#privacy-considerations}
