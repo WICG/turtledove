@@ -138,7 +138,7 @@ const myGroup = {
   'userBiddingSignals': {...},
   'ads': [{renderUrl: shoesAd1, sizeGroup: 'group1', ...},
           {renderUrl: shoesAd2, sizeGroup: 'group2',
-           selectableBuyerAndSellerReportingIds: [ 'deal1', 'deal2', 'deal3' ],
+           selectableBuyerAndSellerReportingIds: ['deal1', 'deal2', 'deal3'],
            buyerReportingId: 'buyerSpecificInfo1',
            buyerAndSellerReportingId: 'seatId', ...}],
   'adComponents': [{renderUrl: runningShoes1, sizeGroup: 'group2', ...},
@@ -269,13 +269,14 @@ The `ads` list contains the various ads that the interest group might show.  Eac
    [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
 
  * `buyerReportingId`: A [USVString](https://webidl.spec.whatwg.org/#idl-USVString),
-   no character limit. If set and `selectableBuyerAndSellerReportingIds` is unset or not selected, the
+   no character limit. If set, `buyerAndSellerReportingId` is unset, and
+   `selectableBuyerAndSellerReportingIds` is unset or not selected, the
    value is used instead of the interest group name for reporting in `reportWin`. Note
    that this field needs to be jointly k-anonymous with the interest group owner,
    bidding script URL, and render URL to be provided to these reporting functions (in
    the same way that the interest group name would have needed to be). If set and a
    value from `selectableBuyerAndSellerReportingIds` is selected by `generateBid()`,
-   the value of this is reported to `reportWin()` and `reportResult()` along with the
+   the value of this is reported to `reportWin()` along with the
    selected `selectablebuyerAndSellerReportingIds` and `buyerAndSellerReportingId`.
    When `generateBid()` selects a value from `selectablebuyerAndSellerReportingIds`,
    the resulting bid may only win the auction if the selected value is jointly
@@ -582,7 +583,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
       'bidCurrency': 'USD', /* bidCurrency returned by generateBid, or '???' if none */
       'dataVersion': 1, /* Data-Version value from the trusted scoring signals server's response */
       'selectedBuyerAndSellerReportingId': 'deal2', /* Value returned by generateBid. */
-      'buyerAndSellerReportingId': 'seatId',
+      'buyerAndSellerReportingId': 'seatId'
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
@@ -1322,8 +1323,8 @@ passed to `reportWin()` and `reportResult()` is determined by the browser with t
 * Otherwise, if `buyerReportingId` defined in interest group: `buyerReportingId` available to reporting.
 * Otherwise, interest group `name` available to reporting.
 
-Here's a table representation of the above logic: (`selectableBuyerAndSellerReportingIds` abreviated to selectableBASRI,
-`buyerAndSellerReportingId` abreviated to BASRI, `buyerReportingId` abreviated to BRI)
+Here's a table representation of the above logic: (`selectableBuyerAndSellerReportingIds` abbreviated to selectableBASRI,
+`buyerAndSellerReportingId` abbreviated to BASRI, `buyerReportingId` abbreviated to BRI)
 <table>
   <thead>
     <tr>
@@ -1384,24 +1385,24 @@ group owner, bidding script URL, and render URL, so that `reportResult()` will a
 `selectedbuyerAndSellerReportingId` for bids that provided a value.
 
 One use for these reporting IDs is to facilitate deals (private marketplace) in Protected Audience auctions.  Here's a couple
-examples of using the reporting IDs to convey deals used in bids. In these examples, the ‘s’ prefix might be used to connote seat
-ID and the ‘d’ prefix might connote deal ID.
+examples of using the reporting IDs to convey deals used in bids. In these examples, the 's' prefix might be used to connote seat
+ID and the 'd' prefix might connote deal ID.
 
 If the same seat ID is always presented for bids on an ad:
 ```
 joinAdInterestGroup({...
   'ads': [{renderURL: Ad1URL, 
-           buyerReportingId: ‘buyerInfo123’,
-           buyerAndSellerReportingId: ‘s456’,
-           selectableBuyerAndSellerReportingIds: [ ‘d123’, ‘d234’, ‘d345’ ],
+           buyerReportingId: 'buyerInfo123',
+           buyerAndSellerReportingId: 's456',
+           selectableBuyerAndSellerReportingIds: [ 'd123', 'd234', 'd345' ],
   ...})
 ```
 If different seat IDs are presented for bids on an ad:
 ```
 joinAdInterestGroup({...
   'ads': [{renderURL: Ad1URL, 
-           buyerReportingId: ‘buyerInfo123’,
-           selectableBuyerAndSellerReportingIds: [ ‘d123s456’, ‘d234s567’, ‘d345s567’ ],
+           buyerReportingId: 'buyerInfo123',
+           selectableBuyerAndSellerReportingIds: [ 'd123s456', 'd234s567', 'd345s567' ],
   ...})
 ```
 
