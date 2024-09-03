@@ -146,7 +146,7 @@ const myGroup = {
               'size4': {width: '100', height: '25'}},
   'sizeGroups:' {'group1': ['size1', 'size2', 'size3'],
                  'group2': ['size3', 'size4']},
-  'auctionServerRequestFlags': ['omit-ads'],
+  'auctionServerRequestFlags': ['omit-ads', 'omit-user-bidding-signals'],
 };
 const joinPromise = navigator.joinAdInterestGroup(myGroup);
 ```
