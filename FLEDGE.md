@@ -41,7 +41,8 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [5.2 Buyer Reporting on Render and Ad Events](#52-buyer-reporting-on-render-and-ad-events)
       - [5.2.1 Noised and Bucketed Signals](#521-noised-and-bucketed-signals)
     - [5.3 Currencies in Reporting](#53-currencies-in-reporting)
-    - [5.4 Losing Bidder Reporting](#54-losing-bidder-reporting)
+    - [5.4 Reporting IDs](#54-reporting-ids-in-reporting)
+    - [5.5 Losing Bidder Reporting](#55-losing-bidder-reporting)
   - [6. Additional Bids](#6-additional-bids)
     - [6.1 Auction Nonce](#61-auction-nonce)
     - [6.2 Negative Targeting](#62-negative-targeting)
@@ -136,7 +137,10 @@ const myGroup = {
   'maxTrustedBiddingSignalsURLLength' : 10000,
   'userBiddingSignals': {...},
   'ads': [{renderUrl: shoesAd1, sizeGroup: 'group1', ...},
-          {renderUrl: shoesAd2, sizeGroup: 'group2', ...}],
+          {renderUrl: shoesAd2, sizeGroup: 'group2',
+           selectableBuyerAndSellerReportingIds: ['deal1', 'deal2', 'deal3'],
+           buyerReportingId: 'buyerSpecificInfo1',
+           buyerAndSellerReportingId: 'seatId', ...}],
   'adComponents': [{renderUrl: runningShoes1, sizeGroup: 'group2', ...},
                    {renderUrl: runningShoes2, sizeGroup: 'group2', ...},
                    {renderUrl: gymShoes, sizeGroup; 'group2', ...}],
@@ -146,7 +150,7 @@ const myGroup = {
               'size4': {width: '100', height: '25'}},
   'sizeGroups:' {'group1': ['size1', 'size2', 'size3'],
                  'group2': ['size3', 'size4']},
-  'auctionServerRequestFlags': ['omit-ads'],
+  'auctionServerRequestFlags': ['omit-ads', 'omit-user-bidding-signals'],
 };
 const joinPromise = navigator.joinAdInterestGroup(myGroup);
 ```
@@ -237,9 +241,48 @@ The `ads` list contains the various ads that the interest group might show.  Eac
 
  * `adRenderId`: A short [DOMString](https://webidl.spec.whatwg.org/#idl-DOMString) up to 12 characters long serving as an identifier for this ad in this interest group. When this field is specified it will be sent instead of the full ad object for [B&A server auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE_browser_bidding_and_auction_API.md).
 
- * `buyerAndSellerReportingId`: A [USVString](https://webidl.spec.whatwg.org/#idl-USVString), no character limit. If set, the value is used instead of the interest group name or `buyerReportingId` for reporting in `reportWin` and `reportResult`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
+ * `selectableBuyerAndSellerReportingIds`: An array of
+   [USVString](https://webidl.spec.whatwg.org/#idl-USVString)s, one of which may be
+   selected by `generateBid()` to be reported to `reportWin()` and `reportResult()`
+   along with `buyerAndSellerReportingId` and `buyerReportingId`.
+   When `generateBid()` selects a value from `selectablebuyerAndSellerReportingIds`,
+   the resulting bid may only win the auction if the selected value is jointly k-anonymous
+   along with `buyerAndSellerReportingId`, `buyerReportingId`, the interest group owner,
+   bidding script URL, and render URL. See
+   [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
 
- * `buyerReportingId`: A [USVString](https://webidl.spec.whatwg.org/#idl-USVString), no character limit. If set, the value is used instead of the interest group name for reporting in `reportWin`. Note that this field needs to be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to these reporting fuctions (in the same way that the interest group name would have needed to be).
+ * `buyerAndSellerReportingId`: A 
+   [USVString](https://webidl.spec.whatwg.org/#idl-USVString), no character limit.
+   If set and `selectableBuyerAndSellerReportingIds` is
+   unset or not selected, the value is used instead of the interest group name or `buyerReportingId`
+   for reporting in `reportWin()` and `reportResult()`. Note that this field needs to
+   be jointly k-anonymous with the interest group owner, bidding script URL, and
+   render URL to be provided to these reporting functions (in the same way that the
+   interest group name would have needed to be). If set and a value from
+   `selectableBuyerAndSellerReportingIds` is selected by `generateBid()`, the value of
+   this is reported to `reportWin()` and `reportResult()` along with the selected
+   `selectablebuyerAndSellerReportingIds` and `buyerReportingId`. When `generateBid()`
+   selects a value from `selectablebuyerAndSellerReportingIds`, the resulting bid may
+   only win the auction if the selected value is jointly k-anonymous along with
+   `buyerAndSellerReportingId`, `buyerReportingId`, the interest group owner, bidding
+   script URL, and render URL. See
+   [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
+
+ * `buyerReportingId`: A [USVString](https://webidl.spec.whatwg.org/#idl-USVString),
+   no character limit. If set, `buyerAndSellerReportingId` is unset, and
+   `selectableBuyerAndSellerReportingIds` is unset or not selected, the
+   value is used instead of the interest group name for reporting in `reportWin`. Note
+   that this field needs to be jointly k-anonymous with the interest group owner,
+   bidding script URL, and render URL to be provided to these reporting functions (in
+   the same way that the interest group name would have needed to be). If set and a
+   value from `selectableBuyerAndSellerReportingIds` is selected by `generateBid()`,
+   the value of this is reported to `reportWin()` along with the
+   selected `selectablebuyerAndSellerReportingIds` and `buyerAndSellerReportingId`.
+   When `generateBid()` selects a value from `selectablebuyerAndSellerReportingIds`,
+   the resulting bid may only win the auction if the selected value is jointly
+   k-anonymous along with `buyerAndSellerReportingId`, `buyerReportingId`, the
+   interest group owner, bidding script URL, and render URL. See
+   [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
 
  * `metadata`: Arbitrary metadata that can be used at bidding time.
 
@@ -272,7 +315,7 @@ same-origin with `owner`. Additionally, to be used in an auction, the HTTP respo
 header `Ad-Auction-Allowed: true` to ensure they are allowed to be used for
 loading Protected Audience resources. The `trustedBiddingSignalsURL` must also not have a [query](https://url.spec.whatwg.org/#concept-url-query). (See 6.13 [here](https://wicg.github.io/turtledove/#dom-navigator-joinadinterestgroup)).
 
-The `renderUrl` property of an `ad` must be also be a valid and credentialless HTTPs URL, but does _not_
+The `renderURL` property of an `ad` must be also be a valid and credentialless HTTPS URL, but does _not_
 have the same origin, response header, fragment, or query requirements.
 
 (You can find detailed error conditions for all fields in step 6 of [the `joinAdInterestGroup()` section of the spec](https://wicg.github.io/turtledove/#dom-navigator-joinadinterestgroup)).
@@ -539,6 +582,8 @@ The function gets called once for each candidate ad in the auction.  The argumen
       'biddingDurationMsec': 12,
       'bidCurrency': 'USD', /* bidCurrency returned by generateBid, or '???' if none */
       'dataVersion': 1, /* Data-Version value from the trusted scoring signals server's response */
+      'selectedBuyerAndSellerReportingId': 'deal2', /* Value returned by generateBid. */
+      'buyerAndSellerReportingId': 'seatId'
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
@@ -865,7 +910,8 @@ generateBid(interestGroup, auctionSignals, perBuyerSignals,
           'allowComponentAuction': false,
           'targetNumAdComponents': 3,
           'numMandatoryAdComponents': 1,
-          'modelingSignals': 123};
+          'modelingSignals': 123,
+          'selectedBuyerAndSellerReportingId': 'deal2'};
 }
 ```
 
@@ -921,11 +967,11 @@ The output of `generateBid()` contains the following fields:
 *   bid: A numerical bid that will enter the auction. The seller must be in a position to compare bids from different buyers, therefore bids must be in some seller-chosen unit (e.g. "USD per thousand"). If the bid is zero or negative, then this interest group will not participate in the seller's auction at all. With this mechanism, the buyer can implement any advertiser rules for where their ads may or may not appear. While this returned value is expected to be a JavaScript Number, internal calculations dealing with currencies should be done with integer math that more accurately represent powers of ten.
 *   bidCurrency: (optional) The currency for the bid, used for [currency-checking](#36-currency-checking).
 *   render: A dictionary describing the creative that should be rendered if this bid wins the auction. This includes:
-    * url: The creative's URL.
-    * width: The creative's width. This size will be matched against the declaration in the interest group and substituted into any ad size macros present in the ad creative URL. When the ad is loaded in a fenced frame, the fenced frame's inner frame (i.e. the size visible to the ad creative) will be frozen to this size, and it will be unable to see changes to the rame size made by the embedder.
+    * url: The creative's URL. This must match the `renderURL` of an ad in the interest group's `ads` list, otherwise the bid is ignored.
+    * width: The creative's width. This size will be matched against the declaration in the interest group and substituted into any ad size macros present in the ad creative URL. When the ad is loaded in a fenced frame, the fenced frame's inner frame (i.e. the size visible to the ad creative) will be frozen to this size, and it will be unable to see changes to the frame size made by the embedder.
     * height: The creative's height. See elaboration in `width` above.
 
-    Optionally, if you don't want to hook into interest group size declarations (e.g., if you don't want to use size macros), you can have `render` be just the URL, rather than a dictionary with `url` and `size`.
+    Optionally, if you don't want to hook into interest group size declarations (e.g., if you don't want to use size macros), you can have `render` be just the URL, rather than a dictionary with `url`, `width` and `height`.
 *   adComponents: (optional) A list of up to 20 (in process of being increased to 40 starting from M122) adComponent strings from the InterestGroup's adComponents field. Each value must match one of `interestGroup`'s `adComponent`'s `renderURL` and sizes exactly. This field must not be present if `interestGroup` has no `adComponent` field. It is valid for this field not to be present even when `adComponents` is present. (See ["Ads Composed of Multiple Pieces"](#34-ads-composed-of-multiple-pieces) below.)
 *   allowComponentAuction: If this buyer is taking part of a component auction, this value must be present and true, or the bid is ignored. This value is ignored (and may be absent) if the buyer is part of a top-level auction.
 *   modelingSignals (optional): A 0-4095 integer (12-bits) passed to `reportWin()`, with noising, as described in the [noising and bucketing scheme](#521-noised-and-bucketed-signals). Invalid values, such as negative, infinite, and NaN values, will be ignored and not passed. Only the lowest 12 bits will be passed.
@@ -933,6 +979,17 @@ The output of `generateBid()` contains the following fields:
     browser to select only some of the returned adComponents in order to help
     make the ad k-anonymous. See [Flexible Component Ad Selection Considering k-Anonymity](#341-flexible-component-ad-selection-considering-k-anonymity)
     for more details.
+*   selectedBuyerAndSellerReportingId: (optional) A string from the interest
+    group's ad's `selectableBuyerAndSellerReportingIds` array; if it's not in
+    the array, the bid is ignored. If present, this is reported to `reportWin()`
+    and `reportResult()` along with `buyerAndSellerReportingId` and
+    `buyerReportingId`; the resulting bid may only win the auction if the
+    selected value is jointly k-anonymous along with `buyerAndSellerReportingId`,
+    `buyerReportingId`, the interest group owner, bidding script URL, and render
+    URL. If present, it indicates the reporting of this bid would not operate
+    correctly were the `selectedBuyerAndSellerReportingId` not presented to
+    `reportWin()` and `reportResult()`. See
+    [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
 
 In case returning multiple bids is supported by the implementation in use,
 `generateBid` may also return up to `browserSignals.multiBidLimit` valid bid
@@ -940,9 +997,12 @@ objects of the format above in an array.
 
 Note: Chrome currently imposes an internal limit of 100 for the length of returned bids sequences.
 
-If none of the produced bids pass the k-anonymity checks, `generateBid` will be
+If none of the produced bids pass the k-anonymity checks (the check that
+includes the render `url` and, when `selectedBuyerAndSellerReportingId` is
+returned, the check that includes its value also), `generateBid` will be
 re-run with the input `interestGroup` filtered to contain only k-anonymous ads
-and component ads. Such re-runs are limited to returning only a single bid,
+and component ads and `selectableBuyerAndSellerReportingIds`. Such re-runs are
+limited to returning only a single bid,
 even if multiple bid support is otherwise on, so they will have
 `browserSignals.multiBidLimit === 1`, regardless of the value of
 `perBuyerMultiBidLimits`.
@@ -1149,6 +1209,8 @@ The arguments to this function are:
       'modifiedBid': modifiedBidValue,
       'highestScoringOtherBid': highestScoringOtherBidValue,
       'highestScoringOtherBidCurrency': 'EUR'
+      'buyerAndSellerReportingId': 'seatId',
+      'selectedBuyerAndSellerReportingId': 'deal2',
     }
     ```
     * `bidCurrency` and `highestScoringOtherBidCurrency` provide (highly redacted) information on what currency the corresponding numbers are in. Please refer to the section on [Currencies in Reporting](#53-currencies-in-reporting) for more details.
@@ -1179,9 +1241,10 @@ The arguments to this function are:
 
 *   auctionSignals and perBuyerSignals: As in the call to `generateBid()` for the winning interest group.
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
-*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `adCost`, `seller`, `madeHighestScoringOtherBid` and potentially `interestGroupName` fields:
+*   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `adCost`, `seller`, `madeHighestScoringOtherBid` and potentially `buyerReportingId` or `interestGroupName` fields:
     *   The `adCost` field contains the value that was returned by `generateBid()`, stochastically rounded to fit into a floating point number with an 8 bit mantissa and 8 bit exponent. This field is only present if `adCost` was returned by `generateBid()`.
-    *   The `interestGroupName` may be included if the tuple of interest group owner, name, bidding script URL, ad creative URL, and ad creative size (if specified by `generateBid`) were jointly k-anonymous. (Note: until at least [Q1 2025](https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity), in the implementation, the ad creative size is excluded from this check.)
+    *   The `buyerReportingId` may be included if selected (see [Reporting IDs](#54-reporting-ids-in-reporting) for selection details) and the tuple of `buyerReportingId`, interest group owner, bidding script URL, ad creative URL, and ad creative size (if specified by `generateBid`) were jointly k-anonymous. (Note: until at least [Q1 2025](https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity), in the implementation, the ad creative size is excluded from this check.)
+    *   The `interestGroupName` may be included if selected (see [Reporting IDs](#54-reporting-ids-in-reporting) for selection details) and the tuple of interest group owner, name, bidding script URL, ad creative URL, and ad creative size (if specified by `generateBid`) were jointly k-anonymous. (Note: until at least [Q1 2025](https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity), in the implementation, the ad creative size is excluded from this check.)
     *   The `madeHighestScoringOtherBid` field is true if the interest group owner was the only bidder that made bids with the second highest score.
     *   The `highestScoringOtherBid` and `madeHighestScoringOtherBid` fields are based on the auction the interest group was directly part of. If that was a component auction, they're from the component auction. If that was the top-level auction, then they're from the top-level auction. Component bidders do not get these signals from top-level auctions since it is the auction seller joining the top-level auction, instead of winning component bidders joining the top-level auction directly.
     *   The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.
@@ -1246,7 +1309,104 @@ The following table summarizes which APIs get original and which get converted b
 | Private Aggregation `winning-bid` | Original value | Converted value |
 | Private Aggregation `highest-scoring-other-bid` | Original value | Converted value |
 
-#### 5.4 Losing Bidder Reporting
+#### 5.4 Reporting IDs
+
+Protected Audience provides several interest group fields that can be used to report details about a bid.  These fields needs to
+be jointly k-anonymous with the interest group owner, bidding script URL, and render URL to be provided to the reporting functions.
+Which of `selectableBuyerAndSellerReportingIds`, `buyerAndSellerReportingId`, `buyerReportingId`, and the interest group name gets
+passed to `reportWin()` and `reportResult()` is determined by the browser with the following logic:
+
+* If `selectedBuyerAndSellerReportingId` in bid:
+    * Then `selectedBuyerAndSellerReportingId`, `buyerAndSellerReportingId` (if present in interest group), and `buyerReportingId`
+      (if present in interest group) will all be available to reporting.
+* Otherwise, if `buyerAndSellerReportingId` defined in interest group: `buyerAndSellerReportingId` available to reporting.
+* Otherwise, if `buyerReportingId` defined in interest group: `buyerReportingId` available to reporting.
+* Otherwise, interest group `name` available to reporting.
+
+Here's a table representation of the above logic: (`selectableBuyerAndSellerReportingIds` abbreviated to selectableBASRI,
+`buyerAndSellerReportingId` abbreviated to BASRI, `buyerReportingId` abbreviated to BRI)
+<table>
+  <thead>
+    <tr>
+      <th colspan=3>When interest group contains:</th>
+      <th colspan=2>then reports get:</th>
+    </tr>
+    <tr>
+      <th>selectableBASRI</th>
+      <th>BASRI</th>
+      <th>BRI</th>
+      <th>reportWin()</th>
+      <th>reportResult()</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>yes and in bid</td>
+      <td>optional</td>
+      <td>optional</td>
+      <td>selectableBASRI, BASRI, BRI</td>
+      <td>selectableBASRI, BASRI</td>
+    </tr>
+    <tr>
+      <td>no or not in bid</td>
+      <td>yes</td>
+      <td>ignored</td>
+      <td>BASRI</td>
+      <td>BASRI</td>
+    </tr>
+    <tr>
+      <td>no or not in bid</td>
+      <td>no</td>
+      <td>yes</td>
+      <td>BRI</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>no or not in bid</td>
+      <td>no</td>
+      <td>no</td>
+      <td>interest group name</td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+
+When `selectableBuyerAndSellerReportingIds` is set, `generateBid()` is passed all
+reporting IDs in each entry in the interest group's `ads` list, though in cases where `generateBid()`
+is re-run, after the first invocation didn't produce any bids with ads that passed the k-anonymity checks,
+`selectableBuyerAndSellerReportingIds` that don't pass the k-anonymity check will not be present in the interest group.
+
+For bids with a value for `selectedbuyerAndSellerReportingId`, `scoreAd` is passed
+the same reporting IDs as would be passed to `reportResult()`
+(`selectedBuyerAndSellerReportingId` and `buyerAndSellerReportingId`).
+To ensure accurate reporting, a bid with a value for `selectedbuyerAndSellerReportingId` may only win the auction if the value of
+`selectedbuyerAndSellerReportingId` is jointly k-anonymous along with `buyerAndSellerReportingId`, `buyerReportingId`, the interest
+group owner, bidding script URL, and render URL, so that `reportResult()` will always receive the value of
+`selectedbuyerAndSellerReportingId` for bids that provided a value.
+
+One use for these reporting IDs is to facilitate deals (private marketplace) in Protected Audience auctions.  Here's a couple
+examples of using the reporting IDs to convey deals used in bids. In these examples, the 's' prefix might be used to connote seat
+ID and the 'd' prefix might connote deal ID.
+
+If the same seat ID is always presented for bids on an ad:
+```
+joinAdInterestGroup({...
+  'ads': [{renderURL: Ad1URL, 
+           buyerReportingId: 'buyerInfo123',
+           buyerAndSellerReportingId: 's456',
+           selectableBuyerAndSellerReportingIds: [ 'd123', 'd234', 'd345' ],
+  ...})
+```
+If different seat IDs are presented for bids on an ad:
+```
+joinAdInterestGroup({...
+  'ads': [{renderURL: Ad1URL, 
+           buyerReportingId: 'buyerInfo123',
+           selectableBuyerAndSellerReportingIds: [ 'd123s456', 'd234s567', 'd345s567' ],
+  ...})
+```
+
+#### 5.5 Losing Bidder Reporting
 
 We also need to provide a mechanism for the _losing_ bidders in the auction to learn aggregate outcomes.  Certainly they should be able to count the number of times they bid, and losing ads should also be able to learn (in aggregate) some seller-provided information about e.g. the auction clearing price.  Likewise, a reporting mechanism should be available to buyers who attempted to bid with a creative that had not yet reached the k-anonymity threshold.
 
