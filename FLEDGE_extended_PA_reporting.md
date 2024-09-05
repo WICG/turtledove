@@ -262,16 +262,39 @@ invocation
 (in case of a multi-seller auction, the top-level auction will have a single `scoreAd()` invocation
  selected)
 
-Users are strongly
+Users are strongly encouraged to report their metrics first thing...
+... can result in inaccuracy, especially for `percent-scripts-timeout`.
 
 The event may not be used in `reportWin()` or `reportResult()`
 
 ### Per-participant base values.
 
+Describe each one.
+
+Note that these metrics are measured only for some kinds of worklet executions --- some are
+only relevant for bidders, and get 0 in the seller functions. In case of reporting functions,
+they sometimes repeat what was available in the corresponding `generateBid()` or `scoreAd()`,
+and sometimes get their own measurement. This is shown below:
+
 | `baseValue` name | In `generateBid() ` | In `reportWin()` | In `scoreAd()` | In `reportResult` |
 | ---------------- | ------------------- | ---------------- | -------------- | ----------------- |
-| `participating-ig-count` | Measured | From `generateBid`  | 0 | 0 |
+| `participating-ig-count`  | Measured | From `generateBid()`  | 0 | 0 |
+| `average-code-fetch-time` | Measured | Measured | Measured | Measured |
+| `percent-scripts-timeout` | Measured | Measured | Measured | Measured |
+| `percent-igs-cumulative-timeout` | Measured | From `generateBid()` | 0 | 0 |
+| `cumulative-buyer-time` | Measured | From `generateBid()` | 0 | 0 |
+| `percent-regular-ig-count-quota-used"` | Measured | From `generateBid()` | 0 | 0 |
+| `percent-negative-ig-count-quota-used` | Measured | From `generateBid()` | 0 | 0 |
+| `percent-ig-storage-quota-used"` | Measured | From `generateBid()` | 0 | 0 |
 
+For example, `percent-scripts-timeout` in `generateBid()` is the portion of executions of
+`generateBid()` in that sub-auction that timed out, while `percent-scripts-timeout` in
+`reportWin()` is either 0 or 100 dependent on whether the reporting function's execution timed out
+or not (assuming reporting is done early enough to happen if it did); while
+`percent-igs-cumulative-timeout` will be the same value in both.
+
+Similarly, `percent-scripts-timeout` makes sense for seller functions like `scoreAd()`, but
+`percent-igs-cumulative-timeout` doesn't, so it just evaluates to 0.
 
 ## Reporting Per-Buyer Latency and Statistics to the Seller
 
