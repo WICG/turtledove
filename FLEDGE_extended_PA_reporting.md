@@ -257,35 +257,44 @@ matter whether a bid wins the auction or not. The browser will always trigger re
 
 ## Per-participant metrics
 
+TODO: version warning, intro..
+
 The `reserved.once` event-type is a special value that, for each sub-auction, selects a random
-invocation
-(in case of a multi-seller auction, the top-level auction will have a single `scoreAd()` invocation
- selected)
+invocation of `generateBid()` and of `scoreAd()` independently, and reports private aggregation
+contributions with that event only from those executions. (In case of a multi-seller auction, the
+top-level auction will have a single `scoreAd()` invocation selected as well).
 
-Users are strongly encouraged to report their metrics first thing...
-... can result in inaccuracy, especially for `percent-scripts-timeout`.
+The event may not be used in `reportWin()` or `reportResult()`; since those already run once,
+`reserved.always` may be used instead.
 
-The event may not be used in `reportWin()` or `reportResult()`
+This feature is intended for reporting overall per-participant metrics only once rather than for
+every interest group. A number of new `baseValues` representing such values are available and
+described below, but it can also be useful with per-IG metrics which are not expected to vary
+much like `signals-fetch-time`.
+
+Users using this are strongly encouraged to report their metrics during the beginning of their
+scripts, since if the script hits a per script time out before asking to report them nothing will
+get sent, which can result in inaccuracy, especially for `percent-scripts-timeout`.
 
 ### Per-participant base values.
 
-Describe each one.
+TODO: Describe each one here...
 
 Note that these metrics are measured only for some kinds of worklet executions --- some are
 only relevant for bidders, and get 0 in the seller functions. In case of reporting functions,
 they sometimes repeat what was available in the corresponding `generateBid()` or `scoreAd()`,
 and sometimes get their own measurement. This is shown below:
 
-| `baseValue` name | In `generateBid() ` | In `reportWin()` | In `scoreAd()` | In `reportResult` |
-| ---------------- | ------------------- | ---------------- | -------------- | ----------------- |
+| `baseValue` name | In `generateBid() ` | In `reportWin()` | In `scoreAd()` | In `reportResult()` |
+| ---------------- | ------------------- | ---------------- | -------------- | ------------------- |
 | `participating-ig-count`  | Measured | From `generateBid()`  | 0 | 0 |
 | `average-code-fetch-time` | Measured | Measured | Measured | Measured |
 | `percent-scripts-timeout` | Measured | Measured | Measured | Measured |
 | `percent-igs-cumulative-timeout` | Measured | From `generateBid()` | 0 | 0 |
 | `cumulative-buyer-time` | Measured | From `generateBid()` | 0 | 0 |
-| `percent-regular-ig-count-quota-used"` | Measured | From `generateBid()` | 0 | 0 |
+| `percent-regular-ig-count-quota-used` | Measured | From `generateBid()` | 0 | 0 |
 | `percent-negative-ig-count-quota-used` | Measured | From `generateBid()` | 0 | 0 |
-| `percent-ig-storage-quota-used"` | Measured | From `generateBid()` | 0 | 0 |
+| `percent-ig-storage-quota-used` | Measured | From `generateBid()` | 0 | 0 |
 
 For example, `percent-scripts-timeout` in `generateBid()` is the portion of executions of
 `generateBid()` in that sub-auction that timed out, while `percent-scripts-timeout` in
