@@ -6771,13 +6771,19 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Until |batcher| is no longer needed:
   1. Wait until at least one of the following is true:
-    * |batcher|'s [=trusted scoring signals batcher/request queue=] [=map/is not empty=].
+    * |batcher|'s [=trusted scoring signals batcher/request queue=] [=list/is not empty=].
     * |batcher|'s [=trusted scoring signals batcher/request map=] [=map/is not empty=] and some
       heuristically chosen amount of time has passed.
   1. Atomically do:
     1. Let |incomingRequests| be a [=list/clone=] of |batcher|'s [=trusted scoring signals batcher/
       request queue=].
     1. [=list/Empty=] |batcher|'s [=trusted scoring signals batcher/request queue=].
+
+    Note: the result of atomicity is that any concurrent attempts to modify |batcher|'s [=trusted
+    scoring signals batcher/request queue=] while these steps are running will not result in
+    different items being removed by the [=list/Empty=] operation than were cloned into
+    |incomingRequests|.
+
   1. [=list/For each=] |request| in |incomingRequests|:
     1. Let |key| be (|request|'s [=trusted scoring signals request/seller script fetcher=],
       |request|'s [=trusted scoring signals request/base url=], |request|'s [=trusted scoring
@@ -6793,9 +6799,10 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
     |entriesToBatch|, such that [=checking if trusted scoring signals batch honors URL length
     limit=] on |batcher| and |entriesToBatch| returns true:
 
-      Note: implementations are free to wait to collect more requests to merge or send them
+      Note: implementations are free to wait to collect more requests to merge (by leaving things
+      in the |batcher|'s [=trusted scoring signals batcher/request map=]), or send them
       individually, but need to take into account the configured URL length limit if they do combine
-      requests.
+      requests. All entries need to be handled eventually.
 
       1. [=list/Remove=] |entriesToBatch| from |batcher|'s [=trusted scoring signals batcher/
         request map=][|key|].
