@@ -255,6 +255,24 @@ The `reserved.always` event-type is a special value that indicates a report shou
 matter whether a bid wins the auction or not. The browser will always trigger reporting for the
 `always` contributions.
 
+## Per-participant metrics
+
+The `reserved.once` event-type is a special value that, for each sub-auction, selects a random
+invocation
+(in case of a multi-seller auction, the top-level auction will have a single `scoreAd()` invocation
+ selected)
+
+Users are strongly
+
+The event may not be used in `reportWin()` or `reportResult()`
+
+### Per-participant base values.
+
+| `baseValue` name | In `generateBid() ` | In `reportWin()` | In `scoreAd()` | In `reportResult` |
+| ---------------- | ------------------- | ---------------- | -------------- | ----------------- |
+| `participating-ig-count` | Measured | From `generateBid`  | 0 | 0 |
+
+
 ## Reporting Per-Buyer Latency and Statistics to the Seller
 
 The seller may want to collect aggregate statistics on latency and bids for their auctions.
