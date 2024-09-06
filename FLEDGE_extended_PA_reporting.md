@@ -307,7 +307,7 @@ The newly added base values are as following:
   respectively. This is capped at 110 since the quotas may not be enforced immediately (and actual
   usage in that case may be bigger than 110%).
 
-Note that these metrics are measured only for some kinds of worklet executions &em; some are
+Note that these metrics are measured only for some kinds of worklet executions &mdash; some are
 only relevant for bidders, and get 0 in the seller functions. In case of reporting functions,
 they sometimes repeat what was available in the corresponding `generateBid()` or `scoreAd()`,
 and sometimes get their own measurement. This is shown below:
