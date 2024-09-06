@@ -2879,8 +2879,6 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
 1. Let |winningBid| be a new [=generated bid=] with the following [=struct/items=]:
   : [=generated bid/id=]
   :: (0, 0)
-  : [=generated bid/for k-anon auction=]
-  :: true
   : [=generated bid/bid=]
   :: |bidValue|
   : [=generated bid/bid in seller currency=]
@@ -2905,25 +2903,19 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
   :: 0
   : [=generated bid/component seller=]
   :: Null
-  : [=generated bid/target number of ad components=]
-  :: Null
   : [=generated bid/number of mandatory ad components=]
-  :: Null
+  :: [=list/Size=] of |winningAdComponents|
 1. Let |buyerReportingResult| be a new [=reporting result=] with the following [=struct/items=]:
    : [=reporting result/report url=]
    :: The value of |response|'s [=server auction response/buyer reporting=]'s [=server auction reporting info/reporting url=].
    : [=reporting result/reporting beacon map=]
    :: The value of |response|'s [=server auction response/buyer reporting=]'s [=server auction reporting info/beacon urls=].
-   : [=reporting result/reporting macro map=]
-   :: Null
 
 1. Let |sellerReportingResult| be a new [=reporting result=] with the following [=struct/items=]:
    : [=reporting result/report url=]
    :: The value of |response|'s [=server auction response/top level seller reporting=]'s [=server auction reporting info/reporting url=].
    : [=reporting result/reporting beacon map=]
    :: The value of |response|'s [=server auction response/top level seller reporting=]'s [=server auction reporting info/beacon urls=].
-   : [=reporting result/reporting macro map=]
-   :: Null
 
 1. Let |componentSellerReportingResult| be a new [=reporting result=] with the following [=struct/items=]:
    : [=reporting result/report url=]
@@ -2931,8 +2923,6 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
    :: |response.winReportingURLs.componentSellerReportingUrls.reportingUrl|
    : [=reporting result/reporting beacon map=]
    :: The value of |response|'s [=server auction response/component seller reporting=]'s [=server auction reporting info/beacon urls=].
-   : [=reporting result/reporting macro map=]
-   :: Null
 
 1. Let |winningBidInfo| be a new [=leading bid info=] with the following [=struct/items=]:
    : [=leading bid info/top score=]
@@ -2943,21 +2933,13 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
    :: 1
    : [=leading bid info/top non-k-anon-enforced bids count=]
    :: 1
-   : [=leading bid info/at most one top bid owner=]
-   :: true
    : [=leading bid info/leading bid=]
    :: |winningBid|
    : [=leading bid info/leading non-k-anon-enforced bid=]
    :: |winningBid|
    : [=leading bid info/auction config=]
    :: |auctionConfig|
-   : [=leading bid info/second highest score=]
-   :: 0.0
-   : [=leading bid info/highest scoring other bids count=]
-   :: Null
    : [=leading bid info/highest scoring other bid=]
-   :: Null
-   : [=leading bid info/highest scoring other bid owner=]
    :: Null
    : [=leading bid info/top level seller=]
    :: Null if |topLevelAuctionConfig| is null, otherwise |topLevelAuctionConfig|'s [=auction config/seller=].
@@ -2981,9 +2963,6 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
   1. [=list/Append=] |ig| to |bidIgs|.
 1. Insert the debug reporting URLs from |response| into |bidDebugReportInfoList|.
 1. Return |winningBidInfo|.
-
-    Issue: TODO: Spec out last few steps starting from constructing bids.
-    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
 
 </div>
 
@@ -3138,17 +3117,21 @@ A <dfn>server auction response</dfn> is a [=struct=] with the following [=struct
   :: A [=list=] of interest group owner and interest group name pairs that bid
      in this auction.
   : <dfn>score</dfn>
-  :: {{double}} or Null. TODO
+  :: {{double}} or Null. For component auctions, contains the desirability
+     for the winning bid in the component auction.
   : <dfn>bid</dfn>
-  :: {{double}} or Null. TODO.
+  :: {{double}} or Null. For component auctions, contains the modified bid
+     for the winning bid in the component auction.
   : <dfn>bid currency</dfn>
-  :: [=currency tag=] or Null. TODO.
+  :: [=currency tag=] or Null. For component auctions, contains the currency of
+     the modified bid for the winning bid in the component auction.
   : <dfn>top level seller</dfn>
   :: An [=origin=] or Null. Null when the server response is not feeding into an
      on-device auction. Otherwise the value is the expected top-level seller for
      that auction.
   : ad metadata
-  :: A JSON [=string=]. TODO
+  :: A JSON [=string=]. For component auctions, contains the ad metadata
+     returned from scoring the winning bid in the component auction.
   : buyer reporting id
   :: TODO.
   : buyer and seller reporting id
