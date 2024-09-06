@@ -296,7 +296,7 @@ The newly added base values are as following:
   timeout.
 * `percent-igs-cumulative-timeout`: percentage of interest groups from this buyer that did not get
   to participate in this (sub)auction due to the per-buyer cumulative timeout
-  (`participating-ig-count` is the quotient here).
+  (`participating-ig-count` is the denominator here).
 * `cumulative-buyer-time`: total time spent for buyer's computation, in milliseconds; this is what
   would normally be  compared against the per-buyer cumulative timeout. If the timeout is not hit,
   the value is capped at the per-buyer cumulative timeout, if it's hit, the value will be the
