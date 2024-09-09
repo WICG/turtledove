@@ -262,10 +262,11 @@ More recent versions of Chrome offer some additional features, focused on measur
 usage and whole-auction metrics rather than those specific to a particular function execution
 or the winning bid.
 
-First, the new `reserved.once` event-type is a special value that, for each sub-auction, selects a
+First, the new `reserved.once` event-type is a special value that, for each (sub)auction, selects a
 random invocation of `generateBid()` and of `scoreAd()` independently, and reports private
-aggregation contributions with that event only from those executions. (In case of a multi-seller
-auction, the top-level auction will have a single `scoreAd()` invocation selected as well).
+aggregation contributions with that event only from those executions. (In case of an auction
+with component auctions, the top-level auction will have a single `scoreAd()` invocation selected as
+well).
 
 The event may not be used in `reportWin()` or `reportResult()`; since those already run at most
 once per auction level, `reserved.always` may be used instead.
@@ -288,8 +289,10 @@ get sent, which can result in inaccuracy, especially for `percent-scripts-timeou
 
 The newly added base values are as following:
 * `participating-ig-count`: number of interest groups that got a chance to participate in this
-  (sub)auction, i.e. they had registered ads, and if no timeouts were to hit, their `generateBid()`
-  would have been run.
+  (sub)auction, i.e. they had registered ads, did not have unsatisfied capabilities, and were not
+  filtered based on priority. Interest groups included in this might not actually get to bid if the
+  cumulative timeout expires, or the script fails to load, etc, but they would have if nothing went
+  wrong.
 * `average-code-fetch-time`: average time of all code fetches (including JavaScript and WASM) used
   for all invocations of particular function type for given (sub)auction.
 * `percent-scripts-timeout`: percentage of script executions of this kind that hit the per-script
@@ -298,9 +301,9 @@ The newly added base values are as following:
   to participate in this (sub)auction due to the per-buyer cumulative timeout
   (`participating-ig-count` is the denominator here).
 * `cumulative-buyer-time`: total time spent for buyer's computation, in milliseconds; this is what
-  would normally be  compared against the per-buyer cumulative timeout. If the timeout is not hit,
-  the value is capped at the per-buyer cumulative timeout, if it's hit, the value will be the
-  timeout + 1.
+  would normally be compared against the per-buyer cumulative timeout. If the timeout is not hit,
+  the value will be how long the buyer actually took, capped by the per-buyer cumulative timeout,
+  if the timeout is hit, the reported value will be the timeout + 1.
 * `percent-regular-ig-count-quota-used`,`percent-negative-ig-count-quota-used`,
   `percent-ig-storage-quota-used`: percentage of the database quote used by the buyer for
   regular interest group count, negative targeting interest group count, and overall byte usage
@@ -314,9 +317,9 @@ and sometimes get their own measurement. This is shown below:
 
 | `baseValue` name | In `generateBid() ` | In `reportWin()` | In `scoreAd()` | In `reportResult()` |
 | ---------------- | ------------------- | ---------------- | -------------- | ------------------- |
-| `participating-ig-count`  | Measured | From `generateBid()`  | 0 | 0 |
 | `average-code-fetch-time` | Measured | Measured | Measured | Measured |
 | `percent-scripts-timeout` | Measured | Measured | Measured | Measured |
+| `participating-ig-count`  | Measured | From `generateBid()`  | 0 | 0 |
 | `percent-igs-cumulative-timeout` | Measured | From `generateBid()` | 0 | 0 |
 | `cumulative-buyer-time` | Measured | From `generateBid()` | 0 | 0 |
 | `percent-regular-ig-count-quota-used` | Measured | From `generateBid()` | 0 | 0 |
@@ -324,7 +327,7 @@ and sometimes get their own measurement. This is shown below:
 | `percent-ig-storage-quota-used` | Measured | From `generateBid()` | 0 | 0 |
 
 For example, `percent-scripts-timeout` in `generateBid()` is the portion of executions of
-`generateBid()` in that sub-auction that timed out, while `percent-scripts-timeout` in
+`generateBid()` in that (sub)auction that timed out, while `percent-scripts-timeout` in
 `reportWin()` is either 0 or 100 dependent on whether the reporting function's execution timed out
 or not (assuming reporting is done early enough to happen if it did); while
 `percent-igs-cumulative-timeout` will be the same value in both.
