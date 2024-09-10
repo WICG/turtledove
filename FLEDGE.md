@@ -41,7 +41,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [5.2 Buyer Reporting on Render and Ad Events](#52-buyer-reporting-on-render-and-ad-events)
       - [5.2.1 Noised and Bucketed Signals](#521-noised-and-bucketed-signals)
     - [5.3 Currencies in Reporting](#53-currencies-in-reporting)
-    - [5.4 Reporting IDs](#54-reporting-ids-in-reporting)
+    - [5.4 Reporting IDs](#54-reporting-ids)
     - [5.5 Losing Bidder Reporting](#55-losing-bidder-reporting)
   - [6. Additional Bids](#6-additional-bids)
     - [6.1 Auction Nonce](#61-auction-nonce)
@@ -249,7 +249,7 @@ The `ads` list contains the various ads that the interest group might show.  Eac
    the resulting bid may only win the auction if the selected value is jointly k-anonymous
    along with `buyerAndSellerReportingId`, `buyerReportingId`, the interest group owner,
    bidding script URL, and render URL. See
-   [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
+   [Reporting IDs](#54-reporting-ids) for more details.
 
  * `buyerAndSellerReportingId`: A 
    [USVString](https://webidl.spec.whatwg.org/#idl-USVString), no character limit.
@@ -266,7 +266,7 @@ The `ads` list contains the various ads that the interest group might show.  Eac
    only win the auction if the selected value is jointly k-anonymous along with
    `buyerAndSellerReportingId`, `buyerReportingId`, the interest group owner, bidding
    script URL, and render URL. See
-   [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
+   [Reporting IDs](#54-reporting-ids) for more details.
 
  * `buyerReportingId`: A [USVString](https://webidl.spec.whatwg.org/#idl-USVString),
    no character limit. If set, `buyerAndSellerReportingId` is unset, and
@@ -282,7 +282,7 @@ The `ads` list contains the various ads that the interest group might show.  Eac
    the resulting bid may only win the auction if the selected value is jointly
    k-anonymous along with `buyerAndSellerReportingId`, `buyerReportingId`, the
    interest group owner, bidding script URL, and render URL. See
-   [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
+   [Reporting IDs](#54-reporting-ids) for more details.
 
  * `metadata`: Arbitrary metadata that can be used at bidding time.
 
@@ -989,7 +989,7 @@ The output of `generateBid()` contains the following fields:
     URL. If present, it indicates the reporting of this bid would not operate
     correctly were the `selectedBuyerAndSellerReportingId` not presented to
     `reportWin()` and `reportResult()`. See
-    [Reporting IDs](#54-reporting-ids-in-reporting) for more details.
+    [Reporting IDs](#54-reporting-ids) for more details.
 
 In case returning multiple bids is supported by the implementation in use,
 `generateBid` may also return up to `browserSignals.multiBidLimit` valid bid
@@ -1243,8 +1243,8 @@ The arguments to this function are:
 *   sellerSignals: The output of `reportResult()` above, giving the seller an opportunity to pass information to the buyer. In the case where the winning buyer won a component auction and then went on to win the top-level auction, this is the output of component auction's seller's `reportResult()` method.
 *   browserSignals: Similar to the argument to `reportResult()` above, though without the seller's desirability score, but with additional `adCost`, `seller`, `madeHighestScoringOtherBid` and potentially `buyerReportingId` or `interestGroupName` fields:
     *   The `adCost` field contains the value that was returned by `generateBid()`, stochastically rounded to fit into a floating point number with an 8 bit mantissa and 8 bit exponent. This field is only present if `adCost` was returned by `generateBid()`.
-    *   The `buyerReportingId` may be included if selected (see [Reporting IDs](#54-reporting-ids-in-reporting) for selection details) and the tuple of `buyerReportingId`, interest group owner, bidding script URL, ad creative URL, and ad creative size (if specified by `generateBid`) were jointly k-anonymous. (Note: until at least [Q1 2025](https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity), in the implementation, the ad creative size is excluded from this check.)
-    *   The `interestGroupName` may be included if selected (see [Reporting IDs](#54-reporting-ids-in-reporting) for selection details) and the tuple of interest group owner, name, bidding script URL, ad creative URL, and ad creative size (if specified by `generateBid`) were jointly k-anonymous. (Note: until at least [Q1 2025](https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity), in the implementation, the ad creative size is excluded from this check.)
+    *   The `buyerReportingId` may be included if selected (see [Reporting IDs](#54-reporting-ids) for selection details) and the tuple of `buyerReportingId`, interest group owner, bidding script URL, ad creative URL, and ad creative size (if specified by `generateBid`) were jointly k-anonymous. (Note: until at least [Q1 2025](https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity), in the implementation, the ad creative size is excluded from this check.)
+    *   The `interestGroupName` may be included if selected (see [Reporting IDs](#54-reporting-ids) for selection details) and the tuple of interest group owner, name, bidding script URL, ad creative URL, and ad creative size (if specified by `generateBid`) were jointly k-anonymous. (Note: until at least [Q1 2025](https://developers.google.com/privacy-sandbox/relevance/protected-audience-api/k-anonymity), in the implementation, the ad creative size is excluded from this check.)
     *   The `madeHighestScoringOtherBid` field is true if the interest group owner was the only bidder that made bids with the second highest score.
     *   The `highestScoringOtherBid` and `madeHighestScoringOtherBid` fields are based on the auction the interest group was directly part of. If that was a component auction, they're from the component auction. If that was the top-level auction, then they're from the top-level auction. Component bidders do not get these signals from top-level auctions since it is the auction seller joining the top-level auction, instead of winning component bidders joining the top-level auction directly.
     *   The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.
