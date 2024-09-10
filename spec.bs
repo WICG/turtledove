@@ -3857,6 +3857,20 @@ from querying the server during an auction.
     1. Return true if it is above the threshold, otherwise return false.
 </div>
 
+<div algorithm>
+  To <dfn>compute the key part for one of multiple reporting ids</dfn> given [=string=]-or-null |reportingId|:
+    1. If |reportingId| is null:
+      1. Return the [=string/concatenation=] of the following:
+        1. U+000A (LF)
+        1. "\00\00\00\00\00"
+    1. Otherwise:
+      1. Return the [=string/concatenation=] of the following:
+        1.1. U+000A (LF)
+        1. "\01"
+        1. The size of |reportingId| in bytes
+        1. |reportingId|
+</div>
+
 // TODO remove this and fit into the one below
 <div algorithm>
   To <dfn>query ad k-anonymity count</dfn> given an [=interest group=] |ig|, a [=URL=] |ad|,
@@ -3888,36 +3902,57 @@ from querying the server during an auction.
 </div>
 
 <div algorithm>
- To <dfn>compute the key hash of ad</dfn> given an [=interest group=] |ig| and an [=interest group ad=] |igAd|:
-   1. Let |keyString| be the [=k-anonymity key=] formed from the [=string/concatenation=] of the following strings separated with U+000A LF:
-      * "AdBid"
-      * the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
-      * the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
-      * the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=].
-   1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
+  To <dfn>compute the key hash of ad</dfn> given an [=interest group=] |ig| and an [=interest group ad=] |igAd|, and a [=string=]-or-null |selectedBuyerAndSellerReportingId|:
+    1. If |selectedBuyerAndSellerReportingId| is not null:
+      1. Let |keyString| be the [=k-anonymity key=] formed from the [=string/concatenation=] of the following strings separated with U+000A LF:
+        * "AdBid"
+        * the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
+        * the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
+        * the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=].   
+        * the |selectedBuyerAndSellerReportingId|
+    1. Otherwise:    
+      1. Let |keyString| be the [=k-anonymity key=] formed from the [=string/concatenation=] of the following strings separated with U+000A LF:
+        * "AdBid"
+        * the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
+        * the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
+        * the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=].
+    1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
 </div>
 
 <div algorithm>
   To <dfn>compute the key hash of reporting ID</dfn> given an [=interest group=] |ig| and an
-  [=interest group ad=] |igAd|:
-    1. Let |keyString| be a [=k-anonymity key=] formed from the [=string/concatenation=] of the following strings separated with U+000A (LF):
-
-      * "NameReport"
-      * the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
-      * the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
-      * the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=]
-      * If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
-          [=map/exists=]:
-         * "BuyerAndSellerReportingId"
-         * |igAd|'s [=interest group ad/buyer and seller reporting ID=]
-      * Otherwise, if |igAd|'s [=interest group ad/buyer reporting ID=]
-          [=map/exists=]:
-         * "BuyerReportingId"
-         * |igAd|'s [=interest group ad/buyer reporting ID=]
-      * Otherwise:
-         * "IgName"
-         * |ig|'s [=interest group/name=].
-   1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
+  [=interest group ad=] |igAd|, and a [=string=]-or-null |selectedReportingId|:
+    1. Let |middle| be the [=string/concatenation=] of the following strings separated with U+000A (LF):
+      1. the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
+      1. the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
+      1. the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=]
+    1. Let |keyString| be an empty [=string=].
+    1. If |selectedReportingId| is not null:
+      1. Set |keyString| to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
+        1. "SelectedBuyerAndSellerReportId"
+        1. |middle|
+        1. The result of [=compute the key part for one of multiple reporting ids=] given |selectedReportingId|
+        1. The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s 
+          [=interest group ad/buyer and seller reporting ID=]
+        1. The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s
+          [=interest group ad/buyer reporting ID=]
+    1. Otherwise: 
+      1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] [=map/exists=]:
+        1. Set |keyString| to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
+          1. "BuyerAndSellerReportId"
+          1. |middle|
+          1. |igAd|'s [=interest group ad/buyer and seller reporting ID=]
+      1. Otherwise if |igAd|'s [=interest group ad/buyer reporting ID=] [=map/exists=]:
+        1. Set |keyString| to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
+          1. "BuyerReportId"
+          1. |middle|
+          1. |igAd|'s [=interest group ad/buyer reporting ID=]
+      1. Otherwise:
+        1. Set |keyString| to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
+          1. "IgName"
+          1. |middle|
+          1. |igAd|'s [=interest group/name=]
+    1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
 </div>
 
 <div algorithm>
@@ -3933,7 +3968,8 @@ from querying the server during an auction.
     1. Let |selectedReportingId| be a [=string=]-or-null set to null
     1. If |bid|'s [=generated bid/selected buyer and seller reporting id=] [=map/exists=], set
       |selectedReportingId| to |bid|'s [=generated bid/selected buyer and seller reporting id=].
-    1. Compute the |adHashCode| following [=compute the key hash of ad=] with the |bid|'s [=generated bid/interest group=] and |bid|'s [=generated bid/ad descriptor=].
+    1. Compute the |adHashCode| following [=compute the key hash of ad=] with the |bid|'s [=generated bid/interest group=], 
+      |bid|'s [=generated bid/ad descriptor=], and |bid|'s [=generated bid/selected buyer and seller reporting id=].
     1. If [=query k-anonymity cache=] for |adHashCode|, and |selectedReportingId| returns false, return false.
     1. If |bid|'s [=generated bid/ad component descriptors=] is not null:
       1. [=set/For each=] |adComponentDescriptor| in |bid|'s
@@ -3961,6 +3997,8 @@ from querying the server during an auction.
 
 <div algorithm>
   To <dfn>update k-anonymity cache for interest group</dfn> given an [=interest group=] |ig|:
+    1. TODO figure out how we update with selectables, do we loop through?
+      This is needed for the compute key hash which takes a selected
     1. [=list/For each=] |igAd| of |ig|'s [=interest group/ads=]:
       1. Compute the |adHashCode| following [=compute the key hash of ad=] for |ig| and |igAd|.
       1. Run [=update k-anonymity cache for key=] on |adHashCode|.
