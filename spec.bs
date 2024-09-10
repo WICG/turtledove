@@ -2843,29 +2843,29 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
 1. Let |requestContexts| be the value of |global|'s [=associated Document's=] [=node navigable's=]
   [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=].
 1. If |requestContexts|[|requestId|] does not [=map/exist=], return null.
-1. Set |requestContext| to |requestContexts|[|requestId|]
-1. Try to deserialize |auctionConfig|'s [=auction config/server response=] into
-   a new [=server auction response=], |response|, using |requestContext| as the
-   context, according to the Bidding and Auction Services IETF standard. If
-   deserialization is not successful, return failure.
+1. Let |requestContext| be |requestContexts|[|requestId|].
+1. Let |response| be the [=server auction response=] which is the result of
+   deserializing |auctionConfig|'s [=auction config/server response=]
+   with |requestContext| according to the Bidding and Auction Services IETF standard.
 
     Issue: TODO: Link deserialization to IETF standard when available.
     (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
-1. If |response|'s [=server auction response/is chaff=] field is True, return failure.
+1. If |response|'s [=server auction response/is chaff=] field is true, return failure.
 1. If |response|'s [=server auction response/top level seller=] is not Null:
   1. If |topLevelAuctionConfig| is null return failure.
   1. If |topLevelAuctionConfig|'s [=auction config/seller=] is not equal to
     |response|'s [=server auction response/top level seller=], return failure.
 1. Otherwise if |topLevelAuctionConfig| is not null, return failure.
 1. Let |winningGroup| be the [=interest group=] in the [=user agent=]'s [=interest group set=]
-   with the [=interest group/owner=] equal to |response|'s
-   [=server auction response/interest group owner=] and the [=interest group/name=]
-   equal to |response|'s [=server auction response/interest group name=]. If there is no such group,
-   return failure.
-1. Let |winningAd| be the [=interest group ad=] from |winningGroup|'s [=interest group/ads=]
-   where the [=interest group ad/render url=] equals |response|'s [=server auction response/ad render url=].
-   If there is no matching ad, return failure.
-1. Let |winningAdComponents| be a new [=list=] of [=interest group ad=].
+   whose [=interest group/owner=] is |response|'s [=server auction response/interest group owner=] and
+   [=interest group/name=] is |response|'s [=server auction response/interest group name=]. Return failure if none found.
+1. If |winningGroup|'s [=interest group/ads=] is null, then return failure.
+1. Let |winningAd| be null.
+1. [=list/For each=] |ad| of |winningGroup|'s [=interest group/ads=]:
+  1. If |response|'s [=server auction response/ad render url=] is |ad|'s [=interest group ad/render url=], then set
+    |winningAd| to |ad|, and [=iteration/break=].
+1. If |winningAd| is null, then return failure.
+1. Let |winningAdComponents| be a new [=list=] of [=interest group ads=].
 1. [=list/For each=] |componentAd| in |response|'s [=server auction response/ad components=]:
   1. Let |ad| be the [=interest group ad=] from |winningGroup|'s
      [=interest group/ad components=] where the [=interest group ad/render url=]
@@ -2920,7 +2920,6 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
 1. Let |componentSellerReportingResult| be a new [=reporting result=] with the following [=struct/items=]:
    : [=reporting result/report url=]
    :: The value of |response|'s [=server auction response/component seller reporting=]'s [=server auction reporting info/reporting url=].
-   :: |response.winReportingURLs.componentSellerReportingUrls.reportingUrl|
    : [=reporting result/reporting beacon map=]
    :: The value of |response|'s [=server auction response/component seller reporting=]'s [=server auction reporting info/beacon urls=].
 
@@ -2958,10 +2957,14 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
    : [=leading bid info/component seller reporting result=]
    :: |componentSellerReportingResult|
 1. [=list/For each=] |igPair| in |response|'s [=server auction response/bidding groups=] field:
-  1. Find the interest group |ig| in the [=user agent=]'s [=interest group set=]
-     whose owner and name match those in |igPair|. If there are no matches continue.
+  1. Let |ig| be the [=interest group=] in the [=user agent=]'s [=interest group set=] whose
+    [=interest group/owner=] is |igPair|'s [=interest group/owner=] and [=interest group/name=] is |igPair|'s
+    [=interest group/name=]. [=iteration/Continue=] if none found.
   1. [=list/Append=] |ig| to |bidIgs|.
 1. Insert the debug reporting URLs from |response| into |bidDebugReportInfoList|.
+
+    Issue: TODO: Handle forDebuggingOnly reports from server auction.
+    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
 1. Return |winningBidInfo|.
 
 </div>
