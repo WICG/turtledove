@@ -138,6 +138,14 @@ navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
     "realTimeReporting")
 ```
 
+## Selectable Reporting IDs
+
+From context of a web page:
+```
+navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
+    "selectableReportingIds")
+```
+
 ## Getting browser-side detectable features as an object
 Sometimes it's desirable to get status of all features detectable via `queryFeatureSupport` in a
 forward-compatible way. Sufficiently recent versions provide this functionality via
