@@ -197,7 +197,7 @@ dictionary AuctionAd {
 
   USVString buyerReportingId;
   USVString buyerAndSellerReportingId;
-  USVString selectableBuyerAndSellerReportingIds;
+  sequence<USVString> selectableBuyerAndSellerReportingIds;
   sequence<USVString> allowedReportingOrigins;
   DOMString adRenderId;
 };
@@ -1900,8 +1900,6 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 
               Note: passing 1 for multiBidLimit limits the rerun to producing at most a single bid.
 
-            1. Set |kAnonRestrictedIG|'s [=interest group/ads=] to |ig|'s [=interest group/ads=].
-            1. Set |kAnonRestrictedIG|'s [=interest group/ad components=] to |ig|'s [=interest group/ad components=].
             1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
               |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
             1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
@@ -2737,8 +2735,9 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
      [=generated bid/interest group=]'s [=interest group/ads=] whose
      [=interest group ad/render url=] is |winner|'s
      [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-  1. If |winner|'s [=generated bid/selected buyer and seller reporting ID=] [=map/exists=] and [=query reporting ID k-anonymity count=] given
-    |winner|'s [=generated bid/interest group=], |igAd|, and |winner|'s [=generated bid/selected buyer and seller reporting ID=] is true:
+  1. If |winner|'s [=generated bid/selected buyer and seller reporting ID=] [=map/exists=]:
+    1. If [=query reporting ID k-anonymity count=] given
+      |winner|'s [=generated bid/interest group=], |igAd|, and |winner|'s [=generated bid/selected buyer and seller reporting ID=] is true:
       1. [=map/set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/selectedBuyerAndSellerReportingId}}"] to
         |winner|'s [=generated bid/selected buyer and seller reporting ID=].
       1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] [=map/exists=],
@@ -2747,9 +2746,9 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
       1. If |igAd|'s [=interest group ad/buyer reporting ID=] [=map/exists=],
         [=map/set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/buyerReportingId}}"] to
         |igAd|'s [=interest group ad/buyer reporting ID=].
-  1. Otherwise if |igAd|'s [=interest group ad/buyer and seller reporting ID=]
-    does not [=map/exist=] and the result of [=query reporting ID k-anonymity count=] given
-    |winner|'s [=generated bid/interest group=], |igAd|, and null is true:
+  1. Otherwise:
+    1. If result of [=query reporting ID k-anonymity count=] given
+      |winner|'s [=generated bid/interest group=], |igAd|, and null is true:
       1. If |igAd|'s [=interest group ad/buyer reporting ID=] [=map/exists=],
         [=map/set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/buyerReportingId}}"] to
         |igAd|'s [=interest group ad/buyer reporting ID=].
@@ -3837,22 +3836,22 @@ from querying the server during an auction.
   To <dfn>create a k-anon restricted deep copy of the interest group</dfn> given a [=interest group=] |ig|:
     1. Let |kAnonRestrictedIG| be a deep copy of |ig|
     1. If |ig|'s [=interest group/ads=] is not null:
-      1. Let |kAnonRestrictedIG|'s [=interest group/ads=] be an be an empty [=list=] of [=interest group ad=]
+      1. Set |kAnonRestrictedIG|'s [=interest group/ads=] to an empty [=list=] of [=interest group ad=].
       1. [=list/For each=] |igAd| of |ig|'s [=interest group/ads=]:
-        1. Compute the |adHashCode| by getting the result of [=compute the key hash of ad=] given |ig| and |igAd|.
+        1. Let |adHashCode| be the result of [=compute the key hash of ad=] given |ig| and |igAd|.
         1. If [=query k-anonymity cache=] for |adHashCode| returns true:
           1. If |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] is not null:
           1. Let |kAnonRestrictedSelectableReportingIds| be a new empty [=list=] of [=string=]s.
           1. [=list/For each=] |selectableReportingId| in |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=]:
-            1. Compute |reportingHashCode| by getting the result of [=computing the key hash of reporting ID=] given |ig|, |igAd|, and |selectableReportingId|. 
+            1. Let |reportingHashCode| be the result of [=computing the key hash of reporting ID=] given |ig|, |igAd|, and |selectableReportingId|. 
             1. If [=query k-anonymity cache=] for |reportingHashCode| returns true:
               1. [=list/Append=] |selectableReportingId| to |kAnonRestrictedSelectableReportingIds|.
           1. Set |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] to |kAnonRestrictedSelectableReportingIds|.
         1. [=list/Append=] |igAd| to |kAnonRestrictedIG|'s [=interest group/ads=].
     1. If |ig|'s [=interest group/ad components=] is not null:
-      1. Let |kAnonRestrictedIG|'s [=interest group/ad components=] be an be an empty [=list=] of [=interest group ad=].
+      1. Set |kAnonRestrictedIG|'s [=interest group/ad components=] to an empty [=list=] of [=interest group ad=].
       1. [=list/For each=] |igAdComponent| of |ig|'s [=interest group/ad components=]:
-        1. Compute the |adComponentHashCode| by getting the result of [=compute the key hash of ad=] given |ig| and |igAdComponent|.
+        1. Let |adComponentHashCode| be the result of [=compute the key hash of ad=] given |ig| and |igAdComponent|.
         1. If [=query k-anonymity cache=] for |adComponentHashCode| returns true:
           1. [=list/Append=] |igAdComponent| to |kAnonRestrictedIG|'s [=interest group/ad components=].
     1. return |kAnonRestrictedIG|.
@@ -3871,12 +3870,15 @@ from querying the server during an auction.
     1. If |reportingId| is null:
       1. Return the [=string/concatenation=] of the following:
         1. U+000A (LF)
-        1. "\00\00\00\00\00"
+        1. U+0000 (NUL)
+        1. U+0000 (NUL)
+        1. U+0000 (NUL)
+        1. U+0000 (NUL)
     1. Otherwise:
       1. Return the [=string/concatenation=] of the following:
-        1.1. U+000A (LF)
+        1. U+000A (LF)
         1. "\01"
-        1. The size of |reportingId| in bytes
+        1. The size of |reportingId|, interpreted as four 8-bit big-endian numbers, appended as bytes.
         1. |reportingId|
 </div>
 
