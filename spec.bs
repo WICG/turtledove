@@ -2739,11 +2739,6 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
   1. If |winner|'s [=generated bid/selected buyer and seller reporting ID=] [=map/exists=]:
     1. If [=query reporting ID k-anonymity count=] given
       |winner|'s [=generated bid/interest group=], |igAd|, and |winner|'s [=generated bid/selected buyer and seller reporting ID=] is true:
-      1. [=map/set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/selectedBuyerAndSellerReportingId}}"] to
-        |winner|'s [=generated bid/selected buyer and seller reporting ID=].
-      1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] [=map/exists=],
-        [=map/set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/buyerAndSellerReportingId}}"] to
-        |igAd|'s [=interest group ad/buyer reporting ID=].
       1. If |igAd|'s [=interest group ad/buyer reporting ID=] [=map/exists=],
         [=map/set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/buyerReportingId}}"] to
         |igAd|'s [=interest group ad/buyer reporting ID=].
@@ -5882,8 +5877,6 @@ dictionary ReportWinBrowserSignals : ReportingBrowserSignals {
   boolean madeHighestScoringOtherBid;
   DOMString interestGroupName;
   DOMString buyerReportingId;
-  DOMString buyerAndSellerReportingId;
-  DOMString selectedBuyerAndSellerReportingId;
   unsigned short modelingSignals;
   unsigned long dataVersion;
   KAnonStatus kAnonStatus;
@@ -5900,21 +5893,11 @@ enum KAnonStatus { "passedAndEnforced", "passedNotEnforced", "belowThreshold", "
   <dt>{{ReportWinBrowserSignals/madeHighestScoringOtherBid}}
   <dd>True if the interest group owner was the only bidder that made bids with the second highest
     score
-  <dt>{{ReportWinBrowserSignals/selectedBuyerAndSellerReportingId}}
-  <dd>Set if the winning bid had a [=generated bid/selected buyer and seller reporting ID=] and that value was
-    [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
-    [=interest group ad/buyer and seller reporting ID=],
-    [=interest group ad/buyer reporting ID=], interest group owner, bidding script URL, and [=ad creative=] URL.
-  <dt>{{ReportWinBrowserSignals/buyerAndSellerReportingId}}
-  <dd>Set if the winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its listing in the interest group, and the winning bid had a 
-    [=generated bid/selected buyer and seller reporting ID=], and that value was
-    [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
-    [=interest group ad/buyer reporting ID=], interest group owner, bidding script URL, [=ad creative=] URL, and
-    [=generated bid/selected buyer and seller reporting ID=] if it [=map/exists=], otherwise null.
   <dt>{{ReportWinBrowserSignals/buyerReportingId}}
   <dd>There are two scenerios in which this can be set:
     * Set if the winning ad had a [=interest group ad/buyer reporting ID=] but not a
       [=interest group ad/buyer and seller reporting ID=] set in its listing in the interest group,
+      and the winning bid did not have [=generated bid/selected buyer and seller reporting ID=] set,
       and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
       interest group owner, bidding script URL, [=ad creative=] URL, and null.
     * Set if the wining bid had a [=generated bid/selected buyer and seller reporting ID=] and the winning ad had a
@@ -6109,8 +6092,8 @@ An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/item
     [=interest group/ads=], but ignored in [=interest group/ad components=].
   : <dfn>selectable buyer and seller reporting IDs</dfn>
   :: Null or a [=list=] of [=strings=]. A list of reporting ids which will be sent to `generateBid()`,
-    in order to get a [=generated bid/selected buyer and seller reporting ID=]. Only meaningful in 
-    [=interest group/ads=], but ignored in [=interest group/ad components=].
+    in order to allow `generateBid()` to return a [=generated bid/selected buyer and seller reporting ID=].
+    Only meaningful in [=interest group/ads=], but ignored in [=interest group/ad components=].
   : <dfn>allowed reporting origins</dfn>
   :: Null or a [=list=] of [=origins=]. A list of up to 10 reporting origins that can receive reports
     with registered macros. Each origin's [=origin/scheme=] must be "`https`" and each origin must be
@@ -6999,11 +6982,14 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   : <dfn>selected buyer and seller reporting ID</dfn>
   :: Null or [=string=]. The selected reporting id from the 
     [=interest group ad/selectable buyer and seller reporting IDs=] within the
-    [=generated bid/interest group=]. If present, will be passed alongside with
-    [=interest group ad/buyer reporting ID=], and
-    [=interest group ad/buyer and seller reporting ID=] to [=report win=] and with only the
-    [=interest group ad/buyer and seller reporting ID=] to [=report result=], subject to
-    [=k-anonymity=] checks.
+    [=generated bid/interest group=]. If present, this will be:
+      * Passed alongside [=interest group ad/buyer reporting ID=] and
+        [=interest group ad/buyer and seller reporting ID=] to [=report win=] 
+        subject to [=k-anonymity=] checks.
+      * Passed alongside [=interest group ad/buyer and seller reporting ID=]
+        to [=report result=] subject to [=k-anonymity=] checks.
+      * Passed alongside [=interest group ad/buyer and seller reporting ID=]
+        to `scoreAd()`.
   : <dfn>ad cost</dfn>
   :: Null or a {{double}}. Advertiser click or conversion cost passed from `generateBid()` to
     `reportWin()`. Negative values will be ignored and not passed. Will be
@@ -7079,11 +7065,9 @@ To <dfn>adjust bid list based on k-anonymity</dfn> given a [=list=] of [=generat
   1. Let |igAd| be the [=interest group ad=] from |generatedBid|'s [=generated bid/interest group=]'s
     [=interest group/ads=] whose [=interest group ad/render url=] is |generatedBid|'s
     [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-  1. If both of the following return true:
-    1. [=query generated bid k-anonymity count=] given |generatedBid|
-    1. [=query reporting ID k-anonymity count=] given |generatedBid|'s [=generated bid/interest group=], |igAd|, and the |selectedReportingId|
-  1. If [=query generated bid k-anonymity count=] given |generatedBid| returns true and (selected is not in generated bid OR K anon for reporting is true):
-
+  1. Let |isBidKAnon| be the result of [=query generated bid k-anonymity count=] given |generatedBid|.
+  1. If |isBidKAnon| is true and [=query reporting ID k-anonymity count=] given |generatedBid|'s [=generated bid/interest group=], |igAd|,
+    |selectedReportingId| is true:
       Issue: TODO: change to query k-anonymity cache instead.
       (<a href="https://github.com/WICG/turtledove/issues/1150">WICG/turtledove#1150</a>)
     1. [=list/Append=] |generatedBid| to |bidsToScore|.
