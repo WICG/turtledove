@@ -2658,20 +2658,21 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
   1. Let |igAd| be the [=interest group ad=] from |winner|'s [=generated bid/interest group=]'s
     [=interest group/ads=] whose [=interest group ad/render url=] is |winner|'s
     [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-  1. Let |selectedReportingId| be a [=string=]-or-null that is set to null.
+  1. Let |isKAnonForReporting| be a [=boolean=].
   1. If the |winner|'s [=generated bid/selected buyer and seller reporting ID=]
-     [=map/exists=] and the result of [=query reporting ID k-anonymity count=]
-     given |winner|'s [=generated bid/interest group=], |igAd|, and the 
-     |winner|'s [=generated bid/selected buyer and seller reporting ID=] is true:
-    1. Set |selectedReportingId| to the |winner|'s [=generated bid/selected buyer and seller reporting ID=].
-    1. [=map/set=] 
-      |browserSignals|["{{ReportingBrowserSignals/selectedBuyerAndSellerReportingId}}"] to
-      |selectedReportingId|.
-  1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
-     [=map/exists=] and the result of [=query reporting ID k-anonymity count=]
-     given |winner|'s [=generated bid/interest group=], |igAd|, and |selectedReportingId| is true, then [=map/set=]
-     |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s
-     [=interest group ad/buyer and seller reporting ID=].
+      [=map/exists=], then set |isKAnonForReporting| to the result of
+      [=query reporting ID k-anonymity count=] given
+      |winner|'s [=generated bid/interest group=], |igAd|, and
+      |winner|'s [=generated bid/selected buyer and seller reporting ID=].
+  1. Otherwise, set |isKAnonForReporting| to the result of
+      [=query reporting ID k-anonymity count=] given
+      |winner|'s [=generated bid/interest group=], |igAd|, and
+      null.
+  1. If |isKAnonForReporting| is true:
+    1. [=map/set=] |browserSignals|["{{ReportingBrowserSignals/selectedBuyerAndSellerReportingId}}"]
+      to |winner|'s [=generated bid/selected buyer and seller reporting ID=].
+    1. [=map/set=] |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"]
+      to |igAd|'s [=interest group ad/buyer and seller reporting ID=].
   1. Let |sellerReportingScriptFetcher| be the result of [=creating a new script fetcher=] with
      |config|'s [=auction config/decision logic url=] and |global|'s [=relevant settings object=].
   1. Let |sellerReportingScript| be the result of [=waiting for script body from a fetcher=] given
@@ -3866,23 +3867,6 @@ from querying the server during an auction.
 </div>
 
 <div algorithm>
-  To <dfn>compute the key part for one of multiple reporting ids</dfn> given [=string=]-or-null |reportingId|:
-    1. If |reportingId| is null:
-      1. Return the [=string/concatenation=] of the following:
-        1. U+000A (LF)
-        1. U+0000 (NUL)
-        1. U+0000 (NUL)
-        1. U+0000 (NUL)
-        1. U+0000 (NUL)
-    1. Otherwise:
-      1. Return the [=string/concatenation=] of the following:
-        1. U+000A (LF)
-        1. "\01"
-        1. The size of |reportingId|, interpreted as four 8-bit big-endian numbers, appended as bytes.
-        1. |reportingId|
-</div>
-
-<div algorithm>
   To <dfn>query k-anonymity cache</dfn> given a [=SHA-256=] |hashCode|:
     1. If the [=user agent=]'s [=k-anonymity cache=] does not [=map/contain=] |hashCode|, then return false.
     1. Let |record| be the [=user agent=]'s [=k-anonymity cache=][|hashCode|].
@@ -3898,6 +3882,21 @@ from querying the server during an auction.
       * the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
       * the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=].
     1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
+</div>
+
+<div algorithm>
+  To <dfn>compute the key part for one of multiple reporting ids</dfn> given [=string=]-or-null |reportingId|:
+    1. If |reportingId| is null:
+      1. Return the [=string/concatenation=] of the following:
+        1. U+0000 (NUL)
+        1. U+0000 (NUL)
+        1. U+0000 (NUL)
+        1. U+0000 (NUL)
+    1. Otherwise:
+      1. Return the [=string/concatenation=] of the following:
+        1. U+0001 (SOH)
+        1. The size of |reportingId|, interpreted as four 8-bit big-endian numbers, appended as bytes.
+        1. |reportingId|
 </div>
 
 <div algorithm>
@@ -3946,9 +3945,6 @@ from querying the server during an auction.
 
 <div algorithm>
   To <dfn>query generated bid k-anonymity count</dfn> given a [=generated bid=] |bid|:
-    1. Let |selectedReportingId| be a [=string=]-or-null set to null
-    1. If |bid|'s [=generated bid/selected buyer and seller reporting ID=] [=map/exists=], set
-      |selectedReportingId| to |bid|'s [=generated bid/selected buyer and seller reporting ID=].
     1. Compute the |adHashCode| following [=compute the key hash of ad=] with the |bid|'s [=generated bid/interest group=], 
       |bid|'s [=generated bid/ad descriptor=].
     1. If [=query k-anonymity cache=] for |adHashCode| returns false, return false.
@@ -3958,12 +3954,16 @@ from querying the server during an auction.
         1. Compute the |componentAdHashCode| by getting the result of [=compute the key hash of component ad=] with |adComponentDescriptor|'s
           [=ad descriptor/url=].
         1. If [=query k-anonymity cache=] for |componentAdHashCode| returns false, return false.
+    1. If |bid|'s [=generated bid/selected buyer and seller reporting ID=] [=map/exists=]:
+      1. Let |reportingHashCode| be the result of [=compute the key hash of reporting ID=] with the |bid|'s [=generated bid/interest group=],
+        the |bid|'s [=generated bid/selected buyer and seller reporting ID=].
+      1. If [=query k-anonymity cache=] for |reportingHashCode| returns false, return false.
     1. Return true.
 </div>
 
 <div algorithm>
   To <dfn>query reporting ID k-anonymity count</dfn> given an [=interest group=]
-  |ig|, a [=interest group ad=] |igAd|, and a [=string=]-or-null |selectedReportingId|:
+  |ig|, an [=interest group ad=] |igAd|, and a [=string=]-or-null |selectedReportingId|:
     1. Let |keyHash| be the result of [=computing the key hash of reporting ID=] given |ig|, |igAd|, and |selectedReportingId|.
     1. Return the result of [=query k-anonymity count|querying the k-anonymity count=] given |keyHash|.
 </div>
@@ -3979,17 +3979,17 @@ from querying the server during an auction.
 <div algorithm>
   To <dfn>update k-anonymity cache for interest group</dfn> given an [=interest group=] |ig|:
     1. [=list/For each=] |igAd| of |ig|'s [=interest group/ads=]:
-      1. Compute the |adHashCode| following [=compute the key hash of ad=] for |ig| and |igAd|.
+      1. Let |adHashCode| be the result of [=compute the key hash of ad=] given |ig| and |igAd|.
       1. Run [=update k-anonymity cache for key=] on |adHashCode|.
       1. If |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] is not null:
         1. [=list/For each=] |selectableReportingId| in |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=]:
-          1. Compute |adReportingHashCode| by getting the result of [=computing the key hash of reporting ID=] given |ig|, |igAd|, and |selectableReportingId|.
+          1. Let |adReportingHashCode| be the result of [=computing the key hash of reporting ID=] given |ig|, |igAd|, and |selectableReportingId|.
           1. Run [=update k-anonymity cache for key=] on |adReportingHashCode|.
       1. Otherwise:
-        1. Compute the |adReportingHashCode| following [=compute the key hash of reporting ID=].
+        1. Let |adReportingHashCode| be the result of [=computing the key hash of reporting ID=] given |ig|, |igAd|, and null.
         1. Run [=update k-anonymity cache for key=] on |adReportingHashCode|.
     1. [=list/For each=] |componentAd| of |ig|'s [=interest group/ad components=]:
-      1. Compute the |componentAdHashCode| following [=compute the key hash of component ad=] for |componentAd|.
+      1. Let |componentAdHashCode| be the result of [=compute the key hash of component ad=] given |componentAd|.
       1. Run [=update k-anonymity cache for key=] on |componentAdHashCode|.
 </div>
 
