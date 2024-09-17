@@ -4052,14 +4052,12 @@ from querying the server during an auction.
 
 <div algorithm>
   To <dfn>compute the key part for one of multiple reporting ids</dfn> given [=string=]-or-null |reportingId|:
-    1. If |reportingId| is null:
-      1. Return the [=string/concatenation=] of the following:
-        * U+0000 (NUL)
-        * U+0000 (NUL)
-        * U+0000 (NUL)
-        * U+0000 (NUL)
-    1. Otherwise:
-      1. Return the [=string/concatenation=] of the following:
+    1. If |reportingId| is null, then return the [=string/concatenation=] of the following:
+      * U+0000 (NUL)
+      * U+0000 (NUL)
+      * U+0000 (NUL)
+      * U+0000 (NUL)
+    1. Otherwise, return the [=string/concatenation=] of the following:
         * U+0001 (SOH)
         * The size of |reportingId|, interpreted as four 8-bit big-endian numbers, appended as bytes.
         * |reportingId|
@@ -4073,31 +4071,31 @@ from querying the server during an auction.
       * the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
       * the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=]
     1. Let |keyString| be an empty [=string=].
-    1. If |selectedReportingId| is not null:
-      1. Set |keyString| to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
-        * "SelectedBuyerAndSellerReportId"
-        * |middle|
-        * The result of [=compute the key part for one of multiple reporting ids=] given |selectedReportingId|
-        * The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s 
-          [=interest group ad/buyer and seller reporting ID=]
-        * The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s
-          [=interest group ad/buyer reporting ID=]
+    1. If |selectedReportingId| is not null, then set the |keyString| to be the [=string/concatenation=]
+      of the following strings separated with U+000A (LF):
+      * "SelectedBuyerAndSellerReportId"
+      * |middle|
+      * The result of [=compute the key part for one of multiple reporting ids=] given |selectedReportingId|
+      * The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s 
+        [=interest group ad/buyer and seller reporting ID=]
+      * The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s
+        [=interest group ad/buyer reporting ID=]
     1. Otherwise: 
-      1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] [=map/exists=]:
-        1. Set |keyString| to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
-          * "BuyerAndSellerReportId"
-          * |middle|
-          * |igAd|'s [=interest group ad/buyer and seller reporting ID=]
-      1. Otherwise if |igAd|'s [=interest group ad/buyer reporting ID=] [=map/exists=]:
-        1. Set |keyString| to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
-          * "BuyerReportId"
-          * |middle|
-          * |igAd|'s [=interest group ad/buyer reporting ID=]
-      1. Otherwise:
-        1. Set |keyString| to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
-          * "IgName"
-          * |middle|
-          * |igAd|'s [=interest group/name=]
+      1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] [=map/exists=], set |keyString|
+        to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
+        * "BuyerAndSellerReportId"
+        * |middle|
+        * |igAd|'s [=interest group ad/buyer and seller reporting ID=]
+      1. Otherwise if |igAd|'s [=interest group ad/buyer reporting ID=] [=map/exists=], set |keyString|
+        to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
+        * "BuyerReportId"
+        * |middle|
+        * |igAd|'s [=interest group ad/buyer reporting ID=]
+      1. Otherwise set |keyString| to be the [=string/concatenation=] of the following strings separated
+        with U+000A (LF):
+        * "NameReport"
+        * |middle|
+        * |igAd|'s [=interest group/name=]
     1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
 </div>
 
@@ -6076,11 +6074,12 @@ enum KAnonStatus { "passedAndEnforced", "passedNotEnforced", "belowThreshold", "
       script URL, [=ad creative=] URL, and [=generated bid/selected buyer and seller reporting ID=].
 
   <dt>{{ReportWinBrowserSignals/interestGroupName}}
-  <dd>Only set if the tuple of interest group owner, name, bidding script URL, [=ad creative=] URL, and null
-    were [=query reporting ID k-anonymity count|jointly k-anonymous=], and the
-    winning ad had neither [=interest group ad/buyer and seller reporting ID=]
-    nor [=interest group ad/buyer reporting ID=] set in its listing in the interest group,
-    and the winning bid did not have [=generated bid/selected buyer and seller reporting ID=] set.
+  <dd>Only set if all of the following are true:
+      * The combination of the interest group owner, name, bidding script URL, [=ad creative=] URL,
+        and null are [=query reporting ID k-anonymity count|jointly k-anonymous=]
+      * The winning ad had neither [=interest group ad/buyer and seller reporting ID=]
+        nor [=interest group ad/buyer reporting ID=] set in its listing in the interest group.
+      * The winning bid did not have [=generated bid/selected buyer and seller reporting ID=] set.
   <dt>{{ReportWinBrowserSignals/modelingSignals}}
   <dd>A 0-4095 integer (12-bits) passed to `reportWin()`, with noising
   <dt>{{ReportWinBrowserSignals/dataVersion}}
