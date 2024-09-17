@@ -114,7 +114,7 @@ Browsers keep track of the set of interest groups that they have joined.  For ea
 const myGroup = {
   'owner': 'https://www.example-dsp.com',
   'name': 'womens-running-shoes',
-  'lifetimeMs': 30 * kMillisecsPerDay,
+  'lifetimeMs': 90 * kMillisecsPerDay,
   'priority': 0.0,
   'priorityVector': {
     'signal1': 2,
@@ -166,7 +166,7 @@ There is a related API `navigator.clearOriginJoinedAdInterestGroups(owner, [<gro
 
 The interest group owner passed to `joinAdInterestGroup()`, `leaveAdInterestGroup()`, and `clearOriginJoinedAdInterestGroups()` is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model).
 
-The browser will remain in an interest group for only a limited amount of time.  The duration, in milliseconds, is specified in the `lifetimeMs` attribute of the interest group, and will be capped at 30 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's `userBiddingSignal` or list of ads.  A duration <= 0 will leave the interest group.
+The browser will remain in an interest group for only a limited amount of time.  The duration, in milliseconds, is specified in the `lifetimeMs` attribute of the interest group, and will be capped at 90 days.  This can be extended by calling `joinAdInterestGroup()` again later, with the same group name and owner.  Successive calls to `joinAdInterestGroup()` will overwrite the previously-stored values for any interest group properties, like the group's `userBiddingSignal` or list of ads.  A duration <= 0 will leave the interest group.
 
 #### 1.2 Interest Group Attributes
 
@@ -184,7 +184,7 @@ previously stored (except that the `name` and `owner` cannot be changed, and
 `prioritySignalsOverrides` will be merged with the previous value, with `null`
 meaning a value should be removed from the interest group's old dictionary). The HTTP request
 will not include any metadata, so data such as the interest group `name` should be
-included within the URL. Note that the lifetime of an Interest Group is not affected by the update mechanism — ad targeting based on a person's activity on a site remains limited to 30 days after the most recent site visit.
+included within the URL. Note that the lifetime of an Interest Group is not affected by the update mechanism — ad targeting based on a person's activity on a site remains limited to 90 days after the most recent site visit.
 
 The updates are done after auctions so as not to slow down
 the auctions themselves.  The updates are rate limited to running at most daily to
@@ -1088,10 +1088,11 @@ The browser-generated `prioritySignals` object contains the following values:
 * `browserSignals.one`: This is always 1. It's useful for adding a constant to the dot product.
 * `browserSignals.basePriority`: The `priority` field in the interest group, which may have been modified by a `setPriority()` call.
 * `browserSignals.firstDotProductPriority`: The sparse dot product of the interest group's `priorityVector` and `prioritySignals`. Only non-zero when using a `priorityVector` from a trusted bidding signals fetch, and the interest group also has a `prioritySignals` field. See below for more details.
-* `browserSignals.ageInMinutes`: How long since the interest group was most recently joined, in minutes, as an integer. Guaranteed to be between 0 and 43200 (the number of minutes in 30 days, the maximum lifetime of an interest group), inclusive.
+* `browserSignals.ageInMinutes`: How long since the interest group was most recently joined, in minutes, as an integer. Guaranteed to be between 0 and 129,600 (the number of minutes in 90 days, the maximum lifetime of an interest group), inclusive.
 * `browserSignals.ageInMinutesMax60`: Same as `browserSignals.ageInMinutes`, but with a maximum value of 60. 60 is returned if the group is more than an hour old.
 * `browserSignals.ageInHoursMax24`: The interest group's age in hours, as an integer, with a maximum value of 24. Always non-negative.
 * `browserSignals.ageInDaysMax30`: The interest group's age in days, as an integer, with a maximum value of 30. Always non-negative.
+* `browserSignals.ageInDaysMax90`: The interest group's age in days, as an integer, with a maximum value of 90. Always non-negative.
 
 If the resulting sparse dot product is negative, the interest group is immediately removed from the auction (note that if there's no `priorityVector`, interest groups with negative `priority` values currently are not filtered from auctions). After calculating new priorities as needed, and filtering out interest groups with negative calculated priorities, the `perBuyerGroupLimits` value is applied to all interest groups of a given owner, unless the interest group's `enableBiddingSignalsPrioritization` field is present and true.
 
@@ -1249,7 +1250,7 @@ The arguments to this function are:
     *   The `highestScoringOtherBid` and `madeHighestScoringOtherBid` fields are based on the auction the interest group was directly part of. If that was a component auction, they're from the component auction. If that was the top-level auction, then they're from the top-level auction. Component bidders do not get these signals from top-level auctions since it is the auction seller joining the top-level auction, instead of winning component bidders joining the top-level auction directly.
     *   The `dataVersion` field will contain the `Data-Version` from the trusted bidding signals response headers if they were provided by the trusted bidding signals server response and the version was consistent for all keys requested by this interest group, otherwise the field will be absent.
     *   If the winning bid was from a component auction, then `seller` will be the seller in the component auction, a `topLevelSeller` field will contain the seller of the top-level auction.
-    * The `joinCount` field is the number of times this device has joined this interest group in the last 30 days while the interest group has been continuously stored (that is, there are no gaps in the storage of the interest group on the device due to leaving or membership expiring), using the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
+    * The `joinCount` field is the number of times this device has joined this interest group in the last 90 days while the interest group has been continuously stored (that is, there are no gaps in the storage of the interest group on the device due to leaving or membership expiring), using the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
     * The `recency` field is duration of time (in minutes) from when this device joined this interest group until now, using the [noising and bucketing scheme](#521-noised-and-bucketed-signals).
     * `modelingSignals` is the `modelingSignals` returned from `generateBid()`, using the [noising scheme](#521-noised-and-bucketed-signals). This field is only present if `modelingSignals` was returned by `generateBid()`.
     * `kAnonStatus` indicates the k-anonymity status of the ad.  When k-anonymity is calculated but not enforced, this field can help bidders understand the impact of k-anonymity enforcement.
@@ -1501,7 +1502,7 @@ Though negative interest groups are joined using the same `joinAdInterestGroup` 
 const myGroup = {
   'owner': 'https://www.example-dsp.com',
   'name': 'womens-running-shoes',
-  'lifetimeMs': 30 * kSecsPerDay,
+  'lifetimeMs': 90 * kMillisecsPerDay,
   'additionalBidKey': 'EA/fR/uU8VNqT3w/2ic4P6Azdaj1J8U35vFwPEf5T4Y='
 };
 navigator.joinAdInterestGroup(myGroup);
@@ -1545,7 +1546,7 @@ We use a cryptographic signature mechanism to ensure that only the owner of a ne
 
 When a buyer joins a user into a negative interest group, they must provide their current 32-byte Ed25519 public key, expressed as a base64-encoded string, via the negative interest group's `additionalBidKey` field. This can be seen in the example above in section [6.2.1 Negative Interest Groups](#621-negative-interest-groups).
 
-When the buyer issues an additional bid, that bid needs to be signed using their current and previous Ed25519 secret keys. It's for this reason that additional bids may have more than one signature provided alongside the bid. The use of these two keys here supports the 30-day key rotation: the previous key is used to verify negative interest groups stored on the user's device _prior_ to most recent key rotation, the current key is used to verify negative interest groups stored on the user's device _since_ the most recent key rotation. Only these two keys are needed, because all previous keys will only have been used to join negative interest groups more than 30 days prior, and all of those negative interest groups are guaranteed to have expired.
+When the buyer issues an additional bid, that bid needs to be signed using all of the current and previous Ed25519 secret keys that may have a corresponding additional bid key in negative interest groups that are negatively targeted by that additional bid. It's for this reason that additional bids may have more than one signature provided alongside the bid. The use of multiple keys here supports the 30-day key rotation: the previous keys are used to verify negative interest groups stored on the user's device _prior_ to most recent key rotation, the current key is used to verify negative interest groups stored on the user's device _since_ the most recent key rotation. Because negative interest groups have a maximum lifetime of 90 days, and assuming a 30 day rotation on the Ed25519 key used for additional bid keys, as many as four signatures - one associated with the current key and as many as three associated with previous keys - would be needed on each additional bid.
 
 If the signature doesn't verify successfully, the additional bid proceeds as if the negative interest group is not present. This "failing open" ensures that only the owner of the negative interest group, who created the additonalBidKey, is allowed to negatively target the interest group, and that nobody else can learn whether the interest group is present on the device. Because the signature check "fails open", buyers should make sure they're using the right keys; for example it might be prudent to verify a bid signature before submitting the additional bid.
 
