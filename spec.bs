@@ -1675,9 +1675,9 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
     1. Otherwise:
       1. Let |compWinnerInfo| be the result of running [=generate and score bids=] with |component|,
         |auctionConfig|, |global|, |bidIgs|, |bidDebugReportInfoList|, and |realTimeContributionsMap|.
-    1. If |compWinnerInfo| is failure, return failure.
+    1. If |compWinnerInfo| is failure, abort these steps.
     1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns
-      failure, return failure.
+      failure, abort these steps.
     1. If |topLevelDirectFromSellerSignalsRetrieved| is false:
       1. Let |topLevelDirectFromSellerSignals| be the result of running
         [=get direct from seller signals=] given |seller|, |auctionConfig|'s
@@ -2803,20 +2803,25 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
   1. If |response|'s [=server auction response/ad render url=] is |ad|'s [=interest group ad/render url=], then set
     |winningAd| to |ad|, and [=iteration/break=].
 1. If |winningAd| is null, then return failure.
-1. Let |winningAdDescriptor| be a new [=ad descriptor=] with the following [=struct/items=]:
-  : [=ad descriptor/url=]
-  :: |response|'s [=server auction response/ad render url=]
-1. Let |winningAdComponents| be a new [=list=] of [=interest group ads=].
+
+   Issue: TODO: Check that the buyerReportingId and buyerAndSellerReportingId from the
+   server response match that in the |winningAd|.
+1. Let |winningAdDescriptor| be a new [=ad descriptor=] whose [=ad descriptor/url=] is
+   |response|'s [=server auction response/ad render url=].
+1. Let |winningAdComponents| be a new [=list=] of [=ad descriptors=].
 1. [=list/For each=] |componentAd| in |response|'s [=server auction response/ad components=]:
   1. Let |ad| be the [=interest group ad=] from |winningGroup|'s
      [=interest group/ad components=] where the [=interest group ad/render url=]
      equals |componentAd|. If there is no matching element, return failure.
-  1. [=list/Append=] |ad| to |winningAdComponents|.
-1. Let |bidValue| be a new [=bid with currency=] with the following [=struct/items=]:
-  : [=bid with currency/value=]
-  :: |response|'s [=server auction response/bid=]
-  : [=bid with currency/currency=]
-  :: |response|'s [=server auction response/bid currency=]
+  1. [=list/Append=] a new [=ad descriptor=] whose [=ad descriptor/url=] is
+     |componentAd| to |winningAdComponents|.
+1. Let |bidValue| be null.
+1. If [=server auction response/bid=] is not null:
+  1. Set |bidValue| to a new [=bid with currency=] with the following [=struct/items=]:
+    : [=bid with currency/value=]
+    :: |response|'s [=server auction response/bid=]
+    : [=bid with currency/currency=]
+    :: |response|'s [=server auction response/bid currency=]
 1. Let |winningBid| be a new [=generated bid=] with the following [=struct/items=]:
   : [=generated bid/id=]
   :: TODO
@@ -2863,12 +2868,13 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
    :: The value of |response|'s [=server auction response/component seller reporting=]'s [=server auction reporting info/reporting url=].
    : [=reporting result/reporting beacon map=]
    :: The value of |response|'s [=server auction response/component seller reporting=]'s [=server auction reporting info/beacon urls=].
-
+1. Let |topScore| be 0.0 if |response|'s [=server auction response/score=] is null or
+      |response|'s [=server auction response/score=].
 1. Let |winningBidInfo| be a new [=leading bid info=] with the following [=struct/items=]:
    : [=leading bid info/top score=]
-   :: |response|'s [=server auction response/score=].
+   :: |topScore|
    : [=leading bid info/top non-k-anon-enforced score=]
-   :: |response|'s [=server auction response/score=].
+   :: |topScore|
    : [=leading bid info/top bids count=]
    :: 1
    : [=leading bid info/top non-k-anon-enforced bids count=]
@@ -3050,33 +3056,53 @@ A <dfn>server auction response</dfn> is a [=struct=] with the following [=struct
   : <dfn>is chaff</dfn>
   :: A [=boolean=] field indicating whether this response should be ignored.
   : <dfn>ad render url</dfn>
-  :: The [=URL=] of the ad for the winning bid.
+  :: [=URL=]. The [=leading bid info/leading bid=]'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] from the
+     component auction executed on the trusted auction server.
   : <dfn>ad components</dfn>
-  :: A [=list=] of [=URLs=] containing the ad components for the winning bid.
+  :: A [=list=] of [=URLs=]. A list of [=leading bid info/leading bid=]'s
+     [=generated bid/ad component descriptors=]'s [=ad descriptor/urls=] from the
+     component auction executed on the trusted auction server.
   : <dfn>interest group name</dfn>
-  :: The winning interest group's name as a [=string=].
+  :: The [=leading bid info/leading bid=]'s [=generated bid/interest group=]'s
+     [=interest group/name=] as a [=string=] from the
+     component auction executed on the trusted auction server.
   : <dfn>interest group owner</dfn>
-  :: The winning interest group's owner [=origin=].
+  :: An [=origin=]. The [=leading bid info/leading bid=]'s
+     [=generated bid/interest group=]'s [=interest group/owner=] from the
+     component auction executed on the trusted auction server.
   : <dfn>bidding groups</dfn>
-  :: A [=list=] of interest group [=interest group/owner=] and interest group [=interest group/name=] pairs that bid
+  :: A [=list=] of [=generated bid/interest group=] [=interest group/owner=] and
+     [=generated bid/interest group=] [=interest group/name=] pairs that bid
      in this auction.
   : <dfn>score</dfn>
-  :: {{double}} or Null. For component auctions, contains the desirability
-     for the winning bid in the component auction.
+  :: Null or {{double}}. Null when the server auction is not a component auction.
+     For component auctions, contains the [=leading bid info/top score=]
+     from the component auction executed on the trusted auction server.
   : <dfn>bid</dfn>
-  :: {{double}} or Null. For component auctions, contains the modified bid
-     for the winning bid in the component auction.
+  :: Null or {{double}}. Null when the server auction is not a component auction.
+     For component auctions, contains the
+     [=leading bid info/leading bid=]'s [=generated bid/modified bid=]'s
+     [=bid with currency/value=] if the [=generated bid/modified bid=] is not
+     null, otherwise the [=leading bid info/leading bid=]'s [=generated bid/bid=]'s
+     [=bid with currency/value=] from the component auction executed on the
+     trusted auction server.
   : <dfn>bid currency</dfn>
-  :: [=currency tag=] or Null. For component auctions, contains the currency of
-     the modified bid for the winning bid in the component auction.
+  :: Null or [=currency tag=]. Null when the server auction is not a component auction.
+     For component auctions, contains the
+     [=leading bid info/leading bid=]'s [=generated bid/modified bid=]'s
+     [=bid with currency/currency=] if the [=generated bid/modified bid=] is not
+     null, otherwise the [=leading bid info/leading bid=]'s [=generated bid/bid=]'s
+     [=bid with currency/currency=] from the component auction executed on the
+     trusted auction server.
   : <dfn>top level seller</dfn>
-  :: An [=origin=] or Null. Null when the server response is not feeding into an
-     on-device auction. Otherwise the value is the expected top-level seller for
-     that auction.
+  :: Null or an [=origin=]. Null when the server auction is not a component auction.
+     Otherwise the value is the expected top-level seller [=origin=] for
+     that auction. This should match the [=auction config/seller=] for the top-level [=auction config=].
   : <dfn>ad metadata</dfn>
-  :: A JSON [=string=] or Null. Null when the server response is not feeding into an
-     on-device auction. Otherwise the value contains the ad metadata
-     returned from scoring the winning bid in the component auction.
+  :: Null or a JSON [=string=]. Null when the server auction is not a component auction.
+     Otherwise the value contains the [=leading bid info/leading bid=]'s
+     [=generated bid/ad=] from the component auction executed on the
+     trusted auction server.
   : buyer reporting id
   :: TODO.
   : buyer and seller reporting id
@@ -3084,11 +3110,11 @@ A <dfn>server auction response</dfn> is a [=struct=] with the following [=struct
   : error
   :: TODO.
   : <dfn>buyer reporting</dfn>
-  :: [=server auction reporting info=]
+  :: [=Server auction reporting info=]
   : <dfn>top level seller reporting</dfn>
-  :: [=server auction reporting info=] or Null.
+  :: Null or [=server auction reporting info=].
   : <dfn>component seller reporting</dfn>
-  :: [=server auction reporting info=] or Null.
+  :: Null or [=server auction reporting info=].
 </dl>
 
 A <dfn>server auction reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
@@ -7029,8 +7055,9 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   :: A [=boolean=], initially true. If this is false, the bid is only used to determine the hypothetical
     winner with no k-anonymity constraints, which would be used to [=update k-anonymity counts=] only.
   : <dfn>bid</dfn>
-  :: A [=bid with currency=]. If the [=bid with currency/value=] is zero or negative, then this
-    [=interest group=] will not participate in the auction.
+  :: A [=bid with currency=], or null. If not null and the [=bid with currency/value=] is zero or negative, then this
+    [=interest group=] will not participate in the auction. This field should only
+    be null if the top-level auction is performed on a trusted auction server.
   : <dfn>bid in seller currency</dfn>
   :: A {{double}} or null. An equivalent of the original bid in seller's currency. This is either
     the original bid if the currency already matched, or a conversion provided by `scoreAd()`.
