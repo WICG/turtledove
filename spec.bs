@@ -5806,10 +5806,11 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
     [:Ad-Auction-Result:] from |responseHeaders|.
   1. If |adAuctionResults| is not null, [=list/for each=] |result| of |adAuctionResults|:
     1. [=Strip leading and trailing ASCII whitespace=] from |result|.
-    1. If |result| is "", then [=iteration/continue=].
-    1. Let |base64Result| be the result of running [=convert base64url to base64=] with |result|.
-    1. If |base64Result| is failure, then [=iteration/continue=].
-    1. Let |hash| be the result of running [=forgiving-base64 decode=] with |base64Result|.
+    1. If |result| is "", or contains [=code points=] U+002B (`+`) or U+002F (`/`), then
+      [=iteration/continue=].
+    1. Replace every U+2212 (`-`) [=code point=] in |result| with U+002B (`+`).
+    1. Replace every U+005F(`_`) [=code point=] in |result| with U+002F (`/`).
+    1. Let |hash| be the result of running [=forgiving-base64 decode=] with |result|.
     1. If |hash| is not failure, and |hash|'s [=string/length=] is 32:
       1. If |storedAuctionResultHeaders|[|requestOrigin|] [=map/exists=], then [=list/append=] |hash|
         to |storedAuctionResultHeaders|.
@@ -5864,18 +5865,6 @@ To <dfn>handle ad auction signals header value</dfn> given a [=byte sequence=] |
         </dl>
 
     1. Set |storedSignalsHeaders|[|signalsKey|] to |processedSignals|.
-</div>
-
-<div algorithm>
-To <dfn>convert base64url to base64</dfn> given a [=string=] |adAuctionResult|:
-
-  1. If |adAuctionResult| contains [=code points=] U+002B (`+`) or U+002F (`/`), return failure.
-  1. Replace every U+2212 (`-`) [=code point=] in |adAuctionResult| with U+002B (`+`).
-  1. Replace every U+005F(`_`) [=code point=] in |adAuctionResult| with U+002F (`/`).
-  1. Let |paddingSize| be <code>|adAuctionResult|'s [=string/length=] % 4</code>.
-  1. [=list/For each=] <var ignore>i</var> in [=the range=] from 0 to |paddingSize|, exclusive:
-    1. Append U+003D(`=`) to the end of |adAuctionResult|.
-  1. Return |adAuctionResult|.
 </div>
 
 
