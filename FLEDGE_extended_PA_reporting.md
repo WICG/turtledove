@@ -301,9 +301,10 @@ The newly added base values are as following:
   to participate in this (sub)auction due to the per-buyer cumulative timeout
   (`participating-ig-count` is the denominator here).
 * `cumulative-buyer-time`: total time spent for buyer's computation, in milliseconds; this is what
-  would normally be compared against the per-buyer cumulative timeout. If the timeout is not hit,
-  the value will be how long the buyer actually took, capped by the per-buyer cumulative timeout,
-  if the timeout is hit, the reported value will be the timeout + 1.
+  would normally be compared against the per-buyer cumulative timeout (which must be set for this
+  to be non-zero). If the timeout is not hit, the value will be how long the buyer actually took,
+  capped by the per-buyer cumulative timeout, if the timeout is hit, the reported value will be the
+  timeout + 1000.
 * `percent-regular-ig-count-quota-used`,`percent-negative-ig-count-quota-used`,
   `percent-ig-storage-quota-used`: percentage of the database quote used by the buyer for
   regular interest group count, negative targeting interest group count, and overall byte usage
