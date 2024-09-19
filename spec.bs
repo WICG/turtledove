@@ -2781,7 +2781,9 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
 1. Let |hash| be the [=SHA-256=] of |auctionConfig|'s [=auction config/server response=].
 1. Let |capturedAuctionHeaders| be |global|'s [=associated Document's=] [=node navigable's=]
   [=traversable navigable's=] [=traversable navigable/captured ad auction result headers=].
-1. If |capturedAuctionHeaders| does not [=list/contain=] |hash|, then return failure.
+1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
+1. If |capturedAuctionHeaders|[|seller|] does not [=map/exist=] or does not [=list/contain=] |hash|,
+  then return failure.
 1. Let |requestId| be the value of |auctionConfig|'s [=auction config/server response id=].
 1. Let |requestContexts| be the value of |global|'s [=associated Document's=] [=node navigable's=]
   [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=].
@@ -5583,8 +5585,8 @@ their intended auction.
 Any {{Document}} in a [=traversable navigable=] may run a Protected Audience auction (with
 {{Window/navigator}}.{{Navigator/runAdAuction()}}) whose [=script runners=] functions receive signal
 objects derived from JSON from an [:Ad-Auction-Signals:] header, or [=additional bids=] derived from
-an [:Ad-Auction-Additional-Bid:] header, or auction blob derived from an [:Ad-Auction-Result:]
-header, captured by a {{WindowOrWorkerGlobalScope/fetch()}} call
+an [:Ad-Auction-Additional-Bid:] header, or response blob's [=base64url=] encoded [=SHA-256=] hash
+derived from an [:Ad-Auction-Result:] header, captured by a {{WindowOrWorkerGlobalScope/fetch()}} call
 (using the {{RequestInit/adAuctionHeaders}} option) initiated by any *other* {{Document}} in the
 *same* [=traversable navigable=], or from an
 <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
@@ -5623,7 +5625,8 @@ are [=server auction request contexts=].
 </div>
 
 Each [=traversable navigable=] has a <dfn for="traversable navigable">captured ad auction result
-headers</dfn>, which is a [=list=] of [=strings=].
+headers</dfn>, which is a [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are
+[=strings=].
 
 <div algorithm="fetch capture adAuctionHeaders boolean patch">
 Modify the definition of a [=request=]:
@@ -5807,8 +5810,10 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
     1. Let |base64Result| be the result of running [=convert base64url to base64=] with |result|.
     1. If |base64Result| is failure, then [=iteration/continue=].
     1. Let |hash| be the result of running [=forgiving-base64 decode=] with |base64Result|.
-    1. If |hash| is not failure, and |hash|'s [=string/length=] is 32, then [=list/append=] |hash|
-      to |storedAuctionResultHeaders|.
+    1. If |hash| is not failure, and |hash|'s [=string/length=] is 32:
+      1. If |storedAuctionResultHeaders|[|requestOrigin|] [=map/exists=], then [=list/append=] |hash|
+        to |storedAuctionResultHeaders|.
+      1. Otherwise, [=map/set=] |storedAuctionResultHeaders|[|requestOrigin|] to « |hash| ».
 
 </div>
 
