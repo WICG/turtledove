@@ -2816,18 +2816,11 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
      equals |componentAd|. If there is no matching element, return failure.
   1. [=list/Append=] a new [=ad descriptor=] whose [=ad descriptor/url=] is
      |componentAd| to |winningAdComponents|.
-1. Let |bidValue| be null.
-1. If [=server auction response/bid=] is not null, then set |bidValue| to a new [=bid with currency=] with
-    the following [=struct/items=]:
-  : [=bid with currency/value=]
-  :: |response|'s [=server auction response/bid=]
-  : [=bid with currency/currency=]
-  :: |response|'s [=server auction response/bid currency=]
 1. Let |winningBid| be a new [=generated bid=] with the following [=struct/items=]:
   : [=generated bid/id=]
   :: TODO
   : [=generated bid/bid=]
-  :: |bidValue|
+  :: |response|'s [=server auction response/bid=]
   : [=generated bid/bid in seller currency=]
   :: Null
   : [=generated bid/ad=]
@@ -2845,7 +2838,7 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
   : [=generated bid/bid ad=]
   :: |winningAd|
   : [=generated bid/modified bid=]
-  :: Null if |topLevelAuctionConfig| is null, otherwise |bidValue|.
+  :: Null if |topLevelAuctionConfig| is null, otherwise |response|'s [=server auction response/bid=]
   : [=generated bid/bid duration=]
   :: 0
   : [=generated bid/component seller=]
@@ -3052,17 +3045,19 @@ A <dfn>server auction request context</dfn> is a [=struct=] with the following [
     (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
 </dl>
 
-A <dfn>server auction response</dfn> is a [=struct=] with the following [=struct/items=]:
+A <dfn>server auction response</dfn> is a [=struct=] that contains auction result
+from an auction executed on the trusted auction server. It has the following [=struct/items=]:
+
 <dl dfn-for="server auction response">
   : <dfn>is chaff</dfn>
   :: A [=boolean=] field indicating whether this response should be ignored.
   : <dfn>ad render url</dfn>
   :: [=URL=]. The [=leading bid info/leading bid=]'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] from the
-     auction executed on the trusted auction server.
+     auction.
   : <dfn>ad components</dfn>
   :: A [=list=] of [=URLs=]. A list of winning bid's
      [=generated bid/ad component descriptors=]'s [=ad descriptor/urls=] from the
-     auction executed on the trusted auction server.
+     auction.
   : <dfn>interest group name</dfn>
   :: A [=string=]. The winning bid's interest group [=interest group/name=].
   : <dfn>interest group owner</dfn>
@@ -3070,26 +3065,14 @@ A <dfn>server auction response</dfn> is a [=struct=] with the following [=struct
   : <dfn>bidding groups</dfn>
   :: A [=list=] of interest group [=interest group/owner=] and
      interest group [=interest group/name=] pairs that bid
-     in the auction executed on the trusted auction server.
+     in the auction.
   : <dfn>score</dfn>
   :: Null or {{double}}. Null if the server auction is not a component auction,
      otherwise the {{ScoreAdOutput/desirability}} of component auction's winning bid.
   : <dfn>bid</dfn>
-  :: Null or {{double}}. Null when the server auction is not a component auction.
-     For component auctions, contains the
-     winning bid's [=generated bid/modified bid=]'s
-     [=bid with currency/value=] if the [=generated bid/modified bid=] is not
-     null, otherwise the winning bid's [=generated bid/bid=]'s
-     [=bid with currency/value=] from the component auction executed on the
-     trusted auction server.
-  : <dfn>bid currency</dfn>
-  :: Null or [=currency tag=]. Null when the server auction is not a component auction.
-     For component auctions, contains the
-     [=leading bid info/leading bid=]'s [=generated bid/modified bid=]'s
-     [=bid with currency/currency=] if the [=generated bid/modified bid=] is not
-     null, otherwise the [=leading bid info/leading bid=]'s [=generated bid/bid=]'s
-     [=bid with currency/currency=] from the component auction executed on the
-     trusted auction server.
+  :: Null or [=bid with currency=]. Null when the server auction is not a component auction.
+     For component auctions, contains the winning bid's [=generated bid/modified bid=]
+     when not null, otherwise the winning bid's [=generated bid/bid=].
   : <dfn>top level seller</dfn>
   :: Null or an [=origin=]. Null when the server auction is not a component auction.
      Otherwise the value is the expected top-level seller [=origin=] for
@@ -3097,8 +3080,7 @@ A <dfn>server auction response</dfn> is a [=struct=] with the following [=struct
   : <dfn>ad metadata</dfn>
   :: Null or a JSON [=string=]. Null when the server auction is not a component auction.
      Otherwise the value contains the winning bid's
-     [=generated bid/ad=] from the component auction executed on the
-     trusted auction server.
+     [=generated bid/ad=].
   : buyer reporting id
   :: TODO.
   : buyer and seller reporting id
