@@ -2808,13 +2808,14 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
 1. If |winningGroup|'s [=interest group/ads=] is null, then return failure.
 1. Let |winningAd| be null.
 1. [=list/For each=] |ad| of |winningGroup|'s [=interest group/ads=]:
-  1. If |response|'s [=server auction response/ad render url=] is |ad|'s [=interest group ad/render url=], then set
-    |winningAd| to |ad|, and [=iteration/break=].
-1. If |winningAd| is null, then return failure.
-
-   Issue: TODO: Check that the buyerReportingId and buyerAndSellerReportingId from the
-   server response match that in the |winningAd|.
-   (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+  1. If |response|'s [=server auction response/ad render url=] is |ad|'s
+    [=interest group ad/render url=], then set |winningAd| to |ad|, and [=iteration/break=].
+1. Return failure if any of the following conditions hold:
+  * |winningAd| is null;
+  * |response|'s [=server auction response/buyer and seller reporting id=] is not null and not
+    |winningAd|'s [=interest group ad/buyer and seller reporting ID=];
+  * |response|'s [=server auction response/buyer reporting id=] is not null and not
+    |winningAd|'s [=interest group ad/buyer reporting ID=].
 1. Let |winningAdDescriptor| be a new [=ad descriptor=] whose [=ad descriptor/url=] is
    |response|'s [=server auction response/ad render url=].
 1. Let |winningAdComponents| be a new [=list=] of [=ad descriptors=].
@@ -3088,10 +3089,12 @@ from an auction executed on the trusted auction server. It has the following [=s
   : <dfn>ad metadata</dfn>
   :: Null or a JSON [=string=]. Null when the server auction is not a component auction.
      Otherwise the value contains the component auction's winning bid's [=generated bid/ad=].
-  : buyer reporting id
-  :: TODO.
-  : buyer and seller reporting id
-  :: TODO.
+  : <dfn>buyer reporting id</dfn>
+  :: Null or a [=string=]. When not null, this will be verified with the winning bid's
+    [=generated bid/ad=]'s [=interest group ad/buyer reporting ID=].
+  : <dfn>buyer and seller reporting id</dfn>
+  :: Null or a [=string=]. When not null, this will be verified with the winning bid's
+    [=generated bid/ad=]'s [=interest group ad/buyer and seller reporting ID=].
   : error
   :: Null or [=string=]. When not null, contains an error message from the
      auction executed on the trusted auction server. May be used to provide
