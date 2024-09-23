@@ -1143,8 +1143,39 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. If |config|["{{AuctionAdConfig/serverResponse}}"] [=map/exists=]:
   1. If |config|["{{AuctionAdConfig/requestId}}"] does not [=map/exist=], then [=exception/throw=]
     a {{TypeError}}.
-  1. Set |auctionConfig|'s [=auction config/server response=] to |config|["{{AuctionAdConfig/serverResponse}}"].
-  1. Set |auctionConfig|'s [=auction config/server response id=] to |config|["{{AuctionAdConfig/requestId}}"].
+  // !!!!!TODO: update the algorithm or create a new one to handle server response promise. When it
+  // fails no need to wait other promises? How about when it wins? still wait?
+  1. [=Handle an input promise in configuration=] given |auctionConfig| and
+    |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"]:
+
+    Note: The JavaScript code calling {{Navigator/runAdAuction()}} is responsible for *not*
+      resolving |config|["{{AuctionAdConfig/serverResponse}}"] until server responses have been
+      retrieved from one or more [:Ad-Auction-Result:] headers, as resolving this Promise early
+      would cause a race condition in which the [=script runners=] might run without the server
+      responses that it needs. There are two ways that server responses can be retrieved.
+      The first is for the JavaScript code to issue a [=request=] whose [=request/initiator type=]
+      is `"fetch"` and whose {{RequestInit/adAuctionHeaders}} option is set to `true`. The
+      JavaScript code has to resolve |config|["{{AuctionAdConfig/serverResponse}}"] after the
+      corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=].
+      The JavaScript code can also choose to wait to call {{Navigator/runAdAuction()}} until after
+      the corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=],
+      and can then immediately resolve |config|["{{AuctionAdConfig/serverResponse}}"].
+      The second way that server responses can be retrieved is by issuing an
+      <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
+      request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a> set to `true`.
+      In this case, the JavaScript code is retrieved as part of the iframe navigation response,
+      at which point the JavaScript code in the iframe makes the call to
+      {{Navigator/runAdAuction()}}, and |config|["{{AuctionAdConfig/serverResponse}}"] can be can be
+      specified directly without a Promise.
+
+    * To parse the value |result|:
+      1. Set |auctionConfig|'s [=auction config/server response=] to
+        |config|["{{AuctionAdConfig/serverResponse}}"].
+      1. Set |auctionConfig|'s [=auction config/server response id=] to
+        |config|["{{AuctionAdConfig/requestId}}"].
+    * To handle an error:
+      1. Set |auctionConfig|'s [=auction config/server response=] to failure.
+
 1. Otherwise:
   1. If |config|["{{AuctionAdConfig/requestId}}"] [=map/exists=], then [=exception/throw=]
     a {{TypeError}}.
