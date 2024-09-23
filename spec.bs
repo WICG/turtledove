@@ -2660,20 +2660,18 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
   1. Let |igAd| be the [=interest group ad=] from |winner|'s [=generated bid/interest group=]'s
     [=interest group/ads=] whose [=interest group ad/render url=] is |winner|'s
     [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-  1. If the |winner|'s [=generated bid/selected buyer and seller reporting ID=] is not null:
-    1. Let |reportingHashCode| be the result of [=computing the key hash of reporting ID=] with |winner|'s
-      [=generated bid/interest group=], |igAd|, and |winner|'s
-      [=generated bid/selected buyer and seller reporting ID=].
-    1. If [=query k-anonymity cache=] for |reportingHashCode| returns true:
-      1. [=map/Set=] |browserSignals|["{{ReportingBrowserSignals/selectedBuyerAndSellerReportingId}}"]
-        to |winner|'s [=generated bid/selected buyer and seller reporting ID=].
-      1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, [=map/set=]
-        |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to it.
-  1. Otherwise, let |reportingHashCode| be the result of [=computing the key hash of reporting ID=]
-    with |winner|'s [=generated bid/interest group=], |igAd|, and null.
-    1. If [=query k-anonymity cache=] for |reportingHashCode| returns true:
-      1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, [=map/set=]
-        |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to it.
+  1. If the |winner|'s [=generated bid/selected buyer and seller reporting ID=] is not null and the
+    result of running [=query reporting ID k-anonymity count=] with |winner|'s
+    [=generated bid/interest group=], |igAd|, and |winner|'s
+    [=generated bid/selected buyer and seller reporting ID=] is true:
+    1. [=map/Set=] |browserSignals|["{{ReportingBrowserSignals/selectedBuyerAndSellerReportingId}}"]
+      to |winner|'s [=generated bid/selected buyer and seller reporting ID=].
+    1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, [=map/set=]
+      |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to it.
+  1. Otherwise, if the result of running [=query reporting ID k-anonymity count=] with |winner|'s 
+    [=generated bid/interest group=], |igAd|, and null is true:
+    1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, [=map/set=]
+      |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to it.
   1. Let |sellerReportingScriptFetcher| be the result of [=creating a new script fetcher=] with
      |config|'s [=auction config/decision logic url=] and |global|'s [=relevant settings object=].
   1. Let |sellerReportingScript| be the result of [=waiting for script body from a fetcher=] given
@@ -4132,7 +4130,7 @@ from querying the server during an auction.
   To <dfn>query reporting ID k-anonymity count</dfn> given an [=interest group=]
   |ig|, an [=interest group ad=] |igAd|, and a [=string=]-or-null |selectedReportingId|:
     1. Let |keyHash| be the result of [=computing the key hash of reporting ID=] given |ig|, |igAd|, and |selectedReportingId|.
-    1. Return the result of [=query k-anonymity count|querying the k-anonymity count=] given |keyHash|.
+    1. Return the result of [=query k-anonymity cache=] given |keyHash|.
 </div>
 
 <div algorithm>
@@ -7240,9 +7238,6 @@ To <dfn>adjust bid list based on k-anonymity</dfn> given a [=list=] of [=generat
   1. Let |isBidKAnon| be the result of [=query generated bid k-anonymity count=] given |generatedBid|.
   1. If |isBidKAnon| is true and running [=query reporting ID k-anonymity count=] with |generatedBid|'s 
     [=generated bid/interest group=], |igAd|, |selectedReportingId| is true:
-
-      Issue: TODO: change to query k-anonymity cache instead.
-      (<a href="https://github.com/WICG/turtledove/issues/1150">WICG/turtledove#1150</a>)
     1. [=list/Append=] |generatedBid| to |bidsToScore|.
 
     Note: Conceptually, a bid that's already k-anonymous is considered for both the k-anonymous and
