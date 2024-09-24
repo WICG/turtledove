@@ -2896,7 +2896,8 @@ A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=
   : <dfn>browser signals</dfn>
   :: A [=server auction browser signals=].
   : <dfn>priority</dfn>
-  :: A {{double}}
+  :: A {{double}}. Used to select which interest groups for a given buyer are excluded
+    from the serialized request due to space limitations.
 </dl>
 
 A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [=struct/items=]:
@@ -2944,7 +2945,7 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
 1. Let |global| be [=this=]'s [=relevant global object=].
 1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=run-ad-auction=]"
   [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
-1. Let |config| be the result of running [=parse and verify ad auction config=] on |configIDL|.
+1. Let |config| be the result of running [=parse and verify ad auction data config=] on |configIDL|.
 1. Let |p| be [=a new promise=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
@@ -2953,6 +2954,8 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
   1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
     1. If |ig|'s [=interest group/ads=] is null or [=list/is empty=], [=iteration/continue=].
     1. Let |owner| be |ig|'s [=interest group/owner=].
+    1. If |config|["per buyer config"] [=map/is empty=] or
+      |config|["per buyer config"][|owner|] does not [=map/exist=], then [=iteration/continue=].
     1. If |igMap|[|owner|] does not [=map/exist=], then [=map/set=] |igMap|[|owner|] to a new [=list=].
     1. Let |ads| be a new [=list=].
     1. [=list/For each=] |ad| in |ig|'s [=interest group/ads=], [=list/append=] |ad|'s [=interest group ad/ad render ID=] to |ads|.
@@ -3015,22 +3018,23 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
 </div>
 
 <div algorithm>
-  To <dfn>parse and verify ad auction config</dfn> given an {{AdAuctionDataConfig}} |configIDL|:
+  To <dfn>parse and verify ad auction data config</dfn> given an {{AdAuctionDataConfig}} |configIDL|:
 
+  1. Let |seller| be the result of running [=parse an https origin=] on
+       |configIDL|["{{AdAuctionDataConfig/seller}}"].
+  1. Let |coordinator| be the result of running [=parse an https origin=] on
+       |configIDL|["{{AdAuctionDataConfig/coordinatorOrigin}}"].
+  1. If |seller| or |coordinator| are failure, then [=exception/throw=] a {{TypeError}}.
   1. Let |config| be a new [=auction data config=] with the following [=struct/items=]:
     : [=auction data config/seller=]
-    :: The result of running [=parse an https origin=] on
-       |configIDL|["{{AdAuctionDataConfig/seller}}"]
+    :: |seller|
     : [=auction data config/coordinator=]
-    :: The result of running [=parse an https origin=] on
-       |configIDL|["{{AdAuctionDataConfig/coordinatorOrigin}}"]
+    :: |coordinator|
     : [=auction data config/request size=]
     :: |configIDL|["{{AdAuctionDataConfig/requestSize}}"] if it [=map/exists=], null otherwise
     : [=auction data config/per buyer config=]
     :: The result of running [=parse per buyer auction data configs=] on
       |configIDL|["{{AdAuctionDataConfig/perBuyerConfig}}"]
-  1. If |config|'s [=auction data config/seller=] or [=auction data config/coordinator=]
-     fields are failure, then [=exception/throw=] a {{TypeError}}.
   1. If |config|'s [=auction data config/per buyer config=] [=map/is not empty=]
      and |config|'s [=auction data config/request size=] is null:
      1. Let |requestSize| be 0.
@@ -3048,9 +3052,10 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
   1. Let |configs| be a new [=ordered map=] whose [=map/keys=] are [=origins=]
      and whose [=map/values=] are [=auction data configs=].
   1. [=map/For each=] |buyerIDL| → |buyerConfigIDL| of |perBuyerConfigIDL|:
-    1. Let |buyerConfig| be a new [=auction data buyer config=] with the following [=struct/items=]:
-      : [=auction data buyer config/size=]
-      :: |buyerConfigIDL|["{{AdAuctionDataBuyerConfig/targetSize}}"] if it [=map/exists=], null otherwise.
+    1. Let |buyerConfig| be a new [=auction data buyer config=] whose
+       [=auction data buyer config/size=] is
+       |buyerConfigIDL|["{{AdAuctionDataBuyerConfig/targetSize}}"] if it
+       [=map/exists=], null otherwise.
     1. Let |buyer| be the result of running [=parse an https origin=] on |buyerIDL|.
     1. If |buyer| is failure, then [=exception/throw=] a {{TypeError}}.
     1. [=map/Set=] |configs|[|buyer|] to |buyerConfig|.
