@@ -3019,13 +3019,13 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
 
   1. Let |config| be a new [=auction data config=] with the following [=struct/items=]:
     : [=auction data config/seller=]
-    :: The result of running [=parsing an https origin=] on
+    :: The result of running [=parse an https origin=] on
        |configIDL|["{{AdAuctionDataConfig/seller}}"]
     : [=auction data config/coordinator=]
-    :: The result of running [=parsing an https origin=] on
+    :: The result of running [=parse an https origin=] on
        |configIDL|["{{AdAuctionDataConfig/coordinatorOrigin}}"]
     : [=auction data config/request size=]
-    :: |configIDL|["{{AdAuctionDataConfig/requestSize}}"]
+    :: |configIDL|["{{AdAuctionDataConfig/requestSize}}"] if it [=map/exists=], null otherwise
     : [=auction data config/per buyer config=]
     :: The result of running [=parse per buyer auction data configs=] on
       |configIDL|["{{AdAuctionDataConfig/perBuyerConfig}}"]
@@ -3033,12 +3033,12 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
      fields are failure, then [=exception/throw=] a {{TypeError}}.
   1. If |config|'s [=auction data config/per buyer config=] [=map/is not empty=]
      and |config|'s [=auction data config/request size=] is null:
-     1. Let |request_size| equal 0.
-     1. [=list/For each] |buyerConfig| of |config|'s [=auction data config/per buyer config=]'s [=map/values=]:
+     1. Let |requestSize| be 0.
+     1. [=list/For each=] |buyerConfig| of |config|'s [=auction data config/per buyer config=]'s [=map/values=]:
         1. If |buyerConfig|'s [=auction data buyer config/size=] is null,
            then [=exception/throw=] a {{TypeError}}.
-        1. Set |request_size| to |request_size| + |buyerConfig|'s [=auction data buyer config/size=]
-    1. Set |config|'s [=auction data config/request size=] to |request_size|.
+        1. Set |requestSize| to |requestSize| + |buyerConfig|'s [=auction data buyer config/size=]
+    1. Set |config|'s [=auction data config/request size=] to |requestSize|.
   1. Return |config|.
 </div>
 
@@ -3046,14 +3046,14 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
   To <dfn>parse per buyer auction data configs</dfn> given an
   {{AdAuctionDataBuyerConfig}} |perBuyerConfigIDL|:
   1. Let |configs| be a new [=ordered map=] whose [=map/keys=] are [=origins=]
-     and whose [=map/values=] are [=auction data config=]
+     and whose [=map/values=] are [=auction data configs=].
   1. [=map/For each=] |buyerIDL| → |buyerConfigIDL| of |perBuyerConfigIDL|:
     1. Let |buyerConfig| be a new [=auction data buyer config=] with the following [=struct/items=]:
       : [=auction data buyer config/size=]
-      :: |buyerConfigIDL|["{{AdAuctionDataBuyerConfig/targetSize}}"]
-    1. Let |buyer| be the result of running [=parsing an https origin=] on |buyerIDL|.
+      :: |buyerConfigIDL|["{{AdAuctionDataBuyerConfig/targetSize}}"] if it [=map/exists=], null otherwise.
+    1. Let |buyer| be the result of running [=parse an https origin=] on |buyerIDL|.
     1. If |buyer| is failure, then [=exception/throw=] a {{TypeError}}.
-    1. [=map/Set=] configs[|buyer|] to |buyerConfig|.
+    1. [=map/Set=] |configs|[|buyer|] to |buyerConfig|.
   1. Return |configs|.
 </div>
 
