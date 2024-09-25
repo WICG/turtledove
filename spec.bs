@@ -1146,37 +1146,37 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. If |seller| is failure, then return failure.
 1. Set |auctionConfig|'s [=auction config/seller=] to |seller|.
 1. If |config|["{{AuctionAdConfig/serverResponse}}"] [=map/exists=]:
-  1. If |config|["{{AuctionAdConfig/requestId}}"] does not [=map/exist=], then [=exception/throw=]
-    a {{TypeError}}.
-  1. [=Handle a server response promise in configuration=] given |auctionConfig| and
-    |config|["{{AuctionAdConfig/serverResponse}}"]:
+  1. If |config|["{{AuctionAdConfig/requestId}}"] does not [=map/exist=], then [=exception/throw=] a
+    {{TypeError}}.
+  1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps
+    [=upon fulfillment=] of |config|["{{AuctionAdConfig/serverResponse}}"] with |result|:
+    1. Set |auctionConfig|'s [=auction config/server response=] to the [=ArrayBuffer/transferred=]
+      |config|["{{AuctionAdConfig/serverResponse}}"].
+    1. Set |auctionConfig|'s [=auction config/server response id=] to
+      |config|["{{AuctionAdConfig/requestId}}"].
+    1. If no exception was [=exception/thrown=] in the previous step, then decrement
+      |auctionConfig|'s [=auction config/pending promise count=].
+  1. [=Upon rejection=] of |resolvedAndTypeChecked|:
+    1. Set |auctionConfig|'s [=auction config/server response=] to failure.
 
-    Note: The JavaScript code calling {{Navigator/runAdAuction()}} is responsible for *not*
-      resolving |config|["{{AuctionAdConfig/serverResponse}}"] until server responses have been
-      retrieved from one or more [:Ad-Auction-Result:] headers, as resolving this Promise early
-      would cause a race condition in which the [=script runners=] might run without the server
-      responses that it needs. There are two ways that server responses can be retrieved.
-      (1) The JavaScript code issues a [=request=] whose [=request/initiator type=]
-      is `"fetch"` and whose {{RequestInit/adAuctionHeaders}} option is set to `true`. The
-      JavaScript code has to resolve |config|["{{AuctionAdConfig/serverResponse}}"] after the
-      corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=].
-      The JavaScript code can also choose to wait to call {{Navigator/runAdAuction()}} until after
-      the corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=],
-      and can then immediately resolve |config|["{{AuctionAdConfig/serverResponse}}"];
-      (2) issue an <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
-      request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a> set to `true`.
-      In this case, the JavaScript code is retrieved as part of the iframe navigation response,
-      at which point the JavaScript code in the iframe makes the call to
-      {{Navigator/runAdAuction()}}, and |config|["{{AuctionAdConfig/serverResponse}}"] can be
-      specified directly without a Promise.
-
-    * To parse the value |result|:
-      1. Set |auctionConfig|'s [=auction config/server response=] to
-        |config|["{{AuctionAdConfig/serverResponse}}"].
-      1. Set |auctionConfig|'s [=auction config/server response id=] to
-        |config|["{{AuctionAdConfig/requestId}}"].
-    * To handle an error:
-      1. Set |auctionConfig|'s [=auction config/server response=] to failure.
+  Note: The JavaScript code calling {{Navigator/runAdAuction()}} is responsible for *not*
+    resolving |config|["{{AuctionAdConfig/serverResponse}}"] until server responses have been
+    retrieved from one or more [:Ad-Auction-Result:] headers, as resolving this Promise early
+    would cause a race condition in which the [=script runners=] might run without the server
+    responses that it needs. There are two ways that server responses can be retrieved.<br />
+    (1) The JavaScript code issues a [=request=] whose [=request/initiator type=]
+    is `"fetch"` and whose {{RequestInit/adAuctionHeaders}} option is set to `true`. The
+    JavaScript code has to resolve |config|["{{AuctionAdConfig/serverResponse}}"] after the
+    corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=].
+    The JavaScript code can also choose to wait to call {{Navigator/runAdAuction()}} until after
+    the corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=],
+    and can then immediately resolve |config|["{{AuctionAdConfig/serverResponse}}"];<br />
+    (2) issue an <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
+    request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a> set to `true`.
+    In this case, the JavaScript code is retrieved as part of the iframe navigation response,
+    at which point the JavaScript code in the iframe makes the call to
+    {{Navigator/runAdAuction()}}, and |config|["{{AuctionAdConfig/serverResponse}}"] can be
+    specified directly without a Promise.
 
 1. Otherwise:
   1. If |config|["{{AuctionAdConfig/requestId}}"] [=map/exists=], then [=exception/throw=]
@@ -1257,14 +1257,14 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       resolving |config|["{{AuctionAdConfig/additionalBids}}"] until additional bids have been
       retrieved from one or more [:Ad-Auction-Additional-Bid:] headers, as resolving this Promise
       early would cause a race condition in which additional bids might not be included in the
-      auction. There are two ways that additional bids can be retrieved.
+      auction. There are two ways that additional bids can be retrieved.<br />
       (1) The JavaScript code issues a [=request=] whose [=request/initiator type=] is `"fetch"` and whose
       {{RequestInit/adAuctionHeaders}} option is set to `true`. The JavaScript code has to resolve
       |config|["{{AuctionAdConfig/additionalBids}}"] after the corresponding call to
       {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=].
       The JavaScript code can also choose to wait to call {{Navigator/runAdAuction()}} until after
       the corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a response,
-      and can then immediately resolve |config|["{{AuctionAdConfig/additionalBids}}"];
+      and can then immediately resolve |config|["{{AuctionAdConfig/additionalBids}}"];<br />
       (2) issue an <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
       request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a> set to `true`.
       In this case, the JavaScript code is retrieved as part of the iframe navigation response,
@@ -1285,7 +1285,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       until direct from seller signals have been retrieved from one or more [:Ad-Auction-Signals:]
       headers, as resolving this Promise early would cause a race condition in which the [=script runners=]
       might run without the direct from seller signals that it needs. There are two ways that
-      direct from seller signals can be retrieved.
+      direct from seller signals can be retrieved.<br />
       (1) The JavaScript code issues a [=request=] whose [=request/initiator type=] is `"fetch"` and whose
       {{RequestInit/adAuctionHeaders}} option is set to `true`. The JavaScript code has to resolve
       |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] after the corresponding
@@ -1293,7 +1293,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       code can also choose to wait to call {{Navigator/runAdAuction()}} until after the
       corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=],
       and can then immediately resolve
-      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"];
+      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"];<br />
       (2) issue an <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
       request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a> set to `true`.
       In this case, the JavaScript code is retrieved as part of the iframe navigation response,
@@ -6555,19 +6555,6 @@ To <dfn>wait until server response promise resolve</dfn> given an [=auction conf
   1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
   1. If |auctionConfig|'s [=auction config/server response=] is failure, return failure.
   1. Return.
-</div>
-
-<div algorithm>
-To <dfn>handle a server response promise in configuration</dfn> given an [=auction config=] |auctionConfig|,
-a {{Promise}} |p|, and two sequences of steps, covering the parsing of the value and error-handling:
-
-  1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps
-    [=upon fulfillment=] of |p| with |result|:
-    1. Execute the steps to be run for parsing of the value given |result|.
-    1. If no exception was [=exception/thrown=] in the previous step, then decrement
-      |auctionConfig|'s [=auction config/pending promise count=].
-  1. [=Upon rejection=] of |resolvedAndTypeChecked|:
-    1. Execute the steps for error-handling.
 </div>
 
 <div algorithm>
