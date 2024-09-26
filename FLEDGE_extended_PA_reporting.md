@@ -306,10 +306,16 @@ The newly added base values are as following:
   capped by the per-buyer cumulative timeout, if the timeout is hit, the reported value will be the
   timeout + 1000.
 * `percent-regular-ig-count-quota-used`,`percent-negative-ig-count-quota-used`,
-  `percent-ig-storage-quota-used`: percentage of the database quote used by the buyer for
+  `percent-ig-storage-quota-used`: percentage of the database quota used by the buyer for
   regular interest group count, negative targeting interest group count, and overall byte usage
   respectively. This is capped at 110 since the quotas may not be enforced immediately (and actual
   usage in that case may be bigger than 110%).
+* `regular-igs-count`, `negative-igs-count`, `ig-storage-used`: the raw counts for the buyer's
+  number of regular interest group, negative targeting interest groups, and overall byte usage,
+  respectively.  This is also capped at 1.1x the current quota, but please do keep in mind that the
+  quota might increase in the future, so if you use these metrics rather than percentage-based ones,
+  you may wish to reserve some extra margin around the bucket space (perhaps something like 15x) to
+  avoid confusion in the future.
 
 Note that these metrics are measured only for some kinds of worklet executions &mdash; some are
 only relevant for bidders, and get 0 in the seller functions. In case of reporting functions,
@@ -326,6 +332,9 @@ and sometimes get their own measurement. This is shown below:
 | `percent-regular-ig-count-quota-used` | Measured | From `generateBid()` | 0 | 0 |
 | `percent-negative-ig-count-quota-used` | Measured | From `generateBid()` | 0 | 0 |
 | `percent-ig-storage-quota-used` | Measured | From `generateBid()` | 0 | 0 |
+| `regular-igs-count` | Measured | From `generateBid()` | 0 | 0 |
+| `negative-igs-count` | Measured | From `generateBid()` | 0 | 0 |
+| `ig-storage-used` | Measured | From `generateBid()` | 0 | 0 |
 
 For example, `percent-scripts-timeout` in `generateBid()` is the portion of executions of
 `generateBid()` in that (sub)auction that timed out, while `percent-scripts-timeout` in
