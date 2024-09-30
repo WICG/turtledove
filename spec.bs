@@ -774,11 +774,11 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   1. Let |signal| be |config|["{{AuctionAdConfig/signal}}"].
   1. If |signal| is [=AbortSignal/aborted=], then [=reject=] |p| with |signal|'s
     [=AbortSignal/abort reason=] and return |p|.
-  1. [=AbortSignal/Add|Add the following abort steps=] to |signal|:
-    1. [=Reject=] |p| with |signal|’s [=AbortSignal/abort reason=].
-    1. Run [=update bid counts=] with |bidIgs|.
-    1. Run [=interest group update=] with |auctionConfig|'s [=auction config/interest group buyers=]
-      and |settings|'s [=environment settings object/policy container=].
+  1. Otherwise [=AbortSignal/Add|add the following abort steps=] to |signal|:
+    1. Set |auctionConfig|'s [=auction config/aborted=] to true.
+    1. Set |auctionConfig|'s [=auction config/abort reason=] to |signal|'s [=AbortSignal/abort reason=].
+    1. [=list/For each=] |auction| in |auctionConfig|'s [=auction config/component auctions=]:
+      1. Set |auction|'s [=auction config/aborted=] to true.
 1. [=Assert=] that |settings|'s [=environment settings object/origin=] is not an [=opaque origin=]
   and its [=origin/scheme=] is "`https`".
 1. Let |queue| be the result of [=starting a new parallel queue=].
@@ -797,7 +797,10 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       |bidDebugReportInfoList|, |auctionConfig|'s [=auction config/seller=], and |winnerInfo|.
     1. Set |auctionReportInfo|'s [=auction report info/real time reporting contributions map=] to
       |realTimeContributionsMap|.
-  1. If |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
+  1. If |auctionConfig|'s [=auction config/aborted=] is true:
+    1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
+       [=reject=] |p| with |auctionConfig|'s [=auction config/abort reason=].
+  1. Otherwise if |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
     given |global|, to [=reject=] |p| with a "{{TypeError}}".
   1. Otherwise if |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=resolve=]
@@ -818,10 +821,10 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     1. If |auctionConfig|'s [=auction config/resolve to config=] is false, then set |result| to |urn|.
     1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
        resolve |p| with |result|.
+    1. Run [=update previous wins=] with |winner|.
   1. Run [=interest group update=] with |auctionConfig|'s [=auction config/interest group buyers=]
     and |settings|'s [=environment settings object/policy container=].
   1. Run [=update bid counts=] with |bidIgs|.
-  1. Run [=update previous wins=] with |winner|.
 1. Return |p|.
 
 </div>
@@ -1659,6 +1662,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   batcher=] with |auctionConfig|'s [=auction config/max trusted scoring signals url length=].
 1. Let « |bidGenerators|, |negativeTargetInfo| » be the result of running
   [=build bid generators map=] with |auctionConfig|.
+1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
 1. Let |leadingBidInfo| be a new [=leading bid info=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. Let |capturedAuctionHeaders| be |global|'s [=associated Document's=] [=node navigable's=]
@@ -1699,6 +1703,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
       and |realTimeContributionsMap|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
+  1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
   1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
   1. Let |winningComponentConfig| be |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |auctionConfig|.
@@ -1943,6 +1948,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
+1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
 1. If |topLevelAuctionConfig| is null:
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
@@ -2793,7 +2799,6 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
    deserializing |auctionConfig|'s [=auction config/server response=]
    with |requestContext| according to [Section 2.3.5 of the Bidding and Auction Services IETF standard](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-parsing-a-response).
 1. If |response| is failure, then return failure.
-1. If |response|'s [=server auction response/is chaff=] is true, return failure.
 1. If |response|'s [=server auction response/top level seller=] is not null:
   1. If |topLevelAuctionConfig| is null return failure.
   1. If |topLevelAuctionConfig|'s [=auction config/seller=] is not equal to
@@ -2805,13 +2810,14 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
 1. If |winningGroup|'s [=interest group/ads=] is null, then return failure.
 1. Let |winningAd| be null.
 1. [=list/For each=] |ad| of |winningGroup|'s [=interest group/ads=]:
-  1. If |response|'s [=server auction response/ad render url=] is |ad|'s [=interest group ad/render url=], then set
-    |winningAd| to |ad|, and [=iteration/break=].
-1. If |winningAd| is null, then return failure.
-
-   Issue: TODO: Check that the buyerReportingId and buyerAndSellerReportingId from the
-   server response match that in the |winningAd|.
-   (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+  1. If |response|'s [=server auction response/ad render url=] is |ad|'s
+    [=interest group ad/render url=], then set |winningAd| to |ad|, and [=iteration/break=].
+1. Return failure if any of the following conditions hold:
+  * |winningAd| is null;
+  * |response|'s [=server auction response/buyer and seller reporting id=] is not null and not
+    |winningAd|'s [=interest group ad/buyer and seller reporting ID=];
+  * |response|'s [=server auction response/buyer reporting id=] is not null and not
+    |winningAd|'s [=interest group ad/buyer reporting ID=].
 1. Let |winningAdDescriptor| be a new [=ad descriptor=] whose [=ad descriptor/url=] is
    |response|'s [=server auction response/ad render url=].
 1. Let |winningAdComponents| be a new [=list=] of [=ad descriptors=].
@@ -3052,8 +3058,6 @@ A <dfn>server auction response</dfn> is a [=struct=] that contains auction resul
 from an auction executed on the trusted auction server. It has the following [=struct/items=]:
 
 <dl dfn-for="server auction response">
-  : <dfn>is chaff</dfn>
-  :: A [=boolean=] field indicating whether this response should be ignored.
   : <dfn>ad render url</dfn>
   :: [=URL=]. The [=leading bid info/leading bid=]'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] from the
      auction.
@@ -3083,10 +3087,12 @@ from an auction executed on the trusted auction server. It has the following [=s
   : <dfn>ad metadata</dfn>
   :: Null or a JSON [=string=]. Null when the server auction is not a component auction.
      Otherwise the value contains the component auction's winning bid's [=generated bid/ad=].
-  : buyer reporting id
-  :: TODO.
-  : buyer and seller reporting id
-  :: TODO.
+  : <dfn>buyer reporting id</dfn>
+  :: Null or a [=string=]. When not null, this will be verified with the winning bid's
+    [=generated bid/ad=]'s [=interest group ad/buyer reporting ID=].
+  : <dfn>buyer and seller reporting id</dfn>
+  :: Null or a [=string=]. When not null, this will be verified with the winning bid's
+    [=generated bid/ad=]'s [=interest group ad/buyer and seller reporting ID=].
   : error
   :: Null or [=string=]. When not null, contains an error message from the
      auction executed on the trusted auction server. May be used to provide
@@ -4073,6 +4079,7 @@ from querying the server during an auction.
 
 <div algorithm>
   To <dfn>update k-anonymity cache for key</dfn> given a [=SHA-256=] |hashCode|:
+    1. [=Assert=] that these steps are running [=in parallel=].
     1. Let |record| be a new [=k-anonymity record=].
     1. Set |record|'s [=k-anonymity record/timestamp=] field to the [=current wall time=].
     1. Set |record|'s [=k-anonymity record/is k-anonymous=] field to the result of executing [=query k-anonymity count=] for |hashCode|.
@@ -4081,6 +4088,7 @@ from querying the server during an auction.
 
 <div algorithm>
   To <dfn>update k-anonymity cache for interest group</dfn> given an [=interest group=] |ig|:
+    1. [=Assert=] that these steps are running [=in parallel=].
     1. [=list/For each=] |igAd| of |ig|'s [=interest group/ads=]:
       1. Compute the |adHashCode| following [=compute the key hash of ad=] for |ig| and |igAd|.
       1. Run [=update k-anonymity cache for key=] on |adHashCode|.
@@ -6453,13 +6461,19 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
     encrypted response stored in [=auction config=]'s [=auction config/server response=] field.
     Must be null when [=auction config=]'s [=auction config/server response=] is null,
     and non-null otherwise.
+  : <dfn>aborted</dfn>
+  :: A [=boolean=] indicating whether the auction has been aborted, initially false.
+  : <dfn>abort reason</dfn>
+  :: {{any}}.
 </dl>
 
 <div algorithm>
 To <dfn>wait until configuration input promises resolve</dfn> given an [=auction config=]
 |auctionConfig|:
 
-  1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
+  1. Wait until either |auctionConfig|'s [=auction config/pending promise count=] is 0
+     or |auctionConfig|'s [=auction config/aborted=] is true.
+  1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
   1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
     [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=],
