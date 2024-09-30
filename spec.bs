@@ -35,6 +35,8 @@ urlPrefix: https://github.com/WICG/turtledove/blob/main/FLEDGE_k_anonymity_serve
   type: dfn; text: k-anonymity; url: what-is-k-anonymity
 urlPrefix: https://developer.chrome.com/en/docs/privacy-sandbox/glossary/
   type: dfn; text: ad creative; url: ad-creative
+spec: RFC4648; urlPrefix: https://datatracker.ietf.org/doc/html/rfc4648
+  type: dfn; text: base64url; url: section-5
 spec: RFC6234; urlPrefix: https://www.ietf.org/rfc/rfc6234.txt
   type: dfn; text: SHA-256
 urlPrefix: https://datatracker.ietf.org/doc/html/rfc8032
@@ -772,11 +774,11 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   1. Let |signal| be |config|["{{AuctionAdConfig/signal}}"].
   1. If |signal| is [=AbortSignal/aborted=], then [=reject=] |p| with |signal|'s
     [=AbortSignal/abort reason=] and return |p|.
-  1. [=AbortSignal/Add|Add the following abort steps=] to |signal|:
-    1. [=Reject=] |p| with |signal|’s [=AbortSignal/abort reason=].
-    1. Run [=update bid counts=] with |bidIgs|.
-    1. Run [=interest group update=] with |auctionConfig|'s [=auction config/interest group buyers=]
-      and |settings|'s [=environment settings object/policy container=].
+  1. Otherwise [=AbortSignal/Add|add the following abort steps=] to |signal|:
+    1. Set |auctionConfig|'s [=auction config/aborted=] to true.
+    1. Set |auctionConfig|'s [=auction config/abort reason=] to |signal|'s [=AbortSignal/abort reason=].
+    1. [=list/For each=] |auction| in |auctionConfig|'s [=auction config/component auctions=]:
+      1. Set |auction|'s [=auction config/aborted=] to true.
 1. [=Assert=] that |settings|'s [=environment settings object/origin=] is not an [=opaque origin=]
   and its [=origin/scheme=] is "`https`".
 1. Let |queue| be the result of [=starting a new parallel queue=].
@@ -792,10 +794,13 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   1. Let |auctionReportInfo| be a new [=auction report info=].
   1. If |winnerInfo| is not failure, then:
     1. Set |auctionReportInfo| to the result of running [=collect forDebuggingOnly reports=] with
-      |bidDebugReportInfoList| and |winnerInfo|.
+      |bidDebugReportInfoList|, |auctionConfig|'s [=auction config/seller=], and |winnerInfo|.
     1. Set |auctionReportInfo|'s [=auction report info/real time reporting contributions map=] to
       |realTimeContributionsMap|.
-  1. If |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
+  1. If |auctionConfig|'s [=auction config/aborted=] is true:
+    1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
+       [=reject=] |p| with |auctionConfig|'s [=auction config/abort reason=].
+  1. Otherwise if |winnerInfo| is failure, then [=queue a global task=] on [=DOM manipulation task source=],
     given |global|, to [=reject=] |p| with a "{{TypeError}}".
   1. Otherwise if |winnerInfo| is null or |winnerInfo|'s [=leading bid info/leading bid=] is null:
     1. [=Queue a global task=] on [=DOM manipulation task source=], given |global|, to [=resolve=]
@@ -816,10 +821,10 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
     1. If |auctionConfig|'s [=auction config/resolve to config=] is false, then set |result| to |urn|.
     1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
        resolve |p| with |result|.
+    1. Run [=update previous wins=] with |winner|.
   1. Run [=interest group update=] with |auctionConfig|'s [=auction config/interest group buyers=]
     and |settings|'s [=environment settings object/policy container=].
   1. Run [=update bid counts=] with |bidIgs|.
-  1. Run [=update previous wins=] with |winner|.
 1. Return |p|.
 
 </div>
@@ -1141,10 +1146,36 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. If |seller| is failure, then return failure.
 1. Set |auctionConfig|'s [=auction config/seller=] to |seller|.
 1. If |config|["{{AuctionAdConfig/serverResponse}}"] [=map/exists=]:
-  1. If |config|["{{AuctionAdConfig/requestId}}"] does not [=map/exist=], then [=exception/throw=]
-    a {{TypeError}}.
-  1. Set |auctionConfig|'s [=auction config/server response=] to |config|["{{AuctionAdConfig/serverResponse}}"].
-  1. Set |auctionConfig|'s [=auction config/server response id=] to |config|["{{AuctionAdConfig/requestId}}"].
+  1. If |config|["{{AuctionAdConfig/requestId}}"] does not [=map/exist=], then [=exception/throw=] a
+    {{TypeError}}.
+  1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps
+    [=upon fulfillment=] of |config|["{{AuctionAdConfig/serverResponse}}"] with |result|:
+    1. Set |auctionConfig|'s [=auction config/server response=] to the [=ArrayBuffer/transferred=]
+      |result|.
+    1. Set |auctionConfig|'s [=auction config/server response id=] to
+      |config|["{{AuctionAdConfig/requestId}}"].
+  1. [=Upon rejection=] of |resolvedAndTypeChecked|:
+    1. Set |auctionConfig|'s [=auction config/server response=] to failure.
+
+  Note: The JavaScript code calling {{Navigator/runAdAuction()}} is responsible for *not*
+    resolving |config|["{{AuctionAdConfig/serverResponse}}"] until server responses have been
+    retrieved from one or more [:Ad-Auction-Result:] headers, as resolving this Promise early
+    would cause a race condition in which the [=script runners=] might run without the server
+    responses that it needs. There are two ways that server responses can be retrieved.<br />
+    (1) The JavaScript code issues a [=request=] whose [=request/initiator type=]
+    is `"fetch"` and whose {{RequestInit/adAuctionHeaders}} option is set to `true`. The
+    JavaScript code has to resolve |config|["{{AuctionAdConfig/serverResponse}}"] after the
+    corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=].
+    The JavaScript code can also choose to wait to call {{Navigator/runAdAuction()}} until after
+    the corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=],
+    and can then immediately resolve |config|["{{AuctionAdConfig/serverResponse}}"];<br />
+    (2) issue an <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
+    request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a> set to `true`.
+    In this case, the JavaScript code is retrieved as part of the iframe navigation response,
+    at which point the JavaScript code in the iframe makes the call to
+    {{Navigator/runAdAuction()}}, and |config|["{{AuctionAdConfig/serverResponse}}"] can be
+    specified directly without a Promise.
+
 1. Otherwise:
   1. If |config|["{{AuctionAdConfig/requestId}}"] [=map/exists=], then [=exception/throw=]
     a {{TypeError}}.
@@ -1224,17 +1255,15 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       resolving |config|["{{AuctionAdConfig/additionalBids}}"] until additional bids have been
       retrieved from one or more [:Ad-Auction-Additional-Bid:] headers, as resolving this Promise
       early would cause a race condition in which additional bids might not be included in the
-      auction. There are two ways that additional bids can be retrieved. The first is for the
-      JavaScript code to issue a [=request=] whose [=request/initiator type=] is `"fetch"` and whose
+      auction. There are two ways that additional bids can be retrieved.<br />
+      (1) The JavaScript code issues a [=request=] whose [=request/initiator type=] is `"fetch"` and whose
       {{RequestInit/adAuctionHeaders}} option is set to `true`. The JavaScript code has to resolve
       |config|["{{AuctionAdConfig/additionalBids}}"] after the corresponding call to
       {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=].
       The JavaScript code can also choose to wait to call {{Navigator/runAdAuction()}} until after
       the corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a response,
-      and can then immediately resolve |config|["{{AuctionAdConfig/additionalBids}}"].
-
-      The second way that additional bids can be retrieved is by issuing an
-      <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
+      and can then immediately resolve |config|["{{AuctionAdConfig/additionalBids}}"];<br />
+      (2) issue an <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
       request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a> set to `true`.
       In this case, the JavaScript code is retrieved as part of the iframe navigation response,
       at which point the JavaScript code in the iframe makes the call to
@@ -1254,22 +1283,21 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       until direct from seller signals have been retrieved from one or more [:Ad-Auction-Signals:]
       headers, as resolving this Promise early would cause a race condition in which the [=script runners=]
       might run without the direct from seller signals that it needs. There are two ways that
-      direct from seller signals can be retrieved. The first is for the JavaScript code to issue a
-      [=request=] whose [=request/initiator type=] is `"fetch"` and whose
+      direct from seller signals can be retrieved.<br />
+      (1) The JavaScript code issues a [=request=] whose [=request/initiator type=] is `"fetch"` and whose
       {{RequestInit/adAuctionHeaders}} option is set to `true`. The JavaScript code has to resolve
       |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] after the corresponding
       call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=]. The JavaScript
       code can also choose to wait to call {{Navigator/runAdAuction()}} until after the
       corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=],
       and can then immediately resolve
-      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"]. The second way that
-      direct from seller signals can be retrieved is by issuing an
-      <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
+      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"];<br />
+      (2) issue an <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
       request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a> set to `true`.
       In this case, the JavaScript code is retrieved as part of the iframe navigation response,
       at which point the JavaScript code in the iframe makes the call to
       {{Navigator/runAdAuction()}}, and
-      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] can be can be specified
+      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] can be specified
       directly without a Promise.
 
     * To parse the value |result|:
@@ -1657,6 +1685,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   batcher=] with |auctionConfig|'s [=auction config/max trusted scoring signals url length=].
 1. Let « |bidGenerators|, |negativeTargetInfo| » be the result of running
   [=build bid generators map=] with |auctionConfig|.
+1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
 1. Let |leadingBidInfo| be a new [=leading bid info=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. Let |capturedAuctionHeaders| be |global|'s [=associated Document's=] [=node navigable's=]
@@ -1669,11 +1698,16 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   1. Let |topLevelDirectFromSellerSignalsRetrieved| be false.
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
-    1. Let |compWinnerInfo| be the result of running [=generate and score bids=] with |component|,
-      |auctionConfig|, |global|, |bidIgs|, |bidDebugReportInfoList|, and |realTimeContributionsMap|.
-    1. If |compWinnerInfo| is failure, return failure.
-    1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns
-      failure, return failure.
+    1. If |component|'s [=auction config/server response=] is not null:
+      1. Let |compWinnerInfo| be the result of running [=parse and validate server response=] with
+         |component|, |auctionConfig|, |global|, |bidIgs|, and |bidDebugReportInfoList|.
+    1. Otherwise:
+      1. Let |compWinnerInfo| be the result of running [=generate and score bids=] with |component|,
+        |auctionConfig|, |global|, |bidIgs|, |bidDebugReportInfoList|, and |realTimeContributionsMap|.
+    1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig|
+      returns failure, or |compWinnerInfo| is failure, then:
+      1. Decrement |pendingComponentAuctions| by 1.
+      1. Abort these steps.
     1. If |topLevelDirectFromSellerSignalsRetrieved| is false:
       1. Let |topLevelDirectFromSellerSignals| be the result of running
         [=get direct from seller signals=] given |seller|, |auctionConfig|'s
@@ -1693,6 +1727,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
       and |realTimeContributionsMap|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
+  1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
   1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
   1. Let |winningComponentConfig| be |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |auctionConfig|.
@@ -1937,6 +1972,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
+1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
 1. If |topLevelAuctionConfig| is null:
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
@@ -2769,28 +2805,148 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
 To <dfn>parse and validate server response</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|,
 a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug reporting info=]
-|bidDebugReportInfoList|:
+|bidDebugReportInfoList|, perform the following steps. They return a [=leading bid info=] or a failure.
 
 1. [=Assert=] that these steps are running [=in parallel=].
-1. [=Assert=] that |topLevelAuctionConfig| is null.
-
-    Issue: TODO: Support multi-level auctions.
-    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+1. If [=waiting until server response promise resolves=] given |auctionConfig| returns failure, then
+  return failure.
+1. Let |hash| be the [=SHA-256=] of |auctionConfig|'s [=auction config/server response=].
+1. Let |capturedAuctionHeaders| be |global|'s [=associated Document's=] [=node navigable's=]
+  [=traversable navigable's=] [=traversable navigable/captured ad auction result headers=].
+1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
+1. If |capturedAuctionHeaders|[|seller|] does not [=map/exist=] or does not [=list/contain=] |hash|,
+  then return failure.
 1. Let |requestId| be the value of |auctionConfig|'s [=auction config/server response id=].
 1. Let |requestContexts| be the value of |global|'s [=associated Document's=] [=node navigable's=]
   [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=].
 1. If |requestContexts|[|requestId|] does not [=map/exist=], return null.
-1. Let |response| be the result of deserializing |auctionConfig|'s [=auction config/server response=]
-  according to the Bidding and Auction Services IETF standard.
+1. Let |requestContext| be |requestContexts|[|requestId|].
+1. Let |response| be the [=server auction response=] which is the result of
+   deserializing |auctionConfig|'s [=auction config/server response=]
+   with |requestContext| according to the Bidding and Auction Services IETF standard.
 
     Issue: TODO: Link deserialization to IETF standard when available.
     (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
-1. Construct bids based on |response|.
-1. Add the bids form the |response| to |bidIgs|.
+1. If |response| is failure, then return failure.
+1. If |response|'s [=server auction response/top level seller=] is not null:
+  1. If |topLevelAuctionConfig| is null return failure.
+  1. If |topLevelAuctionConfig|'s [=auction config/seller=] is not equal to
+    |response|'s [=server auction response/top level seller=], return failure.
+1. Otherwise if |topLevelAuctionConfig| is not null, return failure.
+1. Let |winningGroup| be the [=interest group=] in the [=user agent=]'s [=interest group set=]
+   whose [=interest group/owner=] is |response|'s [=server auction response/interest group owner=] and
+   [=interest group/name=] is |response|'s [=server auction response/interest group name=]. Return failure if none found.
+1. If |winningGroup|'s [=interest group/ads=] is null, then return failure.
+1. Let |winningAd| be null.
+1. [=list/For each=] |ad| of |winningGroup|'s [=interest group/ads=]:
+  1. If |response|'s [=server auction response/ad render url=] is |ad|'s
+    [=interest group ad/render url=], then set |winningAd| to |ad|, and [=iteration/break=].
+1. Return failure if any of the following conditions hold:
+  * |winningAd| is null;
+  * |response|'s [=server auction response/buyer and seller reporting id=] is not null and not
+    |winningAd|'s [=interest group ad/buyer and seller reporting ID=];
+  * |response|'s [=server auction response/buyer reporting id=] is not null and not
+    |winningAd|'s [=interest group ad/buyer reporting ID=].
+1. Let |winningAdDescriptor| be a new [=ad descriptor=] whose [=ad descriptor/url=] is
+   |response|'s [=server auction response/ad render url=].
+1. Let |winningAdComponents| be a new [=list=] of [=ad descriptors=].
+1. [=list/For each=] |componentAd| in |response|'s [=server auction response/ad components=]:
+  1. Let |ad| be the [=interest group ad=] from |winningGroup|'s
+     [=interest group/ad components=] where the [=interest group ad/render url=]
+     equals |componentAd|. If there is no matching element, return failure.
+  1. [=list/Append=] a new [=ad descriptor=] whose [=ad descriptor/url=] is
+     |componentAd| to |winningAdComponents|.
+1. Let |winningBid| be a new [=generated bid=] with the following [=struct/items=]:
+  : [=generated bid/id=]
+  :: TODO
+  : [=generated bid/bid=]
+  :: |response|'s [=server auction response/bid=]
+  : [=generated bid/bid in seller currency=]
+  :: Null
+  : [=generated bid/ad=]
+  :: |response|'s [=server auction response/ad metadata=]
+  : [=generated bid/ad descriptor=]
+  :: |winningAdDescriptor|
+  : [=generated bid/ad component descriptors=]
+  :: |winningAdComponents|
+  : [=generated bid/ad cost=]
+  :: Null
+  : [=generated bid/modeling signals=]
+  :: Null
+  : [=generated bid/interest group=]
+  :: |winningGroup|
+  : [=generated bid/bid ad=]
+  :: |winningAd|
+  : [=generated bid/modified bid=]
+  :: Null if |topLevelAuctionConfig| is null, otherwise |response|'s [=server auction response/bid=]
+  : [=generated bid/bid duration=]
+  :: 0
+  : [=generated bid/component seller=]
+  :: Null
+  : [=generated bid/number of mandatory ad components=]
+  :: [=list/Size=] of |winningAdComponents|
+1. Let |buyerReportingResult| be a new [=reporting result=] with the following [=struct/items=]:
+   : [=reporting result/report url=]
+   :: The value of |response|'s [=server auction response/buyer reporting=]'s [=server auction reporting info/reporting url=].
+   : [=reporting result/reporting beacon map=]
+   :: The value of |response|'s [=server auction response/buyer reporting=]'s [=server auction reporting info/beacon urls=].
+
+1. Let |sellerReportingResult| be a new [=reporting result=] with the following [=struct/items=]:
+   : [=reporting result/report url=]
+   :: The value of |response|'s [=server auction response/top level seller reporting=]'s [=server auction reporting info/reporting url=].
+   : [=reporting result/reporting beacon map=]
+   :: The value of |response|'s [=server auction response/top level seller reporting=]'s [=server auction reporting info/beacon urls=].
+
+1. Let |componentSellerReportingResult| be a new [=reporting result=] with the following [=struct/items=]:
+   : [=reporting result/report url=]
+   :: The value of |response|'s [=server auction response/component seller reporting=]'s [=server auction reporting info/reporting url=].
+   : [=reporting result/reporting beacon map=]
+   :: The value of |response|'s [=server auction response/component seller reporting=]'s [=server auction reporting info/beacon urls=].
+1. Let |topScore| be 0.0 if |response|'s [=server auction response/score=] is null,
+   |response|'s [=server auction response/score=] otherwise.
+1. Let |winningBidInfo| be a new [=leading bid info=] with the following [=struct/items=]:
+   : [=leading bid info/top score=]
+   :: |topScore|
+   : [=leading bid info/top non-k-anon-enforced score=]
+   :: |topScore|
+   : [=leading bid info/top bids count=]
+   :: 1
+   : [=leading bid info/top non-k-anon-enforced bids count=]
+   :: 1
+   : [=leading bid info/leading bid=]
+   :: |winningBid|
+   : [=leading bid info/leading non-k-anon-enforced bid=]
+   :: |winningBid|
+   : [=leading bid info/auction config=]
+   :: |auctionConfig|
+   : [=leading bid info/highest scoring other bid=]
+   :: Null
+   : [=leading bid info/top level seller=]
+   :: Null if |topLevelAuctionConfig| is null, otherwise |topLevelAuctionConfig|'s [=auction config/seller=].
+   : [=leading bid info/top level seller signals=]
+   :: Null
+   : [=leading bid info/component seller=]
+   :: Null if |topLevelAuctionConfig| is null, otherwise |auctionConfig|'s [=auction config/seller=].
+   : [=leading bid info/bidding data version=]
+   :: Null
+   : [=leading bid info/scoring data version=]
+   :: Null
+   : [=leading bid info/buyer reporting result=]
+   :: |buyerReportingResult|
+   : [=leading bid info/seller reporting result=]
+   :: |sellerReportingResult|
+   : [=leading bid info/component seller reporting result=]
+   :: |componentSellerReportingResult|
+1. [=list/For each=] |igPair| in |response|'s [=server auction response/bidding groups=] field:
+  1. Let |ig| be the [=interest group=] in the [=user agent=]'s [=interest group set=] whose
+    [=interest group/owner=] is |igPair|'s [=interest group/owner=] and [=interest group/name=] is |igPair|'s
+    [=interest group/name=]. [=iteration/Continue=] if none found.
+  1. [=list/Append=] |ig| to |bidIgs|.
 1. Insert the debug reporting URLs from |response| into |bidDebugReportInfoList|.
 
-    Issue: TODO: Spec out last few steps starting from constructing bids.
+    Issue: TODO: Handle forDebuggingOnly reports from server auction.
     (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+1. Return |winningBidInfo|.
 
 </div>
 
@@ -2966,6 +3122,66 @@ A <dfn>server auction request context</dfn> is a [=struct=] with the following [
 
     Issue: TODO: Link to the IETF Internet Draft that defines the context when it's available.
     (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+</dl>
+
+A <dfn>server auction response</dfn> is a [=struct=] that contains auction result
+from an auction executed on the trusted auction server. It has the following [=struct/items=]:
+
+<dl dfn-for="server auction response">
+  : <dfn>ad render url</dfn>
+  :: [=URL=]. The [=leading bid info/leading bid=]'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] from the
+     auction.
+  : <dfn>ad components</dfn>
+  :: A [=list=] of [=URLs=]. A list of winning bid's
+     [=generated bid/ad component descriptors=]'s [=ad descriptor/urls=] from the
+     auction.
+  : <dfn>interest group name</dfn>
+  :: A [=string=]. The winning bid's interest group [=interest group/name=].
+  : <dfn>interest group owner</dfn>
+  :: An [=origin=]. The winning bid's interest group [=interest group/owner=].
+  : <dfn>bidding groups</dfn>
+  :: A [=list=] of interest group [=interest group/owner=] and
+     interest group [=interest group/name=] pairs that bid
+     in the auction.
+  : <dfn>score</dfn>
+  :: Null or {{double}}. Null if the server auction is not a component auction,
+     otherwise the {{ScoreAdOutput/desirability}} of component auction's winning bid.
+  : <dfn>bid</dfn>
+  :: Null or [=bid with currency=]. Null when the server auction is not a component auction.
+     For component auctions, contains the winning bid's [=generated bid/modified bid=]
+     when not null, otherwise the winning bid's [=generated bid/bid=].
+  : <dfn>top level seller</dfn>
+  :: Null or an [=origin=]. Null when the server auction is not a component auction.
+     Otherwise the value is the expected top-level seller [=origin=] for
+     that auction. This should match the [=auction config/seller=] for the top-level [=auction config=].
+  : <dfn>ad metadata</dfn>
+  :: Null or a JSON [=string=]. Null when the server auction is not a component auction.
+     Otherwise the value contains the component auction's winning bid's [=generated bid/ad=].
+  : <dfn>buyer reporting id</dfn>
+  :: Null or a [=string=]. When not null, this will be verified with the winning bid's
+    [=generated bid/ad=]'s [=interest group ad/buyer reporting ID=].
+  : <dfn>buyer and seller reporting id</dfn>
+  :: Null or a [=string=]. When not null, this will be verified with the winning bid's
+    [=generated bid/ad=]'s [=interest group ad/buyer and seller reporting ID=].
+  : error
+  :: Null or [=string=]. When not null, contains an error message from the
+     auction executed on the trusted auction server. May be used to provide
+     additional context for the result of an auction.
+  : <dfn>buyer reporting</dfn>
+  :: [=Server auction reporting info=]
+  : <dfn>top level seller reporting</dfn>
+  :: Null or [=server auction reporting info=].
+  : <dfn>component seller reporting</dfn>
+  :: Null or [=server auction reporting info=].
+</dl>
+
+A <dfn>server auction reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction reporting info">
+  : <dfn>reporting url</dfn>
+  :: Null or a [=URL=]
+  : <dfn>beacon urls</dfn>
+  :: [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=]
+     are [=URLs=] whose [=url/schemes=] are "`https`".
 </dl>
 
 <div algorithm="getInterestGroupAdAuctionData()">
@@ -4002,6 +4218,7 @@ from querying the server during an auction.
 
 <div algorithm>
   To <dfn>update k-anonymity cache for key</dfn> given a [=SHA-256=] |hashCode|:
+    1. [=Assert=] that these steps are running [=in parallel=].
     1. Let |record| be a new [=k-anonymity record=].
     1. Set |record|'s [=k-anonymity record/timestamp=] field to the [=current wall time=].
     1. Set |record|'s [=k-anonymity record/is k-anonymous=] field to the result of executing [=query k-anonymity count=] for |hashCode|.
@@ -4010,6 +4227,7 @@ from querying the server during an auction.
 
 <div algorithm>
   To <dfn>update k-anonymity cache for interest group</dfn> given an [=interest group=] |ig|:
+    1. [=Assert=] that these steps are running [=in parallel=].
     1. [=list/For each=] |igAd| of |ig|'s [=interest group/ads=]:
       1. Compute the |adHashCode| following [=compute the key hash of ad=] for |ig| and |igAd|.
       1. Run [=update k-anonymity cache for key=] on |adHashCode|.
@@ -5506,9 +5724,6 @@ prevents a leak of the user's ad interest group membership to the server.
 
 # Fetch Patch for Auction Headers # {#fetch-patch-for-auction-headers}
 
-    Issue: TODO: Handle Bidding and Auction Server header.
-    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
-
 This section specifies a manner by which some data, including [=additional bids=] and
 [=direct from seller signals=], may be provided to auctions such that the data is only used within
 their intended auction.
@@ -5516,7 +5731,8 @@ their intended auction.
 Any {{Document}} in a [=traversable navigable=] may run a Protected Audience auction (with
 {{Window/navigator}}.{{Navigator/runAdAuction()}}) whose [=script runners=] functions receive signal
 objects derived from JSON from an [:Ad-Auction-Signals:] header, or [=additional bids=] derived from
-an [:Ad-Auction-Additional-Bid:] header, captured by a {{WindowOrWorkerGlobalScope/fetch()}} call
+an [:Ad-Auction-Additional-Bid:] header, or response blob's [=base64url=] encoded [=SHA-256=] hash
+derived from an [:Ad-Auction-Result:] header, captured by a {{WindowOrWorkerGlobalScope/fetch()}} call
 (using the {{RequestInit/adAuctionHeaders}} option) initiated by any *other* {{Document}} in the
 *same* [=traversable navigable=], or from an
 <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
@@ -5553,6 +5769,10 @@ and Auction request context</dfn>, which is a [=map=] whose [=map/keys=] are
 the [=string representation=] of a [=version 4 UUID=] and whose [=map/values=]
 are [=server auction request contexts=].
 </div>
+
+Each [=traversable navigable=] has a <dfn for="traversable navigable">captured ad auction result
+headers</dfn>, which is a [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are
+[=strings=].
 
 <div algorithm="fetch capture adAuctionHeaders boolean patch">
 Modify the definition of a [=request=]:
@@ -5648,6 +5868,24 @@ corresponds to a single [=additional bid=]. The response may include more than o
 by specifying multiple instances of the [:Ad-Auction-Additional-Bid:] response header.
 </div>
 
+<h3 id=ad-auction-result-header>The \`<a http-header><code>Ad-Auction-Result</code></a>\`
+HTTP response header.</h3>
+
+The \`<dfn http-header><code>Ad-Auction-Result</code></dfn>\` response header provides the
+[=base64url=] encoded [=SHA-256=] hash of the response blob. Multiple hashes can be included in a
+response by either repeating the header or by specifying multiple hashes separated by a "`,`" character.
+
+<div id="ad-auction-result-example" class=example>
+  <pre highlight="js">
+    Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0=,9UTB-u-WshX66Xqz5DNCpEK9z-x5oCS5SXvgyeoRB1k=
+  </pre>
+  is equivalent to
+  <pre highlight="js">
+    Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0=
+    Ad-Auction-Result: 9UTB-u-WshX66Xqz5DNCpEK9z-x5oCS5SXvgyeoRB1k=
+  </pre>
+</div>
+
 <div algorithm="ad auction fetch redirect patch">
 The following steps will be added to the [=HTTP fetch=] algorithm, immediately under the step "If
 <var ignore>internalResponse</var>’s [=status=] is a [=redirect status=]:"
@@ -5670,7 +5908,8 @@ The following step will be added to the [=HTTP fetch=] algorithm, before step
     [=node navigable=]'s [=traversable navigable=].
   1. Run [=update captured headers=] with |navigable|'s
     [=traversable navigable/captured ad auction signals headers=], |navigable|'s
-    [=traversable navigable/captured ad auction additional bids headers=], |response|'s
+    [=traversable navigable/captured ad auction additional bids headers=], |navigable|'s
+    [=traversable navigable/captured ad auction result headers=], |response|'s
     [=response/header list=], and |request|'s [=request/URL=]'s [=url/origin=].
 
 </div>
@@ -5681,6 +5920,7 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
   To <dfn id=concept-update-captured-headers>update captured headers</dfn> with a [=traversable
   navigable/captured ad auction signals headers=] |storedSignalsHeaders|,
   [=traversable navigable/captured ad auction additional bids headers=] |storedAdditionalBidsHeaders|,
+  [=traversable navigable/captured ad auction result headers=] |storedAuctionResultHeaders|,
   [=header list=] |responseHeaders|, and [=origin=] |requestOrigin|:
   1. Let |adAuctionSignals| be the result of [=header list/getting=] [:Ad-Auction-Signals:] from
     |responseHeaders|.
@@ -5692,6 +5932,7 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
       the header value.
     1. [=Handle ad auction signals header value=] given |adAuctionSignals|, |storedSignalsHeaders| and
       |requestOrigin|.
+
   1. Let |additionalBids| be the result of [=header list/getting, decoding, and splitting=]
     [:Ad-Auction-Additional-Bid:] from |responseHeaders|.
   1. If |additionalBids| is not null:
@@ -5706,6 +5947,20 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
       1. Let |nonce| be |nonceAndAdditionalBid|[0].
       1. If |nonce|'s [=string/length=] is not 36, then [=iteration/continue=].
       1. Set |storedAdditionalBidsHeaders|[|nonce|] to |nonceAndAdditionalBid|[1].
+
+  1. Let |adAuctionResults| be the result of [=header list/getting, decoding, and splitting=]
+    [:Ad-Auction-Result:] from |responseHeaders|.
+  1. If |adAuctionResults| is not null, [=list/for each=] |result| of |adAuctionResults|:
+    1. [=Strip leading and trailing ASCII whitespace=] from |result|.
+    1. If |result| is "", or contains [=code points=] U+002B (`+`) or U+002F (`/`), then
+      [=iteration/continue=].
+    1. Replace every U+2212 (`-`) [=code point=] in |result| with U+002B (`+`).
+    1. Replace every U+005F(`_`) [=code point=] in |result| with U+002F (`/`).
+    1. Let |hash| be the result of running [=forgiving-base64 decode=] with |result|.
+    1. If |hash| is not failure, and |hash|'s [=string/length=] is 32:
+      1. If |storedAuctionResultHeaders|[|requestOrigin|] [=map/exists=], then [=list/append=] |hash|
+        to |storedAuctionResultHeaders|.
+      1. Otherwise, [=map/set=] |storedAuctionResultHeaders|[|requestOrigin|] to « |hash| ».
 
 </div>
 
@@ -6345,13 +6600,19 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
     encrypted response stored in [=auction config=]'s [=auction config/server response=] field.
     Must be null when [=auction config=]'s [=auction config/server response=] is null,
     and non-null otherwise.
+  : <dfn>aborted</dfn>
+  :: A [=boolean=] indicating whether the auction has been aborted, initially false.
+  : <dfn>abort reason</dfn>
+  :: {{any}}.
 </dl>
 
 <div algorithm>
 To <dfn>wait until configuration input promises resolve</dfn> given an [=auction config=]
 |auctionConfig|:
 
-  1. Wait until |auctionConfig|'s [=auction config/pending promise count=] is 0.
+  1. Wait until either |auctionConfig|'s [=auction config/pending promise count=] is 0
+     or |auctionConfig|'s [=auction config/aborted=] is true.
+  1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
   1. [=Assert=] |auctionConfig|'s [=auction config/auction signals=], [=auction config/seller signals=],
     [=auction config/per buyer signals=], [=auction config/per buyer currencies=],
     [=auction config/per buyer timeouts=], [=auction config/per buyer cumulative timeouts=],
@@ -6390,6 +6651,16 @@ a {{Promise}} |p|, and two sequences of steps, covering the parsing of the value
   1. [=Upon rejection=] of |resolvedAndTypeChecked|:
     1. Execute the steps for error-handling.
     1. Decrement |auctionConfig|'s [=auction config/pending promise count=].
+</div>
+
+<div algorithm>
+To <dfn>wait until server response promise resolves</dfn> given an [=auction config=] |auctionConfig|:
+
+  1. Wait until either |auctionConfig|'s [=auction config/server response=] is not a {{Promise}},
+     or |auctionConfig|'s [=auction config/aborted=] is true.
+  1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
+  1. If |auctionConfig|'s [=auction config/server response=] is failure, return failure.
+  1. Return.
 </div>
 
 <div algorithm>
@@ -6964,8 +7235,9 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
   :: A [=boolean=], initially true. If this is false, the bid is only used to determine the hypothetical
     winner with no k-anonymity constraints, which would be used to [=update k-anonymity counts=] only.
   : <dfn>bid</dfn>
-  :: A [=bid with currency=]. If the [=bid with currency/value=] is zero or negative, then this
-    [=interest group=] will not participate in the auction.
+  :: A [=bid with currency=], or null. If not null and the [=bid with currency/value=] is zero or negative, then this
+    [=interest group=] will not participate in the auction. This field should only
+    be null if the top-level auction is performed on a trusted auction server.
   : <dfn>bid in seller currency</dfn>
   :: A {{double}} or null. An equivalent of the original bid in seller's currency. This is either
     the original bid if the currency already matched, or a conversion provided by `scoreAd()`.
