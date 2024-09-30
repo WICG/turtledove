@@ -2992,16 +2992,52 @@ partial interface Navigator {
   Promise<AdAuctionData> getInterestGroupAdAuctionData(AdAuctionDataConfig config);
 };
 
-dictionary AdAuctionDataConfig {
-  required USVString seller;
-  required USVString coordinatorOrigin;
-};
-
 dictionary AdAuctionData {
   required Uint8Array request;
   required USVString requestId;
 };
 </xmp>
+
+<xmp class="idl">
+dictionary AdAuctionDataConfig {
+  required USVString seller;
+  required USVString coordinatorOrigin;
+  unsigned long requestSize;
+  record<USVString, AdAuctionDataBuyerConfig> perBuyerConfig;
+};
+</xmp>
+
+<dl class=domintro>
+  <dt>{{AdAuctionDataConfig/seller}}
+  <dd>The seller that will be used as the {{AuctionAdConfig/seller}} in the
+    following {{AuctionAdConfig}} passed to {{Window/navigator}}.{{Navigator/runAdAuction()}}.
+  <dt>{{AdAuctionDataConfig/coordinatorOrigin}}
+  <dd>The origin of the coordinator hosting public encryption keys for the server
+    running the ad auction. The [=origin/scheme=] must be "`https`". An implementation
+    may select which coordinators are acceptable.
+  <dt>{{AdAuctionDataConfig/requestSize}}
+  <dd>The desired size for the returned {{AdAuctionData/request}}. If any buyers are specified in
+    {{AdAuctionDataConfig/perBuyerConfig}}, this will be the exact size of the returned {{AdAuctionData/request}}.
+    Otherwise the returned {{AdAuctionData/request}}'s size will be at most the
+    {{AdAuctionDataConfig/requestSize}}.
+  <dt>{{AdAuctionDataConfig/perBuyerConfig}}
+  <dd>[=map/Keys=] are [=serialization of an origin|serialized origins=] of
+    buyers that should be included in the returned request. [=map/Values=] are
+    {{AdAuctionDataBuyerConfig}} for that buyer.
+</dl>
+
+<xmp class="idl">
+dictionary AdAuctionDataBuyerConfig {
+  unsigned long targetSize;
+};
+</xmp>
+
+<dl class=domintro>
+  <dt>{{AdAuctionDataBuyerConfig/targetSize}}
+  <dd>The size of the request to allocate for this buyer. Required when
+    {{AdAuctionDataConfig}}'s {{AdAuctionDataConfig/requestSize}} is not
+    specified.
+</dl>
 
 A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="server auction interest group">
@@ -3019,6 +3055,9 @@ A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=
     from the [=interest group/ad components=] field.
   : <dfn>browser signals</dfn>
   :: A [=server auction browser signals=].
+  : <dfn>priority</dfn>
+  :: A {{double}}. Used to select which interest groups for a given buyer are excluded
+    from the serialized request due to space limitations.
 </dl>
 
 A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [=struct/items=]:
@@ -3121,11 +3160,12 @@ A <dfn>server auction reporting info</dfn> is a [=struct=] with the following [=
 
 <div algorithm="getInterestGroupAdAuctionData()">
 
-The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> method steps are:
+The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> method steps are:
 
 1. Let |global| be [=this=]'s [=relevant global object=].
 1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=run-ad-auction=]"
   [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
+1. Let |config| be the result of running [=parse and verify ad auction data config=] on |configIDL|.
 1. Let |p| be [=a new promise=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
@@ -3134,6 +3174,9 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
   1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
     1. If |ig|'s [=interest group/ads=] is null or [=list/is empty=], [=iteration/continue=].
     1. Let |owner| be |ig|'s [=interest group/owner=].
+    1. If |config|'s [=auction data config/per buyer config=] [=map/is not empty=] and
+       |config|'s [=auction data config/per buyer config=][|owner|] does not
+       [=map/exist=], then [=iteration/continue=].
     1. If |igMap|[|owner|] does not [=map/exist=], then [=map/set=] |igMap|[|owner|] to a new [=list=].
     1. Let |ads| be a new [=list=].
     1. [=list/For each=] |ad| in |ig|'s [=interest group/ads=], [=list/append=] |ad|'s [=interest group ad/ad render ID=] to |ads|.
@@ -3173,6 +3216,8 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
       :: |components|
       : [=server auction interest group/browser signals=]
       :: |browserSignals|
+      : [=server auction interest group/priority=]
+      :: |ig|'s [=interest group/priority=]
     1. [=list/Append=] |serverIg| to |igMap|[|owner|].
   1. Let |result| be a new {{AdAuctionData}}.
   1. Let |requestId| be the [=string representation=] of a [=version 4 UUID=].
@@ -3191,6 +3236,51 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
     [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=][|requestId|] to |requestContext|.
 1. Return p.
 
+</div>
+
+<div algorithm>
+  To <dfn>parse and verify ad auction data config</dfn> given an {{AdAuctionDataConfig}} |configIDL|:
+
+  1. Let |seller| be the result of running [=parse an https origin=] on
+       |configIDL|["{{AdAuctionDataConfig/seller}}"].
+  1. Let |coordinator| be the result of running [=parse an https origin=] on
+       |configIDL|["{{AdAuctionDataConfig/coordinatorOrigin}}"].
+  1. If |seller| or |coordinator| are failure, then [=exception/throw=] a {{TypeError}}.
+  1. Let |config| be a new [=auction data config=] with the following [=struct/items=]:
+    : [=auction data config/seller=]
+    :: |seller|
+    : [=auction data config/coordinator=]
+    :: |coordinator|
+    : [=auction data config/request size=]
+    :: |configIDL|["{{AdAuctionDataConfig/requestSize}}"] if it [=map/exists=], null otherwise
+    : [=auction data config/per buyer config=]
+    :: The result of running [=parse per buyer auction data configs=] on
+      |configIDL|["{{AdAuctionDataConfig/perBuyerConfig}}"]
+  1. If |config|'s [=auction data config/per buyer config=] [=map/is not empty=]
+     and |config|'s [=auction data config/request size=] is null:
+     1. Let |requestSize| be 0.
+     1. [=list/For each=] |buyerConfig| of |config|'s [=auction data config/per buyer config=]'s [=map/values=]:
+        1. If |buyerConfig|'s [=auction data buyer config/size=] is null,
+           then [=exception/throw=] a {{TypeError}}.
+        1. Set |requestSize| to |requestSize| + |buyerConfig|'s [=auction data buyer config/size=].
+    1. Set |config|'s [=auction data config/request size=] to |requestSize|.
+  1. Return |config|.
+</div>
+
+<div algorithm>
+  To <dfn>parse per buyer auction data configs</dfn> given an
+  {{AdAuctionDataBuyerConfig}} |perBuyerConfigIDL|:
+  1. Let |configs| be a new [=ordered map=] whose [=map/keys=] are [=origins=]
+     and whose [=map/values=] are [=auction data configs=].
+  1. [=map/For each=] |buyerIDL| → |buyerConfigIDL| of |perBuyerConfigIDL|:
+    1. Let |buyerConfig| be a new [=auction data buyer config=].
+    1. Set |buyerConfig|'s [=auction data buyer config/size=] to
+       |buyerConfigIDL|["{{AdAuctionDataBuyerConfig/targetSize}}"] if it
+       [=map/exists=], null otherwise.
+    1. Let |buyer| be the result of running [=parse an https origin=] on |buyerIDL|.
+    1. If |buyer| is failure, then [=exception/throw=] a {{TypeError}}.
+    1. [=map/Set=] |configs|[|buyer|] to |buyerConfig|.
+  1. Return |configs|.
 </div>
 
 # Reporting # {#reporting}
@@ -7518,6 +7608,31 @@ for a given [=k-anonymity key=]. These records are stored in the [=user agent=].
   :: A {{boolean}} indicating whether the [=k-anonymity key=] indicated by this record was reported as k-anonymous.
   : <dfn>timestamp</dfn>
   :: The [=moment=] when the k-anonymity status in this record was last fetched.
+</dl>
+
+<h3 id=auction-data-config-header>auction data config</h3>
+
+An <dfn>auction data config</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="auction data config">
+  :  <dfn>seller</dfn>
+  :: An [=origin=].
+    The origin of the seller running the ad auction. The [=origin/scheme=] must be "`https`".
+  :  <dfn>coordinator</dfn>
+  :: The origin of the coordinator hosting public encryption keys for the server
+    running the ad auction. The [=origin/scheme=] must be "`https`".
+  :  <dfn>request size</dfn>
+  :: {{unsigned long}} or null. An optional field, containing the desired size
+    for the returned encrypted request blob.
+  :  <dfn>per buyer config</dfn>
+  :: A [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are [=auction data buyer config=].
+</dl>
+
+An <dfn>auction data buyer config</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="auction data buyer config">
+  :  <dfn>size</dfn>
+  :: {{unsigned long}} or null. An optional field, initially null, containing the
+    size of the request to allocate to this buyer.
 </dl>
 
 # Privacy Considerations # {#privacy-considerations}
