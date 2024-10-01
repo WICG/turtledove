@@ -1146,10 +1146,36 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 1. If |seller| is failure, then return failure.
 1. Set |auctionConfig|'s [=auction config/seller=] to |seller|.
 1. If |config|["{{AuctionAdConfig/serverResponse}}"] [=map/exists=]:
-  1. If |config|["{{AuctionAdConfig/requestId}}"] does not [=map/exist=], then [=exception/throw=]
-    a {{TypeError}}.
-  1. Set |auctionConfig|'s [=auction config/server response=] to |config|["{{AuctionAdConfig/serverResponse}}"].
-  1. Set |auctionConfig|'s [=auction config/server response id=] to |config|["{{AuctionAdConfig/requestId}}"].
+  1. If |config|["{{AuctionAdConfig/requestId}}"] does not [=map/exist=], then [=exception/throw=] a
+    {{TypeError}}.
+  1. Let |resolvedAndTypeChecked| be the promise representing performing the following steps
+    [=upon fulfillment=] of |config|["{{AuctionAdConfig/serverResponse}}"] with |result|:
+    1. Set |auctionConfig|'s [=auction config/server response=] to the [=ArrayBuffer/transferred=]
+      |result|.
+    1. Set |auctionConfig|'s [=auction config/server response id=] to
+      |config|["{{AuctionAdConfig/requestId}}"].
+  1. [=Upon rejection=] of |resolvedAndTypeChecked|:
+    1. Set |auctionConfig|'s [=auction config/server response=] to failure.
+
+  Note: The JavaScript code calling {{Navigator/runAdAuction()}} is responsible for *not*
+    resolving |config|["{{AuctionAdConfig/serverResponse}}"] until server responses have been
+    retrieved from one or more [:Ad-Auction-Result:] headers, as resolving this Promise early
+    would cause a race condition in which the [=script runners=] might run without the server
+    responses that it needs. There are two ways that server responses can be retrieved.<br />
+    (1) The JavaScript code issues a [=request=] whose [=request/initiator type=]
+    is `"fetch"` and whose {{RequestInit/adAuctionHeaders}} option is set to `true`. The
+    JavaScript code has to resolve |config|["{{AuctionAdConfig/serverResponse}}"] after the
+    corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=].
+    The JavaScript code can also choose to wait to call {{Navigator/runAdAuction()}} until after
+    the corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=],
+    and can then immediately resolve |config|["{{AuctionAdConfig/serverResponse}}"];<br />
+    (2) issue an <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
+    request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a> set to `true`.
+    In this case, the JavaScript code is retrieved as part of the iframe navigation response,
+    at which point the JavaScript code in the iframe makes the call to
+    {{Navigator/runAdAuction()}}, and |config|["{{AuctionAdConfig/serverResponse}}"] can be
+    specified directly without a Promise.
+
 1. Otherwise:
   1. If |config|["{{AuctionAdConfig/requestId}}"] [=map/exists=], then [=exception/throw=]
     a {{TypeError}}.
@@ -1229,17 +1255,15 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       resolving |config|["{{AuctionAdConfig/additionalBids}}"] until additional bids have been
       retrieved from one or more [:Ad-Auction-Additional-Bid:] headers, as resolving this Promise
       early would cause a race condition in which additional bids might not be included in the
-      auction. There are two ways that additional bids can be retrieved. The first is for the
-      JavaScript code to issue a [=request=] whose [=request/initiator type=] is `"fetch"` and whose
+      auction. There are two ways that additional bids can be retrieved.<br />
+      (1) The JavaScript code issues a [=request=] whose [=request/initiator type=] is `"fetch"` and whose
       {{RequestInit/adAuctionHeaders}} option is set to `true`. The JavaScript code has to resolve
       |config|["{{AuctionAdConfig/additionalBids}}"] after the corresponding call to
       {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=].
       The JavaScript code can also choose to wait to call {{Navigator/runAdAuction()}} until after
       the corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a response,
-      and can then immediately resolve |config|["{{AuctionAdConfig/additionalBids}}"].
-
-      The second way that additional bids can be retrieved is by issuing an
-      <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
+      and can then immediately resolve |config|["{{AuctionAdConfig/additionalBids}}"];<br />
+      (2) issue an <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
       request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a> set to `true`.
       In this case, the JavaScript code is retrieved as part of the iframe navigation response,
       at which point the JavaScript code in the iframe makes the call to
@@ -1259,22 +1283,21 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       until direct from seller signals have been retrieved from one or more [:Ad-Auction-Signals:]
       headers, as resolving this Promise early would cause a race condition in which the [=script runners=]
       might run without the direct from seller signals that it needs. There are two ways that
-      direct from seller signals can be retrieved. The first is for the JavaScript code to issue a
-      [=request=] whose [=request/initiator type=] is `"fetch"` and whose
+      direct from seller signals can be retrieved.<br />
+      (1) The JavaScript code issues a [=request=] whose [=request/initiator type=] is `"fetch"` and whose
       {{RequestInit/adAuctionHeaders}} option is set to `true`. The JavaScript code has to resolve
       |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] after the corresponding
       call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=]. The JavaScript
       code can also choose to wait to call {{Navigator/runAdAuction()}} until after the
       corresponding call to {{WindowOrWorkerGlobalScope/fetch()}} has resolved to a [=response=],
       and can then immediately resolve
-      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"]. The second way that
-      direct from seller signals can be retrieved is by issuing an
-      <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
+      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"];<br />
+      (2) issue an <a spec="html" lt="navigate an iframe or frame">iframe navigation</a>
       request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a> set to `true`.
       In this case, the JavaScript code is retrieved as part of the iframe navigation response,
       at which point the JavaScript code in the iframe makes the call to
       {{Navigator/runAdAuction()}}, and
-      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] can be can be specified
+      |config|["{{AuctionAdConfig/directFromSellerSignalsHeaderAdSlot}}"] can be specified
       directly without a Promise.
 
     * To parse the value |result|:
@@ -1676,14 +1699,15 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   1. [=list/For each=] |component| in |auctionConfig|'s [=auction config/component auctions=],
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. If |component|'s [=auction config/server response=] is not null:
-      1. Let |compWinnerInfo| be the result of running [=parse and validate server response=] with |component|,
-         |auctionConfig|, |global|, |bidIgs|, and |bidDebugReportInfoList|.
+      1. Let |compWinnerInfo| be the result of running [=parse and validate server response=] with
+         |component|, |auctionConfig|, |global|, |bidIgs|, and |bidDebugReportInfoList|.
     1. Otherwise:
       1. Let |compWinnerInfo| be the result of running [=generate and score bids=] with |component|,
         |auctionConfig|, |global|, |bidIgs|, |bidDebugReportInfoList|, and |realTimeContributionsMap|.
-    1. If |compWinnerInfo| is failure, abort these steps.
-    1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig| returns
-      failure, abort these steps.
+    1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig|
+      returns failure, or |compWinnerInfo| is failure, then:
+      1. Decrement |pendingComponentAuctions| by 1.
+      1. Abort these steps.
     1. If |topLevelDirectFromSellerSignalsRetrieved| is false:
       1. Let |topLevelDirectFromSellerSignals| be the result of running
         [=get direct from seller signals=] given |seller|, |auctionConfig|'s
@@ -2784,6 +2808,8 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
 |bidDebugReportInfoList|, perform the following steps. They return a [=leading bid info=] or a failure.
 
 1. [=Assert=] that these steps are running [=in parallel=].
+1. If [=waiting until server response promise resolves=] given |auctionConfig| returns failure, then
+  return failure.
 1. Let |hash| be the [=SHA-256=] of |auctionConfig|'s [=auction config/server response=].
 1. Let |capturedAuctionHeaders| be |global|'s [=associated Document's=] [=node navigable's=]
   [=traversable navigable's=] [=traversable navigable/captured ad auction result headers=].
@@ -2989,16 +3015,52 @@ partial interface Navigator {
   Promise<AdAuctionData> getInterestGroupAdAuctionData(AdAuctionDataConfig config);
 };
 
-dictionary AdAuctionDataConfig {
-  required USVString seller;
-  required USVString coordinatorOrigin;
-};
-
 dictionary AdAuctionData {
   required Uint8Array request;
   required USVString requestId;
 };
 </xmp>
+
+<xmp class="idl">
+dictionary AdAuctionDataConfig {
+  required USVString seller;
+  required USVString coordinatorOrigin;
+  unsigned long requestSize;
+  record<USVString, AdAuctionDataBuyerConfig> perBuyerConfig;
+};
+</xmp>
+
+<dl class=domintro>
+  <dt>{{AdAuctionDataConfig/seller}}
+  <dd>The seller that will be used as the {{AuctionAdConfig/seller}} in the
+    following {{AuctionAdConfig}} passed to {{Window/navigator}}.{{Navigator/runAdAuction()}}.
+  <dt>{{AdAuctionDataConfig/coordinatorOrigin}}
+  <dd>The origin of the coordinator hosting public encryption keys for the server
+    running the ad auction. The [=origin/scheme=] must be "`https`". An implementation
+    may select which coordinators are acceptable.
+  <dt>{{AdAuctionDataConfig/requestSize}}
+  <dd>The desired size for the returned {{AdAuctionData/request}}. If any buyers are specified in
+    {{AdAuctionDataConfig/perBuyerConfig}}, this will be the exact size of the returned {{AdAuctionData/request}}.
+    Otherwise the returned {{AdAuctionData/request}}'s size will be at most the
+    {{AdAuctionDataConfig/requestSize}}.
+  <dt>{{AdAuctionDataConfig/perBuyerConfig}}
+  <dd>[=map/Keys=] are [=serialization of an origin|serialized origins=] of
+    buyers that should be included in the returned request. [=map/Values=] are
+    {{AdAuctionDataBuyerConfig}} for that buyer.
+</dl>
+
+<xmp class="idl">
+dictionary AdAuctionDataBuyerConfig {
+  unsigned long targetSize;
+};
+</xmp>
+
+<dl class=domintro>
+  <dt>{{AdAuctionDataBuyerConfig/targetSize}}
+  <dd>The size of the request to allocate for this buyer. Required when
+    {{AdAuctionDataConfig}}'s {{AdAuctionDataConfig/requestSize}} is not
+    specified.
+</dl>
 
 A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="server auction interest group">
@@ -3016,6 +3078,9 @@ A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=
     from the [=interest group/ad components=] field.
   : <dfn>browser signals</dfn>
   :: A [=server auction browser signals=].
+  : <dfn>priority</dfn>
+  :: A {{double}}. Used to select which interest groups for a given buyer are excluded
+    from the serialized request due to space limitations.
 </dl>
 
 A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [=struct/items=]:
@@ -3116,11 +3181,12 @@ A <dfn>server auction reporting info</dfn> is a [=struct=] with the following [=
 
 <div algorithm="getInterestGroupAdAuctionData()">
 
-The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> method steps are:
+The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> method steps are:
 
 1. Let |global| be [=this=]'s [=relevant global object=].
 1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=run-ad-auction=]"
   [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
+1. Let |config| be the result of running [=parse and verify ad auction data config=] on |configIDL|.
 1. Let |p| be [=a new promise=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
@@ -3129,6 +3195,9 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
   1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
     1. If |ig|'s [=interest group/ads=] is null or [=list/is empty=], [=iteration/continue=].
     1. Let |owner| be |ig|'s [=interest group/owner=].
+    1. If |config|'s [=auction data config/per buyer config=] [=map/is not empty=] and
+       |config|'s [=auction data config/per buyer config=][|owner|] does not
+       [=map/exist=], then [=iteration/continue=].
     1. If |igMap|[|owner|] does not [=map/exist=], then [=map/set=] |igMap|[|owner|] to a new [=list=].
     1. Let |ads| be a new [=list=].
     1. [=list/For each=] |ad| in |ig|'s [=interest group/ads=], [=list/append=] |ad|'s [=interest group ad/ad render ID=] to |ads|.
@@ -3168,6 +3237,8 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
       :: |components|
       : [=server auction interest group/browser signals=]
       :: |browserSignals|
+      : [=server auction interest group/priority=]
+      :: |ig|'s [=interest group/priority=]
     1. [=list/Append=] |serverIg| to |igMap|[|owner|].
   1. Let |result| be a new {{AdAuctionData}}.
   1. Let |requestId| be the [=string representation=] of a [=version 4 UUID=].
@@ -3185,6 +3256,51 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|config|)</dfn> meth
     [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=][|requestId|] to |requestContext|.
 1. Return p.
 
+</div>
+
+<div algorithm>
+  To <dfn>parse and verify ad auction data config</dfn> given an {{AdAuctionDataConfig}} |configIDL|:
+
+  1. Let |seller| be the result of running [=parse an https origin=] on
+       |configIDL|["{{AdAuctionDataConfig/seller}}"].
+  1. Let |coordinator| be the result of running [=parse an https origin=] on
+       |configIDL|["{{AdAuctionDataConfig/coordinatorOrigin}}"].
+  1. If |seller| or |coordinator| are failure, then [=exception/throw=] a {{TypeError}}.
+  1. Let |config| be a new [=auction data config=] with the following [=struct/items=]:
+    : [=auction data config/seller=]
+    :: |seller|
+    : [=auction data config/coordinator=]
+    :: |coordinator|
+    : [=auction data config/request size=]
+    :: |configIDL|["{{AdAuctionDataConfig/requestSize}}"] if it [=map/exists=], null otherwise
+    : [=auction data config/per buyer config=]
+    :: The result of running [=parse per buyer auction data configs=] on
+      |configIDL|["{{AdAuctionDataConfig/perBuyerConfig}}"]
+  1. If |config|'s [=auction data config/per buyer config=] [=map/is not empty=]
+     and |config|'s [=auction data config/request size=] is null:
+     1. Let |requestSize| be 0.
+     1. [=list/For each=] |buyerConfig| of |config|'s [=auction data config/per buyer config=]'s [=map/values=]:
+        1. If |buyerConfig|'s [=auction data buyer config/size=] is null,
+           then [=exception/throw=] a {{TypeError}}.
+        1. Set |requestSize| to |requestSize| + |buyerConfig|'s [=auction data buyer config/size=].
+    1. Set |config|'s [=auction data config/request size=] to |requestSize|.
+  1. Return |config|.
+</div>
+
+<div algorithm>
+  To <dfn>parse per buyer auction data configs</dfn> given an
+  {{AdAuctionDataBuyerConfig}} |perBuyerConfigIDL|:
+  1. Let |configs| be a new [=ordered map=] whose [=map/keys=] are [=origins=]
+     and whose [=map/values=] are [=auction data configs=].
+  1. [=map/For each=] |buyerIDL| → |buyerConfigIDL| of |perBuyerConfigIDL|:
+    1. Let |buyerConfig| be a new [=auction data buyer config=].
+    1. Set |buyerConfig|'s [=auction data buyer config/size=] to
+       |buyerConfigIDL|["{{AdAuctionDataBuyerConfig/targetSize}}"] if it
+       [=map/exists=], null otherwise.
+    1. Let |buyer| be the result of running [=parse an https origin=] on |buyerIDL|.
+    1. If |buyer| is failure, then [=exception/throw=] a {{TypeError}}.
+    1. [=map/Set=] |configs|[|buyer|] to |buyerConfig|.
+  1. Return |configs|.
 </div>
 
 # Reporting # {#reporting}
@@ -6516,6 +6632,16 @@ a {{Promise}} |p|, and two sequences of steps, covering the parsing of the value
 </div>
 
 <div algorithm>
+To <dfn>wait until server response promise resolves</dfn> given an [=auction config=] |auctionConfig|:
+
+  1. Wait until either |auctionConfig|'s [=auction config/server response=] is not a {{Promise}},
+     or |auctionConfig|'s [=auction config/aborted=] is true.
+  1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
+  1. If |auctionConfig|'s [=auction config/server response=] is failure, return failure.
+  1. Return.
+</div>
+
+<div algorithm>
 To <dfn>look up per-buyer currency</dfn> given an [=auction config=] |auctionConfig|, and an
 [=origin=] |buyer|:
 
@@ -7512,6 +7638,31 @@ for a given [=k-anonymity key=]. These records are stored in the [=user agent=].
   :: A {{boolean}} indicating whether the [=k-anonymity key=] indicated by this record was reported as k-anonymous.
   : <dfn>timestamp</dfn>
   :: The [=moment=] when the k-anonymity status in this record was last fetched.
+</dl>
+
+<h3 id=auction-data-config-header>auction data config</h3>
+
+An <dfn>auction data config</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="auction data config">
+  :  <dfn>seller</dfn>
+  :: An [=origin=].
+    The origin of the seller running the ad auction. The [=origin/scheme=] must be "`https`".
+  :  <dfn>coordinator</dfn>
+  :: The origin of the coordinator hosting public encryption keys for the server
+    running the ad auction. The [=origin/scheme=] must be "`https`".
+  :  <dfn>request size</dfn>
+  :: {{unsigned long}} or null. An optional field, containing the desired size
+    for the returned encrypted request blob.
+  :  <dfn>per buyer config</dfn>
+  :: A [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are [=auction data buyer config=].
+</dl>
+
+An <dfn>auction data buyer config</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="auction data buyer config">
+  :  <dfn>size</dfn>
+  :: {{unsigned long}} or null. An optional field, initially null, containing the
+    size of the request to allocate to this buyer.
 </dl>
 
 # Privacy Considerations # {#privacy-considerations}
