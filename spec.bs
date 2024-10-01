@@ -2823,10 +2823,7 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
 1. Let |requestContext| be |requestContexts|[|requestId|].
 1. Let |response| be the [=server auction response=] which is the result of
    deserializing |auctionConfig|'s [=auction config/server response=]
-   with |requestContext| according to the Bidding and Auction Services IETF standard.
-
-    Issue: TODO: Link deserialization to IETF standard when available.
-    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+   with |requestContext| according to [Section 2.3.5 of the Bidding and Auction Services IETF standard](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-parsing-a-response).
 1. If |response| is failure, then return failure.
 1. If |response|'s [=server auction response/top level seller=] is not null:
   1. If |topLevelAuctionConfig| is null return failure.
@@ -3118,10 +3115,8 @@ A <dfn>server auction request context</dfn> is a [=struct=] with the following [
     {{Window/navigator}}.{{Navigator/getInterestGroupAdAuctionData()}}. This is
     used to look-up a specific request context.
   : <dfn>request context</dfn>
-  :: An opaque context used to handle the request.
-
-    Issue: TODO: Link to the IETF Internet Draft that defines the context when it's available.
-    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+  :: An opaque context used to handle the request, such as that returned from
+     [Section 2.2.4 of Bidding and Auction Services](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-generating-a-request)
 </dl>
 
 A <dfn>server auction response</dfn> is a [=struct=] that contains auction result
@@ -3247,16 +3242,15 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
     1. [=list/Append=] |serverIg| to |igMap|[|owner|].
   1. Let |result| be a new {{AdAuctionData}}.
   1. Let |requestId| be the [=string representation=] of a [=version 4 UUID=].
-  1. Set |result|'s {{AdAuctionData/requestId}} field to |requestId|.
-  1. Let |context| be the result of serializing |igMap| using |config| into |result|'s
-    {{AdAuctionData/request}} field.
-
-    Issue: TODO: Link to the IETF Internet Draft that defines the serialization when it's available.
-    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
+  1. [=map/Set=] |result|["{{AdAuctionData/requestId}}"] to |requestId|.
+  1. Let (|requestBlob|, |context|) be the result of serializing |igMap| using
+     |config|. The serialization method may follow that described in
+     [Section 2.2.4 of Bidding and Auction Services](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-generating-a-request).
+  1. Set |result|["{{AdAuctionData/request}}"] to |requestBlob|.
   1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
     resolve |p| with |result|.
   1. Let |requestContext| be a new [=server auction request context=].
-  1. Set |requestContext|'s [=server auction request context/request ID=] field to the value of |result|'s {{AdAuctionData/requestId}} field.
+  1. Set |requestContext|'s [=server auction request context/request ID=] field to |result|["{{AdAuctionData/requestId}}"].
   1. Set |requestContext|'s [=server auction request context/request context=] field to |context|.
   1. [=map/Set=] |global|'s [=associated Document's=] [=node navigable's=]
     [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=][|requestId|] to |requestContext|.
