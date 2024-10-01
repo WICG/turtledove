@@ -3191,7 +3191,10 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
 1. Let |global| be [=this=]'s [=relevant global object=].
 1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=run-ad-auction=]"
   [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
-1. Let |config| be the result of running [=parse and verify ad auction data config=] on |configIDL|.
+1. Let |settings| be |global|'s [=relevant settings object=].
+1. Let |topLevelOrigin| be |settings|'s [=environment/top-level origin=].
+1. Let |config| be the result of running [=parse and verify ad auction data config=]
+   on |configIDL| and |topLevelOrigin|.
 1. Let |p| be [=a new promise=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
@@ -3265,7 +3268,8 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
 </div>
 
 <div algorithm>
-  To <dfn>parse and verify ad auction data config</dfn> given an {{AdAuctionDataConfig}} |configIDL|:
+  To <dfn>parse and verify ad auction data config</dfn> given an
+  {{AdAuctionDataConfig}} |configIDL| and [=origin=] |top_level_origin|:
 
   1. Let |seller| be the result of running [=parse an https origin=] on
        |configIDL|["{{AdAuctionDataConfig/seller}}"].
@@ -3273,6 +3277,8 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
        |configIDL|["{{AdAuctionDataConfig/coordinatorOrigin}}"].
   1. If |seller| or |coordinator| are failure, then [=exception/throw=] a {{TypeError}}.
   1. Let |config| be a new [=auction data config=] with the following [=struct/items=]:
+    : [=auction data config/publisher=]
+    :: |top_level_origin|
     : [=auction data config/seller=]
     :: |seller|
     : [=auction data config/coordinator=]
@@ -7651,6 +7657,10 @@ for a given [=k-anonymity key=]. These records are stored in the [=user agent=].
 An <dfn>auction data config</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="auction data config">
+  :  <dfn>publisher</dfn>
+  ::  An [=origin=].
+    The origin of the top level page running the ad auction. The
+    [=origin/scheme=] must be "`https`".
   :  <dfn>seller</dfn>
   :: An [=origin=].
     The origin of the seller running the ad auction. The [=origin/scheme=] must be "`https`".
