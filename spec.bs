@@ -704,16 +704,16 @@ dictionary AuctionAdConfig {
   sequence<USVString> interestGroupBuyers;
   Promise<any> auctionSignals;
   Promise<any> sellerSignals;
-  Promise<DOMString> directFromSellerSignalsHeaderAdSlot;
-  Promise<record<USVString, USVString>> deprecatedRenderURLReplacements;
+  Promise<DOMString?> directFromSellerSignalsHeaderAdSlot;
+  Promise<record<USVString, USVString>?> deprecatedRenderURLReplacements;
   unsigned long long sellerTimeout;
   unsigned short sellerExperimentGroupId;
-  Promise<record<USVString, any>> perBuyerSignals;
-  Promise<record<USVString, unsigned long long>> perBuyerTimeouts;
-  Promise<record<USVString, unsigned long long>> perBuyerCumulativeTimeouts;
+  Promise<record<USVString, any>?> perBuyerSignals;
+  Promise<record<USVString, unsigned long long>?> perBuyerTimeouts;
+  Promise<record<USVString, unsigned long long>?> perBuyerCumulativeTimeouts;
   unsigned long long reportingTimeout;
   USVString sellerCurrency;
-  Promise<record<USVString, USVString>> perBuyerCurrencies;
+  Promise<record<USVString, USVString>?> perBuyerCurrencies;
   record<USVString, unsigned short> perBuyerMultiBidLimits;
   record<USVString, unsigned short> perBuyerGroupLimits;
   record<USVString, unsigned short> perBuyerExperimentGroupIds;
@@ -1210,8 +1210,11 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     |config|["{{AuctionAdConfig/auctionSignals}}"].
   1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
     [=auction config/auction signals=]:
-    * To parse the value |result|, set |auctionConfig|'s [=auction config/auction signals=] to the
-      result of [=serializing a JavaScript value to a JSON string=].
+    * To parse the value |result|:
+      1. If |result| is {{undefined}} or null, set |auctionConfig|'s [=auction config/auction
+        signals=] to null.
+      1. Otherwise, set |auctionConfig|'s [=auction config/auction signals=] to the
+        result of [=serializing a JavaScript value to a JSON string=].
     * To handle an error, set |auctionConfig|'s [=auction config/auction signals=] to failure.
 1. If |config|["{{AuctionAdConfig/requestedSize}}"] [=map/exists=]:
   1. Let |adSize| be the result from running [=parse an AdRender ad size=] with
@@ -1236,8 +1239,11 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     |config|["{{AuctionAdConfig/sellerSignals}}"].
   1. [=Handle an input promise in configuration=] given |auctionConfig| and |auctionConfig|'s
     [=auction config/seller signals=]:
-    * To parse the value |result|, set |auctionConfig|'s [=auction config/seller signals=] to the
-      result of [=serializing a JavaScript value to a JSON string=], given |result|.
+    * To parse the value |result|:
+      1. If |result| is {{undefined}} or null, set |auctionConfig|'s [=auction config/seller
+        signals=] to null.
+      1. Otherwise, set |auctionConfig|'s [=auction config/seller signals=] to the
+        result of [=serializing a JavaScript value to a JSON string=], given |result|.
     * To handle an error, set |auctionConfig|'s [=auction config/seller signals=] to failure.
 1. If |config|["{{AuctionAdConfig/auctionNonce}}"] [=map/exists=], then [=map/set=] |auctionConfig|'s
   [=auction config/auction nonce=] to the result of running [=get uuid from string=] with
@@ -1313,10 +1319,11 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       [=auction config/deprecated render url replacements=]:
     * To parse the value |result|:
       1. Let |renderUrlReplacements| be a new empty [=list=] of [=ad keyword replacement=]s.
-      1. [=list/For each=] |replacement| in |result|:
-        1. If [=validate a url macro=] with |replacement|'s [=ad keyword replacement/match=]
-          returns false, then [=exception/throw=] a {{TypeError}}.
-        1. Otherwise, [=list/append=] |replacement| to |renderUrlReplacements|.
+      1. If |result| is not null:
+        1. [=list/For each=] |replacement| in |result|:
+          1. If [=validate a url macro=] with |replacement|'s [=ad keyword replacement/match=]
+            returns false, then [=exception/throw=] a {{TypeError}}.
+          1. Otherwise, [=list/append=] |replacement| to |renderUrlReplacements|.
       1. Set |auctionConfig|'s [=auction config/deprecated render url replacements=] to
         |renderUrlReplacements|.
     * To handle an error, set |auctionConfig|'s
@@ -1346,13 +1353,14 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     * To parse the value |result|:
       1. Set |auctionConfig|'s [=auction config/per buyer signals=] to a new [=ordered map=] whose
         [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
-      1. [=map/For each=] |key| → |value| of |result|:
-        1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
-           failure, throw a {{TypeError}}.
-        1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON string=],
-          given |value|.
-        1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to
-          |signalsString|.
+      1. If |result| is not null:
+        1. [=map/For each=] |key| → |value| of |result|:
+          1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
+            failure, throw a {{TypeError}}.
+          1. Let |signalsString| be the result of [=serializing a JavaScript value to a JSON
+            string=], given |value|.
+          1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer signals=][|buyer|] to
+            |signalsString|.
     * To handle an error, set |auctionConfig|'s [=auction config/per buyer signals=] to failure.
 1. For each |idlTimeoutMember|, |perBuyerTimeoutField|, |allBuyersTimeoutField| in the following table
   <table class="data">
@@ -1375,14 +1383,16 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       * To parse the value |result|:
         1. Set |auctionConfig|'s |perBuyerTimeoutField| to a new [=ordered map=] whose
           [=map/keys=] are [=origins=] and whose [=map/values=] are [=durations=] in milliseconds.
-        1. [=map/For each=] |key| → |value| of |result|:
-          1. If |perBuyerTimeoutField| is "{{AuctionAdConfig/perBuyerTimeouts}}", and
-            |value| &gt; 500, then set |value| to 500.
-          1. If |key| is "*", then set |auctionConfig|'s |allBuyersTimeoutField| to |value| in
-            milliseconds, and [=iteration/continue=].
-          1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
-            failure, [=exception/throw=] a {{TypeError}}.
-          1. [=map/Set=] |auctionConfig|'s |perBuyerTimeoutField|[|buyer|] to |value| in milliseconds.
+        1. If |result| is not null:
+          1. [=map/For each=] |key| → |value| of |result|:
+            1. If |perBuyerTimeoutField| is "{{AuctionAdConfig/perBuyerTimeouts}}", and
+              |value| &gt; 500, then set |value| to 500.
+            1. If |key| is "*", then set |auctionConfig|'s |allBuyersTimeoutField| to |value| in
+              milliseconds, and [=iteration/continue=].
+            1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
+              failure, [=exception/throw=] a {{TypeError}}.
+            1. [=map/Set=] |auctionConfig|'s |perBuyerTimeoutField|[|buyer|] to |value| in
+              milliseconds.
       * To handle an error, set |auctionConfig|'s |perBuyerTimeoutField| to failure.
 1. If |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"] [=map/exists=], [=map/for each=]
   |key| → |value| of |config|["{{AuctionAdConfig/perBuyerGroupLimits}}"]:
@@ -1437,14 +1447,16 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     * To parse the value |result|:
       1. Set |auctionConfig|'s [=auction config/per buyer currencies=] to a new [=ordered map=]
         whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=currency tags=].
-      1. [=map/for each=] |key| → |value| of |result|:
-        1. If the result of [=checking whether a string is a valid currency tag=] given |value| is
-          false, [=exception/throw=] a {{TypeError}}.
-        1. If |key| is "*", then set |auctionConfig|'s
-          [=auction config/all buyers currency=] to |value|, and [=iteration/continue=].
-        1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
-          failure, [=exception/throw=] a {{TypeError}}.
-        1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer currencies=][|buyer|] to |value|.
+      1. If |result| is not null:
+        1. [=map/for each=] |key| → |value| of |result|:
+          1. If the result of [=checking whether a string is a valid currency tag=] given |value| is
+            false, [=exception/throw=] a {{TypeError}}.
+          1. If |key| is "*", then set |auctionConfig|'s
+            [=auction config/all buyers currency=] to |value|, and [=iteration/continue=].
+          1. Let |buyer| be the result of [=parsing an https origin=] with |key|. If |buyer| is
+            failure, [=exception/throw=] a {{TypeError}}.
+          1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer currencies=][|buyer|] to
+            |value|.
     * To handle an error, set |auctionConfig|'s [=auction config/per buyer currencies=] to failure.
 1. If |config|["{{AuctionAdConfig/sellerRealTimeReportingConfig}}"] [=map/exists=]:
   1. If |config|["{{AuctionAdConfig/sellerRealTimeReportingConfig}}"]["type"] is
