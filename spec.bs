@@ -2939,6 +2939,15 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
     [=interest group/owner=] is |igPair|'s [=interest group/owner=] and [=interest group/name=] is |igPair|'s
     [=interest group/name=]. [=iteration/Continue=] if none found.
   1. [=list/Append=] |ig| to |bidIgs|.
+1. [=map/For each=] |igPair| → |updateIfOlderThan| of |response|'s
+   [=server auction response/update groups=] field:
+  1. Let |ig| be the [=interest group=] in the [=user agent=]'s [=interest group set=] whose
+    [=interest group/owner=] is |igPair|'s [=interest group/owner=] and [=interest group/name=] is |igPair|'s
+    [=interest group/name=]. [=iteration/Continue=] if none found.
+  1. If |updateIfOlderThan| is less than 10 mintues, set it to 10 minutes.
+  1. If [=current wall time=] &minus; |ig|'s [=interest group/last updated=] ≥
+     |updateIfOlderThan|, set |ig|'s [=interest group/next update after=] to the
+        [=current wall time=] + |updateIfOlderThan|.
 1. Insert the debug reporting URLs from |response| into |bidDebugReportInfoList|.
 
     Issue: TODO: Handle forDebuggingOnly reports from server auction.
@@ -3138,6 +3147,10 @@ from an auction executed on the trusted auction server. It has the following [=s
   :: A [=list=] of interest group [=interest group/owner=] and
      interest group [=interest group/name=] pairs that bid
      in the auction.
+  : <dfn>update groups</dfn>
+  :: A [=map=] from [=interest group/owner=] and interest group
+     [=interest group/name=] pairs to a [=duration=] indicating the desired
+     maximum time since the interest group was updated.
   : <dfn>score</dfn>
   :: Null or {{double}}. Null if the server auction is not a component auction,
      otherwise the {{ScoreAdOutput/desirability}} of component auction's winning bid.
