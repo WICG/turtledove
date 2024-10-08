@@ -1717,12 +1717,13 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
         [=get direct from seller signals for a seller=] given |topLevelDirectFromSellerSignals|.
       1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
     1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
-      [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
-      [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicFetcher|,
-      |trustedScoringSignalsBatcher|, null, "top-level-auction", null, and |topLevelOrigin|.
+      [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[|component|],
+      |compWinnerInfo|'s [=leading bid info/leading bid=], |leadingBidInfo|,
+      |decisionLogicFetcher|, |trustedScoringSignalsBatcher|, null, "top-level-auction", null,
+      and |topLevelOrigin|.
     1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
-      is not null, then run [=score and rank a bid=] with |auctionConfig|,
-      |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
+      is not null, then run [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[
+      |component|], |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
       |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
       |topLevelDirectFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|,
       and |realTimeContributionsMap|.
@@ -1791,10 +1792,10 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   |auctionConfig|, |topLevelAuctionConfig|, |negativeTargetInfo|, |reportingContextMap| and |global|.
 1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
-  1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|'s [=decoded additional
-    bid/bid=], |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
-    |directFromSellerSignalsForSeller|, null, |auctionLevel|, |componentAuctionExpectedCurrency|,
-    |topLevelOrigin|, and |realTimeContributionsMap|.
+  1. [=Score and rank a bid=] with |auctionConfig|, |reportingContextMap|[|auctionConfig|],
+    |additionalBid|'s [=decoded additional bid/bid=], |leadingBidInfo|, |decisionLogicFetcher|,
+    |trustedScoringSignalsBatcher|, |directFromSellerSignalsForSeller|, null, |auctionLevel|,
+    |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
   1. Decrement |pendingAdditionalBids| by 1.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -1959,15 +1960,16 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               1. [=Assert=] that [=query generated bid k-anonymity count=] given |generatedBid| returns true.
               1. [=Apply any component ads target to a bid=] given |generatedBid|.
               1. [=list/Append=] |generatedBid| to |bidsToScore|.
-          1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |ig|, and
-               |reportingContextMap| [|auctionConfig|].
+          1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |ig|,
+            |bidDebugReportInfo|, and |reportingContextMap| [|auctionConfig|].
           1. If |auctionConfig|'s [=auction config/per buyer real time reporting config=][|buyer|]
             is "`default-local-reporting`", then [=insert entries to map=] given
             |realTimeContributionsMap|, |buyer|, and |realTimeContributions|.
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
-            1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
+            1. [=Score and rank a bid=] with |auctionConfig|, |reportingContextMap|[
+              |auctionConfig|], |bidToScore|, |leadingBidInfo|,
               |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
               |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
@@ -2145,9 +2147,10 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
 </div>
 
 <div algorithm>
-To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
-|generatedBid|, a [=bid debug reporting info=] |bidDebugReportInfo|, a [=leading bid info=] |leadingBidInfo|,
-a [=script fetcher=] |decisionLogicFetcher|, a [=trusted scoring signals batcher=] |trustedScoringSignalsBatcher|
+To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|,
+a [=reporting context=] |reportingContext|, a [=generated bid=] |generatedBid|,
+a [=leading bid info=] |leadingBidInfo|, a [=script fetcher=] |decisionLogicFetcher|,
+a [=trusted scoring signals batcher=] |trustedScoringSignalsBatcher|
 a {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
 |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
 or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, an [=origin=]
@@ -2203,6 +2206,11 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   |bidValue|'s [=bid with currency/value=], |auctionConfig|'s [=auction config/config idl=],
   |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals|, |browserSignals|,
   |directFromSellerSignalsForSeller|, and |auctionConfig|'s [=auction config/seller timeout=].
+1. If |reportingContext|'s [=reporting context/debug reporting info=][|generatedBid|'s [=generated
+  bid/reporting id=]] does not exist, set [=reporting context/debug reporting info=][
+  |generatedBid|'s [=generated bid/reporting id=]] to a new [=bid debug reporting info=].
+1. Let |bidDebugReportInfo| be |reportingContext|'s [=reporting context/debug reporting info=]
+  [|generatedBid|'s [=generated bid/reporting id=]].
 1. If |auctionLevel| is "top-level-auction":
   1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug loss report url=] to
     |debugLossReportUrl|.
@@ -3372,10 +3380,11 @@ A <dfn>reporting bid key</dfn> is a [=struct=] with the following [=struct/items
 
 </dl>
 
-  Note: This type exists only to uniquely identify bids, avoiding confusion in cases like bids made
-  by the same interest group in different component auctions, or additional bids reusing names of
-  regular interest groups. Implementors can likely find a more efficient means of achieving the
-  same effect.
+  Note: This type exists only to uniquely identify places bid came from, avoiding confusion in
+  cases like bids made by the same interest group in different component auctions, or additional
+  bids reusing names of regular interest groups. Implementors can likely find a more efficient means
+  of achieving the same effect. Note that bids returned when `generateBid()` returns multiple
+  items all share an ID, as they share reporting information, too.
 
 A <dfn>reporting context</dfn> is a struct with the following [=struct/items=]:
 <dl dfn-for="reporting context">
@@ -3490,8 +3499,7 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
   1. [=map/Set=] |reportingContext|'s [=reporting context/debug reporting info=] [|id|] to
     |bidDebugReportInfo|.
   1. [=list/For each=] |generatedBid| of |generatedBids|:
-    1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
-      1. Set |generatedBid|'s [=generated bid/reporting id=] to |id|.
+    1. Set |generatedBid|'s [=generated bid/reporting id=] to |id|.
 
 </div>
 
