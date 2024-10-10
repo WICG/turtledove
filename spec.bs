@@ -2206,31 +2206,39 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   |bidValue|'s [=bid with currency/value=], |auctionConfig|'s [=auction config/config idl=],
   |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals|, |browserSignals|,
   |directFromSellerSignalsForSeller|, and |auctionConfig|'s [=auction config/seller timeout=].
-1. If |reportingContext|'s [=reporting context/debug reporting info=][|generatedBid|'s [=generated
-  bid/reporting id=]] does not exist, set [=reporting context/debug reporting info=][
-  |generatedBid|'s [=generated bid/reporting id=]] to a new [=bid debug reporting info=].
-1. Let |bidDebugReportInfo| be |reportingContext|'s [=reporting context/debug reporting info=]
-  [|generatedBid|'s [=generated bid/reporting id=]].
-1. If |auctionLevel| is "top-level-auction":
-  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug loss report url=] to
-    |debugLossReportUrl|.
-  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug win report url=] to
-    |debugWinReportUrl|.
-1. Otherwise:
-  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug loss report url=] to |debugLossReportUrl|.
-  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug win report url=] to |debugWinReportUrl|.
+1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
+
+  Note: Non-k-anonymous bids do not participate in reporting (except for platform real-time
+  contributions); as it would be problematic to report a winner that didn't actually win.
+
+  1. If |reportingContext|'s [=reporting context/debug reporting info=][|generatedBid|'s [=generated
+    bid/reporting id=]] does not exist, set [=reporting context/debug reporting info=][
+    |generatedBid|'s [=generated bid/reporting id=]] to a new [=bid debug reporting info=].
+  1. Let |bidDebugReportInfo| be |reportingContext|'s [=reporting context/debug reporting info=]
+    [|generatedBid|'s [=generated bid/reporting id=]].
+  1. If |auctionLevel| is "top-level-auction":
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug loss report
+      url=] to |debugLossReportUrl|.
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug win report
+      url=] to |debugWinReportUrl|.
+  1. Otherwise:
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug loss report url=] to
+      |debugLossReportUrl|.
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug win report url=] to
+      |debugWinReportUrl|.
+  1. If |auctionLevel| is "component-auction", then set |bidDebugReportInfo|'s [=bid debug reporting
+    info/component seller=] to |seller|.
+  1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
+    "`default-local-reporting`", then [=insert entries to map=] given |realTimeContributionsMap|,
+    |seller|, and |realTimeContributions|.
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
-1. If |auctionLevel| is "component-auction", then set |generatedBid|'s
-  [=generated bid/component seller=] and |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] to |seller|.
-1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
-  "`default-local-reporting`", then [=insert entries to map=] given |realTimeContributionsMap|,
-  |seller|, and |realTimeContributions|.
 1. Return if any of the following conditions hold:
   * |scoreAdOutput| is failure;
   * |auctionLevel| is not "single-level-auction", and |scoreAdOutput|
     ["{{ScoreAdOutput/allowComponentAuction}}"] is false;
   * |scoreAdOutput|["{{ScoreAdOutput/desirability}}"] &le; 0.
 1. If |auctionLevel| is "component-auction":
+  1. Set |generatedBid|'s [=generated bid/component seller=] to |seller|
   1. Let |bidToCheck| be |generatedBid|'s [=generated bid/bid=].
   1. If |scoreAdOutput|["{{ScoreAdOutput/bid}}"] [=map/exists=]:
     1. Let |modifiedBidValue| be |scoreAdOutput|["{{ScoreAdOutput/bid}}"].
@@ -3891,7 +3899,10 @@ a [=reporting context map=] |reportingContextMap|, and a [=global object=] |glob
     1. Let |additionalBid| be the result of running [=parse a signed additional bid=] given
       |signedAdditionalBid|, |reportingContextMap|, |auctionConfig|, |topLevelAuctionConfig|, and
       |negativeTargetInfo|.
-    1. If |additionalBid| is not null, then [=list/append=] |additionalBid| to |additionalBids|.
+    1. If |additionalBid| is not null:
+      1. [=list/Append=] |additionalBid| to |additionalBids|.
+      1. Let |bidCopy| be a clone of |additionalBid|.
+      1. Set |bidCopy|'s [=generated bid/for k-anon auction=] to false.
   1. Return |additionalBids|.
 </div>
 
@@ -4064,7 +4075,7 @@ a [=reporting context map=] |reportingContextMap|, an [=auction config=] |auctio
       : [=reporting bid key/origin=]
       :: |ig|'s [=interest group/owner=]
       : [=reporting bid key/interest group name=]
-      :: A string representation of a new globably unique identifier. This is needed since igName
+      :: A string representation of a new globably unique identifier. This is needed since |igName|
         may not be unique.
     :   [=generated bid/bid=]
     ::  A [=bid with currency=] whose [=bid with currency/value=] is |bidVal|, and
