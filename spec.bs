@@ -50,6 +50,7 @@ spec: html; urlPrefix: https://html.spec.whatwg.org/C
     text: create an agent; url: create-an-agent
     text: immediately; url: immediately
     text: valid floating-point number; url: valid-floating-point-number
+    text: serialization; for: origin; url: browsers.html#ascii-serialisation-of-an-origin
     text: structured clone algorithm; url: dom-structuredclone
 spec: infra; urlPrefix: https://infra.spec.whatwg.org/
   type: dfn
@@ -3709,6 +3710,101 @@ RAPPOR</a> noises each coordinate of the bit vector independently, and it is par
       1. Let |flipped| be false if |histogram|[|i|] is true, otherwise true.
       1. Set |histogram|[|i|] to |flipped|.
   1. Return |histogram|.
+</div>
+
+## Get storage interest groups for owner ## {#get-storage-interest-groups-for-owner-header}
+
+*This first introductory paragraph is non-normative.*
+
+The [=get storage interest groups for owner=] algorithm returns a Web IDL array of interest groups. This allows a Protected Audience buyer within a shared storage worklet to gain insights into their users and to send Private Aggregation reports.
+
+<xmp class="idl">
+dictionary StorageInterestGroup : AuctionAdInterestGroup {
+  unsigned long long joinCount;
+  unsigned long long bidCount;
+  sequence<PreviousWin> prevWinsMs;
+  USVString joiningOrigin;
+  long long timeSinceGroupJoinedMs;
+  long long lifetimeRemainingMs;
+  long long timeSinceLastUpdateMs;
+  long long timeUntilNextUpdateMs;
+  unsigned long long estimatedSize;
+};
+</xmp>
+
+<div algorithm>
+  To <dfn>get storage interest groups for owner</dfn> given an [=origin=] |owner|:
+
+  1. Let |resultIgs| be an empty [=list=].
+  1. Let |now| be a [=moment=] equal to the [=current wall time=].
+  1. [=list/For each=] |ig| of [=user agent=]'s [=interest group set=]:
+    1. If |ig|'s [=interest group/owner=] does not equal |owner|, then [=iteration/continue=].
+    1. Let |resultIg| be an empty {{StorageInterestGroup}} dictionary.
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/owner}}"] to |ig|'s [=interest group/owner=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/name}}"] to |ig|'s [=interest group/name=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/enableBiddingSignalsPrioritization}}"] to |ig|'s [=interest group/enable bidding signals prioritization=].
+    1. If |ig|'s [=interest group/priority vector=] is not null:
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/priorityVector}}"] to |ig|'s [=interest group/priority vector=].
+    1. If |ig|'s [=interest group/seller capabilities=] is not null:
+      1. Let |resultSellerCapabilities| be an [=ordered map=].
+      1. [=map/For each=] |origin| → |originSellerCapabilities| of |ig|'s [=interest group/seller capabilities=]:
+        1. Let |serializedOrigin| be the [=origin/serialization=] of |origin|.
+        1. [=map/Set=] |resultSellerCapabilities|[|serializedOrigin|] to |originSellerCapabilities|.
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/sellerCapabilities}}"] to |resultSellerCapabilities|.
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/executionMode}}"] to |ig|'s [=interest group/execution mode=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/biddingLogicURL}}"] to the [=serialize a URL|serialization=] of |ig|'s [=interest group/bidding url=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/biddingWasmHelperURL}}"] to the [=serialize a URL|serialization=] of |ig|'s [=interest group/bidding wasm helper url=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/updateURL}}"] to the [=serialize a URL|serialization=] of |ig|'s [=interest group/update url=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/trustedBiddingSignalsURL}}"] to the [=serialize a URL|serialization=] of |ig|'s [=interest group/trusted bidding signals url=].
+    1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null:
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}}"] to |ig|'s [=interest group/trusted bidding signals keys=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/trustedBiddingSignalsSlotSizeMode}}"] to |ig|'s [=interest group/trusted bidding signals slot size mode=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"] to |ig|'s [=interest group/max trusted bidding signals url length=].
+    1. If |ig|'s [=interest group/user bidding signals=] is not null:
+      1. Let |parsedUserBiddingSignals| be |ig|'s [=interest group/user bidding signals=] [=parsing a JSON string to a JavaScript value|parsed to a JavaScript value=].
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/userBiddingSignals}}"] to |parsedUserBiddingSignals|.
+    1. If |ig|'s [=interest group/ads=] is not null:
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/ads}}"] to |ig|'s [=interest group/ads=] [=converted to an AuctionAd sequence=].
+    1. If |ig|'s [=interest group/ad components=] is not null:
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/adComponents}}"] to |ig|'s [=interest group/ad components=] [=converted to an AuctionAd sequence=].
+    1. If |ig|'s [=interest group/ad sizes=] is not null:
+      1. Let |resultAdSizes| be an [=ordered map=].
+      1. [=map/For each=] |sizeName| → |adSize| of |ig|'s [=interest group/ad sizes=]:
+        1. [=map/Set=] |resultAdSizes|[|sizeName|] to |adSize| [=convert an ad size to a map|converted to a map=].
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/adSizes}}"] to |resultAdSizes|.
+    1. If |ig|'s [=interest group/size groups=] is not null:
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/sizeGroups}}"] to |ig|'s [=interest group/size groups=].
+    1. [=map/Set=] |resultIg|["{{AuctionAdInterestGroup/priority}}"] to |ig|'s [=interest group/priority=].
+    1. If |ig|'s [=interest group/priority signals overrides=] is not null:
+      1. [=map/Set=] |resultIg|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"] to |ig|'s [=interest group/priority signals overrides=].
+    1. If |ig|'s [=interest group/additional bid key=] is not null:
+      1. [=map/Set=] |resultIg|["{{AuctionAdInterestGroup/additionalBidKey}}"] to the result of running [=forgiving-base64 encode=] with |ig|'s [=interest group/additional bid key=].
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/joinCount}}"] to the sum of |ig|'s [=interest group/join counts=] for all days within the last 30 days.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/bidCount}}"] to the sum of |ig|'s [=interest group/bid counts=] for all days within the last 30 days.
+    1. Let |resultPrevWins| be a new <code>[=sequence=]<{{PreviousWin}}></code>.
+    1. [=list/For each=] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
+      the last 30 days:
+      1. Let |timeDelta| be (|now| &minus; |prevWin|'s [=previous win/time=]) in millseconds.
+      1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
+        otherwise.
+      1. Let |prevWinAdIDL| be a new {{AuctionAd}} with the following [=struct/items=]:
+        : {{AuctionAd/renderURL}}
+        :: the [=URL serializer|serialization=] of |prevWin|'s [=interest group ad/render url=]
+        : {{AuctionAd/metadata}}
+        :: |prevWin|'s [=interest group ad/metadata=] [=parsing a JSON string to a JavaScript value|parsed to a JavaScript value=].
+        : {{AuctionAd/adRenderId}}
+        :: |prevWin|'s [=interest group ad/ad render ID=]
+      1. Let |prevWinElement| be the <code>[=sequence=]<{{PreviousWinElement}}></code> «|timeDelta|, |prevWinAdIDL|».
+      1. [=list/Append=] |prevWinElement| to |resultPrevWins|.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/prevWinsMs}}"] to |resultPrevWins|.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/joiningOrigin}}"] to the [=origin/serialization=] of |ig|'s [=interest group/joining origin=].
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/timeSinceGroupJoinedMs}}"] to (|now| &minus; |ig|'s [=interest group/join time=]) in millseconds.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/lifetimeRemainingMs}}"] to (|ig|'s [=interest group/expiry=] &minus; |now|) in millseconds.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/timeSinceLastUpdateMs}}"] to (|now| &minus; |ig|'s [=interest group/last updated=]) in millseconds.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/timeUntilNextUpdateMs}}"] to (|ig|'s [=interest group/next update after=] &minus; |now|) in millseconds.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/estimatedSize}}"] to |ig|'s [=interest group/estimated size=].
+    1. [=list/Append=] |resultIg| to |resultIgs|.
+  1. Return |resultIgs|.
 </div>
 
 # Additional Bids and Negative Targeting # {#additional-bids-and-negative-targeting}
