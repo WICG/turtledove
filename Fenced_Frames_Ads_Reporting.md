@@ -137,12 +137,12 @@ Here is an example that makes the interest group include an allowlist of origins
 const myGroup = {
   ...
   'ads': [
-      {
-          renderUrl: '...',
-          allowedReportingOrigins: [
-              'https://adtech.example'
-          ]
-      }
+    {
+      renderUrl: '...',
+      allowedReportingOrigins: [
+        'https://adtech.example'
+      ]
+    }
   ],
   ...
 };
