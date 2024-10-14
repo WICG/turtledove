@@ -126,9 +126,27 @@ window.fence.reportEvent({
 
 In the second `reportEvent` variant, fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon to a specified destination URL, where macros in the URL are substituted to values registered by the buyer's worklet in `registerAdMacro` (see below). This specified URL must be a valid HTTPS URL.
 
+Unlike `reportEvent` to a preregistered destination, here the browser processes the beacon by sending an HTTP GET request, as per feedback here: https://github.com/WICG/turtledove/issues/477#issuecomment-1524158476.
+
 This API is available in the same contexts as `reportEvent` to a preregistered destination, i.e., all documents in a fenced frame tree, with opt-in requirements for documents that are cross-origin to the mapped URL. However, there are additional restrictions on the origin of the destination URL. The [interest group declaration](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#12-interest-group-attributes) includes an allowlist of origins that may receive reports using this mode of `reportEvent` (custom destination URL with macro substitution). If at any point a report is attempted to a disallowed origin, access to this mode of `reportEvent` will be shut off for any ad loaded from this fenced frame config, for privacy reasons (to prevent reidentification by using the allowlist to encode cross-site data about a user in binary with its choices of allowed/disallowed origins). Note that this only applies to this mode of `reportEvent`: `reportEvent` to a preregistered destination will still work.
 
-Unlike `reportEvent` to a preregistered destination, here the browser processes the beacon by sending an HTTP GET request, as per feedback here: https://github.com/WICG/turtledove/issues/477#issuecomment-1524158476.
+### Example
+Here is an example that makes the interest group include an allowlist of origins (e.g. `https://adtech.example`) to receive report events.
+```
+const myGroup = {
+  ...
+  'ads': [
+      {
+          renderUrl: '...',
+          allowedReportingOrigins: [
+              'https://adtech.example'
+          ]
+      }
+  ],
+  ...
+};
+const joinPromise = navigator.joinAdInterestGroup(myGroup);
+```
 
 ### Enrollment Requirement
 The reporting destination URL specified in `reportEvent`'s `destinationURL` field is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API, otherwise the beacon is not allowed to be sent to this reporting destination. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
