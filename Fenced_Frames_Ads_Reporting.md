@@ -131,6 +131,7 @@ Unlike `reportEvent` to a preregistered destination, here the browser processes 
 This API is available in the same contexts as `reportEvent` to a preregistered destination, i.e., all documents in a fenced frame tree, with opt-in requirements for documents that are cross-origin to the mapped URL. However, there are additional restrictions on the origin of the destination URL. The [interest group declaration](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#12-interest-group-attributes) includes an allowlist of origins that may receive reports using this mode of `reportEvent` (custom destination URL with macro substitution). If at any point a report is attempted to a disallowed origin, access to this mode of `reportEvent` will be shut off for any ad loaded from this fenced frame config, for privacy reasons (to prevent reidentification by using the allowlist to encode cross-site data about a user in binary with its choices of allowed/disallowed origins). Note that this only applies to this mode of `reportEvent`: `reportEvent` to a preregistered destination will still work.
 
 ### Example
+
 Here is an example that makes the interest group include an allowlist of origins (e.g. `https://adtech.example`) to receive report events.
 ```
 const myGroup = {
