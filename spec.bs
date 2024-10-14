@@ -85,7 +85,7 @@ spec: private-aggregation-api; urlPrefix: https://patcg-individual-drafts.github
     text: debug details; url: #debug-details
     text: debug-details-enabled; url: #debug-details-enabled
     text: debug-details-key; url: #debug-details-key
-    text: aggregation coordinator; url: #aggregation-coordinator-structure
+    text: aggregation coordinator; url: #aggregation-coordinator
     text: default aggregation coordinator; url: #default-aggregation-coordinator
 spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
   type: dfn
@@ -1462,11 +1462,10 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     1. Let |key| be |config|["{{AuctionAdConfig/auctionReportBuyerKeys}}"][|index|].
     1. If |key| is not [=set/contained=] in [=the exclusive range|the range=] 0 to 2<sup>128</sup>,
       exclusive, [=exception/throw=] a {{TypeError}}.
-    1. If |index| is equal to or greater than |interestGroupBuyers|' [=list/size=],
-      [=iteration/continue=].
+    1. If |index| &ge; |interestGroupBuyers|' [=list/size=], [=iteration/continue=].
 
-        Note: [=iteration/Continue=] is used (instead of [=iteration/break=]) to match validation
-        logic for all given buyer keys.
+        Note: [=iteration/Continue=] is used (instead of [=iteration/break=]) to validate all given
+        buyer keys.
     1. Let |origin| be |interestGroupBuyers|[|index|].
     1. [=map/Set=] |auctionConfig|'s [=auction config/auction report buyer keys=][|origin|]
       to |key|.
@@ -5352,14 +5351,14 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
         <dt>"`privateAggregationConfig`"
         <dd>
         1. If |value| is not a [=map=] whose [=map/keys=] are [=strings=], jump to the step labeled
-          Abort update.
+          <i><a href=#abort-update>Abort update</a></i>.
         1. If |value|["`aggregationCoordinatorOrigin`"] [=map/exists=]:
           1. If |value|["`aggregationCoordinatorOrigin`"] is not a [=string=], jump to the step
-            labeled Abort update.
+            labeled <i><a href=#abort-update>Abort update</a></i>.
           1. Let |aggregationCoordinator| be the result of [=obtaining the Private Aggregation
             coordinator from a string=] given |value|["`aggregationCoordinatorOrigin`"].
           1. If |aggregationCoordinator| is a {{DOMException}}, jump to the step
-            labeled Abort update.
+            labeled <i><a href=#abort-update>Abort update</a></i>.
           1. Otherwise, set |ig|'s [=interest group/Private Aggregation coordinator=] to
             |aggregationCoordinator|.
 
@@ -6395,7 +6394,8 @@ An <dfn export>interest group</dfn> is a [=struct=] with the following [=struct/
     The default [=seller capabilities=] granted to sellers not listed in
     [=interest group/seller capabilities=].
   : <dfn>Private Aggregation coordinator</dfn>
-  :: An [=aggregation coordinator=] or null; where null specifies the default coordinator.
+  :: An [=aggregation coordinator=] or null; where null specifies the [=default aggregation
+    coordinator=].
   : <dfn>execution mode</dfn>
   :: One of three possible values: "`compatibility`", "`frozen-context`", or "`group-by-origin`".
     Initially "`compatibility`". Each value reprensents a {{long}} integer.
@@ -6659,20 +6659,25 @@ An <dfn export>auction config</dfn> is a [=struct=] with the following [=struct/
     `per_buyer_priority_signals` takes precedence. No signals key start with "browserSignals.", which
     is reserved for values coming from the browser.
   : <dfn>seller Private Aggregation coordinator</dfn>
-  :: An [=aggregation coordinator=]. Defaults to the [=default aggregation
-      coordinator=].
+  :: An [=aggregation coordinator=], initially the [=default aggregation coordinator=].
   : <dfn>required seller capabilities</dfn>
   :: A [=set=] of [=seller capabilities=].
     The [=seller capabilities=] that each [=interest group=] must declare to participate in the
     auction. Interest groups that don't declare all these capabilities will not participate in the
     auction.
   : <dfn>auction report buyer keys</dfn>
-  :: A [=map=] from buyer [=origins=] to {{bigint}}s.
+  :: A [=map=] from buyer [=origins=] to {{bigint}}s. For buyer metrics delegated to be reported to
+    the seller via the [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api),
+    this determines the base bucket number used for a particular buyer's information.
   : <dfn>auction report buyers</dfn>
-  :: A [=map=] from [=strings=] to {{AuctionReportBuyersConfig}}s.
+  :: A [=map=] from [=strings=] to {{AuctionReportBuyersConfig}}s. For buyer metrics delegated to be
+    reported to the seller via the [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api),
+    this determines how each metric bucket is chosen inside the buyer's space, and how to scale it.
     <!-- TODO: this should probably use enums instead -->
   : <dfn>auction report buyer debug details</dfn>
-  :: A [=debug details=], initially a new one.
+  :: A [=debug details=], initially a new one. Configures
+    [Private Aggregation](https://github.com/patcg-individual-drafts/private-aggregation-api)
+    debugging functionality for buyer metrics delegated to be reported to the seller.
   : <dfn>component auctions</dfn>
   :: A [=list=] of [=auction config=]s.
     Nested auctions whose results will also participate in a top level auction. Only the top level
