@@ -142,7 +142,8 @@ The reporting destination URL specified in `reportEvent`'s `destinationURL` fiel
 Here is an example that will substitute `${PUBLISHER_ID}` and `${SOURCE_URL_ENC}` macros based on values specified in the buyer worklet.
 ```
 window.fence.reportEvent({
-  'destinationURL': 'https://adtech.example/impression?cid=555&pub_id=${PUBLISHER_ID}&site=${SOURCE_URL_ENC}&t=123'});
+  'destinationURL': 'https://adtech.example/impression?cid=555&pub_id=${PUBLISHER_ID}&site=${SOURCE_URL_ENC}&t=123'
+});
 ```
 
 In this example, the reporting destination eTLD+1 is "adtech.example". [The Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model) requires its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) `"https://adtech.example"` to be enrolled as defined in [site-based enrollment](https://developer.chrome.com/blog/announce-enrollment-privacy-sandbox/#site-based-enrollment). Otherwise the beacon will not be sent.
