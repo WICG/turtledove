@@ -2895,7 +2895,7 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
     :: [=reporting bid source/bidding-and-auction-services=]
     : [=reporting bid key/origin=]
     :: |response|'s [=server auction response/interest group owner=]
-    : [=reporting bid key/interest group name=]
+    : [=reporting bid key/bid identifier=]
     :: |response|'s [=server auction response/interest group name=]
   :: |response|'s [=server auction response/bid=]
   : [=generated bid/bid in seller currency=]
@@ -3401,6 +3401,13 @@ A <dfn>reporting bid source</dfn> an enum with the following possible values:
 </dl>
 
 A <dfn>reporting bid key</dfn> is a [=struct=] with the following [=struct/items=]:
+
+  Note: This type exists only to uniquely identify places bids came from, avoiding confusion in
+  cases like bids made by the same interest group in different component auctions, or additional
+  bids reusing names of regular interest groups. Implementations can likely find a more efficient
+  way of achieving the same effect. Note that bids returned when `generateBid()` returns multiple
+  items all share a key, as they share reporting information, too.
+
 <dl dfn-for="reporting bid key">
   : <dfn>context</dfn>
   :: The [=reporting context=] corresponding to the component (or single-level) auction the bid
@@ -3409,15 +3416,10 @@ A <dfn>reporting bid key</dfn> is a [=struct=] with the following [=struct/items
   :: A [=reporting bid source=] describing where the bid came from.
   : <dfn>origin</dfn>
   :: The [=origin=] of the bidder.
-  : <dfn>interest group name</dfn>
-  :: A [=string=] uniquely identifying the interest group.
+  : <dfn>bid identifier</dfn>
+  :: A [=string=] distinguishing this source of reports from others of the same origin in the same
+    context.
 </dl>
-
-  Note: This type exists only to uniquely identify places bids came from, avoiding confusion in
-  cases like bids made by the same interest group in different component auctions, or additional
-  bids reusing names of regular interest groups. Implementations can likely find a more efficient
-  way of achieving the same effect. Note that bids returned when `generateBid()` returns multiple
-  items all share a key, as they share reporting information, too.
 
 A <dfn>reporting context</dfn> is a struct with the following [=struct/items=]:
 <dl dfn-for="reporting context">
@@ -3527,7 +3529,7 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
     : [=reporting bid key/origin=]
     :: |ig|'s [=interest group/owner=]
 
-    : [=reporting bid key/interest group name=]
+    : [=reporting bid key/bid identifier=]
     :: |ig|'s [=interest group/name=]
   1. [=map/Set=] |reportingContext|'s [=reporting context/debug reporting info=] [|id|] to
     |bidDebugReportInfo|.
@@ -4099,7 +4101,7 @@ a [=reporting context map=] |reportingContextMap|, an [=auction config=] |auctio
       :: [=reporting bid source/additional-bid=]
       : [=reporting bid key/origin=]
       :: |ig|'s [=interest group/owner=]
-      : [=reporting bid key/interest group name=]
+      : [=reporting bid key/bid identifier=]
       :: A string representation of a new globably unique identifier. This is needed since |igName|
         may not be unique.
     :   [=generated bid/bid=]
