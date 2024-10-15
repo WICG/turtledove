@@ -2664,6 +2664,12 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
     1. [=Assert=] that the result of running [=query reporting ID k-anonymity count=] with |winner|'s
       [=generated bid/interest group=], |igAd|, and |winner|'s
       [=generated bid/selected buyer and seller reporting ID=] is true.
+
+      Note: The winning [=interest group ad=] is expected to be k-anonymous for reporting because any
+      [=generated bid/bid=] that included a [=generated bid/selected buyer and seller reporting ID=]
+      wouldn't be considered k-anonymous, and thus couldn't win the auction and wouldn't be reported,
+      unless that bid was k-anonymous for reporting with that [=generated bid/selected buyer and seller reporting ID=].
+
     1. [=map/Set=] |browserSignals|["{{ReportingBrowserSignals/selectedBuyerAndSellerReportingId}}"]
       to |winner|'s [=generated bid/selected buyer and seller reporting ID=].
     1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, [=map/set=]
@@ -2736,12 +2742,24 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
      [=interest group ad/render url=] is |winner|'s
      [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
   1. If |winner|'s [=generated bid/selected buyer and seller reporting ID=] is not null:
-    1. [=Assert=] that |reportWinBrowserSignals|'s ["{{ReportingBrowserSignals/selectedBuyerAndSellerReportingId}}"] is not null.
+
+      Note: If the winning [=generated bid/bid=] has a [=generated bid/selected buyer and seller reporting ID=],
+      it would have already been set by the preceding call to `reportResult()`, and provided to this algorithm in the
+      {{ReportingBrowserSignals}} returned by that algorithm and provided to this one.
+
+    1. [=Assert=] that |reportWinBrowserSignals|'s ["{{ReportingBrowserSignals/selectedBuyerAndSellerReportingId}}"]
+      is equal to |winner|'s [=generated bid/selected buyer and seller reporting ID=].
     1. [=Assert=] that the result of running [=query reporting ID k-anonymity count=] with
       |winner|'s [=generated bid/interest group=], |igAd|, and
       [=generated bid/selected buyer and seller reporting ID=] is true.
   1. Otherwise if |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null:
-    1. [=Assert=] that |reportWinBrowserSignals|'s ["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] is not null.
+
+      Note: If the winning [=interest group ad=] has a [=interest group ad/buyer and seller reporting ID=],
+      it would have already been set by the preceding call to `reportResult()`, and provided to this algorithm in the
+      {{ReportingBrowserSignals}} returned by that algorithm and provided to this one.
+
+    1. [=Assert=] that |reportWinBrowserSignals|'s ["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] is equal to
+      |igAd|'s [=interest group ad/buyer and seller reporting ID=].
     1. [=Assert=] that the result of running [=query reporting ID k-anonymity count=] with
       |winner|'s [=generated bid/interest group=], |igAd|, and null is true.
   1. Otherwise if the result of running [=query reporting ID k-anonymity count=] with
@@ -4065,9 +4083,9 @@ from querying the server during an auction.
       * U+0000 (NUL)
       * U+0000 (NUL)
     1. Otherwise, return the [=string/concatenation=] of the following:
-        * U+0001 (SOH)
-        * The size of |reportingId|, interpreted as four 8-bit big-endian numbers, appended as bytes.
-        * |reportingId|
+      * U+0001 (SOH)
+      * The size of |reportingId|, interpreted as four 8-bit big-endian numbers, appended as bytes.
+      * |reportingId|
 </div>
 
 <div algorithm>
