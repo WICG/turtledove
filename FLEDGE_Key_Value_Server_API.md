@@ -7,7 +7,7 @@ Authors:
 
 ## Summary
 
-[Protected Audience](https://github.com/WICG/turtledove/blob/main/FLEDGE.md) is a privacy-preserving API that facilitates interest group based advertising. Trusted
+[Protected Audience](https://github.com/WICG/turtledove/blob/main/FLEDGE.md) is a privacy-advancing API that facilitates interest group based advertising. Trusted
 servers in Protected Audience are used to add real-time signals into ad selection for both
 buyers and sellers. The Protected Audience proposal specifies that these trusted servers
 should provide basic key-value lookups to facilitate fetching these signals but
