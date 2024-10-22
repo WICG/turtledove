@@ -79,9 +79,14 @@ spec: Fenced Frame; urlPrefix: https://wicg.github.io/fenced-frame/
   type: dfn
     for: browsing context
       text: fenced frame config instance; url: #browsing-context-fenced-frame-config-instance
-spec: Private Aggregation API; urlPrefix: https://patcg-individual-drafts.github.io/private-aggregation-api
+spec: private-aggregation-api; urlPrefix: https://patcg-individual-drafts.github.io/private-aggregation-api
   type: dfn
     text: private-aggregation; url: #private-aggregation
+    text: debug details; url: #debug-details
+    text: debug-details-enabled; url: #debug-details-enabled
+    text: debug-details-key; url: #debug-details-key
+    text: aggregation coordinator; url: #aggregation-coordinator
+    text: default aggregation coordinator; url: #default-aggregation-coordinator
 spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
   type: dfn
     text: shared-storage; url: #permissionspolicy-shared-storage
@@ -232,11 +237,16 @@ dictionary GenerateBidInterestGroup {
   record<DOMString, sequence<DOMString>> sizeGroups;
 };
 
+dictionary ProtectedAudiencePrivateAggregationConfig {
+  USVString aggregationCoordinatorOrigin;
+};
+
 dictionary AuctionAdInterestGroup : GenerateBidInterestGroup {
   double priority = 0.0;
   record<DOMString, double> prioritySignalsOverrides;
   required double lifetimeMs;
   DOMString additionalBidKey;
+  ProtectedAudiencePrivateAggregationConfig privateAggregationConfig;
 };
 </xmp>
 
@@ -296,6 +306,13 @@ This is detectable because it can change the set of fields that are read from th
   1. If |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"] [=map/exists=], then set
     |interestGroup|'s [=interest group/priority signals overrides=] to
     |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"].
+  1. If |group|["{{AuctionAdInterestGroup/privateAggregationConfig}}"] [=map/exists=]:
+    1. Let |aggregationCoordinator| be the result of [=obtaining the coordinator from a Private
+      Aggregation config=] given |group|["{{AuctionAdInterestGroup/privateAggregationConfig}}"].
+    1. If |aggregationCoordinator| is a {{DOMException}}, then [=exception/throw=]
+      |aggregationCoordinator|.
+    1. Set |interestGroup|'s [=interest group/Private Aggregation coordinator=] to
+      |aggregationCoordinator|.
   1. If |group|["{{GenerateBidInterestGroup/sellerCapabilities}}"] [=map/exists=], [=map/for each=]
     |sellerString| → |capabilities| of |group|["{{GenerateBidInterestGroup/sellerCapabilities}}"]:
     1. Let |sellerCapabilities| be a new [=set=] of [=seller capabilities=].
@@ -694,6 +711,18 @@ partial interface Navigator {
   readonly attribute boolean deprecatedRunAdAuctionEnforcesKAnonymity;
 };
 
+dictionary AuctionReportBuyersConfig {
+  required bigint bucket;
+  required double scale;
+};
+
+dictionary AuctionReportBuyerDebugModeConfig {
+  boolean enabled = false;
+
+  // Must only be provided if `enabled` is true.
+  bigint? debugKey;
+};
+
 dictionary AuctionRealTimeReportingConfig {
   required DOMString type;
 };
@@ -721,7 +750,13 @@ dictionary AuctionAdConfig {
   record<USVString, unsigned short> perBuyerGroupLimits;
   record<USVString, unsigned short> perBuyerExperimentGroupIds;
   record<USVString, record<USVString, double>> perBuyerPrioritySignals;
+
+  sequence<bigint> auctionReportBuyerKeys;
+  record<DOMString, AuctionReportBuyersConfig> auctionReportBuyers;
+  AuctionReportBuyerDebugModeConfig auctionReportBuyerDebugModeConfig;
   sequence<DOMString> requiredSellerCapabilities;
+  ProtectedAudiencePrivateAggregationConfig privateAggregationConfig;
+
   record<DOMString, DOMString> requestedSize;
   sequence<record<DOMString, DOMString>> allSlotsRequestedSizes;
   Promise<undefined> additionalBids;
@@ -1436,6 +1471,59 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. If |buyer| is failure, then return failure.
   1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer priority signals=][|buyer|] to
     |signals|.
+1. If |config|["{{AuctionAdConfig/auctionReportBuyerKeys}}"] [=map/exists=]:
+  1. Let |interestGroupBuyers| be |auctionConfig|'s [=auction config/interest group buyers=].
+  1. If |interestGroupBuyers| is null, set |interestGroupBuyers| to a new [=list=].
+  1. [=list/For each=] |index| of [=the exclusive range|the range=] 0 to |config|[
+    "{{AuctionAdConfig/auctionReportBuyerKeys}}"]'s [=list/size=], exclusive:
+    1. Let |key| be |config|["{{AuctionAdConfig/auctionReportBuyerKeys}}"][|index|].
+    1. If |key| is not [=set/contained=] in [=the exclusive range|the range=] 0 to 2<sup>128</sup>,
+      exclusive, [=exception/throw=] a {{TypeError}}.
+    1. If |index| &ge; |interestGroupBuyers|' [=list/size=], [=iteration/continue=].
+
+        Note: [=iteration/Continue=] is used (instead of [=iteration/break=]) to validate all given
+        buyer keys.
+    1. Let |origin| be |interestGroupBuyers|[|index|].
+    1. [=map/Set=] |auctionConfig|'s [=auction config/auction report buyer keys=][|origin|]
+      to |key|.
+
+    Issue: Check behavior when an origin is repeated in {{AuctionAdConfig/interestGroupBuyers}}.
+1. If |config|["{{AuctionAdConfig/auctionReportBuyers}}"] [=map/exists=]:
+  1. [=map/For each=] |reportType| → |reportBuyerConfig| of |config|[
+    "{{AuctionAdConfig/auctionReportBuyers}}"]:
+    1. If « "`interestGroupCount`", "`bidCount`", "`totalGenerateBidLatency`",
+      "`totalSignalsFetchLatency`" » does not [=list/contain=] |reportType|, [=iteration/continue=].
+
+      Note: No error is thrown to allow forward compatibility if
+          additional report types are added later.
+
+      Issue: Should these strings be dash delimited?
+
+    1. If |reportBuyerConfig|["{{AuctionReportBuyersConfig/bucket}}"] is not [=set/contained=] in
+      [=the exclusive range|the range=] 0 to 2<sup>128</sup>, exclusive, [=exception/throw=] a
+      {{TypeError}}.
+
+      Issue: Consider validating the case where the bucket used (after summing) is too large.
+      Currently, the implementation appears to overflow.
+      (<a href="https://github.com/WICG/turtledove/issues/1040">WICG/turtledove#1040</a>)
+    1. [=map/Set=] |auctionConfig|'s [=auction config/auction report
+        buyers=][|reportType|] to |reportBuyerConfig|.
+
+1. If |config|["{{AuctionAdConfig/auctionReportBuyerDebugModeConfig}}"] [=map/exists=]:
+  1. Let |debugModeConfig| be |config|["{{AuctionAdConfig/auctionReportBuyerDebugModeConfig}}"].
+  1. Let |enabled| be |debugModeConfig|["{{AuctionReportBuyerDebugModeConfig/enabled}}"].
+  1. Let |debugKey| be |debugModeConfig|["{{AuctionReportBuyerDebugModeConfig/debugKey}}"].
+  1. If |debugKey| is not null:
+      1. If |debugKey| is not [=set/contained=] in [=the exclusive range|the
+          range=] 0 to 2<sup>64</sup>, exclusive, [=exception/throw=] a
+          {{TypeError}}.
+      1. If |enabled| is false, [=exception/throw=] a {{TypeError}}.
+  1. Set |auctionConfig|'s [=auction config/auction report buyer debug
+      details=] to a new [=debug details=] with the items:
+      : [=debug-details-enabled|enabled=]
+      :: |enabled|
+      : [=debug-details-key|key=]
+      :: |debugKey|
 1. If |config|["{{AuctionAdConfig/requiredSellerCapabilities}}"] [=map/exists=]:
   1. Let |sellerCapabilities| be a new [=set=] of [=seller capabilities=].
   1. [=list/For each=] |capabilityString| of
@@ -1446,6 +1534,12 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       Note: For forward compatibility with new values, don't [=exception/throw=].
 
   1. Set |auctionConfig|'s [=auction config/required seller capabilities=] to |sellerCapabilities|.
+1. If |config|["{{AuctionAdConfig/privateAggregationConfig}}"] [=map/exists=]:
+  1. Let |aggregationCoordinator| be the result of [=obtaining the coordinator from a Private
+    Aggregation config=] given |config|["{{AuctionAdConfig/privateAggregationConfig}}"].
+  1. If |aggregationCoordinator| is a {{DOMException}}, return failure.
+  1. Set |auctionConfig|'s [=auction config/seller Private Aggregation coordinator=] to
+    |aggregationCoordinator|.
 1. If |config|["{{AuctionAdConfig/perBuyerCurrencies}}"] [=map/exists=]:
   1. Set |auctionConfig|'s [=auction config/per buyer currencies=] to
     |config|["{{AuctionAdConfig/perBuyerCurrencies}}"]
@@ -1614,6 +1708,18 @@ To <dfn>check if required seller capabilities are permitted</dfn> given an [=auc
     * |requiredSellerCapabilities| is a [=set/subset=] of |ig|'s
       [=interest group/seller capabilities=][|seller|].
   1. Return false.
+</div>
+
+<div algorithm>
+To <dfn>obtain the coordinator from a Private Aggregation config</dfn> given a
+{{ProtectedAudiencePrivateAggregationConfig}} |config|, perform the following
+steps. They return an [=aggregation coordinator=], null or a {{DOMException}}.
+
+1. If |config|["{{ProtectedAudiencePrivateAggregationConfig/aggregationCoordinatorOrigin}}"]
+    does not [=map/exist=], return null.
+1. Return the result of [=obtaining the Private Aggregation coordinator=] given
+    |config|["{{ProtectedAudiencePrivateAggregationConfig/aggregationCoordinatorOrigin}}"].
+
 </div>
 
 <div algorithm="generate potentially multiple bids">
@@ -5353,6 +5459,20 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
             1. Otherwise, [=map/set=] |ig|'s [=interest group/priority signals overrides=][|pvKey|] to |pvValue|.
         1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
+        <dt>"`privateAggregationConfig`"
+        <dd>
+        1. If |value| is not a [=map=] whose [=map/keys=] are [=strings=], jump to the step labeled
+          <i><a href=#abort-update>Abort update</a></i>.
+        1. If |value|["`aggregationCoordinatorOrigin`"] [=map/exists=]:
+          1. If |value|["`aggregationCoordinatorOrigin`"] is not a [=string=], jump to the step
+            labeled <i><a href=#abort-update>Abort update</a></i>.
+          1. Let |aggregationCoordinator| be the result of [=obtaining the Private Aggregation
+            coordinator=] given |value|["`aggregationCoordinatorOrigin`"].
+          1. If |aggregationCoordinator| is a {{DOMException}}, jump to the step
+            labeled <i><a href=#abort-update>Abort update</a></i>.
+          1. Otherwise, set |ig|'s [=interest group/Private Aggregation coordinator=] to
+            |aggregationCoordinator|.
+
         <dt>"`sellerCapabilities`"
         <dd>
         1.  If |value| is an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
@@ -5637,6 +5757,8 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   [=interest group/priority signals overrides=]:
   1. The [=string/length=] of |key|.
   1. 8, which is the size of |value|.
+1. The [=string/length=] of the [=serialization of an origin|serialization=] of |ig|'s [=interest
+  group/Private Aggregation coordinator=] if the field is not null.
 1. If |ig|'s [=interest group/seller capabilities=] is not null, then [=map/for each=]
   |seller| → |capabilities| of |ig|'s [=interest group/seller capabilities=]:
   1. The [=string/length=] of the [=serialization of an origin|serialization=] of |seller|.
@@ -6373,7 +6495,7 @@ dictionary DirectFromSellerSignalsForSeller {
 
 <h3 id=interest-group-header>Interest group</h3>
 
-An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]:
+An <dfn export>interest group</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="interest group">
   : <dfn>expiry</dfn>
@@ -6407,6 +6529,9 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
   :: Null or a [=set=] of [=seller capabilities=].
     The default [=seller capabilities=] granted to sellers not listed in
     [=interest group/seller capabilities=].
+  : <dfn>Private Aggregation coordinator</dfn>
+  :: An [=aggregation coordinator=] or null; where null specifies the [=default aggregation
+    coordinator=].
   : <dfn>execution mode</dfn>
   :: One of three possible values: "`compatibility`", "`frozen-context`", or "`group-by-origin`".
     Initially "`compatibility`". Each value reprensents a {{long}} integer.
@@ -6581,7 +6706,7 @@ value is used to denote that the currency is unspecified.
 
 <h3 id=auction-config-header>Auction config</h3>
 
-An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]:
+An <dfn export>auction config</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="auction config">
   : <dfn>seller</dfn>
@@ -6677,11 +6802,26 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
     priorities. In the case both have entries with the same key, the entry in
     `per_buyer_priority_signals` takes precedence. No signals key start with "browserSignals.", which
     is reserved for values coming from the browser.
+  : <dfn>seller Private Aggregation coordinator</dfn>
+  :: An [=aggregation coordinator=], initially the [=default aggregation coordinator=].
   : <dfn>required seller capabilities</dfn>
   :: A [=set=] of [=seller capabilities=].
     The [=seller capabilities=] that each [=interest group=] must declare to participate in the
     auction. Interest groups that don't declare all these capabilities will not participate in the
     auction.
+  : <dfn>auction report buyer keys</dfn>
+  :: A [=map=] from buyer [=origins=] to {{bigint}}s. For buyer metrics delegated to be reported to
+    the seller via the [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api),
+    this determines the base bucket number used for a particular buyer's information.
+  : <dfn>auction report buyers</dfn>
+  :: A [=map=] from [=strings=] to {{AuctionReportBuyersConfig}}s. For buyer metrics delegated to be
+    reported to the seller via the [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api),
+    this determines how each metric bucket is chosen inside the buyer's space, and how to scale it.
+    <!-- TODO: this should probably use enums instead -->
+  : <dfn>auction report buyer debug details</dfn>
+  :: A [=debug details=], initially a new one. Configures
+    [Private Aggregation](https://github.com/patcg-individual-drafts/private-aggregation-api)
+    debugging functionality for buyer metrics delegated to be reported to the seller.
   : <dfn>component auctions</dfn>
   :: A [=list=] of [=auction config=]s.
     Nested auctions whose results will also participate in a top level auction. Only the top level
