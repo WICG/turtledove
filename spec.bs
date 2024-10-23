@@ -821,18 +821,19 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   and its [=origin/scheme=] is "`https`".
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. Let |bidDebugReportInfoList| be a new [=list=] of [=bid debug reporting info=].
+  1. Let |reportingContextMap| be the result of [=creating a reporting context map=] given
+    |auctionConfig|.
   1. If |auctionConfig|'s [=auction config/server response=] is not null:
     1. Let |winnerInfo| be the result of running [=parse and validate server response=] with
-      |auctionConfig|, null, |global|, and |bidIgs|.
+      |auctionConfig|, null, |global|, |bidIgs|, and |reportingContextMap|.
   1. Otherwise:
     1. Let |realTimeContributionsMap| be a new [=real time reporting contributions map=].
     1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
-      null, |global|, |bidIgs|, |bidDebugReportInfoList|, and |realTimeContributionsMap|.
+      null, |global|, |bidIgs|, |reportingContextMap|, and |realTimeContributionsMap|.
   1. Let |auctionReportInfo| be a new [=auction report info=].
   1. If |winnerInfo| is not failure, then:
     1. Set |auctionReportInfo| to the result of running [=collect forDebuggingOnly reports=] with
-      |bidDebugReportInfoList|, |auctionConfig|'s [=auction config/seller=], and |winnerInfo|.
+      |reportingContextMap|, |auctionConfig|'s [=auction config/seller=], and |winnerInfo|.
     1. Set |auctionReportInfo|'s [=auction report info/real time reporting contributions map=] to
       |realTimeContributionsMap|.
   1. If |auctionConfig|'s [=auction config/aborted=] is true:
@@ -1043,9 +1044,9 @@ To <dfn>asynchronously finish reporting</dfn> given a
 [=auction report info=] |auctionReportInfo|, and an [=environment settings object=] |settings|:
 1. [=Increment a winning bid's k-anonymity count=] given |leadingBidInfo|'s [=leading bid info/leading bid=].
 1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is
-   not null, and |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/id=]
-   &ne; |leadingBidInfo|'s [=leading bid info/leading bid=]'s  [=generated bid/id=],
-   [=increment a winning bid's k-anonymity count=] given
+   not null, and |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]'s
+   [=generated bid/reporting id=] &ne; |leadingBidInfo|'s [=leading bid info/leading bid=]'s
+   [=generated bid/reporting id=], [=increment a winning bid's k-anonymity count=] given
    |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=].
 1. Let |buyerDone|, |sellerDone|, and |componentSellerDone| be [=booleans=], initially false.
 1. If |leadingBidInfo|'s [=leading bid info/component seller=] is null, set |componentSellerDone|
@@ -1799,7 +1800,7 @@ failing to fetch the script or wasm, otherwise a [=tuple=] of ([=list=] of [=gen
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, a [=list=] of
-[=interest groups=] |bidIgs|, a [=list=] of [=bid debug reporting info=] |bidDebugReportInfoList|,
+[=interest groups=] |bidIgs|, a [=reporting context map=] |reportingContextMap|,
 and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |settings| be |global|'s [=relevant settings object=].
@@ -1827,10 +1828,10 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. If |component|'s [=auction config/server response=] is not null:
       1. Let |compWinnerInfo| be the result of running [=parse and validate server response=] with
-         |component|, |auctionConfig|, |global|, and |bidIgs|.
+         |component|, |auctionConfig|, |global|, |bidIgs|, and |reportingContextMap|.
     1. Otherwise:
       1. Let |compWinnerInfo| be the result of running [=generate and score bids=] with |component|,
-        |auctionConfig|, |global|, |bidIgs|, |bidDebugReportInfoList|, and |realTimeContributionsMap|.
+        |auctionConfig|, |global|, |bidIgs|, |reportingContextMap|, and |realTimeContributionsMap|.
     1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig|
       does not return failure, and |compWinnerInfo| is not failure, then:
       1. If |topLevelDirectFromSellerSignalsRetrieved| is false:
@@ -1841,12 +1842,13 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
           [=get direct from seller signals for a seller=] given |topLevelDirectFromSellerSignals|.
         1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
       1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
-        [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
-        [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicFetcher|,
-        |trustedScoringSignalsBatcher|, null, "top-level-auction", null, and |topLevelOrigin|.
+        [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[|component|],
+        |compWinnerInfo|'s [=leading bid info/leading bid=], |leadingBidInfo|,
+        |decisionLogicFetcher|, |trustedScoringSignalsBatcher|, null, "top-level-auction", null,
+        and |topLevelOrigin|.
       1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
-        is not null, then run [=score and rank a bid=] with |auctionConfig|,
-        |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
+        is not null, then run [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[
+        |component|], |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
         |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
         |topLevelDirectFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|,
         and |realTimeContributionsMap|.
@@ -1912,13 +1914,13 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
     |topLevelAuctionConfig| and |seller|.
 1. Let |pendingBuyers| be |bidGenerators|'s [=map/size=].
 1. Let |additionalBids| be the result of running [=validate and convert additional bids=] with
-  |auctionConfig|, |topLevelAuctionConfig|, |negativeTargetInfo| and |global|.
+  |auctionConfig|, |topLevelAuctionConfig|, |negativeTargetInfo|, |reportingContextMap| and |global|.
 1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
-  1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
-    |decisionLogicFetcher|, |trustedScoringSignalsBatcher|, |directFromSellerSignalsForSeller|,
-    null, |auctionLevel|, |componentAuctionExpectedCurrency|, |topLevelOrigin|, and
-    |realTimeContributionsMap|.
+  1. [=Score and rank a bid=] with |auctionConfig|, |reportingContextMap|[|auctionConfig|],
+    |additionalBid|'s [=decoded additional bid/bid=], |leadingBidInfo|, |decisionLogicFetcher|,
+    |trustedScoringSignalsBatcher|, |directFromSellerSignalsForSeller|, null, |auctionLevel|,
+    |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
   1. Decrement |pendingAdditionalBids| by 1.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -2068,15 +2070,16 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               1. [=Assert=] that [=query generated bid k-anonymity count=] given |generatedBid| returns true.
               1. [=Apply any component ads target to a bid=] given |generatedBid|.
               1. [=list/Append=] |generatedBid| to |bidsToScore|.
-          1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |bidDebugReportInfo|, and
-               |bidDebugReportInfoList|.
+          1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |ig|,
+            |bidDebugReportInfo|, and |reportingContextMap|[|auctionConfig|].
           1. If |auctionConfig|'s [=auction config/per buyer real time reporting config=][|buyer|]
             is "`default-local-reporting`", then [=insert entries to map=] given
             |realTimeContributionsMap|, |buyer|, and |realTimeContributions|.
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
-            1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
+            1. [=Score and rank a bid=] with |auctionConfig|, |reportingContextMap|[
+              |auctionConfig|], |bidToScore|, |leadingBidInfo|,
               |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
               |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
@@ -2263,9 +2266,10 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
 </div>
 
 <div algorithm>
-To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
-|generatedBid|, a [=bid debug reporting info=] |bidDebugReportInfo|, a [=leading bid info=] |leadingBidInfo|,
-a [=script fetcher=] |decisionLogicFetcher|, a [=trusted scoring signals batcher=] |trustedScoringSignalsBatcher|
+To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|,
+a [=reporting context=] |reportingContext|, a [=generated bid=] |generatedBid|,
+a [=leading bid info=] |leadingBidInfo|, a [=script fetcher=] |decisionLogicFetcher|,
+a [=trusted scoring signals batcher=] |trustedScoringSignalsBatcher|
 a {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
 |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
 or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, an [=origin=]
@@ -2321,26 +2325,39 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   |bidValue|'s [=bid with currency/value=], |auctionConfig|'s [=auction config/config idl=],
   |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals|, |browserSignals|,
   |directFromSellerSignalsForSeller|, and |auctionConfig|'s [=auction config/seller timeout=].
-1. If |auctionLevel| is "top-level-auction":
-  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug loss report url=] to
-    |debugLossReportUrl|.
-  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug win report url=] to
-    |debugWinReportUrl|.
-1. Otherwise:
-  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug loss report url=] to |debugLossReportUrl|.
-  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug win report url=] to |debugWinReportUrl|.
+1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
+
+  Note: Non-k-anonymous bids do not participate in reporting (except for platform real-time
+  contributions, and some special handling of private aggregation requests involving reject-reason);
+  as it would be problematic to report a winner that didn't actually win.
+
+  1. If |reportingContext|'s [=reporting context/debug reporting info=][|generatedBid|'s [=generated
+    bid/reporting id=]] does not [=map/exist=], set it to a new [=bid debug reporting info=].
+  1. Let |bidDebugReportInfo| be |reportingContext|'s [=reporting context/debug reporting info=]
+    [|generatedBid|'s [=generated bid/reporting id=]].
+  1. If |auctionLevel| is "top-level-auction":
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug loss report
+      url=] to |debugLossReportUrl|.
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug win report
+      url=] to |debugWinReportUrl|.
+  1. Otherwise:
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug loss report url=] to
+      |debugLossReportUrl|.
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug win report url=] to
+      |debugWinReportUrl|.
+  1. If |auctionLevel| is "component-auction", then set |bidDebugReportInfo|'s [=bid debug reporting
+    info/component seller=] to |seller|.
+  1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
+    "`default-local-reporting`", then [=insert entries to map=] given |realTimeContributionsMap|,
+    |seller|, and |realTimeContributions|.
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
-1. If |auctionLevel| is "component-auction", then set |generatedBid|'s
-  [=generated bid/component seller=] and |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] to |seller|.
-1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
-  "`default-local-reporting`", then [=insert entries to map=] given |realTimeContributionsMap|,
-  |seller|, and |realTimeContributions|.
 1. Return if any of the following conditions hold:
   * |scoreAdOutput| is failure;
   * |auctionLevel| is not "single-level-auction", and |scoreAdOutput|
     ["{{ScoreAdOutput/allowComponentAuction}}"] is false;
   * |scoreAdOutput|["{{ScoreAdOutput/desirability}}"] &le; 0.
 1. If |auctionLevel| is "component-auction":
+  1. Set |generatedBid|'s [=generated bid/component seller=] to |seller|.
   1. Let |bidToCheck| be |generatedBid|'s [=generated bid/bid=].
   1. If |scoreAdOutput|["{{ScoreAdOutput/bid}}"] [=map/exists=]:
     1. Let |modifiedBidValue| be |scoreAdOutput|["{{ScoreAdOutput/bid}}"].
@@ -2955,9 +2972,9 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
 
 <div algorithm>
 To <dfn>parse and validate server response</dfn> given an [=auction config=] |auctionConfig|, an
-[=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, and a [=list=] of
-[=interest groups=] |bidIgs|, perform the following steps. They return a [=leading bid info=] or a
-failure.
+[=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|,
+a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
+|reportingContextMap|, perform the following steps. They return a [=leading bid info=] or a failure.
 
 1. [=Assert=] that these steps are running [=in parallel=].
 1. If [=waiting until server response promise resolves=] given |auctionConfig| returns failure, then
@@ -3006,8 +3023,16 @@ failure.
   1. [=list/Append=] a new [=ad descriptor=] whose [=ad descriptor/url=] is
      |componentAd| to |winningAdComponents|.
 1. Let |winningBid| be a new [=generated bid=] with the following [=struct/items=]:
-  : [=generated bid/id=]
-  :: TODO
+  : [=generated bid/reporting id=]
+  :: A [=reporting bid key=] with the following [=struct/items=]:
+    : [=reporting bid key/context=]
+    :: |reportingContextMap|[|auctionConfig|]
+    : [=reporting bid key/source=]
+    :: [=reporting bid source/bidding-and-auction-services=]
+    : [=reporting bid key/bidder origin=]
+    :: |response|'s [=server auction response/interest group owner=]
+    : [=reporting bid key/bid identifier=]
+    :: |response|'s [=server auction response/interest group name=]
   : [=generated bid/bid=]
   :: |response|'s [=server auction response/bid=]
   : [=generated bid/bid in seller currency=]
@@ -3499,6 +3524,61 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
 
 # Reporting # {#reporting}
 
+## Common types and algorithms ## {#reporting-common}
+
+A <dfn>reporting bid source</dfn> is an enum with the following possible values:
+<dl dfn-for="reporting bid source">
+: <dfn>`generate-bid`</dfn>
+:: Bid produced by an invocation of `generateBid()`.
+: <dfn>`additional-bid`</dfn>
+:: Bid provided via [=validate and convert additional bids|the additional bids=] mechanism.
+: <dfn>`bidding-and-auction-services`</dfn>
+:: Bid provided via [=parse and validate server response|Bidding and Auction Services=] mechanism.
+
+</dl>
+
+A <dfn>reporting bid key</dfn> is a [=struct=] with the following [=struct/items=]:
+
+  Note: This [=struct=] exists only to uniquely identify places bids came from, avoiding confusion
+  in cases like bids made by the same interest group in different component auctions, or additional
+  bids reusing names of regular interest groups. Implementations can likely find a more efficient
+  way of achieving the same effect. Note that bids returned when `generateBid()` returns multiple
+  items all share a key, as they share reporting information, too.
+
+<dl dfn-for="reporting bid key">
+  : <dfn>context</dfn>
+  :: The [=reporting context=] corresponding to the component (or single-level) auction the bid
+    originated in.
+  : <dfn>source</dfn>
+  :: A [=reporting bid source=] describing where the bid came from.
+  : <dfn>bidder origin</dfn>
+  :: The [=origin=] of the bidder.
+  : <dfn>bid identifier</dfn>
+  :: A [=string=] distinguishing this source of reports from others of the same origin in the same
+    [=reporting bid key/context=].
+</dl>
+
+A <dfn>reporting context</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="reporting context">
+  : <dfn>debug reporting info</dfn>
+  :: A [=map=] from [=reporting bid key=] to [=bid debug reporting info=].
+</dl>
+
+A <dfn>reporting context map</dfn> is a [=map=] from [=auction config=] to [=reporting context=].
+Here the keys are configurations for auctions that actually produce bids (e.g. not the top-level
+auction in a multi-party auction).
+
+<div algorithm>
+  To <dfn>create a reporting context map</dfn> given [=auction config=] |auctionConfig|:
+  1. Let |reportingContextMap| be a new [=reporting context map=].
+  1. If |auctionConfig|'s [=auction config/component auctions=] [=list/is empty=],
+    [=map/set=] |reportingContextMap|[|auctionConfig|] to a new [=reporting context=].
+  1. Otherwise, [=list/for each=] |component| in |auctionConfig|'s
+    [=auction config/component auctions=], [=map/set=] |reportingContextMap|[|component|] to a new
+    [=reporting context=].
+  1. Return |reportingContextMap|.
+</div>
+
 ## {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}} ## {#for-debugging-only-header}
 
 *This first introductory paragraph is non-normative.*
@@ -3524,69 +3604,75 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
 </div>
 
 <div algorithm>
-  To <dfn>collect forDebuggingOnly reports</dfn> given a [=list=] of [=bid debug reporting info=]
-  |bidDebugReportInfoList|, [=origin=] |seller|, and [=leading bid info=]-or-null |winnerInfo|:
+  To <dfn>collect forDebuggingOnly reports</dfn> given a [=reporting context map=]
+  |reportingContextMap|, [=origin=] |seller|, and [=leading bid info=]-or-null |winnerInfo|:
 
   1. Let |auctionReportInfo| be a new [=auction report info=].
   1. Let |winningBid| be |winnerInfo|'s [=leading bid info/leading bid=] if |winnerInfo| is
     not null, null otherwise.
-  1. [=list/For each=] |bidDebugReportInfo| of |bidDebugReportInfoList|:
-    1. If |winningBid| is not null and |bidDebugReportInfo|'s [=bid debug reporting info/ids=]
-       [=set/contains=] |winningBid|'s [=generated bid/id=]:
-      1. [=Assert=] that |winningBid|'s [=generated bid/id=] is not null.
-      1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-        [=bid debug reporting info/bidder debug win report url=], |bidDebugReportInfo|'s
-        [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
-        [=auction report info/debug win report urls=].
-      1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
+  1. [=map/For each=] _ → |reportingContext| of |reportingContextMap|:
+    1. [=map/For each=] |reportingId| -> |bidDebugReportInfo| of |reportingContext|'s
+      [=reporting context/debug reporting info=]:
+      1. If |winningBid| is not null and |reportingId| is equal to |winningBid|'s
+        [=generated bid/reporting id=]:
+        1. [=Assert=] that |winningBid|'s [=generated bid/reporting id=] is not null.
         1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-          [=bid debug reporting info/seller debug win report url=], |seller|, and
-          |auctionReportInfo|'s [=auction report info/debug win report urls=].
-      1. Otherwise:
-        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-          [=bid debug reporting info/seller debug win report url=], |bidDebugReportInfo|'s
-          [=bid debug reporting info/component seller=], |auctionReportInfo|'s
+          [=bid debug reporting info/bidder debug win report url=], |bidDebugReportInfo|'s
+          [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
           [=auction report info/debug win report urls=].
-        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-          [=bid debug reporting info/top level seller debug win report url=], |seller|, and
-          |auctionReportInfo|'s [=auction report info/debug win report urls=].
-    1. Otherwise:
-      1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-        [=bid debug reporting info/bidder debug loss report url=], |bidDebugReportInfo|'s
-        [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
-        [=auction report info/debug loss report urls=].
-      1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
-        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-          [=bid debug reporting info/seller debug loss report url=], |seller|, and
-          |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+        1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
+          1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+            [=bid debug reporting info/seller debug win report url=], |seller|, and
+            |auctionReportInfo|'s [=auction report info/debug win report urls=].
+        1. Otherwise:
+          1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+            [=bid debug reporting info/seller debug win report url=], |bidDebugReportInfo|'s
+            [=bid debug reporting info/component seller=], |auctionReportInfo|'s
+            [=auction report info/debug win report urls=].
+          1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+            [=bid debug reporting info/top level seller debug win report url=], |seller|, and
+            |auctionReportInfo|'s [=auction report info/debug win report urls=].
       1. Otherwise:
         1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-          [=bid debug reporting info/seller debug loss report url=], |bidDebugReportInfo|'s
-          [=bid debug reporting info/component seller=], |auctionReportInfo|'s
+          [=bid debug reporting info/bidder debug loss report url=], |bidDebugReportInfo|'s
+          [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
           [=auction report info/debug loss report urls=].
-        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-          [=bid debug reporting info/top level seller debug loss report url=], |seller|, and
-          |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+        1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
+          1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+            [=bid debug reporting info/seller debug loss report url=], |seller|, and
+            |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+        1. Otherwise:
+          1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+            [=bid debug reporting info/seller debug loss report url=], |bidDebugReportInfo|'s
+            [=bid debug reporting info/component seller=], |auctionReportInfo|'s
+            [=auction report info/debug loss report urls=].
+          1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+            [=bid debug reporting info/top level seller debug loss report url=], |seller|, and
+            |auctionReportInfo|'s [=auction report info/debug loss report urls=].
   1. Return |auctionReportInfo|.
 </div>
 
-<div>
+<div algorithm>
   To <dfn>register bids for forDebuggingOnly reports</dfn> given a [=list=] of
-  [=generated bids=] |generatedBids|, [=bid debug reporting info=] |bidDebugReportInfo|,
-  a [=list=] of [=bid debug reporting info=] |bidDebugReportInfoList|:
-  1. Let |mainId| be |bidDebugReportInfoList|'s [=list/size=].
-  1. Let |subId| be 0.
-  1. [=list/Append=] |bidDebugReportInfo| to |bidDebugReportInfoList|.
-  1. [=list/For each=] |generatedBid| of |generatedBids|:
-    1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
-      1. Let |id| be (|mainId|, |subId|).
-      1. Set |subId| to |subId| + 1.
-      1. Set |generatedBid|'s [=generated bid/id=] to |id|.
-      1. [=set/Append=] |id| to |bidDebugReportInfo|'s [=bid debug reporting info/ids=].
+  [=generated bids=] |generatedBids|, [=interest group=] |ig|, [=bid debug reporting info=]
+  |bidDebugReportInfo| and a [=reporting context=] |reportingContext|:
+  1. Let |id| be a new [=reporting bid key=] with the following [=struct/items=]:
+    : [=reporting bid key/context=]
+    :: |reportingContext|
 
-  Issue: Instead of inserting to |bidDebugReportInfoList| in each component auction that runs in
-  parallel, create a structure InterestGroupAuction that holds data for each auction
-  separately (<a href="https://github.com/WICG/turtledove/issues/1021">WICG/turtledove#1021</a>).
+    : [=reporting bid key/source=]
+    :: [=reporting bid source/generate-bid=]
+
+    : [=reporting bid key/bidder origin=]
+    :: |ig|'s [=interest group/owner=]
+
+    : [=reporting bid key/bid identifier=]
+    :: |ig|'s [=interest group/name=]
+  1. [=map/Set=] |reportingContext|'s [=reporting context/debug reporting info=][|id|] to
+    |bidDebugReportInfo|.
+  1. [=list/For each=] |generatedBid| of |generatedBids|:
+    1. Set |generatedBid|'s [=generated bid/reporting id=] to |id|.
+
 </div>
 
 ### Downsampling ### {#downsampling-header}
@@ -3961,7 +4047,7 @@ the [=additional bid=] to compete against other bids in a Protected Audience [=a
 <div algorithm>
 To <dfn>validate and convert additional bids</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=negative target info=] |negativeTargetInfo|,
-and a [=global object=] |global|:
+a [=reporting context map=] |reportingContextMap|, and a [=global object=] |global|:
 
   1. [=Assert=] that these steps are running [=in parallel=].
   1. [=Assert=] that |auctionConfig|'s [=auction config/auction nonce=] is not null.
@@ -3975,15 +4061,20 @@ and a [=global object=] |global|:
       |encodedSignedAdditionalBid|.
     1. If |signedAdditionalBid| is failure, then [=iteration/continue=].
     1. Let |additionalBid| be the result of running [=parse a signed additional bid=] given
-      |signedAdditionalBid|, |auctionConfig|, |topLevelAuctionConfig|, and |negativeTargetInfo|.
-    1. If |additionalBid| is not null, then [=list/append=] |additionalBid| to |additionalBids|.
+      |signedAdditionalBid|, |reportingContextMap|, |auctionConfig|, |topLevelAuctionConfig|, and
+      |negativeTargetInfo|.
+    1. If |additionalBid| is not null:
+      1. [=list/Append=] |additionalBid| to |additionalBids|.
+      1. Let |bidCopy| be a clone of |additionalBid|.
+      1. Set |bidCopy|'s [=generated bid/for k-anon auction=] to false.
   1. Return |additionalBids|.
 </div>
 
 <div algorithm>
-To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdditionalBid|, an
-[=auction config=] |auctionConfig|, an [=auction config=]-or-null |topLevelAuctionConfig|, and a
-[=negative target info=] |negativeTargetInfo|:
+To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdditionalBid|,
+a [=reporting context map=] |reportingContextMap|, an [=auction config=] |auctionConfig|,
+an [=auction config=]-or-null |topLevelAuctionConfig|, and a [=negative target info=]
+|negativeTargetInfo|:
 
   1. [=Assert=] that these steps are running [=in parallel=].
   1. Let |parsedSignedAdditionalBid| be the result of running [=parse a JSON string to an infra value=]
@@ -4013,7 +4104,8 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
     1. [=list/Append=] |signature| to |signatures|.
   1. If |decodeSignatureFailed| is true, then return null.
   1. Let |decodedAdditionalBid| be the result of [=decode an additional bid json=] given
-    |parsedSignedAdditionalBid|["bid"], |auctionConfig| and |topLevelAuctionConfig|.
+    |parsedSignedAdditionalBid|["bid"], |reportingContextMap|, |auctionConfig| and
+    |topLevelAuctionConfig|.
   1. Return null if any of the following conditions hold:
     * |decodedAdditionalBid| is failure;
     * The result of [=checking a currency tag=] with |decodedAdditionalBid|'s
@@ -4032,8 +4124,9 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
 </div>
 
 <div algorithm>
-To <dfn>decode an additional bid json</dfn> given a [=string=] |additionalBidJson|, an
-[=auction config=] |auctionConfig|, and an [=auction config=]-or-null |topLevelAuctionConfig|:
+To <dfn>decode an additional bid json</dfn> given a [=string=] |additionalBidJson|,
+a [=reporting context map=] |reportingContextMap|, an [=auction config=] |auctionConfig|, and an
+[=auction config=]-or-null |topLevelAuctionConfig|:
 
   1. [=Assert=] that these steps are running [=in parallel=].
   1. Let |parsedAdditionalBid| be the result of [=parse a JSON string to an infra value=] given
@@ -4137,6 +4230,17 @@ To <dfn>decode an additional bid json</dfn> given a [=string=] |additionalBidJso
         [=decoded additional bid/negative target interest group names=].
   1. Set |result|'s [=decoded additional bid/bid=] to a new [=generated bid=] with the following
     properties:
+    : [=generated bid/reporting id=]
+    :: A [=reporting bid key=] with the following [=struct/items=]:
+      : [=reporting bid key/context=]
+      :: |reportingContextMap|[|auctionConfig|]
+      : [=reporting bid key/source=]
+      :: [=reporting bid source/additional-bid=]
+      : [=reporting bid key/bidder origin=]
+      :: |ig|'s [=interest group/owner=]
+      : [=reporting bid key/bid identifier=]
+      :: A [=string=] representation of a new globably unique identifier. This is needed since
+        |igName| may not be unique.
     :   [=generated bid/bid=]
     ::  A [=bid with currency=] whose [=bid with currency/value=] is |bidVal|, and
       [=bid with currency/currency=] is |bidCurrency|
@@ -7539,8 +7643,8 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
 [:Ad-Auction-Additional-Bid:] response headers. It's a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="generated bid">
-  : <dfn>id</dfn>
-  :: A pair of {{unsigned long}}s. Used to identify a [=generated bid=].
+  : <dfn>reporting id</dfn>
+  :: A [=reporting bid key=] or null, initially null. Used to identify a [=generated bid=].
   : <dfn>for k-anon auction</dfn>
   :: A [=boolean=], initially true. If this is false, the bid is only used to determine the hypothetical
     winner with no k-anonymity constraints, which would be used to [=update k-anonymity counts=] only.
@@ -7672,10 +7776,6 @@ To <dfn>adjust bid list based on k-anonymity</dfn> given a [=list=] of [=generat
 A <dfn>bid debug reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="bid debug reporting info">
-  : <dfn>ids</dfn>
-  :: A [=set=] of pairs of {{unsigned long}}s. Includes all [=generated bid/id=] values
-    of the [=generated bid=]s which will want to use this debug reporting information
-    if they win an auction.
   : <dfn>component seller</dfn>
   ::  Null or an [=origin=]. Seller in component auction which was running to produce
     this reporting information. Only set for component auctions, null otherwise.
