@@ -2864,7 +2864,9 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
   1. Let |sellerReportingScript| be the result of [=waiting for script body from a fetcher=] given
      |sellerReportingScriptFetcher|.
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored » be the result of
-    [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`", |config|'s
+    [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`",
+    |reportingContext|, |config|'s [=auction config/seller=], |config|'s [=auction config/seller
+    Private Aggregation coordinator=],  |config|'s
     [=auction config/config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |config|'s [=auction config/config idl=], |browserSignals|, |directFromSellerSignals| ».
    1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
@@ -2918,8 +2920,8 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
       <dd>|winner|'s [=generated bid/modeling signals=] if it is not null, {{undefined}} otherwise
         (TODO: noise and bucket this signal)
     </dl>
-  1. Let |igAd| be the [=interest group ad=] from |winner|'s
-     [=generated bid/interest group=]'s [=interest group/ads=] whose
+  1. Let |ig| be |winner|'s [=generated bid/interest group=].
+  1. Let |igAd| be the [=interest group ad=] from ig's [=interest group/ads=] whose
      [=interest group ad/render url=] is |winner|'s
      [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
   1. If |winner|'s [=generated bid/selected buyer and seller reporting ID=] is not null:
@@ -2958,7 +2960,9 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
   1. If |winner|'s [=generated bid/provided as additional bid=] is true:
     1. Set |reportFunctionName| be "`reportAdditionalBidWin`".
   1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap| » be the result of
-    [=evaluating a reporting script=] with |buyerReportingScript|, "`reportWin`", |leadingBidInfo|'s
+    [=evaluating a reporting script=] with |buyerReportingScript|, "`reportWin`",
+    |reportingContext|, |ig|'s [=interest group/owner=] and |ig|'s [=interest group/Private
+    Aggregation coordinator=], |leadingBidInfo|'s
     [=leading bid info/auction config=]'s [=auction config/config idl=]'s
     {{AuctionAdConfig/reportingTimeout}}, and
     « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config idl=]'s
@@ -3575,6 +3579,9 @@ A <dfn>reporting context</dfn> is a [=struct=] with the following [=struct/items
 
     Note: Does not include [=batching scopes=] for contributions conditional on
         non-reserved events.
+  : <dfn>private aggregation on event contributions</dfn>
+  :: A [=map=] from a tuple of ([=reporting bid key=], [=string=]) to a [=list=] of [=on event
+    contribution entries=].
   : <dfn>private aggregation allowed</dfn>
   :: A [=boolean=], initially false.
 </dl>
@@ -4073,7 +4080,12 @@ runs; this method exists as an abstraction to help add that.
 <div algorithm>
 To <dfn>commit private aggregation contributions</dfn> given an [=on event contribution map=]
 |onEventMap|, a [=reporting bid key=] |bidKey|, and a [=reporting context=] |reportingContext|:
-  1. Do stuff.
+  1. [=map/For each=] |event| → |contributions| of |onEventMap|:
+    1. Let |key| be (|bidKey|, |event|).
+    1. If |reportingContext|'s [=reporting context/private aggregation on event contributions=][
+      |key|] does not [=map/exist=], set it to a new [=list=].
+    1. [=list/Extend=] |reportingContext|'s [=reporting context/private aggregation on event
+      contributions=][|key|] with |contributions|.
 </div>
 
 <div algorithm>
