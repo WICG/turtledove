@@ -40,7 +40,8 @@ const auctionBlob = navigator.getInterestGroupAdAuctionData({
 The `seller` field will be checked to ensure it matches the `seller` specified
 in the auction configuration passed to `runAdAuction()` with the response. The
 `coordinatorOrigin` selects which set of TEE keys should be used to encrypt this
-request. The `coordinatorOrigin` must be a coordinator that is known to Chrome.
+request. The `coordinatorOrigin` must be a coordinator that is known to Chrome
+(see [the appendix](#coordinator-keys) for details).
 The `requestSize` and `perBuyerConfig` fields are described in more detail in
 the [Request Size and Configuration](#request-size-and-configuration) section below.
 
@@ -530,4 +531,56 @@ Prior to compression and encryption, the AuctionResult is encoded as CBOR with t
     "error": { "$ref": "#/$defs/errorDef" }
   }
 }
+```
+
+## Coordinator Keys
+
+The browser fetches the public keys used for encryption from the specified
+coordinator. These keys are hosted by the coordinators at the path
+`.well-known/protected-auction/v1/public-keys` in JSON format.
+
+Chrome currently supports these coordinator origins:
+
+*   `https://publickeyservice.pa.gcp.privacysandboxservices.com`
+*   `https://publickeyservice.pa.aws.privacysandboxservices.com`
+
+The keys are served in JSON format with the following schema (in
+[JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
+
+
+```
+{
+  "type": "object",
+  "properties": {
+    "keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "A base-64 encoded string containing the 256-bit HPKE public key"
+          },
+          "id": {
+            "type": "string"
+            "description": "An uppercase hexadecimal string serving as the identifier for the key"
+}}}}}}
+```
+
+
+The leading byte in the `id` field is used as the
+[key ID](https://wicg.github.io/turtledove/#auction-data-config-encryption-key-id)
+for that [key](https://wicg.github.io/turtledove/#auction-data-config-encryption-key).
+The coordinator makes sure that the leading byte in these IDs are sufficiently unique.
+The browser chooses a random key from the list of keys to use in each request.
+
+An example key response is shown below:
+
+
+```
+{
+  "keys": [{
+    "key": "87ey8XZPXAd+/+ytKv2GFUWW5j9zdepSJ2G4gebDwyM\u003d",
+    "id": "123A000000000000"
+}]}
 ```
