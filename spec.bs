@@ -88,6 +88,12 @@ spec: private-aggregation-api; urlPrefix: https://patcg-individual-drafts.github
     text: aggregation coordinator; url: #aggregation-coordinator
     text: default aggregation coordinator; url: #default-aggregation-coordinator
     text: privateaggregation; url: #privateaggregation
+    text: batching scope; url: #batching-scope
+    text: debug scope; url: #debug-scope
+    text: scoping details; url: #scoping-details
+    text: contribution cache entry; url: #contribution-cache-entry
+    text: contribution cache; url: #contribution-cache
+    text: default filtering id max bytes; url: #default-filtering-id-max-bytes
 spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
   type: dfn
     text: shared-storage; url: #permissionspolicy-shared-storage
@@ -3619,7 +3625,7 @@ auction in a multi-party auction).
 <div algorithm>
   To <dfn>register bids for reporting</dfn> given a [=list=] of
   [=generated bids=] |generatedBids|, [=interest group=] |ig|, [=bid debug reporting info=]
-  |bidDebugReportInfo|, an [=on event contribution map=] |paContributions| and a [=reporting
+  |bidDebugReportInfo|, a [=Private Aggregation contributions=] |paContributions| and a [=reporting
   context=] |reportingContext|:
   1. Let |id| be a new [=reporting bid key=] with the following [=struct/items=]:
     : [=reporting bid key/context=]
@@ -4043,6 +4049,24 @@ An on event contribution entry is a [=struct=] with the following items:
 
 </dl>
 
+<h4 dfn-type=dfn>Worklet function</h4>
+A worklet function is one of the following:
+<dl dfn-for="worklet function">
+: "<dfn><code>generate-bid</code></dfn>"
+:: The `generateBid()` function.
+: "<dfn><code>score-ad</code></dfn>"
+:: The `scoreAd()` function.
+: "<dfn><code>report-result</code></dfn>"
+:: The `reportResult()` function.
+: "<dfn><code>report-win</code></dfn>"
+:: The `reportWin()` function.
+
+</dl>
+
+<h4 dfn-type=dfn>Private Aggregation contributions</h4>
+Private Aggregation contributions is a [=map=] from [=string=] to a [=list=] of [=on event
+contribution entries=].
+
 ### Algorithms ### {#private-aggregation-algorithms}
 
 <div algorithm>
@@ -4093,8 +4117,9 @@ runs; this method exists as an abstraction to help add that.
 </div>
 
 <div algorithm>
-To <dfn>commit private aggregation contributions</dfn> given an [=on event contribution map=]
-|onEventMap|, a [=reporting bid key=] |bidKey|, and a [=reporting context=] |reportingContext|:
+To <dfn>commit private aggregation contributions</dfn> given an [=Private Aggregation
+contributions=] |onEventMap|, a [=reporting bid key=] |bidKey|, and a [=reporting context=]
+|reportingContext|:
   1. [=map/For each=] |event| → |contributions| of |onEventMap|:
     1. Let |key| be (|bidKey|, |event|).
     1. If |reportingContext|'s [=reporting context/private aggregation on event contributions=][
@@ -4115,6 +4140,244 @@ perform the following steps. They return a [=batching scope=].
     1. If |aggregationCoordinator| is not null, [=set the aggregation coordinator for a batching
       scope=] given |aggregationCoordinator| and |batchingScopeMap|[|tuple|].
 1. Return |batchingScopeMap|[|tuple|].
+
+</div>
+
+<div algorithm>
+To <dfn>process the Private Aggregation contributions for an auction</dfn> given
+an [=auction config=] |auctionConfig|, a [=reporting context=] |reportingContext| and a
+[=leading bid info=] |leadingBidInfo|:
+1. Let |winnerId| be null.
+1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is not null, set |winnerId| to
+  |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/reporting id=].
+1. [=map/For each=] (|bidId|, |event|) → |contributions| of
+  |reportingContext|'s [=reporting context/private aggregation on event contributions=]:
+  1. If |event| is "`reserved.win`" or does not [=string/start with=] "`reserved.`":
+    1. If |bidId| is not |winnerId|, [=iteration/continue=].
+  1. If |event| is "`reserved.loss`" and |bidId| is |winnerId|, [=iteration/continue=].
+  1. [=list/For each=] |onEventEntry| of |contributions|:
+    1. Let |filledInContribution| be the result of [=filling in the contribution=] given
+      |onEventEntry|'s [=on event contribution entry/contribution=] and |leadingBidInfo|.
+
+      Issue: Once <a href="https://github.com/WICG/turtledove/issues/627">WICG/turtledove#627</a>
+      is resolved, align 'filling in' logic with `forDebuggingOnly`.
+
+    1. If |event| does not [=string/start with=] "`reserved.`":
+      1. Store |event|, |filledInContribution|, |onEventEntry|'s [=on event contribution entry/debug
+        details=] in the {{FencedFrameConfig}} as appropriate.
+
+      Note: Each non-reserved |event| will have a different [=batching scope=].
+
+      Issue: Once <a href="https://github.com/WICG/turtledove/issues/616">WICG/turtledove#616</a>
+      and any successors are landed, align integration and fill in fenced frame's
+      <a spec="fenced-frame">report a private aggregation event</a>.
+    1. Otherwise:
+      1. Let |entry| be a new [=contribution cache entry=] with the items:
+          : [=contribution cache entry/contribution=]
+          :: |filledInContribution|
+          : [=contribution cache entry/batching scope=]
+          :: |onEventEntry|'s [=on event contribution entry/batching scope=]
+          : [=contribution cache entry/debug scope=]
+          :: |onEventEntry|'s [=on event contribution entry/debug scope=]
+          : [=contribution cache entry/debug details=]
+          :: |onEventEntry|'s [=on event contribution entry/debug details=]
+      1. [=Append an entry to the contribution cache|Append=] |entry| to the [=contribution cache=].
+1. Let |sellerBatchingScope| be the result of [=get or create a batching
+    scope|getting or creating a batching scope=] given |auctionConfig|'s [=auction config/seller=],
+    |auctionConfig|'s [=auction config/seller Private Aggregation coordinator=], and
+    |reportingContext|.
+1. Let |auctionReportBuyersDebugScope| be a new [=debug scope=].
+1. [=map/For each=] |reportType| → |reportBuyerConfig| of |auctionConfig|'s
+  [=auction config/auction report buyers=]:
+  1. [=map/For each=] |buyerOrigin| → |buyerOffset| of |auctionConfig|'s
+    [=auction config/auction report buyer keys=]:
+    1. Let |bucket| be the sum of |buyerOffset| and |reportBuyerConfig|'s
+      {{AuctionReportBuyersConfig/bucket}}.
+
+      Issue: Handle overflow here or in validation. See <a
+        href="https://github.com/WICG/turtledove/issues/1040">WICG/turtledove#1040</a>.
+    1. Let |value| be the result (a {{double}}) of switching on
+        |reportType|:
+        <dl class="switch">
+        : "`interestGroupCount`"
+        :: The number of interest groups in the [=user agent=]'s <a
+            spec="turtledove">interest group set</a> whose <a
+            spec="turtledove" for="interest group">owner</a> is
+            |buyerOrigin|.
+        : "`bidCount`"
+        :: The number of valid bids generated by interest groups whose <a
+            spec="turtledove" for="interest group">owner</a> is
+            |buyerOrigin|.
+        : "`totalGenerateBidLatency`"
+        :: The sum of execution time in milliseconds for all `generateBid()`
+            calls in the auction for interest groups whose <a
+            spec="turtledove" for="interest group">owner</a> is
+            |buyerOrigin|.
+        : "`totalSignalsFetchLatency`"
+        :: The total time spent fetching trusted buyer signals in
+            milliseconds, or 0 if the interest group didn't fetch any
+            trusted signals.
+        : None of the above values
+        :: [=Assert=]: false
+
+        Note: This enum value is validated in [=validate and convert auction ad config=]
+
+        </dl>
+
+        Issue: More formally spec the values here.
+
+    1. Set |value| to the result of multiplying |reportBuyerConfig|'s
+        {{AuctionReportBuyersConfig/scale}} with |value|.
+    1. Set |value| to the maximum of 0.0 and |value|.
+    1. Set |value| to the result of converting |value| to an integer by
+        truncating its fractional part.
+    1. Set |value| to the minimum of |value| and 2<sup>31</sup>−1.
+    1. Let |contribution| be a new {{PAHistogramContribution}} with the
+        items:
+        : {{PAHistogramContribution/bucket}}
+        :: |bucket|
+        : {{PAHistogramContribution/value}}
+        :: |value|
+        : {{PAHistogramContribution/filteringId}}
+        :: 0
+
+          Issue: Consider allowing the filtering ID to be set here.
+    1. [=map/For each=] |ig| of the [=user agent=]'s <a spec="turtledove">
+        interest group set</a> whose
+        <a spec="turtledove" for="interest group">owner</a> is |buyerOrigin|:
+      1. If seller capabilities of |ig| don't allow this reporting, [=iteration/continue=].
+
+        Issue: Align behavior with seller capabilities handling once <a
+            href="https://github.com/WICG/turtledove/issues/966">
+            WICG/turtledove#966</a> is resolved.
+      1. Let |entry| be a new [=contribution cache entry=] with the items:
+          : [=contribution cache entry/contribution=]
+          :: |contribution|
+          : [=contribution cache entry/batching scope=]
+          :: |sellerBatchingScope|
+          : [=contribution cache entry/debug scope=]
+          :: |auctionReportBuyersDebugScope|
+      1. [=Append an entry to the contribution cache|Append=] |entry| to
+          the [=contribution cache=].
+1. [=Mark a debug scope complete=] given |auctionReportBuyersDebugScope| and
+    |auctionConfig|'s [=auction config/auction report buyer debug details=].
+1. [=map/For each=] (|origin|, <var ignore>aggregationCoordinator</var>) →
+    |batchingScope| of |reportingContext|'s [=reporting context/private aggregation batching
+    scope map=]:
+  1. [=Process contributions for a batching scope=] given |batchingScope|, |origin|,
+    "<code>protected-audience</code>" and null.
+
+</div>
+
+<div algorithm>
+To <dfn>fill in the contribution</dfn> given a {{PAExtendedHistogramContribution}} |contribution|
+and a [=leading bid info=] |leadingBidInfo|, perform the following steps. They return a
+{{PAHistogramContribution}}:
+1. Let |bucket| be |contribution|["{{PAExtendedHistogramContribution/bucket}}"].
+1. If |bucket| is a {{PASignalValue}}, set |bucket| to the result of [=filling
+    in the signal value=] given |bucket|, 2<sup>128</sup>−1 and |leadingBidInfo|.
+1. Let |value| be |contribution|["{{PAExtendedHistogramContribution/value}}"].
+1. If |value| is a {{PASignalValue}}, set |value| to the result of [=filling in
+    the signal value=] given |value|, 2<sup>31</sup>−1 and |leadingBidInfo|.
+1. Let |filledInContribution| be a new {{PAHistogramContribution}} with the
+    items:
+    : {{PAHistogramContribution/bucket}}
+    :: |bucket|
+    : {{PAHistogramContribution/value}}
+    :: |value|
+    : {{PAHistogramContribution/filteringId}}
+    :: |contribution|["{{PAExtendedHistogramContribution/filteringId}}"]
+1. Return |filledInContribution|.
+
+</div>
+
+<div algorithm>
+To <dfn>fill in the signal value</dfn> given a {{PASignalValue}} |value|, an
+integer |maxAllowed| and a [=leading bid info=] |leadingBidInfo|, perform the following steps.
+They return an integer.
+1. [=Assert=]: |value|["{{PASignalValue/baseValue}}"] is a valid [=signal base
+    value=].
+1. Let |returnValue| be the result of [=determining a signal's numeric value=]
+    given |value|["{{PASignalValue/baseValue}}"] and |leadingBidInfo|.
+1. If |value|["{{PASignalValue/scale}}"] [=map/exists=], set |returnValue| to
+    the result of multiplying |value|["{{PASignalValue/scale}}"] with
+    |returnValue|.
+1. Set |returnValue| to the result of converting |returnValue| to an integer by
+    truncating its fractional part.
+1. If |value|["{{PASignalValue/offset}}"] [=map/exists=], set |returnValue| to
+    the result of adding |returnValue| to |value|["{{PASignalValue/offset}}"].
+1. Clamp |returnValue| to [=the inclusive range|the range=] 0 to |maxAllowed|,
+    inclusive, and return the result.
+
+</div>
+
+
+<div algorithm>
+To <dfn>determine a signal's numeric value</dfn> given a [=signal base value=]
+|signalBaseValue| and a [=leading bid info=] |leadingBidInfo|, perform the following steps.
+They return a {{double}}.
+1. If |signalBaseValue| is "<code>[=signal base value/winning-bid=]</code>":
+  1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return 0.
+  1. Otherwise, return  |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/bid=].
+1. If |signalBaseValue| is
+    "<code>[=signal base value/highest-scoring-other-bid=]</code>":
+  1. If |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] is null, return 0.
+  1. Otherwise, return |leadingBidInfo|'s [=leading bid info/highest scoring other bid=]'s
+    [=generated bid/bid=].
+1. If |signalBaseValue| is "<code>[=signal base value/script-run-time=]</code>":
+    1. Return the number of milliseconds of CPU time that the calling function
+        (e.g. `generateBid()`) took to run.
+1. If |signalBaseValue| is "<code>[=signal base value/signals-fetch-time=]</code>":
+    Switch on the associated [=worklet function=]:
+    <dl class="switch">
+    : <code>[=worklet function/generate-bid=]</code>
+    :: Return the number of milliseconds it took for the trusted bidding signals
+        fetch to complete, or 0 if no fetch was made.
+    : <code>[=worklet function/score-ad=]</code>
+    :: Return the number of milliseconds it took for the trusted scoring signals
+        fetch to complete or 0 if no fetch was made.
+    : <code>[=worklet function/report-result=]</code>
+    : <code>[=worklet function/report-win=]</code>
+    :: Return 0.
+
+    </dl>
+1. If |signalBaseValue| is "<code>[=signal base value/bid-reject-reason=]</code>":
+  1. If the bid did not succeed purely because it didn't meet the required
+      <a spec="turtledove">k-anonymity threshold</a>, return 8.
+  1. Let |bidRejectReason| be "`not-available`".
+  1. If the seller provided a reject reason, set |bidRejectReason| to that
+      value.
+  1. If |bidRejectReason| is:
+      <dl class="switch">
+      : "`not-available`"
+      :: Return 0.
+      : "`invalid-bid`"
+      :: Return 1.
+      : "`bid-below-auction-floor`"
+      :: Return 2.
+      : "`pending-approval-by-exchange`"
+      :: Return 3.
+      : "`disapproved-by-exchange`"
+      :: Return 4.
+      : "`blocked-by-publisher`"
+      :: Return 5.
+      : "`language-exclusions`"
+      :: Return 6.
+      : "`category-exclusions`"
+      :: Return 7.
+      : None of the above values
+      :: [=Assert=]: false
+
+        Note: this enum value is validated in `scoreAd()`.
+
+        Issue: Verify this once
+        <a href="https://github.com/WICG/turtledove/issues/627">WICG/turtledove#627</a> is resolved.
+
+        Issue: There are some automatically generated values that are not described here.
+
+        Issue: Verify handling when the bid was not rejected.
+
+      </dl>
 
 </div>
 
