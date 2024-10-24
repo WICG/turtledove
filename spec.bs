@@ -87,6 +87,7 @@ spec: private-aggregation-api; urlPrefix: https://patcg-individual-drafts.github
     text: debug-details-key; url: #debug-details-key
     text: aggregation coordinator; url: #aggregation-coordinator
     text: default aggregation coordinator; url: #default-aggregation-coordinator
+    text: privateaggregation; url: #privateaggregation
 spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
   type: dfn
     text: shared-storage; url: #permissionspolicy-shared-storage
@@ -791,6 +792,9 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |settings| be [=this=]'s [=relevant settings object=].
 1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=run-ad-auction=]"
   [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
+1. Let |privateAggregationAllowed| be the result of determining whether |global|'s [=associated
+  Document=] is [=allowed to use=] the "<code>[=private-aggregation=]</code>" [=policy-controlled
+  feature=].
 1. Let |auctionConfig| be the result of running [=validate and convert auction ad config=] with
   |config| and true.
 1. If |auctionConfig| is failure, then [=exception/throw=] a {{TypeError}}.
@@ -822,7 +826,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |reportingContextMap| be the result of [=creating a reporting context map=] given
-    |auctionConfig|.
+    |auctionConfig| and |privateAggregationAllowed|.
   1. If |auctionConfig|'s [=auction config/server response=] is not null:
     1. Let |winnerInfo| be the result of running [=parse and validate server response=] with
       |auctionConfig|, null, |global|, |bidIgs|, and |reportingContextMap|.
@@ -1730,10 +1734,11 @@ To <dfn>generate potentially multiple bids</dfn> given an [=ordered map=]-or-nul
 a [=string=] |auctionSignals|, a {{BiddingBrowserSignals}} |browserSignals|, a [=string=]-or-null |perBuyerSignals|,
 a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=duration=]
 |perBuyerTimeout| in milliseconds, a [=currency tag=] |expectedCurrency|, an {{unsigned short}}
-|multiBidLimit|, an [=interest group=] |ig|, and a [=moment=] |auctionStartTime|, and an
-[=environment settings object=] |settings|, perform the following steps. They return a failure if
-failing to fetch the script or wasm, otherwise a [=tuple=] of ([=list=] of [=generated bids=],
-[=bid debug reporting info=], [=list=] of [=real time reporting contributions=]).
+|multiBidLimit|, an [=interest group=] |ig|, a [=reporting context=] |reportingContext| and a
+[=moment=] |auctionStartTime|, and an [=environment settings object=] |settings|, perform the
+following steps. They return a failure if failing to fetch the script or wasm, otherwise a
+[=tuple=] of ([=list=] of [=generated bids=], [=bid debug reporting info=],
+[=list=] of [=real time reporting contributions=]).
   1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=] with
     |ig|.
   1. Set |browserSignals|["{{BiddingBrowserSignals/joinCount}}"] to the sum of |ig|'s
@@ -1790,10 +1795,10 @@ failing to fetch the script or wasm, otherwise a [=tuple=] of ([=list=] of [=gen
       1. Let |originKey| be the [=serialization of an origin|serialization=] of
           |crossOriginTrustedBiddingSignalsOrigin|.
       1. [=map/Set=] |crossOriginTrustedBiddingSignalsOrigin|[|originKey|] to |trustedBiddingSignals|.
-  1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |multiBidLimit|, |ig|, |expectedCurrency|,
-    |igGenerateBid|, |auctionSignals|, |perBuyerSignals|, |sameOriginTrustedBiddingSignals|,
-    |crossOriginTrustedBiddingSignals|, |browserSignals|, |directFromSellerSignalsForBuyer|.
-    and |perBuyerTimeout|.
+  1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |multiBidLimit|,
+    |ig|, |reportingContext|, |expectedCurrency|, |igGenerateBid|, |auctionSignals|,
+    |perBuyerSignals|, |sameOriginTrustedBiddingSignals|, |crossOriginTrustedBiddingSignals|,
+    |browserSignals|, |directFromSellerSignalsForBuyer| and |perBuyerTimeout|.
 </div>
 
 <div algorithm="generate and score bids">
@@ -1904,6 +1909,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
    |browserSignals|["{{BiddingBrowserSignals/requestedSize}}"] to the result of running
    [=convert an ad size to a map=] with |auctionConfig|'s [=auction config/requested size=].
 1. Let |auctionLevel| be "single-level-auction".
+1. Let |reportingContext| be |reportingContextMap|[|auctionConfig|].
 1. Let |componentAuctionExpectedCurrency| be null.
 1. If |topLevelAuctionConfig| is not null:
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/topLevelSeller}}"]] to the
@@ -1917,7 +1923,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   |auctionConfig|, |topLevelAuctionConfig|, |negativeTargetInfo|, |reportingContextMap| and |global|.
 1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
-  1. [=Score and rank a bid=] with |auctionConfig|, |reportingContextMap|[|auctionConfig|],
+  1. [=Score and rank a bid=] with |auctionConfig|, |reportingContext|,
     |additionalBid|'s [=decoded additional bid/bid=], |leadingBidInfo|, |decisionLogicFetcher|,
     |trustedScoringSignalsBatcher|, |directFromSellerSignalsForSeller|, null, |auctionLevel|,
     |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
@@ -2024,7 +2030,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
             |allTrustedBiddingSignals|, |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|,
             a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
             |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
-            |multiBidLimit|, |ig|, |auctionStartTime|, and |settings|.
+            |multiBidLimit|, |ig|, |reportingContext|, |auctionStartTime|, and |settings|.
           1. If |generateBidResult| is failure, then:
             1. If |optedInForRealTimeReporting| is true, then [=add a platform contribution=] with
               [=bidding script failure bucket=], |realTimeContributionsMap| and |buyer|.
@@ -2057,7 +2063,8 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               of running [=generate potentially multiple bids=] with |allTrustedBiddingSignals|,
               |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
               |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
-              1 (for multiBidLimit), |kAnonRestrictedIG|, |auctionStartTime|, and |settings|.
+              1 (for multiBidLimit), |kAnonRestrictedIG|, |reportingContext|, |auctionStartTime|,
+              and |settings|.
 
               Note: passing 1 for multiBidLimit limits the rerun to producing at most a single bid.
 
@@ -2071,16 +2078,15 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               1. [=Apply any component ads target to a bid=] given |generatedBid|.
               1. [=list/Append=] |generatedBid| to |bidsToScore|.
           1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |ig|,
-            |bidDebugReportInfo|, and |reportingContextMap|[|auctionConfig|].
+            |bidDebugReportInfo|, and |reportingContext|.
           1. If |auctionConfig|'s [=auction config/per buyer real time reporting config=][|buyer|]
             is "`default-local-reporting`", then [=insert entries to map=] given
             |realTimeContributionsMap|, |buyer|, and |realTimeContributions|.
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
-            1. [=Score and rank a bid=] with |auctionConfig|, |reportingContextMap|[
-              |auctionConfig|], |bidToScore|, |leadingBidInfo|,
-              |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
+            1. [=Score and rank a bid=] with |auctionConfig|, |reportingContext|, |bidToScore|,
+              |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
               |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
   1. Decrement |pendingBuyers| by 1.
@@ -2322,7 +2328,7 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   1. Return.
 1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions| » be
   the result of [=evaluating a scoring script=] with |decisionLogicScript|, |adMetadata|,
-  |bidValue|'s [=bid with currency/value=], |auctionConfig|'s [=auction config/config idl=],
+  |bidValue|'s [=bid with currency/value=], |auctionConfig|, |reportingContext|,
   |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals|, |browserSignals|,
   |directFromSellerSignalsForSeller|, and |auctionConfig|'s [=auction config/seller timeout=].
 1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
@@ -3562,6 +3568,15 @@ A <dfn>reporting context</dfn> is a [=struct=] with the following [=struct/items
 <dl dfn-for="reporting context">
   : <dfn>debug reporting info</dfn>
   :: A [=map=] from [=reporting bid key=] to [=bid debug reporting info=].
+  : <dfn>private aggregation batching scope map</dfn>
+  :: A [=map=] from a [=tuple=] consisting of an <dfn ignore>origin</dfn> (an
+    [=origin=]) and a <dfn ignore>coordinator</dfn> (an [=aggregation
+    coordinator=]) to a [=batching scope=].
+
+    Note: Does not include [=batching scopes=] for contributions conditional on
+        non-reserved events.
+  : <dfn>private aggregation allowed</dfn>
+  :: A [=boolean=], initially false.
 </dl>
 
 A <dfn>reporting context map</dfn> is a [=map=] from [=auction config=] to [=reporting context=].
@@ -3569,13 +3584,17 @@ Here the keys are configurations for auctions that actually produce bids (e.g. n
 auction in a multi-party auction).
 
 <div algorithm>
-  To <dfn>create a reporting context map</dfn> given [=auction config=] |auctionConfig|:
+  To <dfn>create a reporting context map</dfn> given the [=auction config=] |auctionConfig| and
+  a [=boolean=] |privateAggregationAllowed|:
   1. Let |reportingContextMap| be a new [=reporting context map=].
   1. If |auctionConfig|'s [=auction config/component auctions=] [=list/is empty=],
     [=map/set=] |reportingContextMap|[|auctionConfig|] to a new [=reporting context=].
   1. Otherwise, [=list/for each=] |component| in |auctionConfig|'s
     [=auction config/component auctions=], [=map/set=] |reportingContextMap|[|component|] to a new
     [=reporting context=].
+  1. [=map/For each=] _ → |reportingContext| of |reportingContextMap|:
+    1. Set |reportingContext|'s [=reporting context/private aggregation allowed=] to
+      |privateAggregationAllowed|
   1. Return |reportingContextMap|.
 </div>
 
@@ -3957,6 +3976,119 @@ RAPPOR</a> noises each coordinate of the bit vector independently, and it is par
       1. Let |flipped| be false if |histogram|[|i|] is true, otherwise true.
       1. Set |histogram|[|i|] to |flipped|.
   1. Return |histogram|.
+</div>
+
+## {{InterestGroupScriptRunnerGlobalScope/privateAggregation}} ## {#private-aggregation-reporting-header}
+
+*This first introductory paragraph is non-normative.*
+
+Big blob explaining and linking to the API goes here.
+
+<h4 dfn-type=dfn>Signal base value</h4>
+A signal base value is one of the following:
+<dl dfn-for="signal base value">
+: "<dfn><code>winning-bid</code></dfn>"
+:: The numeric value is the bid value of the winning bid.
+: "<dfn><code>highest-scoring-other-bid</code></dfn>"
+:: The numeric value is the bid value of the highest scoring bid that did not
+    win.
+: "<dfn><code>script-run-time</code></dfn>"
+:: The numeric value is the number of milliseconds of CPU time the calling
+    function (e.g. `generateBid()`) took to run.
+: "<dfn><code>signals-fetch-time</code></dfn>"
+:: The numeric value is the number of milliseconds it took for the trusted
+    bidding or scoring signals fetch to complete, when called from
+    `generateBid()` or `scoreAd()`, respectively. In other functions it evaluates to 0.
+: "<dfn><code>bid-reject-reason</code></dfn>"
+:: The numeric value is an integer representing the reason a bid was rejected.
+
+    Note: this mapping to an integer is defined in [=determine a signal's
+        numeric value=].
+
+</dl>
+
+<h4 dfn-type=dfn>On event contribution entry</h4>
+An on event contribution entry is a [=struct=] with the following items:
+<dl dfn-for="on event contribution entry">
+: <dfn>contribution</dfn>
+:: A {{PAExtendedHistogramContribution}}
+: <dfn>batching scope</dfn>
+:: A [=batching scope=] or null
+: <dfn>debug scope</dfn>
+:: A [=debug scope=]
+: <dfn>debug details</dfn>
+:: A [=debug details=] or null (default null)
+
+</dl>
+
+### Algorithms ### {#private-aggregation-algorithms}
+
+<div algorithm>
+To <dfn>prepare for private aggregation</dfn> given a
+{{InterestGroupScriptRunnerGlobalScope}} |global|, a [=reporting context=] |reportingContext|,
+and [=origins=] |origin| and |aggregationCoordinator|:
+1. Let |debugScope| be a new [=debug scope=].
+1. Set |global|'s [=InterestGroupScriptRunnerGlobalScope/private aggregation=] to a new
+  [=PrivateAggregation=] with the following [=struct/items=]:
+    : [=PrivateAggregation/allowed to use=]
+    :: |reportingContext|'s [=reporting context/private aggregation allowed=].
+    : [=PrivateAggregation/scoping details=]
+    :: a new [=scoping details=] with the [=struct/items=]:
+      : [=scoping details/get batching scope steps=]
+      :: An algorithm that performs the following steps:
+          1. If |aggregationCoordinator| is null, set |aggregationCoordinator| to
+            the [=default aggregation coordinator=].
+          1. Return the result of running [=get or create a batching scope=] given
+              |origin|, |aggregationCoordinator| and |reportingContext|.
+      : [=scoping details/get debug scope steps=]
+      :: An algorithm that returns |debugScope|.
+
+</div>
+
+<div algorithm>
+To <dfn>finalize private aggregation debug info</dfn> given a
+{{InterestGroupScriptRunnerGlobalScope}} |global|:
+  1. Let |debugScope| be the result of running |global|'s {{InterestGroupScriptRunnerGlobalScope/
+    privateAggregation}}'s [=PrivateAggregation/scoping details=]'s [=scoping details/get debug scope
+    steps=].
+  1. Let |debugDetails| be the result of [=get a debug details=] given |debugScope|.
+  1. Let |onEventContributionMap| be |global|'s [=InterestGroupScriptRunnerGlobalScope/on event
+    contribution map=].
+  1. [=map/For each=] <var ignore>event</var> → |entries| of |onEventContributionMap|:
+    1. [=list/For each=] |onEventEntry| of |entries|:
+        1. If |onEventEntry|'s [=on event contribution entry/debug scope=] is |debugScope|,
+          set |onEventEntry|'s [=on event contribution entry/debug details=] to |debugDetails|.
+  1. [=Mark a debug scope complete=] given |debugScope|.
+</div>
+
+<div algorithm>
+To <dfn>extract private aggregation contributions</dfn> given a
+{{InterestGroupScriptRunnerGlobalScope}} |global|:
+  1. Return |global|'s [=InterestGroupScriptRunnerGlobalScope/on event contribution map=].
+
+Issue: TODO: regular histograms need to work the same way, too, so they get discarded for k-anon
+runs; this method exists as an abstraction to help add that.
+</div>
+
+<div algorithm>
+To <dfn>commit private aggregation contributions</dfn> given an [=on event contribution map=]
+|onEventMap|, a [=reporting bid key=] |bidKey|, and a [=reporting context=] |reportingContext|:
+  1. Do stuff.
+</div>
+
+<div algorithm>
+To <dfn>get or create a batching scope</dfn> given an [=origin=] |origin|, an
+[=aggregation coordinator=] |aggregationCoordinator| and a [=reporting context=] |reportingContext|,
+perform the following steps. They return a [=batching scope=].
+1. Let |batchingScopeMap| be |reportingContext|'s [=reporting context/private aggregation
+  batching scope map=].
+1. Let |tuple| be (|origin|, |aggregationCoordinator|).
+1. If |batchingScopeMap|[|tuple|] does not [=map/exist=]:
+    1. Set |batchingScopeMap|[|tuple|] to a new [=batching scope=].
+    1. If |aggregationCoordinator| is not null, [=set the aggregation coordinator for a batching
+      scope=] given |aggregationCoordinator| and |batchingScopeMap|[|tuple|].
+1. Return |batchingScopeMap|[|tuple|].
+
 </div>
 
 # Additional Bids and Negative Targeting # {#additional-bids-and-negative-targeting}
@@ -4733,14 +4865,15 @@ of the following global objects:
 
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an {{unsigned short}}
-  |multiBidLimit|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|,
-  a {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null
-  |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=]-or-null
-  |sameOriginTrustedBiddingSignals|, an [=ordered map=]-or-null |crossOriginTrustedBiddingSignals|,
-  a {{BiddingBrowserSignals}} |browserSignals|, a {{DirectFromSellerSignalsForBuyer}}
-  |directFromSellerSignalsForBuyer|, and an integer millisecond [=duration=] |timeout|, perform the
-  following steps. They return a [=tuple=] ([=list=] of [=generated bids=],
-  [=bid debug reporting info=], [=list=] of [=real time reporting contributions=]).
+  |multiBidLimit|, an [=interest group=] |ig|, a [=reporting context=] |reportingContext|,
+  a [=currency tag=] |expectedCurrency|, a {{GenerateBidInterestGroup}} |igGenerateBid|,
+  a [=string=]-or-null |auctionSignals|, a [=string=]-or-null |perBuyerSignals|,
+  an [=ordered map=]-or-null |sameOriginTrustedBiddingSignals|, an [=ordered map=]-or-null
+  |crossOriginTrustedBiddingSignals|, a {{BiddingBrowserSignals}} |browserSignals|,
+  a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, and an integer
+  millisecond [=duration=] |timeout|, perform the following steps. They return a [=tuple=] ([=list=]
+  of [=generated bids=], [=bid debug reporting info=], [=list=] of [=real time reporting
+  contributions=]).
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupBiddingScriptRunnerGlobalScope}}.
@@ -4753,6 +4886,8 @@ of the following global objects:
       [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=] to true if |ig|'s
       [=interest group/ad components=] is not null, or false otherwise.
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/expected currency=] to |expectedCurrency|.
+    1. [=Prepare for private aggregation=] given |global|, |reportingContext|, |ig|'s [=interest
+      group/owner=] and |ig|'s [=interest group/Private Aggregation coordinator=].
     1. Let |isComponentAuction| be true if |browserSignals|["{{BiddingBrowserSignals/topLevelSeller}}"] is not null, or
       false otherwise.
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=] to
@@ -4824,20 +4959,31 @@ of the following global objects:
       1. If |contribution|'s [=real time reporting contribution/latency threshold=] is not null, and
         &ge; |duration|, then [=iteration/continue=].
       1. [=list/Append=] |contribution| to |realTimeContributions|.
-    1. Return a [=tuple=] (|generatedBids|, |bidDebugReportInfo|, |realTimeContributions|).
+    1. [=Finalize private aggregation debug info=] given |global|.
+    1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
+      |global|.
+    1. Return a [=tuple=] (|generatedBids|, |bidDebugReportInfo|, |realTimeContributions|,
+                           |paContributions|).
 </div>
 
 <div algorithm>
   To <dfn>evaluate a scoring script</dfn> given a [=string=] |script|, a [=string=] |adMetadata|,
-  a {{double}} |bidValue|, an {{AuctionAdConfig}} |auctionConfigIDL|, an [=ordered map=]-or-null
-  |sameOriginTrustedScoringSignals|, an [=ordered map=]-or-null |crossOriginTrustedScoringSignals|,
+  a {{double}} |bidValue|, an [=auction config=] |auctionConfig|, a [=reporting context=]
+  |reportingContext|, an [=ordered map=]-or-null |sameOriginTrustedScoringSignals|,
+  an [=ordered map=]-or-null |crossOriginTrustedScoringSignals|,
   {{ScoringBrowserSignals}} |browserSignals|, a {{DirectFromSellerSignalsForSeller}}
   |directFromSellerSignalsForSeller|, and an integer millisecond [=duration=] |timeout|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupScoringScriptRunnerGlobalScope}}.
+    1. Let |global| be |realm|'s [=realm/global object=].
+    1. Let |settings| be |realm|'s [=realm/settings object=].
+    1. [=Prepare for private aggregation=] given |global|, |reportingContext|, |auctionConfig|'s
+      [=auction config/seller=] and |auctionConfig|'s [=auction config/seller Private Aggregation
+      coordinator=].
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
-    1. Let |auctionConfigJS| be |auctionConfigIDL| [=converted to ECMAScript values=].
+    1. Let |auctionConfigJS| be |auctionConfig|'s [=auction config/config idl=] [=converted to
+      ECMAScript values=].
     1. Let |sameOriginTrustedScoringSignalsJS| be |sameOriginTrustedScoringSignals|
        [=converted to ECMAScript values=].
     1. Let |crossOriginTrustedScoringSignalsJS| be |crossOriginTrustedScoringSignals|
@@ -4863,17 +5009,24 @@ of the following global objects:
       1. If |contribution|'s [=real time reporting contribution/latency threshold=] is not null, and
         &ge; |duration|, then [=iteration/continue=].
       1. [=list/Append=] |contribution| to |realTimeContributions|.
-    1. Return « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions| ».
+    1. [=Finalize private aggregation debug info=] given |global|.
+    1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
+      |global|.
+    1. Return « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions|,
+        |paContributions| ».
 </div>
 
 <div algorithm>
   To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=]
-  |functionName|, an integer millisecond [=duration=] |timeout|, and a [=list=] of arguments
-  |arguments|:
+  |functionName|, a [=reporting context=] |reportingContext|, an [=origin=] |origin|, an
+  [=origin=] |privateAggregationCoordinator|, an integer millisecond [=duration=] |timeout|,
+  and a [=list=] of arguments |arguments|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupReportingScriptRunnerGlobalScope}}.
     1. Let |global| be |realm|'s [=realm/global object=].
+    1. [=Prepare for private aggregation=] given |global|, |reportingContext|, |origin|, and
+      |privateAggregationCoordinator|.
     1. Let |argumentsJS| be the result of [=converting a Web IDL arguments list to an ECMAScript
       arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
       [=exception/throws=] an exception, return « "null", null, null, null ».
@@ -4890,8 +5043,12 @@ of the following global objects:
     1. If |reportURL| is failure, set |reportURL| to null.
     1. Let |macroMap| be |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting macro map=]
       if |functionName| is "`reportWin`" or "`reportAdditionalBidWin`", null otherwise.
+    1. [=Finalize private aggregation debug info=] given |global|.
+    1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
+      |global|.
     1. Return « |resultJSON|, |reportURL|,
-      |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap| ».
+      |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap|,
+      |paContributions| ».
 </div>
 
 <div algorithm>
@@ -4956,11 +5113,112 @@ special value "*". The only interfaces that can be exposed inside of the globals
 specification are those that explicitly list the global names provided here.
 
 <pre class="idl">
-[Exposed=InterestGroupScriptRunnerGlobalScope]
 interface InterestGroupScriptRunnerGlobalScope {
+  readonly attribute PrivateAggregation? privateAggregation;
+};
+
+dictionary PASignalValue {
+  required DOMString baseValue;
+  double scale;
+  (bigint or long) offset;
+};
+
+dictionary PAExtendedHistogramContribution {
+  required (PASignalValue or bigint) bucket;
+  required (PASignalValue or long) value;
+  bigint filteringId = 0;
+};
+
+[Exposed=InterestGroupScriptRunnerGlobalScope]
+partial interface PrivateAggregation {
+  undefined contributeToHistogramOnEvent(
+      DOMString event, PAExtendedHistogramContribution contribution);
 };
 
 </pre>
+
+Each {{InterestGroupScriptRunnerGlobalScope}} has a
+<dl dfn-for="InterestGroupScriptRunnerGlobalScope">
+  : <dfn>private aggregation</dfn>
+  :: Null, or a [=PrivateAggregation=]. Initially null.
+  : <dfn>on event contribution map</dfn>
+  :: A [=map=] from [=string=] to a [=list=] of [=on event contribution entries=].
+</dl>
+
+<div algorithm>
+The <dfn attribute for=InterestGroupScriptRunnerGlobalScope>privateAggregation</dfn> [=getter
+  steps=] are:
+
+  1. Return [=this=]'s [=relevant global object=]'s
+    [=InterestGroupScriptRunnerGlobalScope/private aggregation=].
+</div>
+
+<div algorithm>
+The <dfn method for="PrivateAggregation">contributeToHistogramOnEvent(DOMString
+event, PAExtendedHistogramContribution contribution)</dfn> method steps are:
+1. Let |scopingDetails| be [=this=]'s [=PrivateAggregation/scoping details=].
+1. TODO: We do the allowed to use check here, and other algos, since we don't have it
+   in the getter? Though maybe we can move it there?
+1. If |event| [=string/starts with=] "`reserved.`" and « "`reserved.always`",
+    "`reserved.loss`", "`reserved.win`" » does not [=list/contain=] |event|,
+    return.
+
+    Note: No error is thrown to allow forward compatibility if additional
+        reserved event types are added later.
+1. Let |bucket| be |contribution|["{{PAExtendedHistogramContribution/bucket}}"].
+1. If |bucket| is a {{PASignalValue}}:
+    1. If |bucket|["{{PASignalValue/baseValue}}"] is not a valid [=signal base
+        value=], [=exception/throw=] a {{TypeError}}.
+    1. If |bucket|["{{PASignalValue/offset}}"] is not a {{bigint}}, [=exception/
+        throw=] a {{TypeError}}.
+1. Otherwise, if |contribution|["{{PAExtendedHistogramContribution/bucket}}"] is
+    not [=set/contained=] in [=the exclusive range|the range=] 0 to
+    2<sup>128</sup>, exclusive, [=exception/throw=] a {{TypeError}}.
+
+    Issue: Make the error type consistent with
+        {{PrivateAggregation/contributeToHistogram(contribution)}}.
+1. Let |value| be |contribution|["{{PAExtendedHistogramContribution/value}}"].
+1. If |value| is a {{PASignalValue}}:
+    1. If |value|["{{PASignalValue/baseValue}}"] is not a valid [=signal base
+        value=], [=exception/throw=] a {{TypeError}}.
+    1. If |value|["{{PASignalValue/offset}}"] is a {{bigint}}, [=exception/
+        throw=] a {{TypeError}}.
+1. Otherwise, if |contribution|["{{PAExtendedHistogramContribution/value}}"] is
+    negative, [=exception/throw=] a {{TypeError}}.
+1. If |contribution|["{{PAExtendedHistogramContribution/filteringId}}"] is
+    not [=set/contained=] in [=the exclusive range|the range=] 0 to
+    256<sup>[=default filtering ID max bytes=]</sup>, exclusive, [=exception/
+    throw=] a {{TypeError}}.
+
+    Issue: Make the error types on validation issues here and above consistent
+        with {{PrivateAggregation/contributeToHistogram(contribution)}}.
+
+    Note: It is not currently possible to set a non-default filtering ID max
+        bytes for Protected Audience.
+1. Let |batchingScope| be null.
+1. If |event| [=string/starts with=] "`reserved.`", set |batchingScope| to the
+    result of running |scopingDetails|' [=scoping details/get batching scope
+    steps=].
+
+    Note: Each non-reserved |event| will have a different [=batching scope=]
+        that is created later.
+1. Let |entry| be a new [=on event contribution entry=] with the items:
+    : [=on event contribution entry/contribution=]
+    :: |contribution|
+    : [=on event contribution entry/batching scope=]
+    :: |batchingScope|
+    : [=on event contribution entry/debug scope=]
+    :: The result of running |scopingDetails|' [=scoping details/get debug scope
+        steps=].
+
+1. Let |global| be [=this=]'s [=relevant global object=].
+1. Let |onEventContributionMap| be |global|'s
+    [=InterestGroupScriptRunnerGlobalScope/on event contribution map=].
+1. If |onEventContributionMap|[|event|] does not [=map/exist=], set
+    |onEventContributionMap|[|event|] to a new [=list=].
+1. [=list/Append=] |entry| to |onEventContributionMap|[|event|].
+
+</div>
 
 <pre class="idl">
 [Exposed=InterestGroupBiddingAndScoringScriptRunnerGlobalScope]
