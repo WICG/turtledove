@@ -3880,7 +3880,7 @@ RAPPOR</a> noises each coordinate of the bit vector independently, and it is par
 *This first introductory paragraph is non-normative.*
 
 {{Window/navigator}}.{{Navigator/createAuctionNonce()}} creates an <dfn>auction nonce</dfn>, a
-one-time [=version 4 UUID=] uniquely associated with a single call to
+one-time [=version 4 UUID=] [=string=] uniquely associated with a single call to
 {{Window/navigator}}.{{Navigator/runAdAuction()}}. For multi-seller auctions, this ID is uniquely
 associated with all {{AuctionAdConfig/componentAuctions}}. This nonce will need to be passed back in
 via a subsequent call to {{Window/navigator}}.{{Navigator/runAdAuction()}} via the
@@ -3968,22 +3968,27 @@ and a [=global object=] |global|:
   1. Let |auctionNonce| be the [=string representation=] of |auctionConfig|'s
     [=auction config/auction nonce=].
   1. Let |capturedAdditionalBidsHeaders| be |global|'s [=associated Document's=]
-    [=node navigable's=] [=traversable navigable's=] [=captured additional bids headers=].
+    [=node navigable's=] [=traversable navigable's=] [=traversable navigable/captured ad auction
+    additional bids headers=].
   1. Let |additionalBids| be a new [=list=] of [=decoded additional bids=].
-  1. [=list/For each=] |encodedSignedAdditionalBid| of |capturedAdditionalBidsHeaders|[|auctionNonce|]:
+  1. [=list/For each=] |encodedSignedAdditionalBidWithMetadata| of
+    |capturedAdditionalBidsHeaders|[|auctionNonce|]:
     1. Let |signedAdditionalBid| be the result of running [=forgiving-base64 decode=] with
-      |encodedSignedAdditionalBid|.
+      |encodedSignedAdditionalBidWithMetadata|'s [=signed additional bid with metadata/signed
+      additional bid=].
     1. If |signedAdditionalBid| is failure, then [=iteration/continue=].
     1. Let |additionalBid| be the result of running [=parse a signed additional bid=] given
-      |signedAdditionalBid|, |auctionConfig|, |topLevelAuctionConfig|, and |negativeTargetInfo|.
+      |signedAdditionalBid|, |encodedSignedAdditionalBidWithMetadata|'s [=signed additional bid with
+      metadata/seller nonce=], |auctionConfig|, |topLevelAuctionConfig|, and |negativeTargetInfo|.
     1. If |additionalBid| is not null, then [=list/append=] |additionalBid| to |additionalBids|.
   1. Return |additionalBids|.
 </div>
 
 <div algorithm>
-To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdditionalBid|, an
-[=auction config=] |auctionConfig|, an [=auction config=]-or-null |topLevelAuctionConfig|, and a
-[=negative target info=] |negativeTargetInfo|:
+To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdditionalBid|, a
+[=string=]-or-null |sellerNonce|, an [=auction config=] |auctionConfig|, an
+[=auction config=]-or-null |topLevelAuctionConfig|, and a [=negative target info=]
+|negativeTargetInfo|:
 
   1. [=Assert=] that these steps are running [=in parallel=].
   1. Let |parsedSignedAdditionalBid| be the result of running [=parse a JSON string to an infra value=]
@@ -4013,7 +4018,7 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
     1. [=list/Append=] |signature| to |signatures|.
   1. If |decodeSignatureFailed| is true, then return null.
   1. Let |decodedAdditionalBid| be the result of [=decode an additional bid json=] given
-    |parsedSignedAdditionalBid|["bid"], |auctionConfig| and |topLevelAuctionConfig|.
+    |parsedSignedAdditionalBid|["bid"], |auctionConfig|, |topLevelAuctionConfig|, and |sellerNonce|.
   1. Return null if any of the following conditions hold:
     * |decodedAdditionalBid| is failure;
     * The result of [=checking a currency tag=] with |decodedAdditionalBid|'s
@@ -4033,7 +4038,8 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
 
 <div algorithm>
 To <dfn>decode an additional bid json</dfn> given a [=string=] |additionalBidJson|, an
-[=auction config=] |auctionConfig|, and an [=auction config=]-or-null |topLevelAuctionConfig|:
+[=auction config=] |auctionConfig|, an [=auction config=]-or-null |topLevelAuctionConfig|, and a
+[=string=]-or-null |sellerNonce|:
 
   1. [=Assert=] that these steps are running [=in parallel=].
   1. Let |parsedAdditionalBid| be the result of [=parse a JSON string to an infra value=] given
@@ -4041,12 +4047,25 @@ To <dfn>decode an additional bid json</dfn> given a [=string=] |additionalBidJso
   1. If |parsedAdditionalBid| is not a [=map=], then return failure.
   1. Let |result| be a new [=decoded additional bid=].
   1. Return failure if any of the following conditions hold:
-    * |parsedAdditionalBid|["auctionNonce"] does not [=map/exist=];
-    * |parsedAdditionalBid|["auctionNonce"] is not the [=string representation=] of
-      |auctionConfig|'s [=auction config/auction nonce=];
+    * |parsedAdditionalBid|["auctionNonce"] [=map/exists=] and |parsedAdditionalBid|["bidNonce"]
+      [=map/exists=];
+    * |parsedAdditionalBid|["auctionNonce"] does not [=map/exist=] and
+      |parsedAdditionalBid|["bidNonce"] does not [=map/exist=];
     * |parsedAdditionalBid|["seller"] does not [=map/exist=];
     * The result of running the [=parse an https origin=] with |parsedAdditionalBid|["seller"] is
       failure, or not [=same origin=] with |auctionConfig|'s [=auction config/seller=].
+  1. If |sellerNonce| is not null:
+    1. Return failure if any of the following conditions hold:
+      1. |parsedAdditionalBid|["bidNonce"] does not [=map/exist=];
+      1. |parsedAdditionalBid|["bidNonce"] is not the result of [=calculate expected bid nonce=]
+        given the [=string representation=] of |auctionConfig|'s [=auction config/auction nonce=]
+        and |sellerNonce|.
+  1. Otherwise:
+    1. Return failure if any of the following conditions hold:
+      * |parsedAdditionalBid|["auctionNonce"] does not [=map/exist=];
+      * |parsedAdditionalBid|["auctionNonce"] is not the [=string representation=] of
+        |auctionConfig|'s [=auction config/auction nonce=];
+
   1. If |topLevelAuctionConfig| is null:
     1. If |parsedAdditionalBid|["topLevelSeller"] [=map/exists=], then return failure.
   1. Otherwise:
@@ -4160,6 +4179,15 @@ To <dfn>decode an additional bid json</dfn> given a [=string=] |additionalBidJso
   1. Return |result|.
 </div>
 
+<div algorithm>
+To <dfn>calculate expected bid nonce</dfn> given a [=string=] |auctionNonce| and a [=string=]
+|sellerNonce|:
+
+  1. Return the result of [=forgiving-base64 encoding=] the [=SHA-256=] hash of the result of
+    [=string/concatenating=] «|auctionNonce|, |sellerNonce|».
+
+</div>
+
 A <dfn>signed additional bid signature</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="signed additional bid signature">
   : <dfn>key</dfn>
@@ -4179,10 +4207,6 @@ A <dfn>decoded additional bid</dfn> is a [=struct=] with the following [=struct/
     [=decoded additional bid/negative target interest group names=].
 </dl>
 
-Each [=traversable navigable=] has a <dfn>captured additional bids headers</dfn>, which is a [=map=]
-whose [=map/keys=] are [=strings=] for [=auction nonces=], and whose values are [=list=] of
-[=strings=] for encoded additional bids.
-
 ## Negative Targeting ## {#negative-targeting-section}
 
 *This first introductory paragraph is non-normative.*
@@ -4196,7 +4220,7 @@ Protected Audience [=auctions=], each [=additional bid=] is allowed to identify 
 that specifies no [=negative interest groups=] is always accepted into the [=auction=].
 
 <div algorithm>
-To <dfn>check whether negative targeted</dfn> given an [=decoded additional bid=] |additionalBid|, a
+To <dfn>check whether negative targeted</dfn> given a [=decoded additional bid=] |additionalBid|, a
 [=set=] of [=byte sequences=] |verifiedSignatureKeys|, and a [=negative target info=]
 |negativeTargetInfo|:
 
@@ -6019,7 +6043,7 @@ request with the <{iframe/adauctionheaders}>
 
 Each [=traversable navigable=] has a <dfn for="traversable navigable">captured ad auction additional
 bids headers</dfn>, which is a [=map=] whose [=map/keys=] are [=auction nonces=] and whose
-[=map/values=] are [=strings=].
+[=map/values=] are [=lists=] of [=signed additional bid with metadata=].
 
 NOTE: This is only captured during a [=request=] whose [=request/initiator type=] is `"fetch"`, made
 with the {{RequestInit/adAuctionHeaders}} option set to `true`, or during an
@@ -6031,11 +6055,11 @@ Each [=traversable navigable=] has a <dfn for="traversable navigable">saved Bidd
 and Auction request context</dfn>, which is a [=map=] whose [=map/keys=] are
 the [=string representation=] of a [=version 4 UUID=] and whose [=map/values=]
 are [=server auction request contexts=].
-</div>
 
 Each [=traversable navigable=] has a <dfn for="traversable navigable">captured ad auction result
 headers</dfn>, which is a [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are
 [=strings=].
+</div>
 
 <div algorithm="fetch capture adAuctionHeaders boolean patch">
 Modify the definition of a [=request=]:
@@ -6126,9 +6150,11 @@ component, and top-level auctions may specify which signals to load by the `adSl
 HTTP response header.</h3>
 
 The \`<dfn http-header><code>Ad-Auction-Additional-Bid</code></dfn>\` response header provides value
-of a string in the format of `<auction nonce>:<base64-encoding of the signed additional bid>`, which
-corresponds to a single [=additional bid=]. The response may include more than one [=additional bid=]
-by specifying multiple instances of the [:Ad-Auction-Additional-Bid:] response header.
+of a string in the format of `<auction nonce>:<seller nonce>:<base64-encoding of the signed
+additional bid>`, or the legacy format of `<auction nonce>:<base64-encoding of the signed additional
+bid>`, which corresponds to a single [=additional bid=]. The response may include more than one
+[=additional bid=] by specifying multiple instances of the [:Ad-Auction-Additional-Bid:] response
+header.
 </div>
 
 <h3 id=ad-auction-result-header>The \`<a http-header><code>Ad-Auction-Result</code></a>\`
@@ -6205,11 +6231,23 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
       that is, scripts making the {{WindowOrWorkerGlobalScope/fetch()}} request aren't able to load
       the header value.
     1. [=list/For each=] |bid| of |additionalBids|:
-      1. Let |nonceAndAdditionalBid| be the result of [=strictly splitting=] |bid| on U+003A (:).
-      1. If |nonceAndAdditionalBid|'s [=list/size=] is not 2, then [=iteration/continue=].
-      1. Let |nonce| be |nonceAndAdditionalBid|[0].
-      1. If |nonce|'s [=string/length=] is not 36, then [=iteration/continue=].
-      1. Set |storedAdditionalBidsHeaders|[|nonce|] to |nonceAndAdditionalBid|[1].
+      1. Let |parts| be the result of [=strictly splitting=] |bid| on U+003A (:).
+      1. Let |bidWithMetadata| be a new [=signed additional bid with metadata=].
+      1. If |parts|'s [=list/size=] is 3:
+        1. Let |auctionNonce| be |parts|[0].
+        1. If |auctionNonce|'s [=string/length=] is not 36, then [=iteration/continue=].
+        1. Let |sellerNonce| be |parts|[1].
+        1. If |sellerNonce|'s [=string/length=] is not 36, then [=iteration/continue=].
+        1. Let |bidWithMetadata|'s [=signed additional bid with metadata/seller nonce=] be
+          |sellerNonce|.
+        1. Let |bidWithMetadata|'s [=signed additional bid with metadata/signed additional bid=] be
+          |parts|[2].
+        1. Set |storedAdditionalBidsHeaders|[|auctionNonce|] to |bidWithMetadata|.
+      1. Otherwise, if |parts|'s [=list/size=] is 2: 
+        1. Let |auctionNonce| be |parts|[0].
+        1. Let |bidWithMetadata|'s [=signed additional bid with metadata/signed additional bid=] be
+          |parts|[1].
+        1. Set |storedAdditionalBidsHeaders|[|auctionNonce|] to |bidWithMetadata|.
 
   1. Let |adAuctionResults| be the result of [=header list/getting, decoding, and splitting=]
     [:Ad-Auction-Result:] from |responseHeaders|.
@@ -6886,8 +6924,9 @@ An <dfn export>auction config</dfn> is a [=struct=] with the following [=struct/
     uniquely associated with all {{AuctionAdConfig/componentAuctions}}.
     This must come from a prior call to {{Window/navigator}}.{{Navigator/createAuctionNonce()}}.
     This is only required for auctions that provide [=additional bids=], and each of those
-    [=additional bids=] must use the same auction nonce to ensure that each of them was intended for
-    this and only this auction.
+    [=additional bids=] must use the same auction nonce (or the bid nonce derived from that auction
+    nonce as computed by [=calculate expected bid nonce=]) to ensure that each of them was intended
+    for this and only this auction.
   : <dfn>expects additional bids</dfn>
   :: A [=boolean=] or failure, initially false.
     Specifies whether some bids will be provided as signed exchanges. Sets to failure if the
@@ -7797,6 +7836,21 @@ A <dfn>direct from seller signals</dfn> is a [=struct=] with the following [=str
   :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=strings=].
     [=map/Keys=] are buyers whose [=origin/scheme=] must be "`https`". [=map/Values=] are opaque
     JSON data passed to corresponding buyer's [=script runner=].
+</dl>
+
+<h3 id=additional-bids-structs-section>Additional bids</h3>
+
+A <dfn>signed additional bid with metadata</dfn> is a [=struct=] with the following
+[=struct/items=]:
+
+<dl dfn-for="signed additional bid with metadata">
+  : <dfn>signed additional bid</dfn>
+  :: A [=string=] for an encoded additional bid.
+  : <dfn>seller nonce</dfn>
+  :: Null or a [=string=]. If present, represents the randomly-generated seller nonce returned in
+    the [:Ad-Auction-Additional-Bid:] response header.
+
+  NOTE: This typically will be a [=version 4 UUID=], but the format is not enforced.
 </dl>
 
 <h3 id=score-ad-output-header>Score ad output</h3>
