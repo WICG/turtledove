@@ -166,7 +166,7 @@ dl { padding-left: 1em; }
 
 *This section is non-normative.*
 
-The nce API facilitates selecting an advertisement to display to a user based on a
+The Protected Audience API facilitates selecting an advertisement to display to a user based on a
 previous interaction with the advertiser or advertising network.
 
 When a user's interactions with an advertiser indicate an interest in something, the advertiser can
@@ -1853,27 +1853,31 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
           [=get direct from seller signals for a seller=] given |topLevelDirectFromSellerSignals|.
         1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
       1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
-        [=score and rank a bid=] with |auctionConfig|,
+        [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[auctionConfig],
         |compWinnerInfo|'s [=leading bid info/leading bid=], |leadingBidInfo|,
         |decisionLogicFetcher|, |trustedScoringSignalsBatcher|, null, "top-level-auction", null,
         and |topLevelOrigin|.
       1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
-        is not null, then run [=score and rank a bid=] with |auctionConfig|,
-        |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
+        is not null, then run [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[
+        auctionConfig], |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
         |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
         |topLevelDirectFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|,
         and |realTimeContributionsMap|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
   1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
-  1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
+  1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null:
+    1. [=Process the Private Aggregation contributions for an auction=] given |auctionConfig|,
+      |reportingContextMap|[|auctionConfig|], |leadingBidInfo|.
+    1. Return.
   1. Let |winningComponentConfig| be |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |auctionConfig|.
   1. Set |leadingBidInfo|'s [=leading bid info/component seller=] to |winningComponentConfig|'s
     [=auction config/seller=].
   1. Let « |topLevelSellerSignals|, unusedTopLevelReportResultBrowserSignals » be the result of
-    running [=report result=] with |leadingBidInfo|, |topLevelDirectFromSellerSignalsForSeller|,
-    |winningComponentConfig|, and |global|.
+    running [=report result=] with |leadingBidInfo|, |reportingContextMap|[|auctionConfig|],
+    |topLevelDirectFromSellerSignalsForSeller|, |winningComponentConfig|, and |global|.
+  1. Let |topLevelLeadingBidInfo| be a copy of |leadingBidInfo|.
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |winningComponentConfig|.
   1. Set |leadingBidInfo|'s [=leading bid info/component seller=] to null.
   1. Set |leadingBidInfo|'s [=leading bid info/top level seller=] to |seller|.
@@ -1889,9 +1893,13 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
     |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/interest group=]'s
     [=interest group/owner=].
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
-    [=report result=] with |leadingBidInfo|, |directFromSellerSignalsForSeller|, null, and |global|.
-  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|,
-    |directFromSellerSignalsForBuyer|, and |settings|.
+    [=report result=] with |leadingBidInfo|, |reportingContextMap|[|winningComponentConfig|],
+    |directFromSellerSignalsForSeller|, null, and |global|.
+  1. Run [=report win=] with |leadingBidInfo|, |reportingContextMap|[|winningComponentConfig|],
+    |sellerSignals|, |reportResultBrowserSignals|, |directFromSellerSignalsForBuyer|,
+    and |settings|.
+  1. [=Process the Private Aggregation contributions for an auction=] given |auctionConfig|,
+    |reportingContextMap|[|auctionConfig|], |topLevelLeadingBidInfo|.
   1. Return |leadingBidInfo|.
 
 1. If [=waiting until configuration input promises resolve=] given |auctionConfig| returns failure,
@@ -1929,7 +1937,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   |auctionConfig|, |topLevelAuctionConfig|, |negativeTargetInfo|, |reportingContextMap| and |global|.
 1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
-  1. [=Score and rank a bid=] with |auctionConfig|,
+  1. [=Score and rank a bid=] with |auctionConfig|, |reportingContext|
     |additionalBid|'s [=decoded additional bid/bid=], |leadingBidInfo|, |decisionLogicFetcher|,
     |trustedScoringSignalsBatcher|, |directFromSellerSignalsForSeller|, null, |auctionLevel|,
     |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
@@ -2093,7 +2101,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
-            1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|,
+            1. [=Score and rank a bid=] with |auctionConfig|, |reportingContext|, |bidToScore|,
               |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
               |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
@@ -2103,13 +2111,14 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
 1. If |topLevelAuctionConfig| is null:
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
-    [=report result=] with |leadingBidInfo|, |directFromSellerSignalsForSeller|, null, and |global|.
+    [=report result=] with |leadingBidInfo|, |reportingContext|, |directFromSellerSignalsForSeller|,
+    null, and |global|.
   1. Let |directFromSellerSignalsForWinner| be the result of running
       [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and
       |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/interest group=]'s
       [=interest group/owner=].
-  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|,
-    |directFromSellerSignalsForWinner|, and |settings|.
+  1. Run [=report win=] with |leadingBidInfo|, |reportingContext|, |sellerSignals|,
+    |reportResultBrowserSignals|, |directFromSellerSignalsForWinner|, and |settings|.
 1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=]
     are [=strings=].
   1. [=list/For each=] [=ad keyword replacement=], |replacement|, within
@@ -2125,6 +2134,8 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
     [=leading bid info/leading bid=]'s [=generated bid/ad descriptors=]:
     1. Set |adDescriptor| to the result of [=fencedframeutil/substitute macros=] with |replacements|
       and |adDescriptor|.
+1. [=Process the Private Aggregation contributions for an auction=] given |auctionConfig|,
+    |reportingContext|, |leadingBidInfo|.
 1. Return |leadingBidInfo|.
 
 </div>
@@ -2281,7 +2292,7 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
 
 <div algorithm>
 To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|,
-a [=generated bid=] |generatedBid|,
+a [=reporting context=] |reportingContext|, a [=generated bid=] |generatedBid|,
 a [=leading bid info=] |leadingBidInfo|, a [=script fetcher=] |decisionLogicFetcher|,
 a [=trusted scoring signals batcher=] |trustedScoringSignalsBatcher|
 a {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
@@ -2334,7 +2345,6 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     "`default-local-reporting`", then [=add a platform contribution=] with
     [=scoring script failure bucket=], |realTimeContributionsMap| and |seller|.
   1. Return.
-1. Let |reportingContext| be |generatedBid|'s [=generated bid/reporting context=].
 1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions|,
   |paContributions| » be the result of [=evaluating a scoring script=] with |decisionLogicScript|,
   |adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|, |reportingContext|,
@@ -2785,8 +2795,9 @@ To <dfn>get direct from seller signals for a buyer</dfn> given a
 
 <div algorithm>
 To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
-[=direct from seller signals=]-or-null |directFromSellerSignals|, an [=auction config=]-or-null
-|winningComponentConfig|, and a [=global object=] |global|:
+[=reporting context=] |reportingContext|, a [=direct from seller signals=]-or-null
+|directFromSellerSignals|, an [=auction config=]-or-null |winningComponentConfig|,
+and a [=global object=] |global|:
   1. Let |config| be |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Let |bidCurrency| be null.
   1. If |winningComponentConfig| is not null:
@@ -2876,9 +2887,9 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
      |sellerReportingScriptFetcher|.
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored, |paContributions| » be the
     result of [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`",
-    |winner|'s [=generated bid/reporting context=], |config|'s [=auction config/seller=],
-    |config|'s [=auction config/seller Private Aggregation coordinator=],  |config|'s
-    [=auction config/config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
+    |reportingContext|, |config|'s [=auction config/seller=], |config|'s [=auction config/seller
+    Private Aggregation coordinator=],  |config|'s [=auction config/config idl=]'s
+    {{AuctionAdConfig/reportingTimeout}}, and
     « |config|'s [=auction config/config idl=], |browserSignals|, |directFromSellerSignals| ».
    1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
      : [=reporting result/report url=]
@@ -2891,7 +2902,7 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
   1. Otherwise, set |leadingBidInfo|'s [=leading bid info/seller reporting result=] to
      |reportingResult|.
   1. [=Commit private aggregation contributions=] given |paContributions|, |winner|'s [=generated
-    bid/reporting id=] and |winner|'s [=generated bid/reporting context=].
+    bid/reporting id=] and |reportingContext|.
   1. [=map/Remove=] |browserSignals|["`desirability`"].
   1. [=map/Remove=] |browserSignals|["`modifiedBid`"].
   1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].
@@ -2904,7 +2915,8 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
 </div>
 
 <div algorithm>
-To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=string=] |sellerSignals|,
+To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, [=reporting context=]
+|reportingContext|,  a [=string=] |sellerSignals|,
 a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]-or-null
 |directFromSellerSignals|, and an [=environment settings object=] |settings|:
 
@@ -2974,15 +2986,14 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
     1. Set |reportFunctionName| be "`reportAdditionalBidWin`".
   1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap|, |paContributions| » be
     the result of [=evaluating a reporting script=] with |buyerReportingScript|, "`reportWin`",
-    |winner|'s [=generated bid/reporting context=], |ig|'s [=interest group/owner=], |ig|'s
-    [=interest group/Private Aggregation coordinator=], |leadingBidInfo|'s
-    [=leading bid info/auction config=]'s [=auction config/config idl=]'s
-    {{AuctionAdConfig/reportingTimeout}}, and
+    |reportingContext|, |ig|'s [=interest group/owner=], |ig|'s [=interest group/Private Aggregation
+    coordinator=], |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config
+    idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config idl=]'s
       {{AuctionAdConfig/auctionSignals}}, |perBuyerSignalsForBuyer|, |sellerSignals|,
       |reportWinBrowserSignals|, |directFromSellerSignals| ».
   1. [=Commit private aggregation contributions=] given |paContributions|, |winner|'s [=generated
-    bid/reporting id=] and |winner|'s [=generated bid/reporting context=].
+    bid/reporting id=] and |reportingContext|.
   1. Set |leadingBidInfo|'s [=leading bid info/buyer reporting result=] to a [=reporting result=]
      with the following [=struct/items=]:
      : [=reporting result/report url=]
@@ -3058,8 +3069,6 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
     :: |response|'s [=server auction response/interest group owner=]
     : [=reporting bid key/bid identifier=]
     :: |response|'s [=server auction response/interest group name=]
-  : [=generated bid/reporting context=]
-  :: |reportingContextMap|[|auctionConfig|]
   : [=generated bid/bid=]
   :: |response|'s [=server auction response/bid=]
   : [=generated bid/bid in seller currency=]
@@ -3613,7 +3622,7 @@ auction in a multi-party auction).
   1. Let |reportingContextMap| be a new [=reporting context map=].
   1. If |auctionConfig|'s [=auction config/component auctions=] [=list/is empty=],
     [=map/set=] |reportingContextMap|[|auctionConfig|] to a new [=reporting context=].
-  1. Otherwise, [=list/for each=] |component| in |auctionConfig|'s
+  1. [=list/For each=] |component| in |auctionConfig|'s
     [=auction config/component auctions=], [=map/set=] |reportingContextMap|[|component|] to a new
     [=reporting context=].
   1. [=map/For each=] _ → |reportingContext| of |reportingContextMap|:
@@ -3645,7 +3654,6 @@ auction in a multi-party auction).
     |reportingContext|.
   1. [=list/For each=] |generatedBid| of |generatedBids|:
     1. Set |generatedBid|'s [=generated bid/reporting id=] to |id|.
-    1. Set |generatedBid|'s [=generated bid/reporting context=] to |reportingContext|.
 
 </div>
 
@@ -4128,8 +4136,8 @@ contributions=] |onEventMap|, a [=reporting bid key=] |bidKey|, and a [=reportin
 |reportingContext|:
   1. [=map/For each=] |event| → |contributions| of |onEventMap|:
     1. Let |key| be (|bidKey|, |event|).
-    1. If |reportingContext|'s [=reporting context/private aggregation on event contributions=][
-      |key|] does not [=map/exist=], set it to a new [=list=].
+    1. If |reportingContext|'s [=reporting context/private aggregation on event contributions=][|key|]
+      does not [=map/exist=], set it to a new [=list=].
     1. [=list/Extend=] |reportingContext|'s [=reporting context/private aggregation on event
       contributions=][|key|] with |contributions|.
 </div>
@@ -4668,8 +4676,6 @@ a [=reporting context map=] |reportingContextMap|, an [=auction config=] |auctio
       : [=reporting bid key/bid identifier=]
       :: A [=string=] representation of a new globably unique identifier. This is needed since
         |igName| may not be unique.
-    : [=generated bid/reporting context=]
-    :: |reportingContextMap|[|auctionConfig|]
     :   [=generated bid/bid=]
     ::  A [=bid with currency=] whose [=bid with currency/value=] is |bidVal|, and
       [=bid with currency/currency=] is |bidCurrency|
@@ -8202,9 +8208,6 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
 <dl dfn-for="generated bid">
   : <dfn>reporting id</dfn>
   :: A [=reporting bid key=] or null, initially null. Used to identify a [=generated bid=].
-  : <dfn>reporting context</dfn>
-  :: A [=reporting context=] or null, initially null. Identifies the context in which the bid was
-    originally generated.
   : <dfn>for k-anon auction</dfn>
   :: A [=boolean=], initially true. If this is false, the bid is only used to determine the hypothetical
     winner with no k-anonymity constraints, which would be used to [=update k-anonymity counts=] only.
