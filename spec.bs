@@ -79,9 +79,14 @@ spec: Fenced Frame; urlPrefix: https://wicg.github.io/fenced-frame/
   type: dfn
     for: browsing context
       text: fenced frame config instance; url: #browsing-context-fenced-frame-config-instance
-spec: Private Aggregation API; urlPrefix: https://patcg-individual-drafts.github.io/private-aggregation-api
+spec: private-aggregation-api; urlPrefix: https://patcg-individual-drafts.github.io/private-aggregation-api
   type: dfn
     text: private-aggregation; url: #private-aggregation
+    text: debug details; url: #debug-details
+    text: debug-details-enabled; url: #debug-details-enabled
+    text: debug-details-key; url: #debug-details-key
+    text: aggregation coordinator; url: #aggregation-coordinator
+    text: default aggregation coordinator; url: #default-aggregation-coordinator
 spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
   type: dfn
     text: shared-storage; url: #permissionspolicy-shared-storage
@@ -199,6 +204,7 @@ dictionary AuctionAd {
 
   USVString buyerReportingId;
   USVString buyerAndSellerReportingId;
+  sequence<USVString> selectableBuyerAndSellerReportingIds;
   sequence<USVString> allowedReportingOrigins;
   DOMString adRenderId;
 };
@@ -231,11 +237,16 @@ dictionary GenerateBidInterestGroup {
   record<DOMString, sequence<DOMString>> sizeGroups;
 };
 
+dictionary ProtectedAudiencePrivateAggregationConfig {
+  USVString aggregationCoordinatorOrigin;
+};
+
 dictionary AuctionAdInterestGroup : GenerateBidInterestGroup {
   double priority = 0.0;
   record<DOMString, double> prioritySignalsOverrides;
   required double lifetimeMs;
   DOMString additionalBidKey;
+  ProtectedAudiencePrivateAggregationConfig privateAggregationConfig;
 };
 </xmp>
 
@@ -295,6 +306,13 @@ This is detectable because it can change the set of fields that are read from th
   1. If |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"] [=map/exists=], then set
     |interestGroup|'s [=interest group/priority signals overrides=] to
     |group|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"].
+  1. If |group|["{{AuctionAdInterestGroup/privateAggregationConfig}}"] [=map/exists=]:
+    1. Let |aggregationCoordinator| be the result of [=obtaining the coordinator from a Private
+      Aggregation config=] given |group|["{{AuctionAdInterestGroup/privateAggregationConfig}}"].
+    1. If |aggregationCoordinator| is a {{DOMException}}, then [=exception/throw=]
+      |aggregationCoordinator|.
+    1. Set |interestGroup|'s [=interest group/Private Aggregation coordinator=] to
+      |aggregationCoordinator|.
   1. If |group|["{{GenerateBidInterestGroup/sellerCapabilities}}"] [=map/exists=], [=map/for each=]
     |sellerString| → |capabilities| of |group|["{{GenerateBidInterestGroup/sellerCapabilities}}"]:
     1. Let |sellerCapabilities| be a new [=set=] of [=seller capabilities=].
@@ -421,6 +439,8 @@ This is detectable because it can change the set of fields that are read from th
           |igAd|'s [=interest group ad/buyer reporting ID=] to it.
         1. If |ad|["{{AuctionAd/buyerAndSellerReportingId}}"] [=map/exists=],
           then set |igAd|'s [=interest group ad/buyer and seller reporting ID=] to it.
+        1. If |ad|["{{AuctionAd/selectableBuyerAndSellerReportingIds}}"] [=map/exists=],
+          then set |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] to it.
         1. If |ad|["{{AuctionAd/allowedReportingOrigins}}"] [=map/exists=]:
           1. Let |allowedReportingOrigins| be a new [=list=] of [=origins=].
           1. [=list/For each=] |originStr| in |ad|["{{AuctionAd/allowedReportingOrigins}}"]:
@@ -691,6 +711,18 @@ partial interface Navigator {
   readonly attribute boolean deprecatedRunAdAuctionEnforcesKAnonymity;
 };
 
+dictionary AuctionReportBuyersConfig {
+  required bigint bucket;
+  required double scale;
+};
+
+dictionary AuctionReportBuyerDebugModeConfig {
+  boolean enabled = false;
+
+  // Must only be provided if `enabled` is true.
+  bigint? debugKey;
+};
+
 dictionary AuctionRealTimeReportingConfig {
   required DOMString type;
 };
@@ -718,7 +750,13 @@ dictionary AuctionAdConfig {
   record<USVString, unsigned short> perBuyerGroupLimits;
   record<USVString, unsigned short> perBuyerExperimentGroupIds;
   record<USVString, record<USVString, double>> perBuyerPrioritySignals;
+
+  sequence<bigint> auctionReportBuyerKeys;
+  record<DOMString, AuctionReportBuyersConfig> auctionReportBuyers;
+  AuctionReportBuyerDebugModeConfig auctionReportBuyerDebugModeConfig;
   sequence<DOMString> requiredSellerCapabilities;
+  ProtectedAudiencePrivateAggregationConfig privateAggregationConfig;
+
   record<DOMString, DOMString> requestedSize;
   sequence<record<DOMString, DOMString>> allSlotsRequestedSizes;
   Promise<undefined> additionalBids;
@@ -783,18 +821,19 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
   and its [=origin/scheme=] is "`https`".
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
-  1. Let |bidDebugReportInfoList| be a new [=list=] of [=bid debug reporting info=].
+  1. Let |reportingContextMap| be the result of [=creating a reporting context map=] given
+    |auctionConfig|.
   1. If |auctionConfig|'s [=auction config/server response=] is not null:
-    1. Let |winnerInfo| be the result of running [=parse and validate server response=] with |auctionConfig|,
-      null, |global|, |bidIgs|, and |bidDebugReportInfoList|.
+    1. Let |winnerInfo| be the result of running [=parse and validate server response=] with
+      |auctionConfig|, null, |global|, |bidIgs|, and |reportingContextMap|.
   1. Otherwise:
     1. Let |realTimeContributionsMap| be a new [=real time reporting contributions map=].
     1. Let |winnerInfo| be the result of running [=generate and score bids=] with |auctionConfig|,
-      null, |global|, |bidIgs|, |bidDebugReportInfoList|, and |realTimeContributionsMap|.
+      null, |global|, |bidIgs|, |reportingContextMap|, and |realTimeContributionsMap|.
   1. Let |auctionReportInfo| be a new [=auction report info=].
   1. If |winnerInfo| is not failure, then:
     1. Set |auctionReportInfo| to the result of running [=collect forDebuggingOnly reports=] with
-      |bidDebugReportInfoList|, |auctionConfig|'s [=auction config/seller=], and |winnerInfo|.
+      |reportingContextMap|, |auctionConfig|'s [=auction config/seller=], and |winnerInfo|.
     1. Set |auctionReportInfo|'s [=auction report info/real time reporting contributions map=] to
       |realTimeContributionsMap|.
   1. If |auctionConfig|'s [=auction config/aborted=] is true:
@@ -1005,9 +1044,9 @@ To <dfn>asynchronously finish reporting</dfn> given a
 [=auction report info=] |auctionReportInfo|, and an [=environment settings object=] |settings|:
 1. [=Increment a winning bid's k-anonymity count=] given |leadingBidInfo|'s [=leading bid info/leading bid=].
 1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is
-   not null, and |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/id=]
-   &ne; |leadingBidInfo|'s [=leading bid info/leading bid=]'s  [=generated bid/id=],
-   [=increment a winning bid's k-anonymity count=] given
+   not null, and |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]'s
+   [=generated bid/reporting id=] &ne; |leadingBidInfo|'s [=leading bid info/leading bid=]'s
+   [=generated bid/reporting id=], [=increment a winning bid's k-anonymity count=] given
    |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=].
 1. Let |buyerDone|, |sellerDone|, and |componentSellerDone| be [=booleans=], initially false.
 1. If |leadingBidInfo|'s [=leading bid info/component seller=] is null, set |componentSellerDone|
@@ -1433,6 +1472,59 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
   1. If |buyer| is failure, then return failure.
   1. [=map/Set=] |auctionConfig|'s [=auction config/per buyer priority signals=][|buyer|] to
     |signals|.
+1. If |config|["{{AuctionAdConfig/auctionReportBuyerKeys}}"] [=map/exists=]:
+  1. Let |interestGroupBuyers| be |auctionConfig|'s [=auction config/interest group buyers=].
+  1. If |interestGroupBuyers| is null, set |interestGroupBuyers| to a new [=list=].
+  1. [=list/For each=] |index| of [=the exclusive range|the range=] 0 to |config|[
+    "{{AuctionAdConfig/auctionReportBuyerKeys}}"]'s [=list/size=], exclusive:
+    1. Let |key| be |config|["{{AuctionAdConfig/auctionReportBuyerKeys}}"][|index|].
+    1. If |key| is not [=set/contained=] in [=the exclusive range|the range=] 0 to 2<sup>128</sup>,
+      exclusive, [=exception/throw=] a {{TypeError}}.
+    1. If |index| &ge; |interestGroupBuyers|' [=list/size=], [=iteration/continue=].
+
+        Note: [=iteration/Continue=] is used (instead of [=iteration/break=]) to validate all given
+        buyer keys.
+    1. Let |origin| be |interestGroupBuyers|[|index|].
+    1. [=map/Set=] |auctionConfig|'s [=auction config/auction report buyer keys=][|origin|]
+      to |key|.
+
+    Issue: Check behavior when an origin is repeated in {{AuctionAdConfig/interestGroupBuyers}}.
+1. If |config|["{{AuctionAdConfig/auctionReportBuyers}}"] [=map/exists=]:
+  1. [=map/For each=] |reportType| → |reportBuyerConfig| of |config|[
+    "{{AuctionAdConfig/auctionReportBuyers}}"]:
+    1. If « "`interestGroupCount`", "`bidCount`", "`totalGenerateBidLatency`",
+      "`totalSignalsFetchLatency`" » does not [=list/contain=] |reportType|, [=iteration/continue=].
+
+      Note: No error is thrown to allow forward compatibility if
+          additional report types are added later.
+
+      Issue: Should these strings be dash delimited?
+
+    1. If |reportBuyerConfig|["{{AuctionReportBuyersConfig/bucket}}"] is not [=set/contained=] in
+      [=the exclusive range|the range=] 0 to 2<sup>128</sup>, exclusive, [=exception/throw=] a
+      {{TypeError}}.
+
+      Issue: Consider validating the case where the bucket used (after summing) is too large.
+      Currently, the implementation appears to overflow.
+      (<a href="https://github.com/WICG/turtledove/issues/1040">WICG/turtledove#1040</a>)
+    1. [=map/Set=] |auctionConfig|'s [=auction config/auction report
+        buyers=][|reportType|] to |reportBuyerConfig|.
+
+1. If |config|["{{AuctionAdConfig/auctionReportBuyerDebugModeConfig}}"] [=map/exists=]:
+  1. Let |debugModeConfig| be |config|["{{AuctionAdConfig/auctionReportBuyerDebugModeConfig}}"].
+  1. Let |enabled| be |debugModeConfig|["{{AuctionReportBuyerDebugModeConfig/enabled}}"].
+  1. Let |debugKey| be |debugModeConfig|["{{AuctionReportBuyerDebugModeConfig/debugKey}}"].
+  1. If |debugKey| is not null:
+      1. If |debugKey| is not [=set/contained=] in [=the exclusive range|the
+          range=] 0 to 2<sup>64</sup>, exclusive, [=exception/throw=] a
+          {{TypeError}}.
+      1. If |enabled| is false, [=exception/throw=] a {{TypeError}}.
+  1. Set |auctionConfig|'s [=auction config/auction report buyer debug
+      details=] to a new [=debug details=] with the items:
+      : [=debug-details-enabled|enabled=]
+      :: |enabled|
+      : [=debug-details-key|key=]
+      :: |debugKey|
 1. If |config|["{{AuctionAdConfig/requiredSellerCapabilities}}"] [=map/exists=]:
   1. Let |sellerCapabilities| be a new [=set=] of [=seller capabilities=].
   1. [=list/For each=] |capabilityString| of
@@ -1443,6 +1535,12 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       Note: For forward compatibility with new values, don't [=exception/throw=].
 
   1. Set |auctionConfig|'s [=auction config/required seller capabilities=] to |sellerCapabilities|.
+1. If |config|["{{AuctionAdConfig/privateAggregationConfig}}"] [=map/exists=]:
+  1. Let |aggregationCoordinator| be the result of [=obtaining the coordinator from a Private
+    Aggregation config=] given |config|["{{AuctionAdConfig/privateAggregationConfig}}"].
+  1. If |aggregationCoordinator| is a {{DOMException}}, return failure.
+  1. Set |auctionConfig|'s [=auction config/seller Private Aggregation coordinator=] to
+    |aggregationCoordinator|.
 1. If |config|["{{AuctionAdConfig/perBuyerCurrencies}}"] [=map/exists=]:
   1. Set |auctionConfig|'s [=auction config/per buyer currencies=] to
     |config|["{{AuctionAdConfig/perBuyerCurrencies}}"]
@@ -1613,6 +1711,18 @@ To <dfn>check if required seller capabilities are permitted</dfn> given an [=auc
   1. Return false.
 </div>
 
+<div algorithm>
+To <dfn>obtain the coordinator from a Private Aggregation config</dfn> given a
+{{ProtectedAudiencePrivateAggregationConfig}} |config|, perform the following
+steps. They return an [=aggregation coordinator=], null or a {{DOMException}}.
+
+1. If |config|["{{ProtectedAudiencePrivateAggregationConfig/aggregationCoordinatorOrigin}}"]
+    does not [=map/exist=], return null.
+1. Return the result of [=obtaining the Private Aggregation coordinator=] given
+    |config|["{{ProtectedAudiencePrivateAggregationConfig/aggregationCoordinatorOrigin}}"].
+
+</div>
+
 <div algorithm="generate potentially multiple bids">
 
 To <dfn>generate potentially multiple bids</dfn> given an [=ordered map=]-or-null
@@ -1690,7 +1800,7 @@ failing to fetch the script or wasm, otherwise a [=tuple=] of ([=list=] of [=gen
 
 To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|, a [=list=] of
-[=interest groups=] |bidIgs|, a [=list=] of [=bid debug reporting info=] |bidDebugReportInfoList|,
+[=interest groups=] |bidIgs|, a [=reporting context map=] |reportingContextMap|,
 and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |settings| be |global|'s [=relevant settings object=].
@@ -1718,10 +1828,10 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
     [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
     1. If |component|'s [=auction config/server response=] is not null:
       1. Let |compWinnerInfo| be the result of running [=parse and validate server response=] with
-         |component|, |auctionConfig|, |global|, |bidIgs|, and |bidDebugReportInfoList|.
+         |component|, |auctionConfig|, |global|, |bidIgs|, and |reportingContextMap|.
     1. Otherwise:
       1. Let |compWinnerInfo| be the result of running [=generate and score bids=] with |component|,
-        |auctionConfig|, |global|, |bidIgs|, |bidDebugReportInfoList|, and |realTimeContributionsMap|.
+        |auctionConfig|, |global|, |bidIgs|, |reportingContextMap|, and |realTimeContributionsMap|.
     1. If [=recursively wait until configuration input promises resolve=] given |auctionConfig|
       does not return failure, and |compWinnerInfo| is not failure, then:
       1. If |topLevelDirectFromSellerSignalsRetrieved| is false:
@@ -1732,12 +1842,13 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
           [=get direct from seller signals for a seller=] given |topLevelDirectFromSellerSignals|.
         1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
       1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
-        [=score and rank a bid=] with |auctionConfig|, |compWinnerInfo|'s
-        [=leading bid info/leading bid=], |leadingBidInfo|, |decisionLogicFetcher|,
-        |trustedScoringSignalsBatcher|, null, "top-level-auction", null, and |topLevelOrigin|.
+        [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[|component|],
+        |compWinnerInfo|'s [=leading bid info/leading bid=], |leadingBidInfo|,
+        |decisionLogicFetcher|, |trustedScoringSignalsBatcher|, null, "top-level-auction", null,
+        and |topLevelOrigin|.
       1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
-        is not null, then run [=score and rank a bid=] with |auctionConfig|,
-        |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
+        is not null, then run [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[
+        |component|], |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
         |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
         |topLevelDirectFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|,
         and |realTimeContributionsMap|.
@@ -1803,13 +1914,13 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
     |topLevelAuctionConfig| and |seller|.
 1. Let |pendingBuyers| be |bidGenerators|'s [=map/size=].
 1. Let |additionalBids| be the result of running [=validate and convert additional bids=] with
-  |auctionConfig|, |topLevelAuctionConfig|, |negativeTargetInfo| and |global|.
+  |auctionConfig|, |topLevelAuctionConfig|, |negativeTargetInfo|, |reportingContextMap| and |global|.
 1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
-  1. [=Score and rank a bid=] with |auctionConfig|, |additionalBid|, |leadingBidInfo|,
-    |decisionLogicFetcher|, |trustedScoringSignalsBatcher|, |directFromSellerSignalsForSeller|,
-    null, |auctionLevel|, |componentAuctionExpectedCurrency|, |topLevelOrigin|, and
-    |realTimeContributionsMap|.
+  1. [=Score and rank a bid=] with |auctionConfig|, |reportingContextMap|[|auctionConfig|],
+    |additionalBid|'s [=decoded additional bid/bid=], |leadingBidInfo|, |decisionLogicFetcher|,
+    |trustedScoringSignalsBatcher|, |directFromSellerSignalsForSeller|, null, |auctionLevel|,
+    |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
   1. Decrement |pendingAdditionalBids| by 1.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -1936,21 +2047,8 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
             mechanism to bootstrap the k-anonymity count, otherwise no [=interest group/ads=] would
             ever trigger [=increment k-anonymity count=] and all ads would fail
             [=query k-anonymity count=].
-
-            1. Let |originalAds| be |ig|'s [=interest group/ads=].
-            1. If |originalAds| is not null:
-              1. Set |ig|'s [=interest group/ads=] to a new [=list=] of [=interest group ad=].
-              1. [=list/For each=] |ad| in |originalAds|:
-                1. Compute |adHashCode| by getting the result of [=compute the key hash of ad=] given |ig| and |ad|.
-                1. If [=query k-anonymity cache=] given |adHashCode| returns true,
-                  [=list/append=] |ad| to |ig|'s [=interest group/ads=].
-            1. Let |originalAdComponents| be |ig|'s [=interest group/ad components=].
-            1. If |originalAdComponents| is not null:
-              1. Set |ig|'s [=interest group/ad components=] to a new [=list=] of [=interest group ad=].
-              1. [=list/For each=] |adComponent| in |originalAdComponents|:
-                1. Compute |componentAdHashCode| by getting the result of [=compute the key hash of component ad=] given |adComponent|.
-                1. If [=query k-anonymity cache=] given |componentAdHashCode| returns true,
-                  [=list/append=] |adComponent| to |ig|'s [=interest group/ad components=].
+            1. Let |kAnonRestrictedIG| be the result of running [=create a k-anon restricted deep copy of the interest group=]
+              given |ig|.
             1. If |perBuyerCumulativeTimeout| is not null and is &lt; |perBuyerTimeout|, then set
               |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
             1. Let |generateBidStartTime| be |settings|'s
@@ -1959,12 +2057,10 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               of running [=generate potentially multiple bids=] with |allTrustedBiddingSignals|,
               |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
               |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
-              1 (for multiBidLimit), |ig|, |auctionStartTime|, and |settings|.
+              1 (for multiBidLimit), |kAnonRestrictedIG|, |auctionStartTime|, and |settings|.
 
               Note: passing 1 for multiBidLimit limits the rerun to producing at most a single bid.
 
-            1. Set |ig|'s [=interest group/ads=] to |originalAds|.
-            1. Set |ig|'s [=interest group/ad components=] to |originalAdComponents|.
             1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
               |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
             1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
@@ -1974,15 +2070,16 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               1. [=Assert=] that [=query generated bid k-anonymity count=] given |generatedBid| returns true.
               1. [=Apply any component ads target to a bid=] given |generatedBid|.
               1. [=list/Append=] |generatedBid| to |bidsToScore|.
-          1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |bidDebugReportInfo|, and
-               |bidDebugReportInfoList|.
+          1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |ig|,
+            |bidDebugReportInfo|, and |reportingContextMap|[|auctionConfig|].
           1. If |auctionConfig|'s [=auction config/per buyer real time reporting config=][|buyer|]
             is "`default-local-reporting`", then [=insert entries to map=] given
             |realTimeContributionsMap|, |buyer|, and |realTimeContributions|.
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
-            1. [=Score and rank a bid=] with |auctionConfig|, |bidToScore|, |leadingBidInfo|,
+            1. [=Score and rank a bid=] with |auctionConfig|, |reportingContextMap|[
+              |auctionConfig|], |bidToScore|, |leadingBidInfo|,
               |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
               |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
@@ -2067,6 +2164,15 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
     1. Let |adIDL| be a new {{AuctionAd}}.
     1. [=map/Set=] |adIDL|["{{AuctionAd/renderURL}}"] to the [=URL serializer|serialization=] of
       |ad|'s [=interest group ad/render url=].
+    1. If |ad|'s [=interest group ad/selectable buyer and seller reporting IDs=] is not null:
+      1.[=map/Set=] |adIDL|["{{AuctionAd/selectableBuyerAndSellerReportingIds}}"] to
+        |ad|'s [=interest group ad/selectable buyer and seller reporting IDs=].
+      1. If |ad|'s [=interest group ad/buyer and seller reporting id=] is not null then
+        [=map/set=] |adIDL|["{{AuctionAd/buyerAndSellerReportingId}}"] to
+        |ad|'s [=interest group ad/buyer and seller reporting id=].
+      1. If |ad|'s [=interest group ad/buyer reporting id=] is not null then
+        [=map/set=] |adIDL|["{{AuctionAd/buyerReportingId}}"] to
+        |ad|'s [=interest group ad/buyer reporting id=].
     1. If |ad|'s [=interest group ad/size group=] is not null, then [=map/set=]
        |adIDL|["{{AuctionAd/sizeGroup}}"] to |ad|'s [=interest group ad/size group=].
     1. If |ad|'s [=interest group ad/metadata=] is not null, then [=map/set=]
@@ -2160,9 +2266,10 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
 </div>
 
 <div algorithm>
-To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|, a [=generated bid=]
-|generatedBid|, a [=bid debug reporting info=] |bidDebugReportInfo|, a [=leading bid info=] |leadingBidInfo|,
-a [=script fetcher=] |decisionLogicFetcher|, a [=trusted scoring signals batcher=] |trustedScoringSignalsBatcher|
+To <dfn>score and rank a bid</dfn> given an [=auction config=] |auctionConfig|,
+a [=reporting context=] |reportingContext|, a [=generated bid=] |generatedBid|,
+a [=leading bid info=] |leadingBidInfo|, a [=script fetcher=] |decisionLogicFetcher|,
+a [=trusted scoring signals batcher=] |trustedScoringSignalsBatcher|
 a {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
 |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
 or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, an [=origin=]
@@ -2218,26 +2325,39 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   |bidValue|'s [=bid with currency/value=], |auctionConfig|'s [=auction config/config idl=],
   |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals|, |browserSignals|,
   |directFromSellerSignalsForSeller|, and |auctionConfig|'s [=auction config/seller timeout=].
-1. If |auctionLevel| is "top-level-auction":
-  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug loss report url=] to
-    |debugLossReportUrl|.
-  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug win report url=] to
-    |debugWinReportUrl|.
-1. Otherwise:
-  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug loss report url=] to |debugLossReportUrl|.
-  1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug win report url=] to |debugWinReportUrl|.
+1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
+
+  Note: Non-k-anonymous bids do not participate in reporting (except for platform real-time
+  contributions, and some special handling of private aggregation requests involving reject-reason);
+  as it would be problematic to report a winner that didn't actually win.
+
+  1. If |reportingContext|'s [=reporting context/debug reporting info=][|generatedBid|'s [=generated
+    bid/reporting id=]] does not [=map/exist=], set it to a new [=bid debug reporting info=].
+  1. Let |bidDebugReportInfo| be |reportingContext|'s [=reporting context/debug reporting info=]
+    [|generatedBid|'s [=generated bid/reporting id=]].
+  1. If |auctionLevel| is "top-level-auction":
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug loss report
+      url=] to |debugLossReportUrl|.
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug win report
+      url=] to |debugWinReportUrl|.
+  1. Otherwise:
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug loss report url=] to
+      |debugLossReportUrl|.
+    1. Set |bidDebugReportInfo|'s [=bid debug reporting info/seller debug win report url=] to
+      |debugWinReportUrl|.
+  1. If |auctionLevel| is "component-auction", then set |bidDebugReportInfo|'s [=bid debug reporting
+    info/component seller=] to |seller|.
+  1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
+    "`default-local-reporting`", then [=insert entries to map=] given |realTimeContributionsMap|,
+    |seller|, and |realTimeContributions|.
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
-1. If |auctionLevel| is "component-auction", then set |generatedBid|'s
-  [=generated bid/component seller=] and |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] to |seller|.
-1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
-  "`default-local-reporting`", then [=insert entries to map=] given |realTimeContributionsMap|,
-  |seller|, and |realTimeContributions|.
 1. Return if any of the following conditions hold:
   * |scoreAdOutput| is failure;
   * |auctionLevel| is not "single-level-auction", and |scoreAdOutput|
     ["{{ScoreAdOutput/allowComponentAuction}}"] is false;
   * |scoreAdOutput|["{{ScoreAdOutput/desirability}}"] &le; 0.
 1. If |auctionLevel| is "component-auction":
+  1. Set |generatedBid|'s [=generated bid/component seller=] to |seller|.
   1. Let |bidToCheck| be |generatedBid|'s [=generated bid/bid=].
   1. If |scoreAdOutput|["{{ScoreAdOutput/bid}}"] [=map/exists=]:
     1. Let |modifiedBidValue| be |scoreAdOutput|["{{ScoreAdOutput/bid}}"].
@@ -2715,11 +2835,24 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
   1. Let |igAd| be the [=interest group ad=] from |winner|'s [=generated bid/interest group=]'s
     [=interest group/ads=] whose [=interest group ad/render url=] is |winner|'s
     [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-  1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
-     [=map/exists=] and the result of [=query reporting ID k-anonymity count=]
-     given |winner|'s [=generated bid/interest group=] and |igAd| is true, then [=map/set=]
-     |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to |igAd|'s
-     [=interest group ad/buyer and seller reporting ID=].
+  1. If the |winner|'s [=generated bid/selected buyer and seller reporting ID=] is not null:
+    1. [=Assert=] that the result of running [=query reporting ID k-anonymity count=] with |winner|'s
+      [=generated bid/interest group=], |igAd|, and |winner|'s
+      [=generated bid/selected buyer and seller reporting ID=] is true.
+
+      Note: The winning [=interest group ad=] is expected to be k-anonymous for reporting because any
+      [=generated bid/bid=] that included a [=generated bid/selected buyer and seller reporting ID=]
+      wouldn't be considered k-anonymous, and thus couldn't win the auction and wouldn't be reported,
+      unless that bid was k-anonymous for reporting with that [=generated bid/selected buyer and seller reporting ID=].
+
+    1. [=map/Set=] |browserSignals|["{{ReportingBrowserSignals/selectedBuyerAndSellerReportingId}}"]
+      to |winner|'s [=generated bid/selected buyer and seller reporting ID=].
+    1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, [=map/set=]
+      |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to it.
+  1. Otherwise, if the result of running [=query reporting ID k-anonymity count=] with |winner|'s 
+    [=generated bid/interest group=], |igAd|, and null is true:
+    1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, [=map/set=]
+      |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to it.
   1. Let |sellerReportingScriptFetcher| be the result of [=creating a new script fetcher=] with
      |config|'s [=auction config/decision logic url=] and |global|'s [=relevant settings object=].
   1. Let |sellerReportingScript| be the result of [=waiting for script body from a fetcher=] given
@@ -2783,13 +2916,33 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
      [=generated bid/interest group=]'s [=interest group/ads=] whose
      [=interest group ad/render url=] is |winner|'s
      [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-  1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
-     does not [=map/exist=] and the result of [=query reporting ID k-anonymity count=] given
-     |winner|'s [=generated bid/interest group=] and |igAd| is true:
-    1. If |igAd|'s [=interest group ad/buyer reporting ID=] [=map/exists=],
+  1. If |winner|'s [=generated bid/selected buyer and seller reporting ID=] is not null:
+
+      Note: If the winning [=generated bid/bid=] has a [=generated bid/selected buyer and seller reporting ID=],
+      it would have already been set by the preceding call to [=report result=], and provided to this algorithm in the
+      {{ReportingBrowserSignals}} returned by that algorithm and provided to this one.
+
+    1. [=Assert=] that |reportWinBrowserSignals|'s ["{{ReportingBrowserSignals/selectedBuyerAndSellerReportingId}}"]
+      is equal to |winner|'s [=generated bid/selected buyer and seller reporting ID=].
+    1. [=Assert=] that the result of running [=query reporting ID k-anonymity count=] with
+      |winner|'s [=generated bid/interest group=], |igAd|, and
+      [=generated bid/selected buyer and seller reporting ID=] is true.
+  1. Otherwise if |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null:
+
+      Note: If the winning [=interest group ad=] has a [=interest group ad/buyer and seller reporting ID=],
+      it would have already been set by the preceding call to [=report result=], and provided to this algorithm in the
+      {{ReportingBrowserSignals}} returned by that algorithm and provided to this one.
+
+    1. [=Assert=] that |reportWinBrowserSignals|'s ["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] is equal to
+      |igAd|'s [=interest group ad/buyer and seller reporting ID=].
+    1. [=Assert=] that the result of running [=query reporting ID k-anonymity count=] with
+      |winner|'s [=generated bid/interest group=], |igAd|, and null is true.
+  1. Otherwise if the result of running [=query reporting ID k-anonymity count=] with
+    |winner|'s [=generated bid/interest group=], |igAd|, and null is true:
+    1. If |igAd|'s [=interest group ad/buyer reporting ID=] is not null,
       [=map/set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/buyerReportingId}}"] to
       |igAd|'s [=interest group ad/buyer reporting ID=].
-    1. Otherwise, [=map/Set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/interestGroupName}}"]
+    1. Otherwise, [=map/set=] |reportWinBrowserSignals|["{{ReportWinBrowserSignals/interestGroupName}}"]
       to |winner|'s [=generated bid/interest group=] [=interest group/name=].
   1. Let |buyerReportingScriptFetcher| be the result of [=creating a new script fetcher=] with
      |winner|'s [=generated bid/interest group=]'s [=interest group/bidding url=] and |settings|.
@@ -2820,8 +2973,8 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
 <div algorithm>
 To <dfn>parse and validate server response</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=global object=] |global|,
-a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug reporting info=]
-|bidDebugReportInfoList|, perform the following steps. They return a [=leading bid info=] or a failure.
+a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
+|reportingContextMap|, perform the following steps. They return a [=leading bid info=] or a failure.
 
 1. [=Assert=] that these steps are running [=in parallel=].
 1. If [=waiting until server response promise resolves=] given |auctionConfig| returns failure, then
@@ -2870,8 +3023,16 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
   1. [=list/Append=] a new [=ad descriptor=] whose [=ad descriptor/url=] is
      |componentAd| to |winningAdComponents|.
 1. Let |winningBid| be a new [=generated bid=] with the following [=struct/items=]:
-  : [=generated bid/id=]
-  :: TODO
+  : [=generated bid/reporting id=]
+  :: A [=reporting bid key=] with the following [=struct/items=]:
+    : [=reporting bid key/context=]
+    :: |reportingContextMap|[|auctionConfig|]
+    : [=reporting bid key/source=]
+    :: [=reporting bid source/bidding-and-auction-services=]
+    : [=reporting bid key/bidder origin=]
+    :: |response|'s [=server auction response/interest group owner=]
+    : [=reporting bid key/bid identifier=]
+    :: |response|'s [=server auction response/interest group name=]
   : [=generated bid/bid=]
   :: |response|'s [=server auction response/bid=]
   : [=generated bid/bid in seller currency=]
@@ -2964,10 +3125,6 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=list=] of [=bid debug report
   1. If [=current wall time=] &minus; |ig|'s [=interest group/last updated=] ≥
      |updateIfOlderThan|, set |ig|'s [=interest group/next update after=] to the
         [=current wall time=] + |updateIfOlderThan|.
-1. Insert the debug reporting URLs from |response| into |bidDebugReportInfoList|.
-
-    Issue: TODO: Handle forDebuggingOnly reports from server auction.
-    (<a href="https://github.com/WICG/turtledove/issues/1254">WICG/turtledove#1254</a>)
 1. Return |winningBidInfo|.
 
 </div>
@@ -3367,6 +3524,61 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
 
 # Reporting # {#reporting}
 
+## Common types and algorithms ## {#reporting-common}
+
+A <dfn>reporting bid source</dfn> is an enum with the following possible values:
+<dl dfn-for="reporting bid source">
+: <dfn>`generate-bid`</dfn>
+:: Bid produced by an invocation of `generateBid()`.
+: <dfn>`additional-bid`</dfn>
+:: Bid provided via [=validate and convert additional bids|the additional bids=] mechanism.
+: <dfn>`bidding-and-auction-services`</dfn>
+:: Bid provided via [=parse and validate server response|Bidding and Auction Services=] mechanism.
+
+</dl>
+
+A <dfn>reporting bid key</dfn> is a [=struct=] with the following [=struct/items=]:
+
+  Note: This [=struct=] exists only to uniquely identify places bids came from, avoiding confusion
+  in cases like bids made by the same interest group in different component auctions, or additional
+  bids reusing names of regular interest groups. Implementations can likely find a more efficient
+  way of achieving the same effect. Note that bids returned when `generateBid()` returns multiple
+  items all share a key, as they share reporting information, too.
+
+<dl dfn-for="reporting bid key">
+  : <dfn>context</dfn>
+  :: The [=reporting context=] corresponding to the component (or single-level) auction the bid
+    originated in.
+  : <dfn>source</dfn>
+  :: A [=reporting bid source=] describing where the bid came from.
+  : <dfn>bidder origin</dfn>
+  :: The [=origin=] of the bidder.
+  : <dfn>bid identifier</dfn>
+  :: A [=string=] distinguishing this source of reports from others of the same origin in the same
+    [=reporting bid key/context=].
+</dl>
+
+A <dfn>reporting context</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="reporting context">
+  : <dfn>debug reporting info</dfn>
+  :: A [=map=] from [=reporting bid key=] to [=bid debug reporting info=].
+</dl>
+
+A <dfn>reporting context map</dfn> is a [=map=] from [=auction config=] to [=reporting context=].
+Here the keys are configurations for auctions that actually produce bids (e.g. not the top-level
+auction in a multi-party auction).
+
+<div algorithm>
+  To <dfn>create a reporting context map</dfn> given [=auction config=] |auctionConfig|:
+  1. Let |reportingContextMap| be a new [=reporting context map=].
+  1. If |auctionConfig|'s [=auction config/component auctions=] [=list/is empty=],
+    [=map/set=] |reportingContextMap|[|auctionConfig|] to a new [=reporting context=].
+  1. Otherwise, [=list/for each=] |component| in |auctionConfig|'s
+    [=auction config/component auctions=], [=map/set=] |reportingContextMap|[|component|] to a new
+    [=reporting context=].
+  1. Return |reportingContextMap|.
+</div>
+
 ## {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}} ## {#for-debugging-only-header}
 
 *This first introductory paragraph is non-normative.*
@@ -3392,69 +3604,75 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
 </div>
 
 <div algorithm>
-  To <dfn>collect forDebuggingOnly reports</dfn> given a [=list=] of [=bid debug reporting info=]
-  |bidDebugReportInfoList|, [=origin=] |seller|, and [=leading bid info=]-or-null |winnerInfo|:
+  To <dfn>collect forDebuggingOnly reports</dfn> given a [=reporting context map=]
+  |reportingContextMap|, [=origin=] |seller|, and [=leading bid info=]-or-null |winnerInfo|:
 
   1. Let |auctionReportInfo| be a new [=auction report info=].
   1. Let |winningBid| be |winnerInfo|'s [=leading bid info/leading bid=] if |winnerInfo| is
     not null, null otherwise.
-  1. [=list/For each=] |bidDebugReportInfo| of |bidDebugReportInfoList|:
-    1. If |winningBid| is not null and |bidDebugReportInfo|'s [=bid debug reporting info/ids=]
-       [=set/contains=] |winningBid|'s [=generated bid/id=]:
-      1. [=Assert=] that |winningBid|'s [=generated bid/id=] is not null.
-      1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-        [=bid debug reporting info/bidder debug win report url=], |bidDebugReportInfo|'s
-        [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
-        [=auction report info/debug win report urls=].
-      1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
+  1. [=map/For each=] _ → |reportingContext| of |reportingContextMap|:
+    1. [=map/For each=] |reportingId| -> |bidDebugReportInfo| of |reportingContext|'s
+      [=reporting context/debug reporting info=]:
+      1. If |winningBid| is not null and |reportingId| is equal to |winningBid|'s
+        [=generated bid/reporting id=]:
+        1. [=Assert=] that |winningBid|'s [=generated bid/reporting id=] is not null.
         1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-          [=bid debug reporting info/seller debug win report url=], |seller|, and
-          |auctionReportInfo|'s [=auction report info/debug win report urls=].
-      1. Otherwise:
-        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-          [=bid debug reporting info/seller debug win report url=], |bidDebugReportInfo|'s
-          [=bid debug reporting info/component seller=], |auctionReportInfo|'s
+          [=bid debug reporting info/bidder debug win report url=], |bidDebugReportInfo|'s
+          [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
           [=auction report info/debug win report urls=].
-        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-          [=bid debug reporting info/top level seller debug win report url=], |seller|, and
-          |auctionReportInfo|'s [=auction report info/debug win report urls=].
-    1. Otherwise:
-      1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-        [=bid debug reporting info/bidder debug loss report url=], |bidDebugReportInfo|'s
-        [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
-        [=auction report info/debug loss report urls=].
-      1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
-        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-          [=bid debug reporting info/seller debug loss report url=], |seller|, and
-          |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+        1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
+          1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+            [=bid debug reporting info/seller debug win report url=], |seller|, and
+            |auctionReportInfo|'s [=auction report info/debug win report urls=].
+        1. Otherwise:
+          1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+            [=bid debug reporting info/seller debug win report url=], |bidDebugReportInfo|'s
+            [=bid debug reporting info/component seller=], |auctionReportInfo|'s
+            [=auction report info/debug win report urls=].
+          1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+            [=bid debug reporting info/top level seller debug win report url=], |seller|, and
+            |auctionReportInfo|'s [=auction report info/debug win report urls=].
       1. Otherwise:
         1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-          [=bid debug reporting info/seller debug loss report url=], |bidDebugReportInfo|'s
-          [=bid debug reporting info/component seller=], |auctionReportInfo|'s
+          [=bid debug reporting info/bidder debug loss report url=], |bidDebugReportInfo|'s
+          [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
           [=auction report info/debug loss report urls=].
-        1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-          [=bid debug reporting info/top level seller debug loss report url=], |seller|, and
-          |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+        1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
+          1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+            [=bid debug reporting info/seller debug loss report url=], |seller|, and
+            |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+        1. Otherwise:
+          1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+            [=bid debug reporting info/seller debug loss report url=], |bidDebugReportInfo|'s
+            [=bid debug reporting info/component seller=], |auctionReportInfo|'s
+            [=auction report info/debug loss report urls=].
+          1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
+            [=bid debug reporting info/top level seller debug loss report url=], |seller|, and
+            |auctionReportInfo|'s [=auction report info/debug loss report urls=].
   1. Return |auctionReportInfo|.
 </div>
 
-<div>
+<div algorithm>
   To <dfn>register bids for forDebuggingOnly reports</dfn> given a [=list=] of
-  [=generated bids=] |generatedBids|, [=bid debug reporting info=] |bidDebugReportInfo|,
-  a [=list=] of [=bid debug reporting info=] |bidDebugReportInfoList|:
-  1. Let |mainId| be |bidDebugReportInfoList|'s [=list/size=].
-  1. Let |subId| be 0.
-  1. [=list/Append=] |bidDebugReportInfo| to |bidDebugReportInfoList|.
-  1. [=list/For each=] |generatedBid| of |generatedBids|:
-    1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
-      1. Let |id| be (|mainId|, |subId|).
-      1. Set |subId| to |subId| + 1.
-      1. Set |generatedBid|'s [=generated bid/id=] to |id|.
-      1. [=set/Append=] |id| to |bidDebugReportInfo|'s [=bid debug reporting info/ids=].
+  [=generated bids=] |generatedBids|, [=interest group=] |ig|, [=bid debug reporting info=]
+  |bidDebugReportInfo| and a [=reporting context=] |reportingContext|:
+  1. Let |id| be a new [=reporting bid key=] with the following [=struct/items=]:
+    : [=reporting bid key/context=]
+    :: |reportingContext|
 
-  Issue: Instead of inserting to |bidDebugReportInfoList| in each component auction that runs in
-  parallel, create a structure InterestGroupAuction that holds data for each auction
-  separately (<a href="https://github.com/WICG/turtledove/issues/1021">WICG/turtledove#1021</a>).
+    : [=reporting bid key/source=]
+    :: [=reporting bid source/generate-bid=]
+
+    : [=reporting bid key/bidder origin=]
+    :: |ig|'s [=interest group/owner=]
+
+    : [=reporting bid key/bid identifier=]
+    :: |ig|'s [=interest group/name=]
+  1. [=map/Set=] |reportingContext|'s [=reporting context/debug reporting info=][|id|] to
+    |bidDebugReportInfo|.
+  1. [=list/For each=] |generatedBid| of |generatedBids|:
+    1. Set |generatedBid|'s [=generated bid/reporting id=] to |id|.
+
 </div>
 
 ### Downsampling ### {#downsampling-header}
@@ -3829,7 +4047,7 @@ the [=additional bid=] to compete against other bids in a Protected Audience [=a
 <div algorithm>
 To <dfn>validate and convert additional bids</dfn> given an [=auction config=] |auctionConfig|, an
 [=auction config=]-or-null |topLevelAuctionConfig|, a [=negative target info=] |negativeTargetInfo|,
-and a [=global object=] |global|:
+a [=reporting context map=] |reportingContextMap|, and a [=global object=] |global|:
 
   1. [=Assert=] that these steps are running [=in parallel=].
   1. [=Assert=] that |auctionConfig|'s [=auction config/auction nonce=] is not null.
@@ -3843,15 +4061,20 @@ and a [=global object=] |global|:
       |encodedSignedAdditionalBid|.
     1. If |signedAdditionalBid| is failure, then [=iteration/continue=].
     1. Let |additionalBid| be the result of running [=parse a signed additional bid=] given
-      |signedAdditionalBid|, |auctionConfig|, |topLevelAuctionConfig|, and |negativeTargetInfo|.
-    1. If |additionalBid| is not null, then [=list/append=] |additionalBid| to |additionalBids|.
+      |signedAdditionalBid|, |reportingContextMap|, |auctionConfig|, |topLevelAuctionConfig|, and
+      |negativeTargetInfo|.
+    1. If |additionalBid| is not null:
+      1. [=list/Append=] |additionalBid| to |additionalBids|.
+      1. Let |bidCopy| be a clone of |additionalBid|.
+      1. Set |bidCopy|'s [=generated bid/for k-anon auction=] to false.
   1. Return |additionalBids|.
 </div>
 
 <div algorithm>
-To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdditionalBid|, an
-[=auction config=] |auctionConfig|, an [=auction config=]-or-null |topLevelAuctionConfig|, and a
-[=negative target info=] |negativeTargetInfo|:
+To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdditionalBid|,
+a [=reporting context map=] |reportingContextMap|, an [=auction config=] |auctionConfig|,
+an [=auction config=]-or-null |topLevelAuctionConfig|, and a [=negative target info=]
+|negativeTargetInfo|:
 
   1. [=Assert=] that these steps are running [=in parallel=].
   1. Let |parsedSignedAdditionalBid| be the result of running [=parse a JSON string to an infra value=]
@@ -3881,7 +4104,8 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
     1. [=list/Append=] |signature| to |signatures|.
   1. If |decodeSignatureFailed| is true, then return null.
   1. Let |decodedAdditionalBid| be the result of [=decode an additional bid json=] given
-    |parsedSignedAdditionalBid|["bid"], |auctionConfig| and |topLevelAuctionConfig|.
+    |parsedSignedAdditionalBid|["bid"], |reportingContextMap|, |auctionConfig| and
+    |topLevelAuctionConfig|.
   1. Return null if any of the following conditions hold:
     * |decodedAdditionalBid| is failure;
     * The result of [=checking a currency tag=] with |decodedAdditionalBid|'s
@@ -3900,8 +4124,9 @@ To <dfn>parse a signed additional bid</dfn> given a [=byte sequence=] |signedAdd
 </div>
 
 <div algorithm>
-To <dfn>decode an additional bid json</dfn> given a [=string=] |additionalBidJson|, an
-[=auction config=] |auctionConfig|, and an [=auction config=]-or-null |topLevelAuctionConfig|:
+To <dfn>decode an additional bid json</dfn> given a [=string=] |additionalBidJson|,
+a [=reporting context map=] |reportingContextMap|, an [=auction config=] |auctionConfig|, and an
+[=auction config=]-or-null |topLevelAuctionConfig|:
 
   1. [=Assert=] that these steps are running [=in parallel=].
   1. Let |parsedAdditionalBid| be the result of [=parse a JSON string to an infra value=] given
@@ -4005,6 +4230,17 @@ To <dfn>decode an additional bid json</dfn> given a [=string=] |additionalBidJso
         [=decoded additional bid/negative target interest group names=].
   1. Set |result|'s [=decoded additional bid/bid=] to a new [=generated bid=] with the following
     properties:
+    : [=generated bid/reporting id=]
+    :: A [=reporting bid key=] with the following [=struct/items=]:
+      : [=reporting bid key/context=]
+      :: |reportingContextMap|[|auctionConfig|]
+      : [=reporting bid key/source=]
+      :: [=reporting bid source/additional-bid=]
+      : [=reporting bid key/bidder origin=]
+      :: |ig|'s [=interest group/owner=]
+      : [=reporting bid key/bid identifier=]
+      :: A [=string=] representation of a new globably unique identifier. This is needed since
+        |igName| may not be unique.
     :   [=generated bid/bid=]
     ::  A [=bid with currency=] whose [=bid with currency/value=] is |bidVal|, and
       [=bid with currency/currency=] is |bidCurrency|
@@ -4180,6 +4416,36 @@ This allows the browser to rerun portions of an auction without incurring the de
 from querying the server during an auction.
 
 <div algorithm>
+  To <dfn>create a k-anon restricted deep copy of the interest group</dfn> given an [=interest group=] |ig|:
+    1. Let |kAnonRestrictedIG| be a deep copy of |ig|.
+    1. If |ig|'s [=interest group/ads=] is not null:
+      1. Set |kAnonRestrictedIG|'s [=interest group/ads=] to an empty [=list=] of [=interest group ad=].
+      1. [=list/For each=] |igAd| of |ig|'s [=interest group/ads=]:
+        1. Let |adHashCode| be the result of running [=compute the key hash of ad=] given |ig| and |igAd|.
+        1. If [=query k-anonymity cache=] for |adHashCode| returns true:
+          1. If |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] is not null:
+            1. Let |kAnonRestrictedSelectableReportingIds| be a new empty [=list=] of [=string=]s.
+            1. [=list/For each=] |selectableReportingId| in |igAd|'s 
+              [=interest group ad/selectable buyer and seller reporting IDs=]:
+              1. Let |reportingHashCode| be the result of [=query reporting ID k-anonymity count=]
+                given |ig|, |igAd|, and |selectableReportingId|. 
+              1. If [=query k-anonymity cache=] for |reportingHashCode| returns true, then
+                [=list/Append=] |selectableReportingId| to |kAnonRestrictedSelectableReportingIds|.
+            1. Set |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] to
+              |kAnonRestrictedSelectableReportingIds|.
+          1. [=list/Append=] |igAd| to |kAnonRestrictedIG|'s [=interest group/ads=].
+    1. If |ig|'s [=interest group/ad components=] is not null:
+      1. Set |kAnonRestrictedIG|'s [=interest group/ad components=] to an empty [=list=] of 
+        [=interest group ad=].
+      1. [=list/For each=] |igAdComponent| of |ig|'s [=interest group/ad components=]:
+        1. Let |adComponentHashCode| be the result of running [=compute the key hash of component ad=] given |ig| and
+          |igAdComponent|.
+        1. If [=query k-anonymity cache=] for |adComponentHashCode| returns true:
+          1. [=list/Append=] |igAdComponent| to |kAnonRestrictedIG|'s [=interest group/ad components=].
+    1. Return |kAnonRestrictedIG|.
+</div>
+
+<div algorithm>
   To <dfn>query k-anonymity count</dfn> given a [=SHA-256=] |hashCode|:
     1. If the [=k-anonymity server=] has recorded at least [=k-anonymity threshold=] users
         seeing |hashCode| over the last [=k-anonymity duration=], return true.
@@ -4196,49 +4462,78 @@ from querying the server during an auction.
 </div>
 
 <div algorithm>
- To <dfn>compute the key hash of ad</dfn> given an [=interest group=] |ig| and an [=interest group ad=] |igAd|:
-   1. Let |keyString| be the [=k-anonymity key=] formed from the [=string/concatenation=] of the following strings separated with U+000A LF:
+  To <dfn>compute the key hash of ad</dfn> given an [=interest group=] |ig| and an [=interest group ad=] |igAd|:
+    1. Let |keyString| be the [=k-anonymity key=] formed from the [=string/concatenation=] of the
+      following strings separated with U+000A LF:
       * "AdBid"
       * the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
       * the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
       * the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=].
-   1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
+    1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
+</div>
+
+<div algorithm>
+  To <dfn>compute the key part for one of multiple reporting ids</dfn> given [=string=]-or-null |reportingId|:
+    1. If |reportingId| is null, then return the [=string/concatenation=] of the following:
+      * U+0000 (NUL)
+      * U+0000 (NUL)
+      * U+0000 (NUL)
+      * U+0000 (NUL)
+      * U+0000 (NUL)
+    1. Otherwise, return the [=string/concatenation=] of the following:
+      * U+0001 (SOH)
+      * The size of |reportingId|, interpreted as four 8-bit big-endian numbers, appended as bytes.
+      * |reportingId|
 </div>
 
 <div algorithm>
   To <dfn>compute the key hash of reporting ID</dfn> given an [=interest group=] |ig| and an
-  [=interest group ad=] |igAd|:
-    1. Let |keyString| be a [=k-anonymity key=] formed from the [=string/concatenation=] of the following strings separated with U+000A (LF):
-
-      * "NameReport"
+  [=interest group ad=] |igAd|, and a [=string=]-or-null |selectedReportingId|:
+    1. Let |middle| be the [=string/concatenation=] of the following strings separated with U+000A (LF):
       * the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=]
       * the [=URL serializer|serialization=] of |ig|'s [=interest group/bidding url=]
       * the [=URL serializer|serialization=] of |igAd|'s [=interest group ad/render url=]
-      * If |igAd|'s [=interest group ad/buyer and seller reporting ID=]
-          [=map/exists=]:
-         * "BuyerAndSellerReportingId"
-         * |igAd|'s [=interest group ad/buyer and seller reporting ID=]
-      * Otherwise, if |igAd|'s [=interest group ad/buyer reporting ID=]
-          [=map/exists=]:
-         * "BuyerReportingId"
-         * |igAd|'s [=interest group ad/buyer reporting ID=]
-      * Otherwise:
-         * "IgName"
-         * |ig|'s [=interest group/name=].
-   1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
+    1. Let |keyString| be an empty [=string=].
+    1. If |selectedReportingId| is not null, then set the |keyString| to be the [=string/concatenation=]
+      of the following strings separated with U+000A (LF):
+      * "SelectedBuyerAndSellerReportId"
+      * |middle|
+      * The result of [=compute the key part for one of multiple reporting ids=] given |selectedReportingId|
+      * The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s 
+        [=interest group ad/buyer and seller reporting ID=]
+      * The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s
+        [=interest group ad/buyer reporting ID=]
+    1. Otherwise: 
+      1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, set |keyString|
+        to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
+        * "BuyerAndSellerReportId"
+        * |middle|
+        * |igAd|'s [=interest group ad/buyer and seller reporting ID=]
+      1. Otherwise if |igAd|'s [=interest group ad/buyer reporting ID=] is not null, set |keyString|
+        to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
+        * "BuyerReportId"
+        * |middle|
+        * |igAd|'s [=interest group ad/buyer reporting ID=]
+      1. Otherwise set |keyString| to be the [=string/concatenation=] of the following strings separated
+        with U+000A (LF):
+        * "NameReport"
+        * |middle|
+        * |igAd|'s [=interest group/name=]
+    1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
 </div>
 
 <div algorithm>
  To <dfn>compute the key hash of component ad</dfn> given an [=interest group ad=] |igAd|:
    1. Let |keyString| be the [=string/concatenation=] of the following strings separated with U+000A LF:
-      1. "ComponentBid"
-      1. the [=URL serializer|serialization=] of |igAd|.
+      * "ComponentBid"
+      * the [=URL serializer|serialization=] of |igAd|.
    1. Return the [=SHA-256=] hash of the [=ASCII encoding=] of |keyString|.
 </div>
 
 <div algorithm>
   To <dfn>query generated bid k-anonymity count</dfn> given a [=generated bid=] |bid|:
-    1. Compute the |adHashCode| following [=compute the key hash of ad=] with the |bid|'s [=generated bid/interest group=] and |bid|'s [=generated bid/ad descriptor=].
+    1. Compute the |adHashCode| following [=compute the key hash of ad=] with the |bid|'s [=generated bid/interest group=]
+      and |bid|'s [=generated bid/ad descriptor=].
     1. If [=query k-anonymity cache=] for |adHashCode| returns false, return false.
     1. If |bid|'s [=generated bid/ad component descriptors=] is not null:
       1. [=set/For each=] |adComponentDescriptor| in |bid|'s
@@ -4246,14 +4541,18 @@ from querying the server during an auction.
         1. Compute the |componentAdHashCode| by getting the result of [=compute the key hash of component ad=] with |adComponentDescriptor|'s
           [=ad descriptor/url=].
         1. If [=query k-anonymity cache=] for |componentAdHashCode| returns false, return false.
+    1. If |bid|'s [=generated bid/selected buyer and seller reporting ID=] is not null:
+      1. Let |reportingHashCode| be the result of [=query reporting ID k-anonymity count=] with the |bid|'s [=generated bid/interest group=],
+        the |bid|'s [=generated bid/ad=], and the |bid|'s [=generated bid/selected buyer and seller reporting ID=].
+      1. If [=query k-anonymity cache=] for |reportingHashCode| returns false, return false.
     1. Return true.
 </div>
 
 <div algorithm>
   To <dfn>query reporting ID k-anonymity count</dfn> given an [=interest group=]
-  |ig| and [=interest group ad=] |igAd|:
-    1. Let |keyHash| be the result of [=computing the key hash of reporting ID=] given |ig| and |igAd|.
-    1. Return the result of [=query k-anonymity count|querying the k-anonymity count=] given |keyHash|.
+  |ig|, an [=interest group ad=] |igAd|, and a [=string=]-or-null |selectedReportingId|:
+    1. Let |keyHash| be the result of [=computing the key hash of reporting ID=] given |ig|, |igAd|, and |selectedReportingId|.
+    1. Return the result of [=query k-anonymity cache=] given |keyHash|.
 </div>
 
 <div algorithm>
@@ -4269,12 +4568,16 @@ from querying the server during an auction.
   To <dfn>update k-anonymity cache for interest group</dfn> given an [=interest group=] |ig|:
     1. [=Assert=] that these steps are running [=in parallel=].
     1. [=list/For each=] |igAd| of |ig|'s [=interest group/ads=]:
-      1. Compute the |adHashCode| following [=compute the key hash of ad=] for |ig| and |igAd|.
+      1. Let |adHashCode| be the result of running [=compute the key hash of ad=] given |ig| and |igAd|.
       1. Run [=update k-anonymity cache for key=] on |adHashCode|.
-      1. Compute the |adReportingHashCode| following [=compute the key hash of reporting ID=].
+      1. Let |adReportingHashCode| be the result of [=computing the key hash of reporting ID=] given |ig|, |igAd|, and null.
       1. Run [=update k-anonymity cache for key=] on |adReportingHashCode|.
+      1. If |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] is not null:
+        1. [=list/For each=] |selectableReportingId| in |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=]:
+          1. Set |adReportingHashCode| be the result of [=computing the key hash of reporting ID=] given |ig|, |igAd|, and |selectableReportingId|.
+          1. Run [=update k-anonymity cache for key=] on |adReportingHashCode|.
     1. [=list/For each=] |componentAd| of |ig|'s [=interest group/ad components=]:
-      1. Compute the |componentAdHashCode| following [=compute the key hash of component ad=] for |componentAd|.
+      1. Let |componentAdHashCode| be the result of running [=compute the key hash of component ad=] given |componentAd|.
       1. Run [=update k-anonymity cache for key=] on |componentAdHashCode|.
 </div>
 
@@ -4806,6 +5109,7 @@ dictionary GenerateBidOutput {
   DOMString bidCurrency;
   (DOMString or AdRender) render;
   any ad;
+  USVString selectedBuyerAndSellerReportingId;
   sequence<(DOMString or AdRender)> adComponents;
   double adCost;
   unrestricted double modelingSignals;
@@ -4893,6 +5197,9 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
   1. If |bidAd| is null, return failure.
   1. Set |bid|'s [=generated bid/ad descriptor=] to |adDescriptor|.
   1. Set |bid|'s [=generated bid/bid ad=] to |bidAd|.
+  1. If |generateBidOutput|["{{GenerateBidOutput/selectedBuyerAndSellerReportingId}}"] [=map/exists=]:
+    1. Set |bid|'s [=generated bid/selected buyer and seller reporting ID=] to
+      |generateBidOutput|["{{GenerateBidOutput/selectedBuyerAndSellerReportingId}}"].
   1. If |generateBidOutput|["{{GenerateBidOutput/adComponents}}"] [=map/exists=]:
     1. Let |adComponents| be |generateBidOutput|["{{GenerateBidOutput/adComponents}}"].
     1. Return failure if any of the following conditions hold:
@@ -5256,6 +5563,20 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
             1. Otherwise, [=map/set=] |ig|'s [=interest group/priority signals overrides=][|pvKey|] to |pvValue|.
         1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
+        <dt>"`privateAggregationConfig`"
+        <dd>
+        1. If |value| is not a [=map=] whose [=map/keys=] are [=strings=], jump to the step labeled
+          <i><a href=#abort-update>Abort update</a></i>.
+        1. If |value|["`aggregationCoordinatorOrigin`"] [=map/exists=]:
+          1. If |value|["`aggregationCoordinatorOrigin`"] is not a [=string=], jump to the step
+            labeled <i><a href=#abort-update>Abort update</a></i>.
+          1. Let |aggregationCoordinator| be the result of [=obtaining the Private Aggregation
+            coordinator=] given |value|["`aggregationCoordinatorOrigin`"].
+          1. If |aggregationCoordinator| is a {{DOMException}}, jump to the step
+            labeled <i><a href=#abort-update>Abort update</a></i>.
+          1. Otherwise, set |ig|'s [=interest group/Private Aggregation coordinator=] to
+            |aggregationCoordinator|.
+
         <dt>"`sellerCapabilities`"
         <dd>
         1.  If |value| is an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
@@ -5424,6 +5745,8 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
                   |igAd|'s [=interest group ad/buyer reporting ID=] to it.
               1. If |ad|["{{AuctionAd/buyerAndSellerReportingId}}"] [=map/exists=]
                   then set |igAd|'s [=interest group ad/buyer and seller reporting ID=] to it.
+              1. If |ad|["{{AuctionAd/selectableBuyerAndSellerReportingIds}}"] [=map/exists=]
+                  then set |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] to it.
             1. [=list/Append=] |igAd| to |igAds|.
           1. If |igAds| is not [=list/is empty=]:
             1. Set |ig|'s |interestGroupField| to |igAds|.
@@ -5538,6 +5861,8 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   [=interest group/priority signals overrides=]:
   1. The [=string/length=] of |key|.
   1. 8, which is the size of |value|.
+1. The [=string/length=] of the [=serialization of an origin|serialization=] of |ig|'s [=interest
+  group/Private Aggregation coordinator=] if the field is not null.
 1. If |ig|'s [=interest group/seller capabilities=] is not null, then [=map/for each=]
   |seller| → |capabilities| of |ig|'s [=interest group/seller capabilities=]:
   1. The [=string/length=] of the [=serialization of an origin|serialization=] of |seller|.
@@ -6127,6 +6452,7 @@ dictionary ReportingBrowserSignals {
   USVString componentSeller;
 
   USVString buyerAndSellerReportingId;
+  USVString selectedBuyerAndSellerReportingId;
 };
 </xmp>
 
@@ -6154,9 +6480,21 @@ dictionary ReportingBrowserSignals {
   <dt>{{ReportingBrowserSignals/componentSeller}}
   <dd>Copied from [=leading bid info/component seller=]
   <dt>{{ReportingBrowserSignals/buyerAndSellerReportingId}}
-  <dd>Set if the winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its
-    listing in the interest group, and that value was
-    [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with interest group owner,
+  <dd>There are two scenerios in which this can be set:
+    * Set if the winning ad had a [=interest group ad/buyer and seller reporting ID=] and
+      the winning bid did not have [=generated bid/selected buyer and seller reporting ID=] set,
+      and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
+      interest group owner, bidding script URL, [=ad creative=] URL, and null.
+    * Set if the wining bid had a [=generated bid/selected buyer and seller reporting ID=] and the
+      winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its listing in the 
+      interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=]
+      combined with interest group owner, bidding script URL, [=ad creative=] URL, the and winning bid's
+      [=generated bid/selected buyer and seller reporting ID=].
+  <dt>{{ReportingBrowserSignals/selectedBuyerAndSellerReportingId}}
+  <dd>A selected reporting id returned by "`generateBid()`". 
+    Set if the winning bid had a [=generated bid/selected buyer and seller reporting ID=] set,
+    and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
+    [=interest group ad/buyer and seller reporting ID=], interest group owner,
     bidding script URL, and [=ad creative=] URL.
 </dl>
 
@@ -6207,18 +6545,26 @@ enum KAnonStatus { "passedAndEnforced", "passedNotEnforced", "belowThreshold", "
   <dt>{{ReportWinBrowserSignals/madeHighestScoringOtherBid}}
   <dd>True if the interest group owner was the only bidder that made bids with the second highest
     score
-  <dt>{{ReportWinBrowserSignals/buyerReportingId}}
-  <dd>Set if the winning ad had a [=interest group ad/buyer reporting ID=] but not a
-    [=interest group ad/buyer and seller reporting ID=] set in its listing in the interest group,
-    and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
-    interest group owner, bidding script URL, and [=ad creative=] URL.
-
   <dt>{{ReportWinBrowserSignals/interestGroupName}}
-  <dd>Only set if the tuple of interest group owner, name, bidding script URL and [=ad creative=] URL
-
-    were [=query reporting ID k-anonymity count|jointly k-anonymous=], and the
-    winning ad had neither [=interest group ad/buyer and seller reporting ID=]
-    nor [=interest group ad/buyer reporting ID=] set in its listing in the interest group.
+  <dd>Only set if all of the following are true:
+      * The combination of the [=interest group/owner=], [=interest group/name=], [=interest group/bidding url=],
+        [=ad creative=] URL, and null are [=query reporting ID k-anonymity count|jointly k-anonymous=].
+      * The winning ad's [=interest group ad/buyer and seller reporting ID=] and
+        [=interest group ad/buyer reporting ID=] are null.
+      * The winning bid's [=generated bid/selected buyer and seller reporting ID=] is null.
+  <dt>{{ReportWinBrowserSignals/buyerReportingId}}
+  <dd>There are two scenerios in which this can be set:
+    * Set if the winning ad had a [=interest group ad/buyer reporting ID=] but not a
+      [=interest group ad/buyer and seller reporting ID=] set in its listing in the interest group,
+      and the winning bid did not have [=generated bid/selected buyer and seller reporting ID=] set,
+      and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
+      interest group owner, bidding script URL, [=ad creative=] URL, and null.
+    * Set if the wining bid had a [=generated bid/selected buyer and seller reporting ID=] and the
+      winning ad had a [=interest group ad/buyer reporting ID=] set in its listing in the 
+      interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=]
+      combined with interest group owner, bidding script URL, [=ad creative=] URL,
+      [=interest group ad/buyer and seller reporting ID=], and
+      [=generated bid/selected buyer and seller reporting ID=].
   <dt>{{ReportWinBrowserSignals/modelingSignals}}
   <dd>A 0-4095 integer (12-bits) passed to `reportWin()`, with noising
   <dt>{{ReportWinBrowserSignals/dataVersion}}
@@ -6253,7 +6599,7 @@ dictionary DirectFromSellerSignalsForSeller {
 
 <h3 id=interest-group-header>Interest group</h3>
 
-An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]:
+An <dfn export>interest group</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="interest group">
   : <dfn>expiry</dfn>
@@ -6287,6 +6633,9 @@ An <dfn>interest group</dfn> is a [=struct=] with the following [=struct/items=]
   :: Null or a [=set=] of [=seller capabilities=].
     The default [=seller capabilities=] granted to sellers not listed in
     [=interest group/seller capabilities=].
+  : <dfn>Private Aggregation coordinator</dfn>
+  :: An [=aggregation coordinator=] or null; where null specifies the [=default aggregation
+    coordinator=].
   : <dfn>execution mode</dfn>
   :: One of three possible values: "`compatibility`", "`frozen-context`", or "`group-by-origin`".
     Initially "`compatibility`". Each value reprensents a {{long}} integer.
@@ -6387,14 +6736,22 @@ An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/item
   : <dfn>metadata</dfn>
   :: Null or a [=string=]. Extra arbitary information about this ad, passed to `generateBid()`.
   : <dfn>buyer reporting ID</dfn>
-  :: Null or a [=string=]. Will be passed in place of interest group name to [=report win=], subject
+  :: Null or a [=string=]. Will be passed in place of interest group name to [=report win=],
+    or alongside the [=generated bid/selected buyer and seller reporting ID=], subject
     to [=k-anonymity=] checks. Only meaningful in [=interest group/ads=], but ignored in
     [=interest group/ad components=].
   : <dfn>buyer and seller reporting ID</dfn>
   :: Null or a [=string=]. Will be passed in place of interest group name or
-    [=interest group ad/buyer reporting ID=] to [=report win=] and [=report result=], subject to
-    [=k-anonymity=] checks. Only meaningful in [=interest group/ads=], but ignored in
-    [=interest group/ad components=].
+    [=interest group ad/buyer reporting ID=], or alongside the
+    [=generated bid/selected buyer and seller reporting ID=], to [=report win=] and 
+    [=report result=], subject to [=k-anonymity=] checks. Also passed alongside 
+    [=generated bid/selected buyer and seller reporting ID=] to `scoreAd()` if 
+    [=generated bid/selected buyer and seller reporting ID=] is present. Only meaningful in
+    [=interest group/ads=], but ignored in [=interest group/ad components=].
+  : <dfn>selectable buyer and seller reporting IDs</dfn>
+  :: Null or a [=list=] of [=strings=]. A list of reporting ids which will be sent to `generateBid()`,
+    in order to allow `generateBid()` to return a [=generated bid/selected buyer and seller reporting ID=].
+    Only meaningful in [=interest group/ads=], but ignored in [=interest group/ad components=].
   : <dfn>allowed reporting origins</dfn>
   :: Null or a [=list=] of [=origins=]. A list of up to 10 reporting origins that can receive reports
     with registered macros. Each origin's [=origin/scheme=] must be "`https`" and each origin must be
@@ -6453,7 +6810,7 @@ value is used to denote that the currency is unspecified.
 
 <h3 id=auction-config-header>Auction config</h3>
 
-An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]:
+An <dfn export>auction config</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="auction config">
   : <dfn>seller</dfn>
@@ -6549,11 +6906,26 @@ An <dfn>auction config</dfn> is a [=struct=] with the following [=struct/items=]
     priorities. In the case both have entries with the same key, the entry in
     `per_buyer_priority_signals` takes precedence. No signals key start with "browserSignals.", which
     is reserved for values coming from the browser.
+  : <dfn>seller Private Aggregation coordinator</dfn>
+  :: An [=aggregation coordinator=], initially the [=default aggregation coordinator=].
   : <dfn>required seller capabilities</dfn>
   :: A [=set=] of [=seller capabilities=].
     The [=seller capabilities=] that each [=interest group=] must declare to participate in the
     auction. Interest groups that don't declare all these capabilities will not participate in the
     auction.
+  : <dfn>auction report buyer keys</dfn>
+  :: A [=map=] from buyer [=origins=] to {{bigint}}s. For buyer metrics delegated to be reported to
+    the seller via the [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api),
+    this determines the base bucket number used for a particular buyer's information.
+  : <dfn>auction report buyers</dfn>
+  :: A [=map=] from [=strings=] to {{AuctionReportBuyersConfig}}s. For buyer metrics delegated to be
+    reported to the seller via the [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api),
+    this determines how each metric bucket is chosen inside the buyer's space, and how to scale it.
+    <!-- TODO: this should probably use enums instead -->
+  : <dfn>auction report buyer debug details</dfn>
+  :: A [=debug details=], initially a new one. Configures
+    [Private Aggregation](https://github.com/patcg-individual-drafts/private-aggregation-api)
+    debugging functionality for buyer metrics delegated to be reported to the seller.
   : <dfn>component auctions</dfn>
   :: A [=list=] of [=auction config=]s.
     Nested auctions whose results will also participate in a top level auction. Only the top level
@@ -7271,8 +7643,8 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
 [:Ad-Auction-Additional-Bid:] response headers. It's a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="generated bid">
-  : <dfn>id</dfn>
-  :: A pair of {{unsigned long}}s. Used to identify a [=generated bid=].
+  : <dfn>reporting id</dfn>
+  :: A [=reporting bid key=] or null, initially null. Used to identify a [=generated bid=].
   : <dfn>for k-anon auction</dfn>
   :: A [=boolean=], initially true. If this is false, the bid is only used to determine the hypothetical
     winner with no k-anonymity constraints, which would be used to [=update k-anonymity counts=] only.
@@ -7297,6 +7669,17 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
     was specified, it will have exactly that many [=list/items=]) by the time the bid participates
     in the auction. Must be null if the interest group making this bid has a null
     [=interest group/ad components=] field.
+  : <dfn>selected buyer and seller reporting ID</dfn>
+  :: Null or [=string=]. The selected reporting id from the 
+    [=interest group ad/selectable buyer and seller reporting IDs=] within the
+    [=generated bid/interest group=]. If present, this will be:
+      * Passed alongside [=interest group ad/buyer reporting ID=] and
+        [=interest group ad/buyer and seller reporting ID=] to [=report win=] 
+        subject to [=k-anonymity=] checks.
+      * Passed alongside [=interest group ad/buyer and seller reporting ID=]
+        to [=report result=] subject to [=k-anonymity=] checks.
+      * Passed alongside [=interest group ad/buyer and seller reporting ID=]
+        to `scoreAd()`.
   : <dfn>ad cost</dfn>
   :: Null or a {{double}}. Advertiser click or conversion cost passed from `generateBid()` to
     `reportWin()`. Negative values will be ignored and not passed. Will be
@@ -7367,10 +7750,15 @@ To <dfn>adjust bid list based on k-anonymity</dfn> given a [=list=] of [=generat
   1. Set |bidCopy|'s [=generated bid/for k-anon auction=] to false.
   1. [=Apply any component ads target to a bid=] given |bidCopy|.
   1. [=list/Append=] |bidCopy| to |bidsToScore|
-  1. If [=query generated bid k-anonymity count=] given |generatedBid| returns true:
-
-      Issue: TODO: change to query k-anonymity cache instead.
-      (<a href="https://github.com/WICG/turtledove/issues/1150">WICG/turtledove#1150</a>)
+  1. Let |selectedReportingId| be a [=string=]-or-null that is set to null.
+  1. If |generatedBid|'s [=generated bid/selected buyer and seller reporting ID=] is not null, set 
+    |selectedReportingId| to it.
+  1. Let |igAd| be the [=interest group ad=] from |generatedBid|'s [=generated bid/interest group=]'s
+    [=interest group/ads=] whose [=interest group ad/render url=] is |generatedBid|'s
+    [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
+  1. Let |isBidKAnon| be the result of [=query generated bid k-anonymity count=] given |generatedBid|.
+  1. If |isBidKAnon| is true and running [=query reporting ID k-anonymity count=] with |generatedBid|'s 
+    [=generated bid/interest group=], |igAd|, |selectedReportingId| is true:
     1. [=list/Append=] |generatedBid| to |bidsToScore|.
 
     Note: Conceptually, a bid that's already k-anonymous is considered for both the k-anonymous and
@@ -7388,10 +7776,6 @@ To <dfn>adjust bid list based on k-anonymity</dfn> given a [=list=] of [=generat
 A <dfn>bid debug reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="bid debug reporting info">
-  : <dfn>ids</dfn>
-  :: A [=set=] of pairs of {{unsigned long}}s. Includes all [=generated bid/id=] values
-    of the [=generated bid=]s which will want to use this debug reporting information
-    if they win an auction.
   : <dfn>component seller</dfn>
   ::  Null or an [=origin=]. Seller in component auction which was running to produce
     this reporting information. Only set for component auctions, null otherwise.
