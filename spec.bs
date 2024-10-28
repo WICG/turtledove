@@ -76,6 +76,7 @@ spec: WebAssembly-web-api; urlPrefix: https://webassembly.github.io/spec/web-api
 spec: WebIDL; urlPrefix: https://webidl.spec.whatwg.org/
   type: dfn
     text: convert a Web IDL arguments list to an ECMAScript arguments list; url: #web-idl-arguments-list-converting
+    text:an exception was thrown
 spec: Fenced Frame; urlPrefix: https://wicg.github.io/fenced-frame/
   type: dfn
     for: browsing context
@@ -3748,7 +3749,7 @@ dictionary StorageInterestGroup : AuctionAdInterestGroup {
     1. If |ig|'s [=interest group/seller capabilities=] is not null:
       1. Let |resultSellerCapabilities| be an [=ordered map=].
       1. [=map/For each=] |origin| → |originSellerCapabilities| of |ig|'s [=interest group/seller capabilities=]:
-        1. Let |serializedOrigin| be the [=origin/serialization=] of |origin|.
+        1. Let |serializedOrigin| be the [=serialization of an origin|serialization=] of |origin|.
         1. [=map/Set=] |resultSellerCapabilities|[|serializedOrigin|] to |originSellerCapabilities|.
       1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/sellerCapabilities}}"] to |resultSellerCapabilities|.
     1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/executionMode}}"] to |ig|'s [=interest group/execution mode=].
@@ -3762,11 +3763,14 @@ dictionary StorageInterestGroup : AuctionAdInterestGroup {
     1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"] to |ig|'s [=interest group/max trusted bidding signals url length=].
     1. If |ig|'s [=interest group/user bidding signals=] is not null:
       1. Let |parsedUserBiddingSignals| be |ig|'s [=interest group/user bidding signals=] [=parsing a JSON string to a JavaScript value|parsed to a JavaScript value=].
+      1. If [=an exception was thrown=], then return failure.
       1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/userBiddingSignals}}"] to |parsedUserBiddingSignals|.
     1. If |ig|'s [=interest group/ads=] is not null:
       1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/ads}}"] to |ig|'s [=interest group/ads=] [=converted to an AuctionAd sequence=].
+      1. If [=an exception was thrown=], then return failure.
     1. If |ig|'s [=interest group/ad components=] is not null:
       1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/adComponents}}"] to |ig|'s [=interest group/ad components=] [=converted to an AuctionAd sequence=].
+      1. If [=an exception was thrown=], then return failure.
     1. If |ig|'s [=interest group/ad sizes=] is not null:
       1. Let |resultAdSizes| be an [=ordered map=].
       1. [=map/For each=] |sizeName| → |adSize| of |ig|'s [=interest group/ad sizes=]:
@@ -3778,6 +3782,8 @@ dictionary StorageInterestGroup : AuctionAdInterestGroup {
     1. If |ig|'s [=interest group/priority signals overrides=] is not null:
       1. [=map/Set=] |resultIg|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"] to |ig|'s [=interest group/priority signals overrides=].
     1. If |ig|'s [=interest group/additional bid key=] is not null:
+      1. Let |encoded| be the result of running [=forgiving-base64 encode=] with |ig|'s [=interest group/additional bid key=].
+      1. If |encoded| is failure, then return failure.
       1. [=map/Set=] |resultIg|["{{AuctionAdInterestGroup/additionalBidKey}}"] to the result of running [=forgiving-base64 encode=] with |ig|'s [=interest group/additional bid key=].
     1. [=map/Set=] |resultIg|["{{StorageInterestGroup/joinCount}}"] to the sum of |ig|'s [=interest group/join counts=] for all days within the last 30 days.
     1. [=map/Set=] |resultIg|["{{StorageInterestGroup/bidCount}}"] to the sum of |ig|'s [=interest group/bid counts=] for all days within the last 30 days.
@@ -3787,17 +3793,19 @@ dictionary StorageInterestGroup : AuctionAdInterestGroup {
       1. Let |timeDelta| be (|now| &minus; |prevWin|'s [=previous win/time=]) in millseconds.
       1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
         otherwise.
+      1. Let |metadata| be |prevWin|'s [=interest group ad/metadata=] [=parsing a JSON string to a JavaScript value|parsed to a JavaScript value=].
+      1. If [=an exception was thrown=], then return failure.
       1. Let |prevWinAdIDL| be a new {{AuctionAd}} with the following [=struct/items=]:
         : {{AuctionAd/renderURL}}
         :: the [=URL serializer|serialization=] of |prevWin|'s [=interest group ad/render url=]
         : {{AuctionAd/metadata}}
-        :: |prevWin|'s [=interest group ad/metadata=] [=parsing a JSON string to a JavaScript value|parsed to a JavaScript value=].
+        :: |metadata|.
         : {{AuctionAd/adRenderId}}
         :: |prevWin|'s [=interest group ad/ad render ID=]
       1. Let |prevWinElement| be the <code>[=sequence=]<{{PreviousWinElement}}></code> «|timeDelta|, |prevWinAdIDL|».
       1. [=list/Append=] |prevWinElement| to |resultPrevWins|.
     1. [=map/Set=] |resultIg|["{{StorageInterestGroup/prevWinsMs}}"] to |resultPrevWins|.
-    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/joiningOrigin}}"] to the [=origin/serialization=] of |ig|'s [=interest group/joining origin=].
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/joiningOrigin}}"] to the [=serialization of an origin|serialization=] of |ig|'s [=interest group/joining origin=].
     1. [=map/Set=] |resultIg|["{{StorageInterestGroup/timeSinceGroupJoinedMs}}"] to (|now| &minus; |ig|'s [=interest group/join time=]) in millseconds.
     1. [=map/Set=] |resultIg|["{{StorageInterestGroup/lifetimeRemainingMs}}"] to (|ig|'s [=interest group/expiry=] &minus; |now|) in millseconds.
     1. [=map/Set=] |resultIg|["{{StorageInterestGroup/timeSinceLastUpdateMs}}"] to (|now| &minus; |ig|'s [=interest group/last updated=]) in millseconds.
