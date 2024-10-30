@@ -1779,14 +1779,20 @@ following steps. They return a failure if failing to fetch the script or wasm, o
     1. Let |prevWinElement| be the <code>[=sequence=]<{{PreviousWinElement}}></code> «|timeDelta|, |prevWinAdIDL|».
     1. [=list/Append=] |prevWinElement| to |prevWins|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/prevWinsMs}}"] to |prevWins|.
+  1. Let |metrics| be the result of [=access per-participant metrics=] given |reportingContext|,
+    |ig|'s [=interest group/owner=], [=worklet function/generate-bid=].
   1. Let |biddingScriptFetcher| be the result of [=creating a new script fetcher=] with
     |ig|'s [=interest group/bidding url=], and |settings|.
   1. Let |biddingScript| be the result of [=waiting for script body from a fetcher=] given
      |biddingScriptFetcher|.
+  1. [=Add a sample to an averager=] |metrics|'s [=per participant metrics/average code fetch time=]
+    saying how long this took, in milliseconds (TODO: how?).
   1. If |biddingScript| is failure, return failure.
   1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
     1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
       [=interest group/bidding wasm helper url=] and |settings|.
+    1. [=Add a sample to an averager=] |metrics|'s [=per participant metrics/average code fetch
+      time=] saying how long this took, in milliseconds (TODO: how?).
     1. If |wasmModuleObject| is not failure, then [=map/set=]
       |browserSignals|["{{BiddingBrowserSignals/wasmHelper}}"] to |wasmModuleObject|.
     1. Otherwise, return failure.
@@ -1981,6 +1987,10 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
       1. [=map/For each=] slotSizeQueryParam → |perSignalsUrlGenerator| of |perSlotSizeQueryParam|:
         1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
           1. [=list/Remove=] from |groups| any [=interest group=] [=list/contained=] in |igs|.
+    1. Let |metrics| be the result of [=accessing per-participant metrics] for |reportingContext|,
+      |buyer|, [=worket function/generated-bid].
+    1. Set |metrics|'s [=per participant metrics/participating interest group count=] to the
+      [=list/size=] of |groups|.
   1. Let |perBuyerSignals| be null.
   1. If |auctionConfig|'s [=auction config/per buyer signals=] is not null and
     [=auction config/per buyer signals=][|buyer|] [=map/exists=], then set |perBuyerSignals| to
@@ -2309,6 +2319,8 @@ a {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{
 or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, an [=origin=]
 |topLevelOrigin|, and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 
+1. Let |metrics| be the result of [=access per-participant metrics=] given |reportingContext|,
+    |auctionConfig|'s [=auction config/seller=], [=worklet function/score-ad=].
 1. Let «|trustedScoringSignalsAreCrossOrigin|, |sameOriginTrustedScoringSignals|,
   |crossOriginTrustedScoringSignals|, |scoringDataVersion|» be the result of [=fetch and
   decode trusted scoring signals=] given |trustedScoringSignalsBatcher|, |auctionConfig|,
@@ -2349,6 +2361,8 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
 
 1. Let |decisionLogicScript| be the result of [=wait for script body from a fetcher=] given
   |decisionLogicFetcher|.
+1. [=Add a sample to an averager=] |metrics|'s [=per participant metrics/average code fetch time=]
+  saying how long the fetch |decisionLogicFetcher| performed took, in milliseconds.
 1. If |decisionLogicScript| is failure, then:
   1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
     "`default-local-reporting`", then [=add a platform contribution=] with
@@ -2893,10 +2907,14 @@ and a [=global object=] |global|:
     [=generated bid/interest group=], |igAd|, and null is true:
     1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, [=map/set=]
       |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to it.
+  1. Let |metrics| be the result of [=access per-participant metrics=] given |reportingContext|,
+    |config|'s [=auction config/seller=], [=worklet function/report-result=].
   1. Let |sellerReportingScriptFetcher| be the result of [=creating a new script fetcher=] with
      |config|'s [=auction config/decision logic url=] and |global|'s [=relevant settings object=].
   1. Let |sellerReportingScript| be the result of [=waiting for script body from a fetcher=] given
      |sellerReportingScriptFetcher|.
+  1. [=Add a sample to an averager=] |metrics|'s [=per participant metrics/average code fetch time=]
+    saying how long the fetch |sellerReportingScriptFetcher| performed took, in milliseconds.
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored, |paContributions| » be the
     result of [=evaluating a reporting script=] with |sellerReportingScript|, [=worklet function/
     report-result=],  |reportingContext|, |config|'s [=auction config/seller=], |config|'s
@@ -2958,6 +2976,8 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
         (TODO: noise and bucket this signal)
     </dl>
   1. Let |ig| be |winner|'s [=generated bid/interest group=].
+  1. Let |metrics| be the result of [=access per-participant metrics=] given |reportingContext|,
+    |ig|'s [=interest group/owner=], [=worklet function/report-win=].
   1. Let |igAd| be the [=interest group ad=] from ig's [=interest group/ads=] whose
      [=interest group ad/render url=] is |winner|'s
      [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
@@ -2993,6 +3013,8 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
      |winner|'s [=generated bid/interest group=]'s [=interest group/bidding url=] and |settings|.
   1. Let |buyerReportingScript| be the result of [=waiting for script body from a fetcher=] given
      |buyerReportingScriptFetcher|.
+  1. [=Add a sample to an averager=] |metrics|'s [=per participant metrics/average code fetch time=]
+    saying how long the fetch |buyerReportingScriptFetcher| performed took, in milliseconds.
   1. Let |reportFunctionName| be "`reportWin`".
   1. If |winner|'s [=generated bid/provided as additional bid=] is true:
     1. Set |reportFunctionName| be "`reportAdditionalBidWin`".
@@ -3638,7 +3660,20 @@ A <dfn>reporting context</dfn> is a [=struct=] with the following [=struct/items
     some of these may be based on bids that started as additional bids or from component auctions
     run by Bidding and Auction services, and not interest groups, so this list may be quite
     different from [=reporting context/bidder participants=].
+  : <dfn>participant metrics</dfn>
+  :: A [=map=] from a pair ([=origin=], [=worklet function=]) to [=per participant metrics=].
 </dl>
+
+<div algorithm>
+To <dfn>access per-participant metrics</dfn> given a [=reporting context=] |reportingContext|,
+an [=origin=] |origin| and [=worklet function=] |workletFunction|:
+1. Let |key| be (|origin|, |workletFunction|).
+1. If |reportingContext|'s [=reporting context/participant metrics=][|key|] does not [=map/exist=],
+  set |reportingContext|'s [=reporting context/participant metrics=][|key|] to a new [=per participant
+  metrics=].
+1. Return |reportingContext|'s [=reporting context/participant metrics=][|key|].
+
+</div>
 
 A <dfn>reporting context map</dfn> is a [=map=] from [=auction config=] to [=reporting context=].
 Here the keys are configurations for auctions that actually produce bids (e.g. not the top-level
@@ -4074,6 +4109,13 @@ A signal base value is one of the following:
     Note: this mapping to an integer is defined in [=determine a signal's
         numeric value=].
 
+: "<dfn><code>average-code-fetch-time</code></dfn>"
+:: The numeric value is the average time it took to fetch code resources (JavaScript or WebAssembly)
+  for this particular worklet function, for this participant.
+: "<dfn><code>participating-ig-count</code></dfn>"
+:: The numeric value is the number of interest groups for the buyer actually participating in the
+  auction, after considering prioritization and capabilities.
+
 </dl>
 
 <h4 dfn-type=dfn>On event contribution entry</h4>
@@ -4089,6 +4131,8 @@ An on event contribution entry is a [=struct=] with the following items:
 :: A [=debug details=] or null (default null)
 : <dfn>worklet function</dfn>
 :: A [=worklet function=].
+: <dfn>origin</dfn>
+:: The [=origin=] of the script that contributed the entry.
 
 </dl>
 
@@ -4106,6 +4150,55 @@ A worklet function is one of the following:
 
 </dl>
 
+<div algorithm>
+To <dfn>find corresponding bid and score phase function</dfn> given a [=worklet function=] |fn|:
+
+  1.Switch on on |fn|:
+    <dl class="switch">
+    : [=worklet function/generate-bid=]
+    :: Return [=worklet function/generate-bid=].
+    : [=worklet function/score-ad=]
+    :: Return [=worklet function/score-ad=].
+    : [=worklet function/report-result=]
+    :: Return [=worklet function/score-ad=].
+    : [=worklet function/report-win=]
+    :: Return [=worklet function/generate-bid=].
+
+    </dl>
+</div>
+
+### Averager ### {#private-aggregation-averager}
+An <dfn>averager</dfn> is a a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="averager">
+  : <dfn>count</dfn>
+  :: A {{long}}, initially 0.
+  : <dfn>sum</dfn>
+  :: A {{double}}, initially 0.
+</dl>
+
+<div algorithm>
+To <dfn>add a sample to an averager</dfn> given an [=averager=] |averager|, a {{double}} |sample|:
+1. Set |averager|'s [=averager/count=] to |averager|'s [=averager/count=] + 1.
+1. Set |averager|'s [=averager/sum=] to |averager|'s [=averager/sum=] + |sample|.
+
+</div>
+
+<div algorithm>
+To <dfn>get the value to report from an averager</dfn> given an [=averager=] |averager|:
+1. If |averager|'s [=averager/count=] = 0, return 0.
+1. Return |averager|'s [=averager/sum=] / [=averager/count=].
+
+</div>
+
+### Per-participant metrics ### {#private-aggregation-per-participant-metrics}
+A <dfn>per participant metrics</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="per participant metrics">
+  : <dfn>participating interest group count</dfn>
+  :: A {{long}}, initially 0.
+  : <dfn>average code fetch time</dfn>
+  :: An [=averager=].
+</dl>
+
 <h4 dfn-type=dfn>Private Aggregation contributions</h4>
 Private Aggregation contributions is a [=map=] from [=string=] to a [=list=] of [=on event
 contribution entries=].
@@ -4118,6 +4211,7 @@ To <dfn>prepare for private aggregation</dfn> given a
 a [=reporting context=] |reportingContext|, and [=origins=] |origin| and |aggregationCoordinator|:
 1. Let |debugScope| be a new [=debug scope=].
 1. Set |global|'s [=InterestGroupScriptRunnerGlobalScope/worklet function=] to |workletFunction|.
+1. Set |global|'s [=InterestGroupScriptRunnerGlobalScope/origin=] to |origin|.
 1. Set |global|'s [=InterestGroupScriptRunnerGlobalScope/private aggregation=] to a new
   [=PrivateAggregation=] with the following [=struct/items=]:
     : <a spec="private-aggregation-api" for="PrivateAggregation">allowed to use</a>
@@ -4226,7 +4320,7 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
       1. Otherwise:
         1. If |bidId| &ne; |sellerOnceRep|, [=iteration/continue=].
     1. Let |filledInContribution| be the result of [=filling in the contribution=] given
-      |onEventEntry|'s [=on event contribution entry/contribution=] and |leadingBidInfo|.
+      |reportingContext|, |onEventEntry| and |leadingBidInfo|.
 
       Issue: Once <a href="https://github.com/WICG/turtledove/issues/627">WICG/turtledove#627</a>
       is resolved, align 'filling in' logic with `forDebuggingOnly`.
@@ -4338,15 +4432,18 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
 </div>
 
 <div algorithm>
-To <dfn>fill in the contribution</dfn> given a {{PAExtendedHistogramContribution}} |contribution|
-and a [=leading bid info=] |leadingBidInfo|, perform the following steps. They return a
-{{PAHistogramContribution}}:
+To <dfn>fill in the contribution</dfn> given a [=reporting context=] |reportingContext|,
+an [=on event contribution entry=] |onEventEntry| and a [=leading bid info=] |leadingBidInfo|,
+perform the following steps. They return a {{PAHistogramContribution}}:
+1. Let |contribution| be |onEventEntry|'s [=on event contribution entry/contribution=].
 1. Let |bucket| be |contribution|["{{PAExtendedHistogramContribution/bucket}}"].
 1. If |bucket| is a {{PASignalValue}}, set |bucket| to the result of [=filling
-    in the signal value=] given |bucket|, 2<sup>128</sup>−1 and |leadingBidInfo|.
+    in the signal value=] given |reportingContext|, |onEventEntry|, |bucket|, 2<sup>128</sup>−1
+    and |leadingBidInfo|.
 1. Let |value| be |contribution|["{{PAExtendedHistogramContribution/value}}"].
 1. If |value| is a {{PASignalValue}}, set |value| to the result of [=filling in
-    the signal value=] given |value|, 2<sup>31</sup>−1 and |leadingBidInfo|.
+    the signal value=] given |reportingContext|, |onEventEntry|, |value|, 2<sup>31</sup>−1 and
+    |leadingBidInfo|.
 1. Let |filledInContribution| be a new {{PAHistogramContribution}} with the
     items:
     : {{PAHistogramContribution/bucket}}
@@ -4360,13 +4457,15 @@ and a [=leading bid info=] |leadingBidInfo|, perform the following steps. They r
 </div>
 
 <div algorithm>
-To <dfn>fill in the signal value</dfn> given a {{PASignalValue}} |value|, an
+To <dfn>fill in the signal value</dfn> given a [=reporting context=] |reportingContext|,
+an [=on event contribution entry=] |onEventEntry|, a {{PASignalValue}} |value|, an
 integer |maxAllowed| and a [=leading bid info=] |leadingBidInfo|, perform the following steps.
 They return an integer.
 1. [=Assert=]: |value|["{{PASignalValue/baseValue}}"] is a valid [=signal base
     value=].
 1. Let |returnValue| be the result of [=determining a signal's numeric value=]
-    given |value|["{{PASignalValue/baseValue}}"] and |leadingBidInfo|.
+    given |reportingContext|, |onEventEntry|, |value|["{{PASignalValue/baseValue}}"] and
+    |leadingBidInfo|.
 1. If |value|["{{PASignalValue/scale}}"] [=map/exists=], set |returnValue| to
     the result of multiplying |value|["{{PASignalValue/scale}}"] with
     |returnValue|.
@@ -4381,9 +4480,17 @@ They return an integer.
 
 
 <div algorithm>
-To <dfn>determine a signal's numeric value</dfn> given a [=signal base value=]
+To <dfn>determine a signal's numeric value</dfn> given a [=reporting context=] |reportingContext|,
+an [=on event contribution entry=] |onEventEntry|, a [=signal base value=]
 |signalBaseValue| and a [=leading bid info=] |leadingBidInfo|, perform the following steps.
 They return a {{double}}.
+1. Let |metrics| be the result of [=access per-participant metrics=] given |reportingContext|,
+    |onEventEntry|'s [=on event contribution entry/origin=], [=on event contribution entry/
+    worklet function=].
+1. Let |bidAndScoreMetrics| be the result of [=access per-participant metrics=] given
+  |reportingContext|, |onEventEntry|'s [=on event contribution entry/origin=], and the result of
+  [=find corresponding bid and score phase function=] given [=on event contribution entry/worklet
+  function=].
 1. If |signalBaseValue| is "<code>[=signal base value/winning-bid=]</code>":
   1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return 0.
   1. Otherwise, return  |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/bid=].
@@ -4446,6 +4553,11 @@ They return a {{double}}.
         Issue: Verify handling when the bid was not rejected.
 
       </dl>
+1. If |signalBaseValue| is "<code>[=signal base value/average-code-fetch-time=]</code>":
+  1. Return the result of [=getting  the value to report from an averager=] given |metrics|'s [=per
+    participant metrics/average code fetch time=].
+1. If |signalBaseValue| is "<code>[=signal base value/participating-ig-count=]</code>":
+  1. Return |bidAndScoreMetrics|'s [=per participant metrics/participating interest group count=].
 
 </div>
 
@@ -5611,6 +5723,8 @@ Each {{InterestGroupScriptRunnerGlobalScope}} has a
   :: A [=worklet function=]. Affects some
     [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api)
     functionality.
+  : <dfn>origin</dfn>
+  :: The [=origin=] of the script being executed.
 </dl>
 
 <div algorithm>
@@ -5626,6 +5740,7 @@ The <dfn method for="PrivateAggregation">contributeToHistogramOnEvent(DOMString
 event, PAExtendedHistogramContribution contribution)</dfn> method steps are:
 1. Let |global| be [=this=]'s [=relevant global object=].
 1. Let |function| be |global|'s [=InterestGroupScriptRunnerGlobalScope/worklet function=].
+1. Let |origin| be |global|'s [=InterestGroupScriptRunnerGlobalScope/origin=].
 1. If [=this=]'s <a spec="private-aggregation-api" for="PrivateAggregation">
   allowed to use</a> is false, [=exception/throw=] a {{TypeError}}.
 1. Let |scopingDetails| be [=this=]'s <a spec="private-aggregation-api" for="PrivateAggregation">
@@ -5685,7 +5800,8 @@ event, PAExtendedHistogramContribution contribution)</dfn> method steps are:
       for="scoping details">get debug scope steps</a>.
     : [=on event contribution entry/worklet function=]
     :: |function|
-
+    : [=on event contribution entry/origin=]
+    :: |origin|
 1. Let |onEventContributionMap| be |global|'s
     [=InterestGroupScriptRunnerGlobalScope/on event contribution map=].
 1. If |onEventContributionMap|[|event|] does not [=map/exist=], set
