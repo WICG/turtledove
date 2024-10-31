@@ -859,10 +859,13 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       1. [=Send report=] with |reportUrl| and |settings|.
     1. [=Send real time reports=] with |auctionReportInfo|'s
       [=auction report info/real time reporting contributions map=] and |settings|.
+    1. [=Process the Private Aggregation contributions for an auction tree=] given |auctionConfig|,
+      |reportingContextMap|.
   1. Otherwise:
     1. Let |winner| be |winnerInfo|'s [=leading bid info/leading bid=].
     1. Let |fencedFrameConfig| be the result of [=filling in a pending fenced frame config=] with
-       |pendingConfig|, |auctionConfig|, |winnerInfo|, |auctionReportInfo|, and |settings|.
+       |pendingConfig|, |auctionConfig|, |reportingContextMap|, |winnerInfo|, |auctionReportInfo|,
+       and |settings|.
     1. [=fenced frame config mapping/Finalize a pending config=] on |configMapping| with |urn| and
        |fencedFrameConfig|.
     1. Wait until |auctionConfig|'s [=auction config/resolve to config=] is a boolean.
@@ -956,8 +959,9 @@ To <dfn>construct a pending fenced frame config</dfn> given an [=auction config=
 <div algorithm>
 
 To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame config=]
-|pendingConfig|, [=auction config=] |auctionConfig|, [=leading bid info=] |winningBidInfo|,
-[=auction report info=] |auctionReportInfo|, and an [=environment settings object=] |settings|:
+|pendingConfig|, [=auction config=] |auctionConfig|, [=reporting context map=]
+|reportingContextMap|, [=leading bid info=] |winningBidInfo|, [=auction report info=]
+|auctionReportInfo|, and an [=environment settings object=] |settings|:
 1. Let |winningBid| be |winningBidInfo|'s [=leading bid info/leading bid=].
 1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are [=strings=].
@@ -1028,8 +1032,8 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
    1. [=Asynchronously finish reporting=] with |pendingConfig|'s
       [=fenced frame config/fenced frame reporting metadata=]'s
       [=fenced frame reporting metadata/value=]'s
-      [=fenced frame reporting metadata/fenced frame reporting map=], |winningBidInfo|,
-      |auctionReportInfo| and |settings|.
+      [=fenced frame reporting metadata/fenced frame reporting map=], |auctionConfig|,
+      |reportingContextMap|, |winningBidInfo|, |auctionReportInfo| and |settings|.
 1. Let |adComponentDescriptorsWithReplacements| be a new [=list=] of [=ad descriptors=].
 1. If |winningBid|'s [=generated bid/ad component descriptors=] is not null:
   1. [=list/For each=] |adComponentDescriptor| of |winningBid|'s
@@ -1050,7 +1054,8 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 <div algorithm>
 
 To <dfn>asynchronously finish reporting</dfn> given a
-[=fencedframetype/fenced frame reporting map=] |reportingMap|, [=leading bid info=] |leadingBidInfo|,
+[=fencedframetype/fenced frame reporting map=] |reportingMap|, [=auction config=] |auctionConfig|,
+[=reporting context map=] |reportingContextMap|, [=leading bid info=] |leadingBidInfo|,
 [=auction report info=] |auctionReportInfo|, and an [=environment settings object=] |settings|:
 1. [=Increment a winning bid's k-anonymity count=] given |leadingBidInfo|'s [=leading bid info/leading bid=].
 1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is
@@ -1107,6 +1112,8 @@ To <dfn>asynchronously finish reporting</dfn> given a
   1. [=Send report=] with |report| and |settings|.
 1. [=Send real time reports=] with |auctionReportInfo|'s
   [=auction report info/real time reporting contributions map=] and |settings|.
+1. [=Process the Private Aggregation contributions for an auction tree=] given |auctionConfig|,
+  |reportingContextMap|.
 
 </div>
 
@@ -1866,10 +1873,9 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
   1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
-  1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null:
-    1. [=Process the Private Aggregation contributions for an auction=] given |auctionConfig|,
-      |reportingContextMap|[|auctionConfig|], |leadingBidInfo|.
-    1. Return null.
+  1. Set |reportingContextMap|[|auctionConfig|]'s [=reporting context/local leader info=] to
+    a copy of |leadingBidInfo|.
+  1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
   1. Let |winningComponentConfig| be |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |auctionConfig|.
   1. Set |leadingBidInfo|'s [=leading bid info/component seller=] to |winningComponentConfig|'s
@@ -1877,7 +1883,6 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   1. Let « |topLevelSellerSignals|, unusedTopLevelReportResultBrowserSignals » be the result of
     running [=report result=] with |leadingBidInfo|, |reportingContextMap|[|auctionConfig|],
     |topLevelDirectFromSellerSignalsForSeller|, |winningComponentConfig|, and |global|.
-  1. Let |topLevelLeadingBidInfo| be a copy of |leadingBidInfo|.
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |winningComponentConfig|.
   1. Set |leadingBidInfo|'s [=leading bid info/component seller=] to null.
   1. Set |leadingBidInfo|'s [=leading bid info/top level seller=] to |seller|.
@@ -1898,8 +1903,10 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   1. Run [=report win=] with |leadingBidInfo|, |reportingContextMap|[|winningComponentConfig|],
     |sellerSignals|, |reportResultBrowserSignals|, |directFromSellerSignalsForBuyer|,
     and |settings|.
-  1. [=Process the Private Aggregation contributions for an auction=] given |auctionConfig|,
-    |reportingContextMap|[|auctionConfig|], |topLevelLeadingBidInfo|.
+  1. Set |reportingContextMap|[|auctionConfig|]'s [=reporting context/winner reporting id=] to
+    |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/reporting id=].
+  1. Set |reportingContextMap|[|winningComponentConfig|]'s [=reporting context/winner reporting id=]
+    to |leadingBidInfo|'s  [=leading bid info/leading bid=]'s [=generated bid/reporting id=].
   1. Return |leadingBidInfo|.
 
 1. If [=waiting until configuration input promises resolve=] given |auctionConfig| returns failure,
@@ -2108,6 +2115,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
+1. Set |reportingContext|'s [=reporting context/local leader info=] to |leadingBidInfo|.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
 1. If |topLevelAuctionConfig| is null:
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
@@ -2119,6 +2127,8 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
       [=interest group/owner=].
   1. Run [=report win=] with |leadingBidInfo|, |reportingContext|, |sellerSignals|,
     |reportResultBrowserSignals|, |directFromSellerSignalsForWinner|, and |settings|.
+  1. Set |reportingContext|'s [=reporting context/winner reporting id=] to |leadingBidInfo|'s
+    [=leading bid info/leading bid=]'s [=generated bid/reporting id=].
 1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=]
     are [=strings=].
   1. [=list/For each=] [=ad keyword replacement=], |replacement|, within
@@ -2134,8 +2144,6 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
     [=leading bid info/leading bid=]'s [=generated bid/ad descriptors=]:
     1. Set |adDescriptor| to the result of [=fencedframeutil/substitute macros=] with |replacements|
       and |adDescriptor|.
-1. [=Process the Private Aggregation contributions for an auction=] given |auctionConfig|,
-    |reportingContext|, |leadingBidInfo|.
 1. Return |leadingBidInfo|.
 
 </div>
@@ -3610,6 +3618,13 @@ A <dfn>reporting context</dfn> is a [=struct=] with the following [=struct/items
     contribution entries=].
   : <dfn>private aggregation allowed</dfn>
   :: A [=boolean=], initially false.
+  : <dfn>local leader info</dfn>
+  :: A [=leading bid info=], describing information on what, if anything, won this particular
+    subauction.
+  : <dfn>winner reporting id</dfn>
+  :: A [=reporting bid key=] or null, initially null. This can be null even if [=reporting context/
+    local leader info=] has a leader set, in case this context is for a component auction that lost
+    at top-level.
 </dl>
 
 A <dfn>reporting context map</dfn> is a [=map=] from [=auction config=] to [=reporting context=].
@@ -4157,12 +4172,24 @@ perform the following steps. They return a [=batching scope=].
 </div>
 
 <div algorithm>
+To <dfn>process the Private Aggregation contributions for an auction tree</dfn> given an
+[=auction config=] |auctionConfig| and a [=reporting context map=] |reportingContextMap|:
+
+1. [=Process the Private Aggregation contributions for an auction=] given |auctionConfig|,
+  |reportingContextMap|[|auctionConfig|].
+1. [=list/For each=] |componentAuction| in |auctionConfig|'s [=auction config/component
+  auctions=]:
+  1. [=Process the Private Aggregation contributions for an auction=] given |componentAuction|,
+    |reportingContextMap|[|componentAuction|].
+
+</div>
+
+<div algorithm>
 To <dfn>process the Private Aggregation contributions for an auction</dfn> given
-an [=auction config=] |auctionConfig|, a [=reporting context=] |reportingContext| and a
-[=leading bid info=] |leadingBidInfo|:
-1. Let |winnerId| be null.
-1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is not null, set |winnerId| to
-  |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/reporting id=].
+an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingContext|:
+1. If |auctionConfig|'s [=auction config/aborted=] is true, return.
+1. Let |winnerId| be |reportingContext|'s [=reporting context/winner reporting id=]
+1. Let |leadingBidInfo| be |reportingContext|'s [=reporting context/local leader info=].
 1. [=map/For each=] (|bidId|, |event|) → |contributions| of
   |reportingContext|'s [=reporting context/private aggregation on event contributions=]:
   1. If |event| is "`reserved.win`" or does not [=string/start with=] "`reserved.`":
