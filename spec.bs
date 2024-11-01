@@ -2365,10 +2365,11 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   contributions, and some special handling of private aggregation requests involving reject-reason);
   as it would be problematic to report a winner that didn't actually win.
 
-  1. If |reportingContext|'s [=reporting context/debug reporting info=][|generatedBid|'s [=generated
-    bid/reporting id=]] does not [=map/exist=], set it to a new [=bid debug reporting info=].
+  1. Let |reportingId| be |generatedBid|'s [=generated bid/reporting id=].
+  1. If |reportingContext|'s [=reporting context/debug reporting info=][|reportingId|] does not
+    [=map/exist=], set it to a new [=bid debug reporting info=].
   1. Let |bidDebugReportInfo| be |reportingContext|'s [=reporting context/debug reporting info=]
-    [|generatedBid|'s [=generated bid/reporting id=]].
+    [|reportingId|].
   1. If |auctionLevel| is "top-level-auction":
     1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug loss report
       url=] to |debugLossReportUrl|.
@@ -2384,8 +2385,10 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
     "`default-local-reporting`", then [=insert entries to map=] given |realTimeContributionsMap|,
     |seller|, and |realTimeContributions|.
-  1. [=Commit private aggregation contributions=] given |paContributions|, |generatedBid|'s
-    [=generated bid/reporting id=] and |reportingContext|.
+  1. [=set/Insert=] |reportingId| into |reportingContext|'s [=reporting context/bidder
+    participants=].
+  1. [=Commit private aggregation contributions=] given |paContributions|, |reportingId|, and
+    |reportingContext|.
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
 1. Return if any of the following conditions hold:
   * |scoreAdOutput| is failure;
@@ -2895,10 +2898,10 @@ and a [=global object=] |global|:
   1. Let |sellerReportingScript| be the result of [=waiting for script body from a fetcher=] given
      |sellerReportingScriptFetcher|.
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored, |paContributions| » be the
-    result of [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`",
-    |reportingContext|, |config|'s [=auction config/seller=], |config|'s [=auction config/seller
-    Private Aggregation coordinator=],  |config|'s [=auction config/config idl=]'s
-    {{AuctionAdConfig/reportingTimeout}}, and
+    result of [=evaluating a reporting script=] with |sellerReportingScript|, [=worklet function/
+    report-result=],  |reportingContext|, |config|'s [=auction config/seller=], |config|'s
+    [=auction config/seller Private Aggregation coordinator=],  |config|'s [=auction config/
+    config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |config|'s [=auction config/config idl=], |browserSignals|, |directFromSellerSignals| ».
    1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
      : [=reporting result/report url=]
@@ -2994,10 +2997,10 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
   1. If |winner|'s [=generated bid/provided as additional bid=] is true:
     1. Set |reportFunctionName| be "`reportAdditionalBidWin`".
   1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap|, |paContributions| » be
-    the result of [=evaluating a reporting script=] with |buyerReportingScript|, "`reportWin`",
-    |reportingContext|, |ig|'s [=interest group/owner=], |ig|'s [=interest group/Private Aggregation
-    coordinator=], |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config
-    idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
+    the result of [=evaluating a reporting script=] with |buyerReportingScript|, [=worklet function/
+    report-win=], |reportingContext|, |ig|'s [=interest group/owner=], |ig|'s [=interest group/
+    Private Aggregation coordinator=], |leadingBidInfo|'s [=leading bid info/auction config=]'s
+    [=auction config/config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config idl=]'s
       {{AuctionAdConfig/auctionSignals}}, |perBuyerSignalsForBuyer|, |sellerSignals|,
       |reportWinBrowserSignals|, |directFromSellerSignals| ».
@@ -3626,6 +3629,15 @@ A <dfn>reporting context</dfn> is a [=struct=] with the following [=struct/items
   :: A [=reporting bid key=] or null, initially null. This can be null even if [=reporting context/
     local leader info=] has a leader set, in case this context is for a component auction that lost
     at top-level.
+  : <dfn>bidder participants</dfn>
+  :: A [=set=] of [=reporting bid keys=], representing interest groups that got a chance to generate
+    bids for the auction. This will be empty in top-level auctions, as the relevant state will be
+    in the component auctions.
+  : <dfn>seller participants</dfn>
+  :: A [=set=] of [=reporting bid keys=], representing various `scoreAd()` executions. Note that
+    some of these may be based on bids that started as additional bids or from component auctions
+    run by Bidding and Auction services, and not interest groups, so this list may be quite
+    different from [=reporting context/bidder participants=].
 </dl>
 
 A <dfn>reporting context map</dfn> is a [=map=] from [=auction config=] to [=reporting context=].
@@ -3665,6 +3677,7 @@ auction in a multi-party auction).
     :: |ig|'s [=interest group/name=]
   1. [=map/Set=] |reportingContext|'s [=reporting context/debug reporting info=][|id|] to
     |bidDebugReportInfo|.
+  1. [=set/Insert=] |id| into |reportingContext|'s [=reporting context/bidder participants=].
   1. [=Commit private aggregation contributions=] given |paContributions|, |id| and
     |reportingContext|.
   1. [=list/For each=] |generatedBid| of |generatedBids|:
@@ -4074,6 +4087,8 @@ An on event contribution entry is a [=struct=] with the following items:
 :: A [=debug scope=]
 : <dfn>debug details</dfn>
 :: A [=debug details=] or null (default null)
+: <dfn>worklet function</dfn>
+:: A [=worklet function=].
 
 </dl>
 
@@ -4099,9 +4114,10 @@ contribution entries=].
 
 <div algorithm>
 To <dfn>prepare for private aggregation</dfn> given a
-{{InterestGroupScriptRunnerGlobalScope}} |global|, a [=reporting context=] |reportingContext|,
-and [=origins=] |origin| and |aggregationCoordinator|:
+{{InterestGroupScriptRunnerGlobalScope}} |global|, a [=worklet function=] |workletFunction|,
+a [=reporting context=] |reportingContext|, and [=origins=] |origin| and |aggregationCoordinator|:
 1. Let |debugScope| be a new [=debug scope=].
+1. Set |global|'s [=InterestGroupScriptRunnerGlobalScope/worklet function=] to |workletFunction|.
 1. Set |global|'s [=InterestGroupScriptRunnerGlobalScope/private aggregation=] to a new
   [=PrivateAggregation=] with the following [=struct/items=]:
     : <a spec="private-aggregation-api" for="PrivateAggregation">allowed to use</a>
@@ -4191,12 +4207,24 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
 1. If |auctionConfig|'s [=auction config/aborted=] is true, return.
 1. Let |winnerId| be |reportingContext|'s [=reporting context/winner reporting id=]
 1. Let |leadingBidInfo| be |reportingContext|'s [=reporting context/local leader info=].
+1. Let |bidderOnceRep| be null.
+1. If |reportingContext|'s [=reporting context/bidder participants=] [=set/is not empty=],
+  set |bidderOnceRep| to a random member of [=reporting context/bidder participants=].
+1. Let |sellerOnceRep| be null.
+1. If |reportingContext|'s [=reporting context/seller participants=] [=set/is not empty=],
+  set |sellerOnceRep| to a random member of [=reporting context/seller participants=].
 1. [=map/For each=] (|bidId|, |event|) → |contributions| of
   |reportingContext|'s [=reporting context/private aggregation on event contributions=]:
   1. If |event| is "`reserved.win`" or does not [=string/start with=] "`reserved.`":
     1. If |bidId| is not |winnerId|, [=iteration/continue=].
   1. If |event| is "`reserved.loss`" and |bidId| is |winnerId|, [=iteration/continue=].
   1. [=list/For each=] |onEventEntry| of |contributions|:
+    1. If |event| is "`reserved.once`":
+      1. If |onEventEntry|'s [=on event contribution entry/worklet function=] is [=worklet function/
+        generate-bid=]:
+        1. If |bidId| &ne; |bidderOnceRep|, [=iteration/continue=].
+      1. Otherwise:
+        1. If |bidId| &ne; |sellerOnceRep|, [=iteration/continue=].
     1. Let |filledInContribution| be the result of [=filling in the contribution=] given
       |onEventEntry|'s [=on event contribution entry/contribution=] and |leadingBidInfo|.
 
@@ -5318,8 +5346,9 @@ of the following global objects:
       [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=] to true if |ig|'s
       [=interest group/ad components=] is not null, or false otherwise.
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/expected currency=] to |expectedCurrency|.
-    1. [=Prepare for private aggregation=] given |global|, |reportingContext|, |ig|'s [=interest
-      group/owner=] and |ig|'s [=interest group/Private Aggregation coordinator=].
+    1. [=Prepare for private aggregation=] given |global|, [=worklet function/generate-bid=],
+      |reportingContext|, |ig|'s [=interest group/owner=] and |ig|'s [=interest group/Private
+      Aggregation coordinator=].
     1. Let |isComponentAuction| be true if |browserSignals|["{{BiddingBrowserSignals/topLevelSeller}}"] is not null, or
       false otherwise.
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=] to
@@ -5410,9 +5439,9 @@ of the following global objects:
       {{InterestGroupScoringScriptRunnerGlobalScope}}.
     1. Let |global| be |realm|'s [=realm/global object=].
     1. Let |settings| be |realm|'s [=realm/settings object=].
-    1. [=Prepare for private aggregation=] given |global|, |reportingContext|, |auctionConfig|'s
-      [=auction config/seller=] and |auctionConfig|'s [=auction config/seller Private Aggregation
-      coordinator=].
+    1. [=Prepare for private aggregation=] given |global|, [=worklet function/score-ad=],
+      |reportingContext|, |auctionConfig|'s [=auction config/seller=] and |auctionConfig|'s
+      [=auction config/seller Private Aggregation coordinator=].
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
     1. Let |auctionConfigJS| be |auctionConfig|'s [=auction config/config idl=] [=converted to
       ECMAScript values=].
@@ -5449,16 +5478,18 @@ of the following global objects:
 </div>
 
 <div algorithm>
-  To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=]
-  |functionName|, a [=reporting context=] |reportingContext|, an [=origin=] |origin|, an
-  [=origin=] |privateAggregationCoordinator|, an integer millisecond [=duration=] |timeout|,
-  and a [=list=] of arguments |arguments|:
+  To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=worklet function=]
+    |function|, a [=reporting context=] |reportingContext|, an [=origin=] |origin|, an [=origin=]
+    |privateAggregationCoordinator|, an integer millisecond [=duration=] |timeout|, and a [=list=]
+    of arguments |arguments|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupReportingScriptRunnerGlobalScope}}.
     1. Let |global| be |realm|'s [=realm/global object=].
-    1. [=Prepare for private aggregation=] given |global|, |reportingContext|, |origin|, and
-      |privateAggregationCoordinator|.
+    1. Let |functionName| be `"reportWin"`.
+    1. If |function| is [=worklet function/report-result=], set |functionName| to `"reportResult"`.
+    1. [=Prepare for private aggregation=] given |global|, |function|, |reportingContext|, |origin|,
+      and |privateAggregationCoordinator|.
     1. Let |argumentsJS| be the result of [=converting a Web IDL arguments list to an ECMAScript
       arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
       [=exception/throws=] an exception, return « "null", null, null, null ».
@@ -5576,6 +5607,10 @@ Each {{InterestGroupScriptRunnerGlobalScope}} has a
   :: Null, or a [=PrivateAggregation=]. Initially null.
   : <dfn>on event contribution map</dfn>
   :: A [=map=] from [=string=] to a [=list=] of [=on event contribution entries=].
+  : <dfn>worklet function</dfn>
+  :: A [=worklet function=]. Affects some
+    [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api)
+    functionality.
 </dl>
 
 <div algorithm>
@@ -5589,16 +5624,20 @@ The <dfn attribute for=InterestGroupScriptRunnerGlobalScope>privateAggregation</
 <div algorithm>
 The <dfn method for="PrivateAggregation">contributeToHistogramOnEvent(DOMString
 event, PAExtendedHistogramContribution contribution)</dfn> method steps are:
+1. Let |global| be [=this=]'s [=relevant global object=].
+1. Let |function| be |global|'s [=InterestGroupScriptRunnerGlobalScope/worklet function=].
 1. If [=this=]'s <a spec="private-aggregation-api" for="PrivateAggregation">
   allowed to use</a> is false, [=exception/throw=] a {{TypeError}}.
 1. Let |scopingDetails| be [=this=]'s <a spec="private-aggregation-api" for="PrivateAggregation">
   scoping details</a>
 1. If |event| [=string/starts with=] "`reserved.`" and « "`reserved.always`",
-    "`reserved.loss`", "`reserved.win`" » does not [=list/contain=] |event|,
+    "`reserved.loss`", "`reserved.win`", "`reserved.once`" » does not [=list/contain=] |event|,
     return.
 
     Note: No error is thrown to allow forward compatibility if additional
         reserved event types are added later.
+1. If |event| is "`reserved.once`" and |function| is [=worklet function/report-result=] or
+  [=worklet function/report-win=], [=exception/throw=] a {{TypeError}}.
 1. Let |bucket| be |contribution|["{{PAExtendedHistogramContribution/bucket}}"].
 1. If |bucket| is a {{PASignalValue}}:
     1. If |bucket|["{{PASignalValue/baseValue}}"] is not a valid [=signal base
@@ -5644,8 +5683,9 @@ event, PAExtendedHistogramContribution contribution)</dfn> method steps are:
     : [=on event contribution entry/debug scope=]
     :: The result of running |scopingDetails|' <a spec="private-aggregation-api"
       for="scoping details">get debug scope steps</a>.
+    : [=on event contribution entry/worklet function=]
+    :: |function|
 
-1. Let |global| be [=this=]'s [=relevant global object=].
 1. Let |onEventContributionMap| be |global|'s
     [=InterestGroupScriptRunnerGlobalScope/on event contribution map=].
 1. If |onEventContributionMap|[|event|] does not [=map/exist=], set
