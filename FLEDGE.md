@@ -1453,7 +1453,7 @@ const additionalBid = {
 
   // Valid additional bids must have exactly one of auctionNonce or bidNonce.
   "auctionNonce": "5358e36b-741a-4619-8915-6cd5f6e4755f",
-  "bidNonce": "58531982ff48c998d69c48d4f2e9ffd27f0b397a29467a8d69bd5ab36be85d84",
+  "bidNonce": "NcMr5MCj8gB1oE4iObgFXlNgkzywbiTssxE/KdGA5YQ=",
   "seller": "https://www.example-ssp.com",
   "topLevelSeller": "https://www.another-ssp.com"
 }
