@@ -1779,14 +1779,13 @@ following steps. They return a failure if failing to fetch the script or wasm, o
     1. Let |prevWinElement| be the <code>[=sequence=]<{{PreviousWinElement}}></code> «|timeDelta|, |prevWinAdIDL|».
     1. [=list/Append=] |prevWinElement| to |prevWins|.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/prevWinsMs}}"] to |prevWins|.
-  1. Let |metrics| be the result of [=access per-participant metrics=] given |reportingContext|,
-    |ig|'s [=interest group/owner=], [=worklet function/generate-bid=].
+  1. Let |metrics| be a new [=execution metrics=].
   1. Let |biddingScriptFetcher| be the result of [=creating a new script fetcher=] with
     |ig|'s [=interest group/bidding url=], and |settings|.
   1. Let |biddingScript| be the result of [=waiting for script body from a fetcher=] given
      |biddingScriptFetcher|.
-  1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/average code
-    fetch time=] and |biddingScriptFetcher|'s [=script fetcher/fetch duration=].
+  1. [=Add a sample to an averager=] given |metrics|'s [=execution metrics/average code fetch
+    time=] and |biddingScriptFetcher|'s [=script fetcher/fetch duration=].
   1. If |biddingScript| is failure, return failure.
   1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
     1. Let |wasmFetchStart| be |settings|'s [=environment settings object/current monotonic time=].
@@ -1794,8 +1793,8 @@ following steps. They return a failure if failing to fetch the script or wasm, o
       [=interest group/bidding wasm helper url=] and |settings|.
     1. Let |wasmFetchDuration| be the [=duration from=] |wasmFetchStart| to
         |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
-    1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/average code
-      fetch time=] and |wasmFetchDuration|.
+    1. [=Add a sample to an averager=] given |metrics|'s [=execution metrics/average code fetch
+      time=] and |wasmFetchDuration|.
     1. If |wasmModuleObject| is not failure, then [=map/set=]
       |browserSignals|["{{BiddingBrowserSignals/wasmHelper}}"] to |wasmModuleObject|.
     1. Otherwise, return failure.
@@ -1819,7 +1818,7 @@ following steps. They return a failure if failing to fetch the script or wasm, o
           |crossOriginTrustedBiddingSignalsOrigin|.
       1. [=map/Set=] |crossOriginTrustedBiddingSignalsOrigin|[|originKey|] to |trustedBiddingSignals|.
   1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |multiBidLimit|,
-    |ig|, |reportingContext|, |expectedCurrency|, |igGenerateBid|, |auctionSignals|,
+    |ig|, |reportingContext|, |metrics|, |expectedCurrency|, |igGenerateBid|, |auctionSignals|,
     |perBuyerSignals|, |sameOriginTrustedBiddingSignals|, |crossOriginTrustedBiddingSignals|,
     |browserSignals|, |directFromSellerSignalsForBuyer| and |perBuyerTimeout|.
 </div>
@@ -2070,8 +2069,8 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
             1. If |optedInForRealTimeReporting| is true, then [=add a platform contribution=] with
               [=bidding script failure bucket=], |realTimeContributionsMap| and |buyer|.
             1. [=iteration/Continue=].
-          1. Let (|bidsBatch|, |bidDebugReportInfo|, |realTimeContributions|, |paContributions|) be
-            |generateBidResult|.
+          1. Let (|bidsBatch|, |bidDebugReportInfo|, |realTimeContributions|, |paContributions|,
+                  |executionMetrics|) be |generateBidResult|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
             [=environment settings object/current monotonic time=], in milliseconds.
           1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
@@ -2096,8 +2095,8 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
             1. Let |generateBidStartTime| be |settings|'s
               [=environment settings object/current monotonic time=].
             1. Set (|generatedBids|, |bidDebugReportInfo|, |realTimeContributions|,
-              |paContributions|) to the result of running [=generate potentially multiple bids=]
-              with |allTrustedBiddingSignals|,
+              |paContributions|, |executionMetrics|) to the result of running [=generate potentially
+              multiple bids=] with |allTrustedBiddingSignals|,
               |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
               |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
               1 (for multiBidLimit), |kAnonRestrictedIG|, |reportingContext|, |auctionStartTime|,
@@ -2115,7 +2114,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               1. [=Apply any component ads target to a bid=] given |generatedBid|.
               1. [=list/Append=] |generatedBid| to |bidsToScore|.
           1. [=Register bids for reporting=] given |bidsToScore|, |ig|, |bidDebugReportInfo|,
-            |paContributions|, and |reportingContext|.
+            |paContributions|, |executionMetrics|, and |reportingContext|.
           1. If |auctionConfig|'s [=auction config/per buyer real time reporting config=][|buyer|]
             is "`default-local-reporting`", then [=insert entries to map=] given
             |realTimeContributionsMap|, |buyer|, and |realTimeContributions|.
@@ -3699,8 +3698,8 @@ auction in a multi-party auction).
 <div algorithm>
   To <dfn>register bids for reporting</dfn> given a [=list=] of
   [=generated bids=] |generatedBids|, [=interest group=] |ig|, [=bid debug reporting info=]
-  |bidDebugReportInfo|, a [=Private Aggregation contributions=] |paContributions| and a [=reporting
-  context=] |reportingContext|:
+  |bidDebugReportInfo|, a [=Private Aggregation contributions=] |paContributions|,
+  [=execution metrics=] |executionMetrics| and a [=reporting context=] |reportingContext|:
   1. Let |id| be a new [=reporting bid key=] with the following [=struct/items=]:
     : [=reporting bid key/context=]
     :: |reportingContext|
@@ -3715,6 +3714,10 @@ auction in a multi-party auction).
     :: |ig|'s [=interest group/name=]
   1. [=map/Set=] |reportingContext|'s [=reporting context/debug reporting info=][|id|] to
     |bidDebugReportInfo|.
+  1. Let |metrics| be the result of [=access per-participant metrics=] given |reportingContext|,
+    |ig|'s [=interest group/owner=], [=worklet function/generate-bid=].
+  1. [=Merge samples to an averager=] given |metrics|'s [=per participant metrics/average code fetch
+    time=] and |executionMetrics|'s [=execution metrics/average code fetch time=].
   1. [=set/Insert=] |id| into |reportingContext|'s [=reporting context/bidder participants=].
   1. [=Commit private aggregation contributions=] given |paContributions|, |id| and
     |reportingContext|.
@@ -4187,13 +4190,26 @@ To <dfn>add a sample to an averager</dfn> given an [=averager=] |averager|, a {{
 </div>
 
 <div algorithm>
+To <dfn>merge samples to an averager</dfn> given [=averagers=] |dest| and |source|:
+1. Set |dest|'s [=averager/count=] to |dest|'s [=averager/count=] + |source|'s [averager/count=].
+1. Set |dest|'s [=averager/sum=] to |dest|'s [=averager/sum=] + |source|'s [averager/sum=].
+
+</div>
+
+<div algorithm>
 To <dfn>get the value to report from an averager</dfn> given an [=averager=] |averager|:
 1. If |averager|'s [=averager/count=] = 0, return 0.
 1. Return |averager|'s [=averager/sum=] / [=averager/count=].
 
 </div>
 
-### Per-participant metrics ### {#private-aggregation-per-participant-metrics}
+### Metrics structures ### {#private-aggregation-metrics-structures}
+An <dfn>execution metrics</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="execution metrics">
+  : <dfn>average code fetch time</dfn>
+  :: An [=averager=].
+</dl>
+
 A <dfn>per participant metrics</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="per participant metrics">
   : <dfn>participating interest group count</dfn>
@@ -5441,6 +5457,7 @@ of the following global objects:
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an {{unsigned short}}
   |multiBidLimit|, an [=interest group=] |ig|, a [=reporting context=] |reportingContext|,
+  an [=execution metrics=] |executionMetrics|,
   a [=currency tag=] |expectedCurrency|, a {{GenerateBidInterestGroup}} |igGenerateBid|,
   a [=string=]-or-null |auctionSignals|, a [=string=]-or-null |perBuyerSignals|,
   an [=ordered map=]-or-null |sameOriginTrustedBiddingSignals|, an [=ordered map=]-or-null
@@ -5539,7 +5556,7 @@ of the following global objects:
     1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
       |global|.
     1. Return a [=tuple=] (|generatedBids|, |bidDebugReportInfo|, |realTimeContributions|,
-                           |paContributions|).
+                           |paContributions|, |executionMetrics|).
 </div>
 
 <div algorithm>
