@@ -2367,12 +2367,21 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     "`default-local-reporting`", then [=add a platform contribution=] with
     [=scoring script failure bucket=], |realTimeContributionsMap| and |seller|.
   1. Return.
+1. Let |metrics| be the result of [=access per-participant metrics=] given |reportingContext|,
+  |auctionConfig|'s [=auction config/seller=], [=worklet function/score-ad=].
+1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/average code fetch
+  time=] and |decisionLogicFetcher|'s [=script fetcher/fetch duration=].
 1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions|,
   |paContributions|, |executionMetrics| » be the result of [=evaluating a scoring script=] with
   |decisionLogicScript|, |adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|,
   |reportingContext|, |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals|,
   |browserSignals|, |directFromSellerSignalsForSeller|, and |auctionConfig|'s [=auction config/
   seller timeout=].
+1. Set |metrics|'s [=per participant metrics/script executions attempted=] to |metrics|'s [=per
+  participant metrics/script executions attempted=] + 1.
+1. If |executionMetrics|'s [=execution metrics/script timeout occurred=] is true, set |metrics|'s
+  [=per participant metrics/script timeouts occurred=] to |metrics|'s [=per participant metrics/
+  script timeouts occurred=] + 1.
 1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
 
   Note: Non-k-anonymous bids do not participate in reporting (except for platform real-time
@@ -2380,15 +2389,6 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   as it would be problematic to report a winner that didn't actually win.
 
   1. Let |reportingId| be |generatedBid|'s [=generated bid/reporting id=].
-  1. Let |metrics| be the result of [=access per-participant metrics=] given |reportingContext|,
-    |auctionConfig|'s [=auction config/seller=], [=worklet function/score-ad=].
-  1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/average code fetch
-    time=] and |decisionLogicFetcher|'s [=script fetcher/fetch duration=].
-  1. Set |metrics|'s [=per participant metrics/script executions attempted=] to |metrics|'s [=per
-    participant metrics/script executions attempted=] + 1.
-  1. If |executionMetrics|'s [=execution metrics/script timeout occurred=] is true, set |metrics|'s
-    [=per participant metrics/script timeouts occurred=] to |metrics|'s [=per participant metrics/
-    script timeouts occurred=] + 1.
   1. If |reportingContext|'s [=reporting context/debug reporting info=][|reportingId|] does not
     [=map/exist=], set it to a new [=bid debug reporting info=].
   1. Let |bidDebugReportInfo| be |reportingContext|'s [=reporting context/debug reporting info=]
