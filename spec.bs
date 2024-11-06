@@ -4208,6 +4208,8 @@ An <dfn>execution metrics</dfn> is a [=struct=] with the following [=struct/item
 <dl dfn-for="execution metrics">
   : <dfn>average code fetch time</dfn>
   :: An [=averager=].
+  : <dfn>script timeout occurred</dfn>
+  :: A [=boolean=], initially false.
 </dl>
 
 A <dfn>per participant metrics</dfn> is a [=struct=] with the following [=struct/items=]:
@@ -5501,7 +5503,8 @@ of the following global objects:
     1. Let |crossOriginTrustedBiddingSignalsJS| be |crossOriginTrustedBiddingSignals|
        [=converted to ECMAScript values=].
     1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
-    1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
+    1. Let (|result|, |executionMetrics|'s [=execution metrics/script timeout occurred=]) be the
+      result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
       « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |sameOriginTrustedBiddingSignalsJS|,
         |browserSignalsJS|, |directFromSellerSignalsJS|, |crossOriginTrustedBiddingSignalsJS| »,
         and |timeout|.
@@ -5584,7 +5587,9 @@ of the following global objects:
     1. Let |directFromSellerSignalsJs| be |directFromSellerSignalsForSeller|
       [=converted to ECMAScript values=].
     1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
-    1. Let |scoreAdResult| be the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
+    1. Let |executionMetrics| be a new [=execution metrics=].
+    1. Let (|scoreAdResult|, |executionMetrics|'s [=execution metrics/script timeout occurred=]) be
+      the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
       «|adMetadata|, |bidValue|, |auctionConfigJS|, |sameOriginTrustedScoringSignalsJS|,
       |browserSignalsJS|, |directFromSellerSignalsJs|, |crossOriginTrustedScoringSignalsJS|»,
       and |timeout|.
@@ -5606,7 +5611,7 @@ of the following global objects:
     1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
       |global|.
     1. Return « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions|,
-        |paContributions| ».
+        |paContributions|, |executionMetrics| ».
 </div>
 
 <div algorithm>
@@ -5625,8 +5630,10 @@ of the following global objects:
     1. Let |argumentsJS| be the result of [=converting a Web IDL arguments list to an ECMAScript
       arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
       [=exception/throws=] an exception, return « "null", null, null, null ».
-    1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|,
-      |functionName|, |argumentsJS|, and |timeout|.
+    1. Let |executionMetrics| be a new [=execution metrics=].
+    1. Let (|result|, |executionMetrics|'s [=execution metrics/script timeout occurred=]) be the
+      result of [=evaluating a script=] with |realm|, |script|, |functionName|, |argumentsJS|,
+      and |timeout|.
     1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null, null ».
     1. Let |resultJSON| be "null".
     1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
@@ -5643,20 +5650,23 @@ of the following global objects:
       |global|.
     1. Return « |resultJSON|, |reportURL|,
       |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap|,
-      |paContributions| ».
+      |paContributions|, |executionMetrics| ».
 </div>
 
 <div algorithm>
   To <dfn>evaluate a script</dfn> with a [=ECMAScript/realm=] |realm|, [=string=] |script|, [=string=]
   |functionName|, a [=list=] |arguments|, and an integer millisecond [=duration=] |timeout|, run these steps.
-  They return a [=ECMAScript/Completion Record=], which is either an [=ECMAScript/abrupt completion=] (in
-  the case of a parse failure or execution error), or a [=ECMAScript/normal completion=] populated with the
-  [=ECMAScript/ECMAScript language value=] result of invoking |functionName|.
+  They return a tuple of a [=ECMAScript/Completion Record=], which is either an [=ECMAScript/abrupt
+  completion=] (in the case of a parse failure or execution error), or a [=ECMAScript/normal
+  completion=] populated with the [=ECMAScript/ECMAScript language value=] result of invoking
+  |functionName|, and a [=boolean=] stating whether the script was interrupted due to reaching
+  |timeout|.
 
     1. [=Assert=] that these steps are running [=in parallel=].
 
-    1. If |timeout| &le; 0, [=immediately=] interrupt the execution and set |finalCompletion| to a
-      new [=ECMAScript/throw completion=] given null.
+    1. If |timeout| &le; 0, return (new [=ECMAScript/throw completion=] given null, true).
+
+    1. Let |timeoutOccurred| be false.
 
     1. Let |global| be |realm|'s [=realm/global object=], and run these steps in |realm|'s [=realm/agent=]:
 
@@ -5687,8 +5697,8 @@ of the following global objects:
        |arguments|)).
 
        In |timeout| milliseconds, if the invocation of [$Call$] has not completed,
-       [=immediately=] interrupt the execution and set |finalCompletion| to a new
-       [=ECMAScript/throw completion=] given null.
+       [=immediately=] interrupt the execution, set |finalCompletion| to a new
+       [=ECMAScript/throw completion=] given null, and set |timeoutOccurred| to true.
 
     1. <i id=evaluate-script-return>Return</i>: at this point |finalCompletion| will be set to a
        [=ECMAScript/Completion Record=].
@@ -5697,7 +5707,7 @@ of the following global objects:
          execution context|running JavaScript execution context=], and remove it from the
          [=ECMAScript/execution context stack|JavaScript execution context stack=].
 
-      1. Return |finalCompletion|.
+      1. Return (|finalCompletion|, timeoutOccurred).
 </div>
 
 ## Global scopes ## {#global-scopes}
