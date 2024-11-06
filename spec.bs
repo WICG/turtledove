@@ -2924,13 +2924,17 @@ and a [=global object=] |global|:
      |sellerReportingScriptFetcher|.
   1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/average code fetch
     time=] and |sellerReportingScriptFetcher|'s [=script fetcher/fetch duration=].
-  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored, |paContributions| » be the
-    result of [=evaluating a reporting script=] with |sellerReportingScript|, [=worklet function/
-    report-result=],  |reportingContext|, |config|'s [=auction config/seller=], |config|'s
+  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored, |paContributions|,
+    |executionMetrics| » be the result of [=evaluating a reporting script=] with
+    |sellerReportingScript|, [=worklet function/report-result=],  |reportingContext|,
+    |config|'s [=auction config/seller=], |config|'s
     [=auction config/seller Private Aggregation coordinator=],  |config|'s [=auction config/
     config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |config|'s [=auction config/config idl=], |browserSignals|, |directFromSellerSignals| ».
-   1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
+  1. Set |metrics|'s [=per participant metrics/script executions attempted=] to 1.
+  1. If |executionMetrics|'s [=execution metrics/script timeout occurred=] is true, set |metrics|'s
+    [=per participant metrics/script timeouts occurred=] to 1.
+  1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
      : [=reporting result/report url=]
      :: |reportUrl|
      : [=reporting result/reporting beacon map=]
@@ -3027,14 +3031,18 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
   1. Let |reportFunctionName| be "`reportWin`".
   1. If |winner|'s [=generated bid/provided as additional bid=] is true:
     1. Set |reportFunctionName| be "`reportAdditionalBidWin`".
-  1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap|, |paContributions| » be
-    the result of [=evaluating a reporting script=] with |buyerReportingScript|, [=worklet function/
-    report-win=], |reportingContext|, |ig|'s [=interest group/owner=], |ig|'s [=interest group/
+  1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap|, |paContributions|,
+    |executionMetrics| » be the result of [=evaluating a reporting script=] with
+    |buyerReportingScript|, [=worklet function/report-win=], |reportingContext|, |ig|'s
+    [=interest group/owner=], |ig|'s [=interest group/
     Private Aggregation coordinator=], |leadingBidInfo|'s [=leading bid info/auction config=]'s
     [=auction config/config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config idl=]'s
       {{AuctionAdConfig/auctionSignals}}, |perBuyerSignalsForBuyer|, |sellerSignals|,
       |reportWinBrowserSignals|, |directFromSellerSignals| ».
+  1. Set |metrics|'s [=per participant metrics/script executions attempted=] to 1.
+  1. If |executionMetrics|'s [=execution metrics/script timeout occurred=] is true, set |metrics|'s
+    [=per participant metrics/script timeouts occurred=] to 1.
   1. [=Commit private aggregation contributions=] given |paContributions|, |winner|'s [=generated
     bid/reporting id=] and |reportingContext|.
   1. Set |leadingBidInfo|'s [=leading bid info/buyer reporting result=] to a [=reporting result=]
