@@ -2135,6 +2135,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
               |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
+  1. [=Update cumulative buyer time=] given |metrics| and |cumulativeTimeoutTracker|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
@@ -4169,7 +4170,8 @@ A signal base value is one of the following:
 :: Percentage of [=max interest groups total size per owner=] used by the given buyer, capped to
   110.
 : "<dfn><code>cumulative-buyer-time</code></dfn>"
-:: TODO
+:: Time spent by the buyer from their cumulative buyer timeout limit; if the limit has been exceeded
+  returns the limit + 1000. 0 if this is a seller, or no cumulative buyer timeout is configured.
 : "<dfn><code>percent-igs-cumulative-timeout</code></dfn>"
 :: Percentage of participating interest groups that did not get to participate due to a cumulative
   buyer timeout occurring.
@@ -4275,6 +4277,8 @@ A <dfn>per participant metrics</dfn> is a [=struct=] with the following [=struct
   : <dfn>cumulative timeouts occurred</dfn>
   :: A {{long}}, initially 0. Number of interest groups affected by the cumulative timeout
     happening.
+  : <dfn>cumulative buyer time</dfn>
+  :: A [=duration=] in milliseconds, initially 0.
   : <dfn>script executions attempted</dfn>
   :: A {{long}}, initially 0.
   : <dfn>regular interest group count</dfn>
@@ -4665,11 +4669,11 @@ They return a {{double}}.
   1. Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
     participant metrics/storage quota used=] and [=Max interest groups total size per owner=].
 1. If |signalBaseValue| is "<code>[=signal base value/cumulative-buyer-time=]</code>":
-  1. TODO
+  1. Return |bidAndScoreMetrics|'s [=per participant metrics/cumulative buyer time=].
 1. If |signalBaseValue| is "<code>[=signal base value/percent-igs-cumulative-timeout=]</code>":
-  1. Return the result of [=computing a percentage metric=] given |metrics|'s [=per participant
-    metrics/cumulative timeouts occurred=] and |metrics|'s [=per participant metrics/script executions
-    attempted=].
+  1. Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/cumulative timeouts occurred=] and |bidAndScoreMetrics|'s [=per participant
+    metrics/script executions attempted=].
 
 </div>
 
@@ -4693,6 +4697,18 @@ To <dfn>update storage metrics</dfn> given [=per participant metrics=] |metrics|
     by 1.
   1. Increment |metrics|'s [=per participant metrics/storage quota used=] by |ig|'s [=interest
     group/estimated size=]
+
+</div>
+
+<div algorithm>
+To <dfn>update cumulative buyer time</dfn> given [=per participant metrics=] |metrics| and a
+[=cumulative timeout tracker=] |tracker|:
+1. If |tracker|'s [=cumulative timeout tracker/limit=] is null, return.
+1. If |tracker| [=cumulative timeout tracker/is expired=], set |metrics|'s
+  [=per participant metrics/cumulative buyer time=] to |tracker|'s [=cumulative timeout tracker/
+  limit=] + 1000ms.
+1. Otherwise, set |metrics|'s [=per participant metrics/cumulative buyer time=] to |tracker|'s
+  [=cumulative timeout tracker/limit=] - |tracker|'s [=cumulative timeout tracker/remaining=].
 
 </div>
 
