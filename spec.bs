@@ -2927,7 +2927,7 @@ and a [=global object=] |global|:
     time=] and |sellerReportingScriptFetcher|'s [=script fetcher/fetch duration=].
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored, |paContributions|,
     |executionMetrics| » be the result of [=evaluating a reporting script=] with
-    |sellerReportingScript|, [=worklet function/report-result=],  |reportingContext|,
+    |sellerReportingScript|, "`reportResult`",  |reportingContext|,
     |config|'s [=auction config/seller=], |config|'s
     [=auction config/seller Private Aggregation coordinator=],  |config|'s [=auction config/
     config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
@@ -3034,7 +3034,7 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
     1. Set |reportFunctionName| be "`reportAdditionalBidWin`".
   1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap|, |paContributions|,
     |executionMetrics| » be the result of [=evaluating a reporting script=] with
-    |buyerReportingScript|, [=worklet function/report-win=], |reportingContext|, |ig|'s
+    |buyerReportingScript|, |reportFunctionName|, |reportingContext|, |ig|'s
     [=interest group/owner=], |ig|'s [=interest group/
     Private Aggregation coordinator=], |leadingBidInfo|'s [=leading bid info/auction config=]'s
     [=auction config/config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
@@ -4176,7 +4176,7 @@ A worklet function is one of the following:
 : "<dfn><code>report-result</code></dfn>"
 :: The `reportResult()` function.
 : "<dfn><code>report-win</code></dfn>"
-:: The `reportWin()` function.
+:: The `reportWin()` function, or `reportAdditionalBidWin()` for additional bids.
 
 </dl>
 
@@ -5657,16 +5657,16 @@ of the following global objects:
 </div>
 
 <div algorithm>
-  To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=worklet function=]
-    |function|, a [=reporting context=] |reportingContext|, an [=origin=] |origin|, an [=origin=]
-    |privateAggregationCoordinator|, an integer millisecond [=duration=] |timeout|, and a [=list=]
-    of arguments |arguments|:
+  To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=]
+  |functionName|, a [=reporting context=] |reportingContext|, an [=origin=] |origin|, an
+  [=origin=] |privateAggregationCoordinator|, an integer millisecond [=duration=] |timeout|,
+  and a [=list=] of arguments |arguments|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupReportingScriptRunnerGlobalScope}}.
     1. Let |global| be |realm|'s [=realm/global object=].
-    1. Let |functionName| be `"reportWin"`.
-    1. If |function| is [=worklet function/report-result=], set |functionName| to `"reportResult"`.
+    1. Let |function| be [=worklet function/report-win=]
+    1. If |functionName| is `"reportResult"`, set |function| to [=worklet function/report-result=].
     1. [=Prepare for private aggregation=] given |global|, |function|, |reportingContext|, |origin|,
       and |privateAggregationCoordinator|.
     1. Let |argumentsJS| be the result of [=converting a Web IDL arguments list to an ECMAScript
