@@ -4557,14 +4557,17 @@ dictionary StorageInterestGroup : AuctionAdInterestGroup {
 
 *This first introductory paragraph is non-normative.*
 
-{{Window/navigator}}.{{Navigator/createAuctionNonce()}} creates an <dfn>auction nonce</dfn>, a
-one-time [=version 4 UUID=] [=string=] uniquely associated with a single call to
-{{Window/navigator}}.{{Navigator/runAdAuction()}}. For multi-seller auctions, this ID is uniquely
-associated with all {{AuctionAdConfig/componentAuctions}}. This nonce will need to be passed back in
-via a subsequent call to {{Window/navigator}}.{{Navigator/runAdAuction()}} via the
-{{AuctionAdConfig}}. This is currently only needed for [=auctions=] that use [=additional bids=],
-for which the [=auction nonce=] will be included in each [=additional bid=] as a way of ensuring
-that those bids are only used in the [=auctions=] for which they were intended.
+{{Window/navigator}}.{{Navigator/createAuctionNonce()}} creates an <dfn>auction nonce</dfn>, which
+is a one-time canonical [=string=] representation of a [=version 4 UUID=] that is uniquely
+associated with a single call to {{Window/navigator}}.{{Navigator/runAdAuction()}}. For multi-seller
+auctions, a (separate) auction nonce can be uniquely associated with each of the
+{{AuctionAdConfig/componentAuctions}}. The auction nonce(s) will need to be passed back in via a 
+subsequent call to {{Window/navigator}}.{{Navigator/runAdAuction()}} via the {{AuctionAdConfig}}.
+This is currently only needed for [=auctions=] that use [=additional bids=], for which the auction
+nonce will be included in each [=additional bid=] as a way of ensuring that those bids are only
+used in the [=auctions=] for which they were intended. Alternatively, when using a [=signed
+additional bid with metadata/seller nonce=], a bid nonce derrived from the auction nonce and seller
+nonce will be included in each [=additional bid=] instead of the auction nonce.
 
 <xmp class="idl">
 [SecureContext]
@@ -6992,9 +6995,10 @@ HTTP response header.</h3>
 The \`<dfn http-header><code>Ad-Auction-Additional-Bid</code></dfn>\` response header provides value
 of a string in the format of `<auction nonce>:<seller nonce>:<base64-encoding of the signed
 additional bid>`, or the legacy format of `<auction nonce>:<base64-encoding of the signed additional
-bid>`, which corresponds to a single [=additional bid=]. The response may include more than one
-[=additional bid=] by specifying multiple instances of the [:Ad-Auction-Additional-Bid:] response
-header.
+bid>`, either of which corresponds to a single [=additional bid=]. In the format that provides a
+seller nonce, the seller nonce must be as described in [=signed additional bid with metadata/seller
+nonce=]. The response may include more than one [=additional bid=] by specifying multiple instances
+of the [:Ad-Auction-Additional-Bid:] response header.
 </div>
 
 <h3 id=ad-auction-result-header>The \`<a http-header><code>Ad-Auction-Result</code></a>\`
@@ -7085,6 +7089,7 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
         1. Set |storedAdditionalBidsHeaders|[|auctionNonce|] to |bidWithMetadata|.
       1. Otherwise, if |parts|'s [=list/size=] is 2: 
         1. Let |auctionNonce| be |parts|[0].
+        1. If |auctionNonce|'s [=string/length=] is not 36, then [=iteration/continue=].
         1. Let |bidWithMetadata|'s [=signed additional bid with metadata/signed additional bid=] be
           |parts|[1].
         1. Set |storedAdditionalBidsHeaders|[|auctionNonce|] to |bidWithMetadata|.
@@ -8684,9 +8689,8 @@ A <dfn>signed additional bid with metadata</dfn> is a [=struct=] with the follow
   :: A [=string=] for an encoded additional bid.
   : <dfn>seller nonce</dfn>
   :: Null or a [=string=]. If present, represents the randomly-generated seller nonce returned in
-    the [:Ad-Auction-Additional-Bid:] response header.
-
-    NOTE: This typically will be a [=version 4 UUID=], but the format is not enforced.
+    the [:Ad-Auction-Additional-Bid:] response header. This must be 36 characters, and should be the
+    canonoical [=string=] representation of a [=version 4 UUID=].
 </dl>
 
 <h3 id=score-ad-output-header>Score ad output</h3>
