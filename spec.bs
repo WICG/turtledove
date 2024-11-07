@@ -1984,6 +1984,10 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
       1. [=map/For each=] slotSizeQueryParam → |perSignalsUrlGenerator| of |perSlotSizeQueryParam|:
         1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
           1. [=list/Extend=] |igs| with |groups|.
+    1. [=Update storage metrics=] given |metrics| and |igs|.
+
+      Note: This is done before any filtering, since it represents storage resource usage.
+
     1. [=list/Sort in descending order=] |igs|, with |a| being less than |b| if |a|'s
       [=interest group/priority=] is less than |b|'s [=interest group/priority=].
     1. [=list/Remove=] the first |buyerGroupLimit| items from |igs|.
@@ -4144,6 +4148,18 @@ A signal base value is one of the following:
 : "<dfn><code>percent-scripts-timeout</code></dfn>"
 :: The numeric value is percentage of executions of this script that hit their individual timeout,
   out of all executions that were expected to happen.
+: "<dfn><code>regular-igs-count</code></dfn>"
+:: Number of [=regular interest groups=] for the given buyer. (0 if this is used by a seller).
+: "<dfn><code>percent-regular-ig-count-quota-used</code></dfn>"
+::
+: "<dfn><code>negative-igs-count</code></dfn>"
+:: Number of [=negative interest groups=] for the given buyer. (0 if this is used by a seller).
+: "<dfn><code>percent-negative-ig-count-quota-used</code></dfn>"
+::
+: "<dfn><code>ig-storage-used</code></dfn>"
+:: Bytes of storage used by the given buyer. (0 if this is used by a seller).
+: "<dfn><code>percent-ig-storage-quota-used</code></dfn>"
+::
 
 </dl>
 
@@ -4244,6 +4260,12 @@ A <dfn>per participant metrics</dfn> is a [=struct=] with the following [=struct
   : <dfn>script timeouts occurred</dfn>
   :: A {{long}}, initially 0.
   : <dfn>script executions attempted</dfn>
+  :: A {{long}}, initially 0.
+  : <dfn>regular interest group count</dfn>
+  :: A {{long}}, initially 0.
+  : <dfn>negative interest group count</dfn>
+  :: A {{long}}, initially 0.
+  : <dfn>storage quota used</dfn>
   :: A {{long}}, initially 0.
 </dl>
 
@@ -4610,6 +4632,22 @@ They return a {{double}}.
   1. Return the result of [=computing a percentage metric=] given |metrics|'s [=per participant
     metrics/script timeouts occurred=] and |metrics|'s [=per participant metrics/script executions
     attempted=].
+1. If |signalBaseValue| is "<code>[=signal base value/regular-igs-count=]</code>":
+  1. Return |bidAndScoreMetrics|'s [=per participant metrics/regular interest group count=].
+1. If |signalBaseValue| is "<code>[=signal base value/percent-regular-ig-count-quota-used=]</code>":
+  1. Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/regular interest group count=] and [=Max regular interest groups per owner=].
+1. If |signalBaseValue| is "<code>[=signal base value/negative-igs-count=]</code>":
+  1. Return |bidAndScoreMetrics|'s [=per participant metrics/negative interest group count=].
+1. If |signalBaseValue| is "<code>[=signal base value/percent-negative-ig-count-quota-used=]</code>":
+  1. Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/negative interest group count=] and [=Max negative interest groups per
+    owner=].
+1. If |signalBaseValue| is "<code>[=signal base value/ig-storage-used=]</code>":
+  1. Return |bidAndScoreMetrics|'s [=per participant metrics/storage quota used=].
+1. If |signalBaseValue| is "<code>[=signal base value/percent-ig-storage-quota-used=]</code>":
+  1. Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/storage quota used=] and [=Max interest groups total size per owner=].
 
 </div>
 
@@ -4620,6 +4658,19 @@ To <dfn>compute a percentage metric</dfn> given {{long}}s |numerator| and |denom
   {{double}}s.
 1. If |result| &gt; 110.0, set |result| to 110.0
 1. Return |result|.
+
+</div>
+
+<div algorithm>
+To <dfn>update storage metrics</dfn> given [=per participant metrics=] |metrics| and a [=list=] of
+[=interest groups=] |igs|:
+1. [=list/For each=] |ig| of |igs|:
+  1. If [=interest group/additional bid key=] is null, increment |metrics|'s [=per participant
+    metrics/regular interest group count=] by 1.
+  1. Otherwise, increment |metrics|'s [=per participant metrics/negative interest group count=]
+    by 1.
+  1. Increment |metrics|'s [=per participant metrics/storage quota used=] by |ig|'s [=interest
+    group/estimated size=]
 
 </div>
 
