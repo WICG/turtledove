@@ -4563,11 +4563,10 @@ associated with a single call to {{Window/navigator}}.{{Navigator/runAdAuction()
 auctions, a (separate) auction nonce can be uniquely associated with each of the
 {{AuctionAdConfig/componentAuctions}}. The auction nonce(s) will need to be passed back in via a 
 subsequent call to {{Window/navigator}}.{{Navigator/runAdAuction()}} via the {{AuctionAdConfig}}.
-This is currently only needed for [=auctions=] that use [=additional bids=], for which the auction
-nonce will be included in each [=additional bid=] as a way of ensuring that those bids are only
-used in the [=auctions=] for which they were intended. Alternatively, when using a [=signed
-additional bid with metadata/seller nonce=], a bid nonce derrived from the auction nonce and seller
-nonce will be included in each [=additional bid=] instead of the auction nonce.
+This is currently only needed for [=auctions=] that use [=additional bids=], in which the auction
+nonce is combined with a [=signed additional bid with metadata/seller nonce=] to construct a bid
+nonce that must be included in each [=additional bid=]. For backwards compatibility, [=additional
+bids=] may include an auction nonce directly in place of a bid nonce.
 
 <xmp class="idl">
 [SecureContext]
@@ -7086,13 +7085,13 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
           |sellerNonce|.
         1. Let |bidWithMetadata|'s [=signed additional bid with metadata/signed additional bid=] be
           |parts|[2].
-        1. Set |storedAdditionalBidsHeaders|[|auctionNonce|] to |bidWithMetadata|.
+        1. [=list/Append=] |bidWithMetadata| to |storedAdditionalBidsHeaders|[|auctionNonce|].
       1. Otherwise, if |parts|'s [=list/size=] is 2: 
         1. Let |auctionNonce| be |parts|[0].
         1. If |auctionNonce|'s [=string/length=] is not 36, then [=iteration/continue=].
         1. Let |bidWithMetadata|'s [=signed additional bid with metadata/signed additional bid=] be
           |parts|[1].
-        1. Set |storedAdditionalBidsHeaders|[|auctionNonce|] to |bidWithMetadata|.
+        1. [=list/Append=] |bidWithMetadata| to |storedAdditionalBidsHeaders|[|auctionNonce|].
 
   1. Let |adAuctionResults| be the result of [=header list/getting, decoding, and splitting=]
     [:Ad-Auction-Result:] from |responseHeaders|.
@@ -7769,9 +7768,10 @@ An <dfn export>auction config</dfn> is a [=struct=] with the following [=struct/
     uniquely associated with all {{AuctionAdConfig/componentAuctions}}.
     This must come from a prior call to {{Window/navigator}}.{{Navigator/createAuctionNonce()}}.
     This is only required for auctions that provide [=additional bids=], and each of those
-    [=additional bids=] must use the same auction nonce (or the bid nonce derived from that auction
-    nonce as computed by [=calculate expected bid nonce=]) to ensure that each of them was intended
-    for this and only this auction.
+    [=additional bids=] must include the bid nonce derived from that auction nonce as computed by
+    [=calculate expected bid nonce=] to ensure that each [=additional bid=] was intended for this
+    and only this auction. For backwards compatibility, an [=additional bid=] may include the
+    [=auction nonce=] directly in place of a bid nonce.
   : <dfn>expects additional bids</dfn>
   :: A [=boolean=] or failure, initially false.
     Specifies whether some bids will be provided as signed exchanges. Sets to failure if the
