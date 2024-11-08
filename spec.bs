@@ -291,11 +291,11 @@ This is detectable because it can change the set of fields that are read from th
   and its [=origin/scheme=] is "`https`".
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
-  1. Set |interestGroup|'s [=interest group/expiry=] to the [=current wall time=] plus
+  1. Set |interestGroup|'s [=interest group/expiry=] to the [=current coarsened wall time=] plus
     |group|["{{AuctionAdInterestGroup/lifetimeMs}}"] milliseconds.
-  1. Set |interestGroup|'s [=interest group/next update after=] to the [=current wall time=] plus 24
-    hours.
-  1. Set |interestGroup|'s [=interest group/last updated=] to the [=current wall time=].
+  1. Set |interestGroup|'s [=interest group/next update after=] to the [=current coarsened wall
+    time=] plus 24 hours.
+  1. Set |interestGroup|'s [=interest group/last updated=] to the [=current coarsened wall time=].
   1. Set |interestGroup|'s [=interest group/owner=] to the result of [=parsing an https origin=] on
     |group|["{{GenerateBidInterestGroup/owner}}"].
   1. If |interestGroup|'s [=interest group/owner=] is failure, then [=exception/throw=] a {{TypeError}}.
@@ -489,7 +489,7 @@ This is detectable because it can change the set of fields that are read from th
     the currently stored one from the browser.
   1. Set |interestGroup|'s [=interest group/joining origin=] to [=this=]'s
     [=relevant settings object=]'s [=environment/top-level origin=].
-  1. Set |interestGroup|'s [=interest group/join time=] to the [=current wall time=].
+  1. Set |interestGroup|'s [=interest group/join time=] to the [=current coarsened wall time=].
   1. If the most recent entry in |interestGroup|'s [=interest group/join counts=] corresponds to
     the current day in UTC, increment its count. If not, [=list/insert=] a new [=tuple=]
     the time set to the current UTC day and a count of 1.
@@ -532,7 +532,7 @@ To <dfn>perform storage maintenance</dfn>:
     It's sorted based on their [=map/values=] ([=interest group/expiry=]) in descending order, in
     order to remove [=interest groups=] of [=interest group/owners=] expiring soonest first.
 
-1. Let |now| be the [=current wall time=].
+1. Let |now| be the [=current coarsened wall time=].
 1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
   1. Let |owner| be |ig|'s [=interest group/owner=].
   1. If |ig|'s [=interest group/expiry=] is before |now|, then [=list/remove=] |ig| from the
@@ -1646,7 +1646,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     whose [=interest group/owner=] is |ig|'s [=interest group/owner=] and whose
     [=interest group/name=] is |ig|'s [=interest group/name=], return if none found.
   1. Let |win| be a new [=previous win=].
-  1. Set |win|'s [=previous win/time=] to the [=current wall time=].
+  1. Set |win|'s [=previous win/time=] to the [=current coarsened wall time=].
   1. Let |ad| be a new [=interest group ad=] with the following [=struct/items=]:
     : [=interest group ad/render url=]
     :: |bid|'s [=generated bid/bid ad=]'s [=interest group ad/render url=]
@@ -1757,8 +1757,8 @@ following steps. They return a failure if failing to fetch the script or wasm, o
     |ig|.
   1. Set |browserSignals|["{{BiddingBrowserSignals/joinCount}}"] to the sum of |ig|'s
      [=interest group/join counts=] for all days within the last 30 days.
-  1. Set |browserSignals|["{{BiddingBrowserSignals/recency}}"] to the [=current wall time=]
-    minus |ig|'s [=interest group/join time=], in milliseconds.
+  1. Set |browserSignals|["{{BiddingBrowserSignals/recency}}"] to the [=current coarsened wall
+    time=] minus |ig|'s [=interest group/join time=], in milliseconds.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/bidCount}}"] to the sum of |ig|'s
      [=interest group/bid counts=] for all days within the last 30 days.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/adComponentsLimit}}"] to 40.
@@ -1825,7 +1825,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. Let |settings| be |global|'s [=relevant settings object=].
 1. Let |topLevelOrigin| be |settings|'s [=environment/top-level origin=].
 1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
-1. Let |auctionStartTime| be the [=current wall time=].
+1. Let |auctionStartTime| be the [=current coarsened wall time=].
 1. Let |decisionLogicFetcher| be the result of [=creating a new script fetcher=] with
   |auctionConfig|'s [=auction config/decision logic url=] and |settings|.
 1. Let |trustedScoringSignalsBatcher| be the result of [=creating a trusted scoring signals
@@ -3170,9 +3170,9 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
     [=interest group/owner=] is |igId|'s [=interest group/owner=] and [=interest group/name=] is |igId|'s
     [=interest group/name=]. [=iteration/Continue=] if none found.
   1. If |updateIfOlderThan| is less than 10 mintues, set it to 10 minutes.
-  1. If [=current wall time=] &minus; |ig|'s [=interest group/last updated=] ≥
+  1. If [=current coarsened wall time=] &minus; |ig|'s [=interest group/last updated=] ≥
      |updateIfOlderThan|, set |ig|'s [=interest group/next update after=] to the
-        [=current wall time=] + |updateIfOlderThan|.
+        [=current coarsened wall time=] + |updateIfOlderThan|.
 1. Return |winningBidInfo|.
 
 </div>
@@ -3322,7 +3322,7 @@ A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [
   :: A count of the number of joins for this interest group in the last 30 days.
     Calculated by summing the [=interest group/join counts=].
   : <dfn>recency ms</dfn>
-  :: A [=duration=], in milliseconds, representing the [=current wall time=] at
+  :: A [=duration=], in milliseconds, representing the [=current coarsened wall time=] at
     the time this object was constructed minus the corresponding [=interest group=]'s
     [=interest group/join time=], in milliseconds.
   : <dfn>previous wins</dfn>
@@ -3332,7 +3332,7 @@ A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [
 A <dfn>server auction previous win</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="server auction previous win">
   : <dfn>time delta</dfn>
-  :: A [=duration=], in milliseconds, representing the [=current wall time=] at
+  :: A [=duration=], in milliseconds, representing the [=current coarsened wall time=] at
     the time this object was constructed minus the corresponding [=previous win=]'s [=previous win/time=], in seconds.
   : <dfn>ad render ID</dfn>
   :: A [=string=] containing the [=interest group ad/ad render ID=] for the ad represented by this entry.
@@ -3443,7 +3443,7 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
   1. Set |config|'s [=auction data config/encryption key=] to |key|.
   1. Set |config|'s [=auction data config/encryption key id=] to |keyId|.
   1. Let |igMap| be a new [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are [=lists=].
-  1. Let |startTime| be a [=moment=] equal to the [=current wall time=].
+  1. Let |startTime| be a [=moment=] equal to the [=current coarsened wall time=].
   1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
     1. If |ig|'s [=interest group/ads=] is null or [=list/is empty=], [=iteration/continue=].
     1. Let |owner| be |ig|'s [=interest group/owner=].
@@ -3473,7 +3473,8 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
       : [=server auction browser signals/join count=]
       :: the sum of |ig|'s [=interest group/join counts=] with a join day within the last 30 days
       : [=server auction browser signals/recency ms=]
-      :: the [=current wall time=] minus |ig|'s [=interest group/join time=] in millseconds
+      :: the [=current coarsened wall time=] minus |ig|'s [=interest group/join time=] in
+         millseconds
       : [=server auction browser signals/previous wins=]
       :: |prevWins|
     1. Let |serverIg| be a new [=server auction interest group=] with the following [=struct/items=]:
@@ -3797,11 +3798,11 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
 <div algorithm>
   To <dfn>is debugging only in cooldown or lockout</dfn> given an [=origin=] |origin|:
 
-  1. If [=user agent=]'s [=debug report lockout until=] is not null, and [=current wall time=] is
-    less than [=user agent=]'s [=debug report lockout until=], return true.
+  1. If [=user agent=]'s [=debug report lockout until=] is not null, and [=current coarsened wall
+    time=] is less than [=user agent=]'s [=debug report lockout until=], return true.
   1. If [=user agent=]'s [=debug report cooldown=] is null, then return false.
-  1. If [=user agent=]'s [=debug report cooldown=][|origin|] [=map/exists=] and [=current wall time=]
-    is less than [=user agent=]'s [=debug report cooldown=][|origin|], then return true.
+  1. If [=user agent=]'s [=debug report cooldown=][|origin|] [=map/exists=] and [=current coarsened
+    wall time=] is less than [=user agent=]'s [=debug report cooldown=][|origin|], then return true.
   1. Return false.
 </div>
 
@@ -3813,15 +3814,15 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
     chosen with a probability equal to [=sampling rate=].
   1. If |sampleRand| is 0:
     1. Set |canSendAfterSampled| to true.
-    1. Set [=user agent=]'s [=debug report lockout until=] to [=current wall time=] plus
+    1. Set [=user agent=]'s [=debug report lockout until=] to [=current coarsened wall time=] plus
       [=lockout period=].
   1. Let |cooldownRand| be a random {{long}} &ge; 0 and &lt; 10, which corresponds to
 
     [=long cooldown rate=].
   1. Let |cooldownPeriod| be [=long cooldown period=] if |cooldownRand| is 0,
     [=short cooldown period=] otherwise.
-  1. Set [=user agent=]'s [=debug report cooldown=][|origin|] to [=current wall time=] plus
-    |cooldownPeriod|.
+  1. Set [=user agent=]'s [=debug report cooldown=][|origin|] to [=current coarsened wall time=]
+    plus |cooldownPeriod|.
   1. Return |canSendAfterSampled|.
 </div>
 
@@ -4473,7 +4474,7 @@ dictionary StorageInterestGroup : AuctionAdInterestGroup {
   To <dfn>get storage interest groups for owner</dfn> given an [=origin=] |owner|:
 
   1. Let |resultIgs| be an empty [=list=].
-  1. Let |now| be a [=moment=] equal to the [=current wall time=].
+  1. Let |now| be a [=moment=] equal to the [=current coarsened wall time=].
   1. [=list/For each=] |ig| of [=user agent=]'s [=interest group set=]:
     1. If |ig|'s [=interest group/owner=] does not equal |owner|, then [=iteration/continue=].
     1. Let |resultIg| be an empty {{StorageInterestGroup}} dictionary.
@@ -5073,7 +5074,8 @@ from querying the server during an auction.
   To <dfn>query k-anonymity cache</dfn> given a [=SHA-256=] |hashCode|:
     1. If the [=user agent=]'s [=k-anonymity cache=] does not [=map/contain=] |hashCode|, then return false.
     1. Let |record| be the [=user agent=]'s [=k-anonymity cache=][|hashCode|].
-    1. If the difference between [=current wall time=] and |record|'s [=k-anonymity record/timestamp=] is more than 7 days then return false.
+    1. If the difference between [=current coarsened wall time=] and |record|'s [=k-anonymity
+      record/timestamp=] is more than 7 days then return false.
     1. Return |record|'s [=k-anonymity record/is k-anonymous=].
 </div>
 
@@ -5175,7 +5177,7 @@ from querying the server during an auction.
   To <dfn>update k-anonymity cache for key</dfn> given a [=SHA-256=] |hashCode|:
     1. [=Assert=] that these steps are running [=in parallel=].
     1. Let |record| be a new [=k-anonymity record=].
-    1. Set |record|'s [=k-anonymity record/timestamp=] field to the [=current wall time=].
+    1. Set |record|'s [=k-anonymity record/timestamp=] field to the [=current coarsened wall time=].
     1. Set |record|'s [=k-anonymity record/is k-anonymous=] field to the result of executing [=query k-anonymity count=] for |hashCode|.
     1. [=map/Set=] |record|[|hashCode|] to |record|.
 </div>
@@ -6243,7 +6245,7 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
 1. [=list/For each=] |owner| of |owners|:
   1. [=list/For each=] |originalInterestGroup| of the [=user agent=]'s [=interest group set=] whose
     [=interest group/owner=] is |owner| and [=interest group/next update after=] is before
-    the [=current wall time=] and whose [=interest group/update url=] is not null:
+    the [=current coarsened wall time=] and whose [=interest group/update url=] is not null:
 
     Note: Implementations can consider loading only a portion of these interest groups
     at a time to avoid issuing too many requests at once.
@@ -6525,8 +6527,9 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
       * |ig|'s [=interest group/ads=] is not null, and |ig|'s [=interest group/additional bid key=]
         is not null;
       * |ig|'s [=interest group/estimated size=] is greater than 1048576 bytes.
-    1. Set |ig|'s [=interest group/next update after=] to the [=current wall time=] plus 24 hours.
-    1. Set |ig|'s [=interest group/last updated=] to the [=current wall time=].
+    1. Set |ig|'s [=interest group/next update after=] to the [=current coarsened wall time=] plus
+      24 hours.
+    1. Set |ig|'s [=interest group/last updated=] to the [=current coarsened wall time=].
     1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
       [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
     1. <i id=abort-update>Abort update</i>: We jump here if some part of the
@@ -6549,10 +6552,10 @@ To <dfn>process updateIfOlderThanMs</dfn> given an [=origin=] |buyer|, and an [=
   1. Let |ig| be the [=interest group=] of the [=user agent=]'s [=interest group set=] whose
     [=interest group/owner=] is |buyer| and whose [=interest group/name=] is |igName|, or null if
     [=interest group set=] does not have such an interest group.
-  1. If |ig| is not null and the [=current wall time=] &minus; |ig|'s
+  1. If |ig| is not null and the [=current coarsened wall time=] &minus; |ig|'s
      [=interest group/last updated=] ≥ |updateIfOlderThan|:
     1. Set |ig|'s [=interest group/next update after=] to
-      [=current wall time=] + |updateIfOlderThan|.
+      [=current coarsened wall time=] + |updateIfOlderThan|.
     1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
       [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
 
@@ -8208,7 +8211,7 @@ requests into smaller number of fetches. It's a [=struct=] with the following [=
   : <dfn>request map</dfn>
   :: A [=map=] from a tuple of [=script fetcher=], a [=URL=] representating the trusted signals
     base [=URL=], {{unsigned short}} or null for experiment ID, and
-    [=origin=], representing the top frame's [=origin], to a [=list=] of [=trusted scoring signals
+    [=origin=], representing the top frame's [=origin=], to a [=list=] of [=trusted scoring signals
     requests=]. This organizes fetches that can possibly be merged together.
   : <dfn>url length limit</dfn>
   :: A {{long}} denoting a user-configured limit which should not be exceeded due to combining of
