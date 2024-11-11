@@ -50,6 +50,7 @@ spec: html; urlPrefix: https://html.spec.whatwg.org/C
     text: create an agent; url: create-an-agent
     text: immediately; url: immediately
     text: valid floating-point number; url: valid-floating-point-number
+    text: serialization; for: origin; url: browsers.html#ascii-serialisation-of-an-origin
     text: structured clone algorithm; url: dom-structuredclone
 spec: infra; urlPrefix: https://infra.spec.whatwg.org/
   type: dfn
@@ -75,6 +76,7 @@ spec: WebAssembly-web-api; urlPrefix: https://webassembly.github.io/spec/web-api
 spec: WebIDL; urlPrefix: https://webidl.spec.whatwg.org/
   type: dfn
     text: convert a Web IDL arguments list to an ECMAScript arguments list; url: #web-idl-arguments-list-converting
+    text:an exception was thrown
 spec: Fenced Frame; urlPrefix: https://wicg.github.io/fenced-frame/
   type: dfn
     for: browsing context
@@ -87,6 +89,13 @@ spec: private-aggregation-api; urlPrefix: https://patcg-individual-drafts.github
     text: debug-details-key; url: #debug-details-key
     text: aggregation coordinator; url: #aggregation-coordinator
     text: default aggregation coordinator; url: #default-aggregation-coordinator
+    text: privateaggregation; url: #privateaggregation
+    text: batching scope; url: #batching-scope
+    text: debug scope; url: #debug-scope
+    text: scoping details; url: #scoping-details
+    text: contribution cache entry; url: #contribution-cache-entry
+    text: contribution cache; url: #contribution-cache
+    text: default filtering id max bytes; url: #default-filtering-id-max-bytes
 spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
   type: dfn
     text: shared-storage; url: #permissionspolicy-shared-storage
@@ -282,11 +291,11 @@ This is detectable because it can change the set of fields that are read from th
   and its [=origin/scheme=] is "`https`".
 1. Let |interestGroup| be a new [=interest group=].
 1. Validate the given |group| and set |interestGroup|'s fields accordingly.
-  1. Set |interestGroup|'s [=interest group/expiry=] to the [=current wall time=] plus
+  1. Set |interestGroup|'s [=interest group/expiry=] to the [=current coarsened wall time=] plus
     |group|["{{AuctionAdInterestGroup/lifetimeMs}}"] milliseconds.
-  1. Set |interestGroup|'s [=interest group/next update after=] to the [=current wall time=] plus 24
-    hours.
-  1. Set |interestGroup|'s [=interest group/last updated=] to the [=current wall time=].
+  1. Set |interestGroup|'s [=interest group/next update after=] to the [=current coarsened wall
+    time=] plus 24 hours.
+  1. Set |interestGroup|'s [=interest group/last updated=] to the [=current coarsened wall time=].
   1. Set |interestGroup|'s [=interest group/owner=] to the result of [=parsing an https origin=] on
     |group|["{{GenerateBidInterestGroup/owner}}"].
   1. If |interestGroup|'s [=interest group/owner=] is failure, then [=exception/throw=] a {{TypeError}}.
@@ -480,7 +489,7 @@ This is detectable because it can change the set of fields that are read from th
     the currently stored one from the browser.
   1. Set |interestGroup|'s [=interest group/joining origin=] to [=this=]'s
     [=relevant settings object=]'s [=environment/top-level origin=].
-  1. Set |interestGroup|'s [=interest group/join time=] to the [=current wall time=].
+  1. Set |interestGroup|'s [=interest group/join time=] to the [=current coarsened wall time=].
   1. If the most recent entry in |interestGroup|'s [=interest group/join counts=] corresponds to
     the current day in UTC, increment its count. If not, [=list/insert=] a new [=tuple=]
     the time set to the current UTC day and a count of 1.
@@ -523,7 +532,7 @@ To <dfn>perform storage maintenance</dfn>:
     It's sorted based on their [=map/values=] ([=interest group/expiry=]) in descending order, in
     order to remove [=interest groups=] of [=interest group/owners=] expiring soonest first.
 
-1. Let |now| be the [=current wall time=].
+1. Let |now| be the [=current coarsened wall time=].
 1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
   1. Let |owner| be |ig|'s [=interest group/owner=].
   1. If |ig|'s [=interest group/expiry=] is before |now|, then [=list/remove=] |ig| from the
@@ -791,6 +800,9 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |settings| be [=this=]'s [=relevant settings object=].
 1. If |global|'s [=associated Document=] is not [=allowed to use=] the "[=run-ad-auction=]"
   [=policy-controlled feature=], then [=exception/throw=] a "{{NotAllowedError}}" {{DOMException}}.
+1. Let |privateAggregationAllowed| be the result of determining whether |global|'s [=associated
+  Document=] is [=allowed to use=] the "<code>[=private-aggregation=]</code>" [=policy-controlled
+  feature=].
 1. Let |auctionConfig| be the result of running [=validate and convert auction ad config=] with
   |config| and true.
 1. If |auctionConfig| is failure, then [=exception/throw=] a {{TypeError}}.
@@ -822,7 +834,7 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
 1. Let |queue| be the result of [=starting a new parallel queue=].
 1. [=parallel queue/enqueue steps|Enqueue the following steps=] to |queue|:
   1. Let |reportingContextMap| be the result of [=creating a reporting context map=] given
-    |auctionConfig|.
+    |auctionConfig| and |privateAggregationAllowed|.
   1. If |auctionConfig|'s [=auction config/server response=] is not null:
     1. Let |winnerInfo| be the result of running [=parse and validate server response=] with
       |auctionConfig|, null, |global|, |bidIgs|, and |reportingContextMap|.
@@ -849,10 +861,13 @@ The <dfn for=Navigator method>runAdAuction(|config|)</dfn> method steps are:
       1. [=Send report=] with |reportUrl| and |settings|.
     1. [=Send real time reports=] with |auctionReportInfo|'s
       [=auction report info/real time reporting contributions map=] and |settings|.
+    1. [=Process the Private Aggregation contributions=] given |auctionConfig|,
+      |reportingContextMap|.
   1. Otherwise:
     1. Let |winner| be |winnerInfo|'s [=leading bid info/leading bid=].
     1. Let |fencedFrameConfig| be the result of [=filling in a pending fenced frame config=] with
-       |pendingConfig|, |auctionConfig|, |winnerInfo|, |auctionReportInfo|, and |settings|.
+       |pendingConfig|, |auctionConfig|, |reportingContextMap|, |winnerInfo|, |auctionReportInfo|,
+       and |settings|.
     1. [=fenced frame config mapping/Finalize a pending config=] on |configMapping| with |urn| and
        |fencedFrameConfig|.
     1. Wait until |auctionConfig|'s [=auction config/resolve to config=] is a boolean.
@@ -946,8 +961,9 @@ To <dfn>construct a pending fenced frame config</dfn> given an [=auction config=
 <div algorithm>
 
 To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame config=]
-|pendingConfig|, [=auction config=] |auctionConfig|, [=leading bid info=] |winningBidInfo|,
-[=auction report info=] |auctionReportInfo|, and an [=environment settings object=] |settings|:
+|pendingConfig|, [=auction config=] |auctionConfig|, [=reporting context map=]
+|reportingContextMap|, [=leading bid info=] |winningBidInfo|, [=auction report info=]
+|auctionReportInfo|, and an [=environment settings object=] |settings|:
 1. Let |winningBid| be |winningBidInfo|'s [=leading bid info/leading bid=].
 1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose
   [=map/values=] are [=strings=].
@@ -1018,8 +1034,8 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
    1. [=Asynchronously finish reporting=] with |pendingConfig|'s
       [=fenced frame config/fenced frame reporting metadata=]'s
       [=fenced frame reporting metadata/value=]'s
-      [=fenced frame reporting metadata/fenced frame reporting map=], |winningBidInfo|,
-      |auctionReportInfo| and |settings|.
+      [=fenced frame reporting metadata/fenced frame reporting map=], |auctionConfig|,
+      |reportingContextMap|, |winningBidInfo|, |auctionReportInfo| and |settings|.
 1. Let |adComponentDescriptorsWithReplacements| be a new [=list=] of [=ad descriptors=].
 1. If |winningBid|'s [=generated bid/ad component descriptors=] is not null:
   1. [=list/For each=] |adComponentDescriptor| of |winningBid|'s
@@ -1040,7 +1056,8 @@ To <dfn>fill in a pending fenced frame config</dfn> given a [=fenced frame confi
 <div algorithm>
 
 To <dfn>asynchronously finish reporting</dfn> given a
-[=fencedframetype/fenced frame reporting map=] |reportingMap|, [=leading bid info=] |leadingBidInfo|,
+[=fencedframetype/fenced frame reporting map=] |reportingMap|, [=auction config=] |auctionConfig|,
+[=reporting context map=] |reportingContextMap|, [=leading bid info=] |leadingBidInfo|,
 [=auction report info=] |auctionReportInfo|, and an [=environment settings object=] |settings|:
 1. [=Increment a winning bid's k-anonymity count=] given |leadingBidInfo|'s [=leading bid info/leading bid=].
 1. If |leadingBidInfo|'s [=leading bid info/leading non-k-anon-enforced bid=] is
@@ -1097,6 +1114,7 @@ To <dfn>asynchronously finish reporting</dfn> given a
   1. [=Send report=] with |report| and |settings|.
 1. [=Send real time reports=] with |auctionReportInfo|'s
   [=auction report info/real time reporting contributions map=] and |settings|.
+1. [=Process the Private Aggregation contributions=] given |auctionConfig|, |reportingContextMap|.
 
 </div>
 
@@ -1628,7 +1646,7 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     whose [=interest group/owner=] is |ig|'s [=interest group/owner=] and whose
     [=interest group/name=] is |ig|'s [=interest group/name=], return if none found.
   1. Let |win| be a new [=previous win=].
-  1. Set |win|'s [=previous win/time=] to the [=current wall time=].
+  1. Set |win|'s [=previous win/time=] to the [=current coarsened wall time=].
   1. Let |ad| be a new [=interest group ad=] with the following [=struct/items=]:
     : [=interest group ad/render url=]
     :: |bid|'s [=generated bid/bid ad=]'s [=interest group ad/render url=]
@@ -1730,16 +1748,17 @@ To <dfn>generate potentially multiple bids</dfn> given an [=ordered map=]-or-nul
 a [=string=] |auctionSignals|, a {{BiddingBrowserSignals}} |browserSignals|, a [=string=]-or-null |perBuyerSignals|,
 a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=duration=]
 |perBuyerTimeout| in milliseconds, a [=currency tag=] |expectedCurrency|, an {{unsigned short}}
-|multiBidLimit|, an [=interest group=] |ig|, and a [=moment=] |auctionStartTime|, and an
-[=environment settings object=] |settings|, perform the following steps. They return a failure if
-failing to fetch the script or wasm, otherwise a [=tuple=] of ([=list=] of [=generated bids=],
-[=bid debug reporting info=], [=list=] of [=real time reporting contributions=]).
+|multiBidLimit|, an [=interest group=] |ig|, a [=reporting context=] |reportingContext|, a
+[=moment=] |auctionStartTime|, and an [=environment settings object=] |settings|, perform the
+following steps. They return a failure if failing to fetch the script or wasm, otherwise a
+[=tuple=] of ([=list=] of [=generated bids=], [=bid debug reporting info=],
+[=list=] of [=real time reporting contributions=]).
   1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=] with
     |ig|.
   1. Set |browserSignals|["{{BiddingBrowserSignals/joinCount}}"] to the sum of |ig|'s
      [=interest group/join counts=] for all days within the last 30 days.
-  1. Set |browserSignals|["{{BiddingBrowserSignals/recency}}"] to the [=current wall time=]
-    minus |ig|'s [=interest group/join time=], in milliseconds.
+  1. Set |browserSignals|["{{BiddingBrowserSignals/recency}}"] to the [=current coarsened wall
+    time=] minus |ig|'s [=interest group/join time=], in milliseconds.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/bidCount}}"] to the sum of |ig|'s
      [=interest group/bid counts=] for all days within the last 30 days.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/adComponentsLimit}}"] to 40.
@@ -1790,10 +1809,10 @@ failing to fetch the script or wasm, otherwise a [=tuple=] of ([=list=] of [=gen
       1. Let |originKey| be the [=serialization of an origin|serialization=] of
           |crossOriginTrustedBiddingSignalsOrigin|.
       1. [=map/Set=] |crossOriginTrustedBiddingSignalsOrigin|[|originKey|] to |trustedBiddingSignals|.
-  1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |multiBidLimit|, |ig|, |expectedCurrency|,
-    |igGenerateBid|, |auctionSignals|, |perBuyerSignals|, |sameOriginTrustedBiddingSignals|,
-    |crossOriginTrustedBiddingSignals|, |browserSignals|, |directFromSellerSignalsForBuyer|.
-    and |perBuyerTimeout|.
+  1. Return the result of [=evaluating a bidding script=] with |biddingScript|, |multiBidLimit|,
+    |ig|, |reportingContext|, |expectedCurrency|, |igGenerateBid|, |auctionSignals|,
+    |perBuyerSignals|, |sameOriginTrustedBiddingSignals|, |crossOriginTrustedBiddingSignals|,
+    |browserSignals|, |directFromSellerSignalsForBuyer| and |perBuyerTimeout|.
 </div>
 
 <div algorithm="generate and score bids">
@@ -1806,7 +1825,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. Let |settings| be |global|'s [=relevant settings object=].
 1. Let |topLevelOrigin| be |settings|'s [=environment/top-level origin=].
 1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
-1. Let |auctionStartTime| be the [=current wall time=].
+1. Let |auctionStartTime| be the [=current coarsened wall time=].
 1. Let |decisionLogicFetcher| be the result of [=creating a new script fetcher=] with
   |auctionConfig|'s [=auction config/decision logic url=] and |settings|.
 1. Let |trustedScoringSignalsBatcher| be the result of [=creating a trusted scoring signals
@@ -1842,27 +1861,29 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
           [=get direct from seller signals for a seller=] given |topLevelDirectFromSellerSignals|.
         1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
       1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
-        [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[|component|],
+        [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[auctionConfig],
         |compWinnerInfo|'s [=leading bid info/leading bid=], |leadingBidInfo|,
         |decisionLogicFetcher|, |trustedScoringSignalsBatcher|, null, "top-level-auction", null,
         and |topLevelOrigin|.
       1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
         is not null, then run [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[
-        |component|], |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
+        auctionConfig], |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
         |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
         |topLevelDirectFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|,
         and |realTimeContributionsMap|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
   1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
+  1. Set |reportingContextMap|[|auctionConfig|]'s [=reporting context/local leader info=] to
+    a copy of |leadingBidInfo|.
   1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
   1. Let |winningComponentConfig| be |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |auctionConfig|.
   1. Set |leadingBidInfo|'s [=leading bid info/component seller=] to |winningComponentConfig|'s
     [=auction config/seller=].
   1. Let « |topLevelSellerSignals|, unusedTopLevelReportResultBrowserSignals » be the result of
-    running [=report result=] with |leadingBidInfo|, |topLevelDirectFromSellerSignalsForSeller|,
-    |winningComponentConfig|, and |global|.
+    running [=report result=] with |leadingBidInfo|, |reportingContextMap|[|auctionConfig|],
+    |topLevelDirectFromSellerSignalsForSeller|, |winningComponentConfig|, and |global|.
   1. Set |leadingBidInfo|'s [=leading bid info/auction config=] to |winningComponentConfig|.
   1. Set |leadingBidInfo|'s [=leading bid info/component seller=] to null.
   1. Set |leadingBidInfo|'s [=leading bid info/top level seller=] to |seller|.
@@ -1878,9 +1899,15 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
     |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/interest group=]'s
     [=interest group/owner=].
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
-    [=report result=] with |leadingBidInfo|, |directFromSellerSignalsForSeller|, null, and |global|.
-  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|,
-    |directFromSellerSignalsForBuyer|, and |settings|.
+    [=report result=] with |leadingBidInfo|, |reportingContextMap|[|winningComponentConfig|],
+    |directFromSellerSignalsForSeller|, null, and |global|.
+  1. Run [=report win=] with |leadingBidInfo|, |reportingContextMap|[|winningComponentConfig|],
+    |sellerSignals|, |reportResultBrowserSignals|, |directFromSellerSignalsForBuyer|,
+    and |settings|.
+  1. Set |reportingContextMap|[|auctionConfig|]'s [=reporting context/winner reporting id=] to
+    |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/reporting id=].
+  1. Set |reportingContextMap|[|winningComponentConfig|]'s [=reporting context/winner reporting id=]
+    to |leadingBidInfo|'s  [=leading bid info/leading bid=]'s [=generated bid/reporting id=].
   1. Return |leadingBidInfo|.
 
 1. If [=waiting until configuration input promises resolve=] given |auctionConfig| returns failure,
@@ -1904,6 +1931,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
    |browserSignals|["{{BiddingBrowserSignals/requestedSize}}"] to the result of running
    [=convert an ad size to a map=] with |auctionConfig|'s [=auction config/requested size=].
 1. Let |auctionLevel| be "single-level-auction".
+1. Let |reportingContext| be |reportingContextMap|[|auctionConfig|].
 1. Let |componentAuctionExpectedCurrency| be null.
 1. If |topLevelAuctionConfig| is not null:
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/topLevelSeller}}"]] to the
@@ -1917,7 +1945,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   |auctionConfig|, |topLevelAuctionConfig|, |negativeTargetInfo|, |reportingContextMap| and |global|.
 1. Let |pendingAdditionalBids| be the [=list/size=] of |additionalBids|.
 1. [=list/For each=] |additionalBid| of |additionalBids|, run the following steps [=in parallel=]:
-  1. [=Score and rank a bid=] with |auctionConfig|, |reportingContextMap|[|auctionConfig|],
+  1. [=Score and rank a bid=] with |auctionConfig|, |reportingContext|
     |additionalBid|'s [=decoded additional bid/bid=], |leadingBidInfo|, |decisionLogicFetcher|,
     |trustedScoringSignalsBatcher|, |directFromSellerSignalsForSeller|, null, |auctionLevel|,
     |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
@@ -2024,12 +2052,13 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
             |allTrustedBiddingSignals|, |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|,
             a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
             |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
-            |multiBidLimit|, |ig|, |auctionStartTime|, and |settings|.
+            |multiBidLimit|, |ig|, |reportingContext|, |auctionStartTime|, and |settings|.
           1. If |generateBidResult| is failure, then:
             1. If |optedInForRealTimeReporting| is true, then [=add a platform contribution=] with
               [=bidding script failure bucket=], |realTimeContributionsMap| and |buyer|.
             1. [=iteration/Continue=].
-          1. Let (|bidsBatch|, |bidDebugReportInfo|, |realTimeContributions|) be |generateBidResult|.
+          1. Let (|bidsBatch|, |bidDebugReportInfo|, |realTimeContributions|, |paContributions|) be
+            |generateBidResult|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
             [=environment settings object/current monotonic time=], in milliseconds.
           1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
@@ -2053,11 +2082,13 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
             1. Let |generateBidStartTime| be |settings|'s
               [=environment settings object/current monotonic time=].
-            1. Set (|generatedBids|, |bidDebugReportInfo|, |realTimeContributions|) to the result
-              of running [=generate potentially multiple bids=] with |allTrustedBiddingSignals|,
+            1. Set (|generatedBids|, |bidDebugReportInfo|, |realTimeContributions|,
+              |paContributions|) to the result of running [=generate potentially multiple bids=]
+              with |allTrustedBiddingSignals|,
               |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
               |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
-              1 (for multiBidLimit), |kAnonRestrictedIG|, |auctionStartTime|, and |settings|.
+              1 (for multiBidLimit), |kAnonRestrictedIG|, |reportingContext|, |auctionStartTime|,
+              and |settings|.
 
               Note: passing 1 for multiBidLimit limits the rerun to producing at most a single bid.
 
@@ -2070,32 +2101,35 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               1. [=Assert=] that [=query generated bid k-anonymity count=] given |generatedBid| returns true.
               1. [=Apply any component ads target to a bid=] given |generatedBid|.
               1. [=list/Append=] |generatedBid| to |bidsToScore|.
-          1. [=Register bids for forDebuggingOnly reports=] given |bidsToScore|, |ig|,
-            |bidDebugReportInfo|, and |reportingContextMap|[|auctionConfig|].
+          1. [=Register bids for reporting=] given |bidsToScore|, |ig|, |bidDebugReportInfo|,
+            |paContributions|, and |reportingContext|.
           1. If |auctionConfig|'s [=auction config/per buyer real time reporting config=][|buyer|]
             is "`default-local-reporting`", then [=insert entries to map=] given
             |realTimeContributionsMap|, |buyer|, and |realTimeContributions|.
           1. [=list/For each=] |bidToScore| of |bidsToScore|:
             1. If |bidToScore|'s [=generated bid/for k-anon auction=] is true,
                 [=list/append=] |bidToScore|'s [=generated bid/interest group=] to |bidIgs|.
-            1. [=Score and rank a bid=] with |auctionConfig|, |reportingContextMap|[
-              |auctionConfig|], |bidToScore|, |leadingBidInfo|,
-              |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
+            1. [=Score and rank a bid=] with |auctionConfig|, |reportingContext|, |bidToScore|,
+              |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
               |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
+1. Set |reportingContext|'s [=reporting context/local leader info=] to |leadingBidInfo|.
 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return null.
 1. If |topLevelAuctionConfig| is null:
   1. Let « |sellerSignals|, |reportResultBrowserSignals| » be the result of running
-    [=report result=] with |leadingBidInfo|, |directFromSellerSignalsForSeller|, null, and |global|.
+    [=report result=] with |leadingBidInfo|, |reportingContext|, |directFromSellerSignalsForSeller|,
+    null, and |global|.
   1. Let |directFromSellerSignalsForWinner| be the result of running
       [=get direct from seller signals for a buyer=] with |directFromSellerSignals|, and
       |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/interest group=]'s
       [=interest group/owner=].
-  1. Run [=report win=] with |leadingBidInfo|, |sellerSignals|, |reportResultBrowserSignals|,
-    |directFromSellerSignalsForWinner|, and |settings|.
+  1. Run [=report win=] with |leadingBidInfo|, |reportingContext|, |sellerSignals|,
+    |reportResultBrowserSignals|, |directFromSellerSignalsForWinner|, and |settings|.
+  1. Set |reportingContext|'s [=reporting context/winner reporting id=] to |leadingBidInfo|'s
+    [=leading bid info/leading bid=]'s [=generated bid/reporting id=].
 1. Let |replacements| be an [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=]
     are [=strings=].
   1. [=list/For each=] [=ad keyword replacement=], |replacement|, within
@@ -2320,9 +2354,9 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
     "`default-local-reporting`", then [=add a platform contribution=] with
     [=scoring script failure bucket=], |realTimeContributionsMap| and |seller|.
   1. Return.
-1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions| » be
-  the result of [=evaluating a scoring script=] with |decisionLogicScript|, |adMetadata|,
-  |bidValue|'s [=bid with currency/value=], |auctionConfig|'s [=auction config/config idl=],
+1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions|,
+  |paContributions| » be the result of [=evaluating a scoring script=] with |decisionLogicScript|,
+  |adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|, |reportingContext|,
   |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals|, |browserSignals|,
   |directFromSellerSignalsForSeller|, and |auctionConfig|'s [=auction config/seller timeout=].
 1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
@@ -2331,10 +2365,11 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   contributions, and some special handling of private aggregation requests involving reject-reason);
   as it would be problematic to report a winner that didn't actually win.
 
-  1. If |reportingContext|'s [=reporting context/debug reporting info=][|generatedBid|'s [=generated
-    bid/reporting id=]] does not [=map/exist=], set it to a new [=bid debug reporting info=].
+  1. Let |reportingId| be |generatedBid|'s [=generated bid/reporting id=].
+  1. If |reportingContext|'s [=reporting context/debug reporting info=][|reportingId|] does not
+    [=map/exist=], set it to a new [=bid debug reporting info=].
   1. Let |bidDebugReportInfo| be |reportingContext|'s [=reporting context/debug reporting info=]
-    [|generatedBid|'s [=generated bid/reporting id=]].
+    [|reportingId|].
   1. If |auctionLevel| is "top-level-auction":
     1. Set |bidDebugReportInfo|'s [=bid debug reporting info/top level seller debug loss report
       url=] to |debugLossReportUrl|.
@@ -2350,6 +2385,10 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   1. If |auctionConfig|'s [=auction config/seller real time reporting config=] is
     "`default-local-reporting`", then [=insert entries to map=] given |realTimeContributionsMap|,
     |seller|, and |realTimeContributions|.
+  1. [=set/Insert=] |reportingId| into |reportingContext|'s [=reporting context/seller
+    participants=].
+  1. [=Commit private aggregation contributions=] given |paContributions|, |reportingId|, and
+    |reportingContext|.
 1. Let |scoreAdOutput| be result of [=processing scoreAd output=] with |scoreAdResult|.
 1. Return if any of the following conditions hold:
   * |scoreAdOutput| is failure;
@@ -2768,8 +2807,9 @@ To <dfn>get direct from seller signals for a buyer</dfn> given a
 
 <div algorithm>
 To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
-[=direct from seller signals=]-or-null |directFromSellerSignals|, an [=auction config=]-or-null
-|winningComponentConfig|, and a [=global object=] |global|:
+[=reporting context=] |reportingContext|, a [=direct from seller signals=]-or-null
+|directFromSellerSignals|, an [=auction config=]-or-null |winningComponentConfig|,
+and a [=global object=] |global|:
   1. Let |config| be |leadingBidInfo|'s [=leading bid info/auction config=].
   1. Let |bidCurrency| be null.
   1. If |winningComponentConfig| is not null:
@@ -2857,9 +2897,11 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
      |config|'s [=auction config/decision logic url=] and |global|'s [=relevant settings object=].
   1. Let |sellerReportingScript| be the result of [=waiting for script body from a fetcher=] given
      |sellerReportingScriptFetcher|.
-  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored » be the result of
-    [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`", |config|'s
-    [=auction config/config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
+  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored, |paContributions| » be the
+    result of [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`",
+    |reportingContext|, |config|'s [=auction config/seller=], |config|'s
+    [=auction config/seller Private Aggregation coordinator=],  |config|'s [=auction config/
+    config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |config|'s [=auction config/config idl=], |browserSignals|, |directFromSellerSignals| ».
    1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
      : [=reporting result/report url=]
@@ -2871,6 +2913,8 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
      [=leading bid info/component seller reporting result=] to |reportingResult|.
   1. Otherwise, set |leadingBidInfo|'s [=leading bid info/seller reporting result=] to
      |reportingResult|.
+  1. [=Commit private aggregation contributions=] given |paContributions|, |winner|'s [=generated
+    bid/reporting id=] and |reportingContext|.
   1. [=map/Remove=] |browserSignals|["`desirability`"].
   1. [=map/Remove=] |browserSignals|["`modifiedBid`"].
   1. [=map/Remove=] |browserSignals|["`topLevelSellerSignals`"].
@@ -2883,7 +2927,8 @@ To <dfn>report result</dfn> given a [=leading bid info=] |leadingBidInfo|, a
 </div>
 
 <div algorithm>
-To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, a [=string=] |sellerSignals|,
+To <dfn>report win</dfn> given a [=leading bid info=] |leadingBidInfo|, [=reporting context=]
+|reportingContext|,  a [=string=] |sellerSignals|,
 a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]-or-null
 |directFromSellerSignals|, and an [=environment settings object=] |settings|:
 
@@ -2912,8 +2957,8 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
       <dd>|winner|'s [=generated bid/modeling signals=] if it is not null, {{undefined}} otherwise
         (TODO: noise and bucket this signal)
     </dl>
-  1. Let |igAd| be the [=interest group ad=] from |winner|'s
-     [=generated bid/interest group=]'s [=interest group/ads=] whose
+  1. Let |ig| be |winner|'s [=generated bid/interest group=].
+  1. Let |igAd| be the [=interest group ad=] from ig's [=interest group/ads=] whose
      [=interest group ad/render url=] is |winner|'s
      [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
   1. If |winner|'s [=generated bid/selected buyer and seller reporting ID=] is not null:
@@ -2951,13 +2996,16 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
   1. Let |reportFunctionName| be "`reportWin`".
   1. If |winner|'s [=generated bid/provided as additional bid=] is true:
     1. Set |reportFunctionName| be "`reportAdditionalBidWin`".
-  1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap| » be the result of
-    [=evaluating a reporting script=] with |buyerReportingScript|, "`reportWin`", |leadingBidInfo|'s
-    [=leading bid info/auction config=]'s [=auction config/config idl=]'s
-    {{AuctionAdConfig/reportingTimeout}}, and
+  1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap|, |paContributions| » be
+    the result of [=evaluating a reporting script=] with |buyerReportingScript|,
+    |reportFunctionName|, |reportingContext|, |ig|'s [=interest group/owner=], |ig|'s [=interest
+    group/Private Aggregation coordinator=], |leadingBidInfo|'s [=leading bid info/auction config=]'s
+    [=auction config/config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config idl=]'s
       {{AuctionAdConfig/auctionSignals}}, |perBuyerSignalsForBuyer|, |sellerSignals|,
       |reportWinBrowserSignals|, |directFromSellerSignals| ».
+  1. [=Commit private aggregation contributions=] given |paContributions|, |winner|'s [=generated
+    bid/reporting id=] and |reportingContext|.
   1. Set |leadingBidInfo|'s [=leading bid info/buyer reporting result=] to a [=reporting result=]
      with the following [=struct/items=]:
      : [=reporting result/report url=]
@@ -3123,9 +3171,9 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
     [=interest group/owner=] is |igId|'s [=interest group/owner=] and [=interest group/name=] is |igId|'s
     [=interest group/name=]. [=iteration/Continue=] if none found.
   1. If |updateIfOlderThan| is less than 10 mintues, set it to 10 minutes.
-  1. If [=current wall time=] &minus; |ig|'s [=interest group/last updated=] ≥
+  1. If [=current coarsened wall time=] &minus; |ig|'s [=interest group/last updated=] ≥
      |updateIfOlderThan|, set |ig|'s [=interest group/next update after=] to the
-        [=current wall time=] + |updateIfOlderThan|.
+     [=current coarsened wall time=] + |updateIfOlderThan|.
 1. Let |bidDebugReportingInfo| be a new [=bid debug reporting info=]. 
 1. [=list/For each=] |key| → |maybeDebugReportUrl| in |response|'s
   [=server auction response/component win debugging only reports=]:
@@ -3294,7 +3342,7 @@ A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [
   :: A count of the number of joins for this interest group in the last 30 days.
     Calculated by summing the [=interest group/join counts=].
   : <dfn>recency ms</dfn>
-  :: A [=duration=], in milliseconds, representing the [=current wall time=] at
+  :: A [=duration=], in milliseconds, representing the [=current coarsened wall time=] at
     the time this object was constructed minus the corresponding [=interest group=]'s
     [=interest group/join time=], in milliseconds.
   : <dfn>previous wins</dfn>
@@ -3304,7 +3352,7 @@ A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [
 A <dfn>server auction previous win</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="server auction previous win">
   : <dfn>time delta</dfn>
-  :: A [=duration=], in milliseconds, representing the [=current wall time=] at
+  :: A [=duration=], in milliseconds, representing the [=current coarsened wall time=] at
     the time this object was constructed minus the corresponding [=previous win=]'s [=previous win/time=], in seconds.
   : <dfn>ad render ID</dfn>
   :: A [=string=] containing the [=interest group ad/ad render ID=] for the ad represented by this entry.
@@ -3428,7 +3476,7 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
   1. Set |config|'s [=auction data config/encryption key=] to |key|.
   1. Set |config|'s [=auction data config/encryption key id=] to |keyId|.
   1. Let |igMap| be a new [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are [=lists=].
-  1. Let |startTime| be a [=moment=] equal to the [=current wall time=].
+  1. Let |startTime| be a [=moment=] equal to the [=current coarsened wall time=].
   1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
     1. If |ig|'s [=interest group/ads=] is null or [=list/is empty=], [=iteration/continue=].
     1. Let |owner| be |ig|'s [=interest group/owner=].
@@ -3458,7 +3506,8 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
       : [=server auction browser signals/join count=]
       :: the sum of |ig|'s [=interest group/join counts=] with a join day within the last 30 days
       : [=server auction browser signals/recency ms=]
-      :: the [=current wall time=] minus |ig|'s [=interest group/join time=] in millseconds
+      :: the [=current coarsened wall time=] minus |ig|'s [=interest group/join time=] in
+         millseconds
       : [=server auction browser signals/previous wins=]
       :: |prevWins|
     1. Let |serverIg| be a new [=server auction interest group=] with the following [=struct/items=]:
@@ -3595,6 +3644,34 @@ A <dfn>reporting context</dfn> is a [=struct=] with the following [=struct/items
 <dl dfn-for="reporting context">
   : <dfn>debug reporting info</dfn>
   :: A [=map=] from [=reporting bid key=] to [=bid debug reporting info=].
+  : <dfn>private aggregation batching scope map</dfn>
+  :: A [=map=] from a [=tuple=] consisting of an <dfn ignore>origin</dfn> (an
+    [=origin=]) and a <dfn ignore>coordinator</dfn> (an [=aggregation
+    coordinator=]) to a [=batching scope=].
+
+    Note: Does not include [=batching scopes=] for contributions conditional on
+        non-reserved events.
+  : <dfn>private aggregation on event contributions</dfn>
+  :: A [=map=] from a tuple of ([=reporting bid key=], [=string=]) to a [=list=] of [=on event
+    contribution entries=].
+  : <dfn>private aggregation allowed</dfn>
+  :: A [=boolean=], initially false.
+  : <dfn>local leader info</dfn>
+  :: A [=leading bid info=], describing information on what, if anything, won the particular
+    auction this [=reporting context=] is for.
+  : <dfn>winner reporting id</dfn>
+  :: A [=reporting bid key=] or null, initially null. This can be null even if [=reporting context/
+    local leader info=] has a leader set, in case this context is for a component auction that lost
+    at top-level.
+  : <dfn>bidder participants</dfn>
+  :: A [=set=] of [=reporting bid keys=], representing interest groups that got a chance to generate
+    bids for the auction. This will be empty in top-level auctions, as the relevant state will be
+    in the component auctions.
+  : <dfn>seller participants</dfn>
+  :: A [=set=] of [=reporting bid keys=], representing various `scoreAd()` executions. Note that
+    some of these may be based on bids that started as additional bids or from component auctions
+    run by Bidding and Auction services, and not interest groups, so this list may be quite
+    different from [=reporting context/bidder participants=].
 </dl>
 
 A <dfn>reporting context map</dfn> is a [=map=] from [=auction config=] to [=reporting context=].
@@ -3602,14 +3679,44 @@ Here the keys are configurations for auctions that actually produce bids (e.g. n
 auction in a multi-seller auction).
 
 <div algorithm>
-  To <dfn>create a reporting context map</dfn> given [=auction config=] |auctionConfig|:
+  To <dfn>create a reporting context map</dfn> given the [=auction config=] |auctionConfig| and
+  a [=boolean=] |privateAggregationAllowed|:
   1. Let |reportingContextMap| be a new [=reporting context map=].
-  1. If |auctionConfig|'s [=auction config/component auctions=] [=list/is empty=],
-    [=map/set=] |reportingContextMap|[|auctionConfig|] to a new [=reporting context=].
-  1. Otherwise, [=list/for each=] |component| in |auctionConfig|'s
+  1. [=map/Set=] |reportingContextMap|[|auctionConfig|] to a new [=reporting context=].
+  1. [=list/For each=] |component| in |auctionConfig|'s
     [=auction config/component auctions=], [=map/set=] |reportingContextMap|[|component|] to a new
     [=reporting context=].
+  1. [=map/For each=] _ → |reportingContext| of |reportingContextMap|:
+    1. Set |reportingContext|'s [=reporting context/private aggregation allowed=] to
+      |privateAggregationAllowed|
   1. Return |reportingContextMap|.
+</div>
+
+<div algorithm>
+  To <dfn>register bids for reporting</dfn> given a [=list=] of
+  [=generated bids=] |generatedBids|, [=interest group=] |ig|, [=bid debug reporting info=]
+  |bidDebugReportInfo|, a [=Private Aggregation contributions=] |paContributions| and a [=reporting
+  context=] |reportingContext|:
+  1. Let |id| be a new [=reporting bid key=] with the following [=struct/items=]:
+    : [=reporting bid key/context=]
+    :: |reportingContext|
+
+    : [=reporting bid key/source=]
+    :: [=reporting bid source/generate-bid=]
+
+    : [=reporting bid key/bidder origin=]
+    :: |ig|'s [=interest group/owner=]
+
+    : [=reporting bid key/bid identifier=]
+    :: |ig|'s [=interest group/name=]
+  1. [=map/Set=] |reportingContext|'s [=reporting context/debug reporting info=][|id|] to
+    |bidDebugReportInfo|.
+  1. [=set/Insert=] |id| into |reportingContext|'s [=reporting context/bidder participants=].
+  1. [=Commit private aggregation contributions=] given |paContributions|, |id| and
+    |reportingContext|.
+  1. [=list/For each=] |generatedBid| of |generatedBids|:
+    1. Set |generatedBid|'s [=generated bid/reporting id=] to |id|.
+
 </div>
 
 ## {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}} ## {#for-debugging-only-header}
@@ -3700,29 +3807,6 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
   1. Return |auctionReportInfo|.
 </div>
 
-<div algorithm>
-  To <dfn>register bids for forDebuggingOnly reports</dfn> given a [=list=] of
-  [=generated bids=] |generatedBids|, [=interest group=] |ig|, [=bid debug reporting info=]
-  |bidDebugReportInfo| and a [=reporting context=] |reportingContext|:
-  1. Let |id| be a new [=reporting bid key=] with the following [=struct/items=]:
-    : [=reporting bid key/context=]
-    :: |reportingContext|
-
-    : [=reporting bid key/source=]
-    :: [=reporting bid source/generate-bid=]
-
-    : [=reporting bid key/bidder origin=]
-    :: |ig|'s [=interest group/owner=]
-
-    : [=reporting bid key/bid identifier=]
-    :: |ig|'s [=interest group/name=]
-  1. [=map/Set=] |reportingContext|'s [=reporting context/debug reporting info=][|id|] to
-    |bidDebugReportInfo|.
-  1. [=list/For each=] |generatedBid| of |generatedBids|:
-    1. Set |generatedBid|'s [=generated bid/reporting id=] to |id|.
-
-</div>
-
 ### Downsampling ### {#downsampling-header}
 
 *This first introductory paragraph is non-normative.*
@@ -3762,11 +3846,11 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
 <div algorithm>
   To <dfn>is debugging only in cooldown or lockout</dfn> given an [=origin=] |origin|:
 
-  1. If [=user agent=]'s [=debug report lockout until=] is not null, and [=current wall time=] is
-    less than [=user agent=]'s [=debug report lockout until=], return true.
+  1. If [=user agent=]'s [=debug report lockout until=] is not null, and [=current coarsened wall
+    time=] is less than [=user agent=]'s [=debug report lockout until=], return true.
   1. If [=user agent=]'s [=debug report cooldown=] is null, then return false.
-  1. If [=user agent=]'s [=debug report cooldown=][|origin|] [=map/exists=] and [=current wall time=]
-    is less than [=user agent=]'s [=debug report cooldown=][|origin|], then return true.
+  1. If [=user agent=]'s [=debug report cooldown=][|origin|] [=map/exists=] and [=current coarsened
+    wall time=] is less than [=user agent=]'s [=debug report cooldown=][|origin|], then return true.
   1. Return false.
 </div>
 
@@ -3780,7 +3864,7 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
     chosen with a probability equal to [=sampling rate=].
   1. If |fromServer| is true or |sampleRand| is 0:
     1. Set |canSendAfterSampled| to true.
-    1. Set [=user agent=]'s [=debug report lockout until=] to [=current wall time=] plus
+    1. Set [=user agent=]'s [=debug report lockout until=] to [=current coarsened wall time=] plus
       [=lockout period=].
   1. [=Update debug report cooldown=] with |origin|.
   1. Return |canSendAfterSampled|.
@@ -3793,8 +3877,9 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
     [=long cooldown rate=].
   1. Let |cooldownPeriod| be [=long cooldown period=] if |cooldownRand| is 0,
     [=short cooldown period=] otherwise.
-  1. Set [=user agent=]'s [=debug report cooldown=][|origin|] to [=current wall time=] plus
-    |cooldownPeriod|.
+  1. Set [=user agent=]'s [=debug report cooldown=][|origin|] to [=current coarsened wall time=]
+    plus |cooldownPeriod|.
+  1. Return |canSendAfterSampled|.
 </div>
 
 ## {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/realTimeReporting}} ## {#real-time-reporting-header}
@@ -4012,6 +4097,515 @@ RAPPOR</a> noises each coordinate of the bit vector independently, and it is par
       1. Let |flipped| be false if |histogram|[|i|] is true, otherwise true.
       1. Set |histogram|[|i|] to |flipped|.
   1. Return |histogram|.
+</div>
+
+## {{InterestGroupScriptRunnerGlobalScope/privateAggregation}} ## {#private-aggregation-reporting-header}
+
+*This first introductory paragraph is non-normative.*
+
+For metrics that can be interpreted as histograms aggregated over the entire population, Protected
+Audience provides integration with the [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api).
+In addition to its {{PrivateAggregation/contributeToHistogram(contribution)}} method, the API is
+extended with <a method for="PrivateAggregation">contributeToHistogramOnEvent(event, contribution)</a>
+which permits histogram contributions to be conditional and to incorporate values not accessible to
+the running script, like values of auction winning bids and various performance metrics.
+
+<h4 dfn-type=dfn>Signal base value</h4>
+A signal base value is one of the following:
+<dl dfn-for="signal base value">
+: "<dfn><code>winning-bid</code></dfn>"
+:: The numeric value is the bid value of the winning bid.
+: "<dfn><code>highest-scoring-other-bid</code></dfn>"
+:: The numeric value is the bid value of the highest scoring bid that did not
+    win.
+: "<dfn><code>script-run-time</code></dfn>"
+:: The numeric value is the number of milliseconds of CPU time the calling
+    function (e.g. `generateBid()`) took to run.
+: "<dfn><code>signals-fetch-time</code></dfn>"
+:: The numeric value is the number of milliseconds it took for the trusted
+    bidding or scoring signals fetch to complete, when called from
+    `generateBid()` or `scoreAd()`, respectively. In other functions it evaluates to 0.
+: "<dfn><code>bid-reject-reason</code></dfn>"
+:: The numeric value is an integer representing the reason a bid was rejected.
+
+    Note: this mapping to an integer is defined in [=determine a signal's
+        numeric value=].
+
+</dl>
+
+<h4 dfn-type=dfn>On event contribution entry</h4>
+An on event contribution entry is a [=struct=] with the following items:
+<dl dfn-for="on event contribution entry">
+: <dfn>contribution</dfn>
+:: A {{PAExtendedHistogramContribution}}
+: <dfn>batching scope</dfn>
+:: A [=batching scope=] or null
+: <dfn>debug scope</dfn>
+:: A [=debug scope=]
+: <dfn>debug details</dfn>
+:: A [=debug details=] or null (default null)
+: <dfn>worklet function</dfn>
+:: A [=worklet function=].
+
+</dl>
+
+<h4 dfn-type=dfn>Worklet function</h4>
+A worklet function is one of the following:
+<dl dfn-for="worklet function">
+: "<dfn><code>generate-bid</code></dfn>"
+:: The `generateBid()` function.
+: "<dfn><code>score-ad</code></dfn>"
+:: The `scoreAd()` function.
+: "<dfn><code>report-result</code></dfn>"
+:: The `reportResult()` function.
+: "<dfn><code>report-win</code></dfn>"
+:: The `reportWin()` function, or `reportAdditionalBidWin()` for additional bids.
+
+</dl>
+
+<h4 dfn-type=dfn>Private Aggregation contributions</h4>
+Private Aggregation contributions is a [=map=] from [=string=] to a [=list=] of [=on event
+contribution entries=].
+
+### Algorithms ### {#private-aggregation-algorithms}
+
+<div algorithm>
+To <dfn>prepare for private aggregation</dfn> given a
+{{InterestGroupScriptRunnerGlobalScope}} |global|, a [=worklet function=] |workletFunction|,
+a [=reporting context=] |reportingContext|, and [=origins=] |origin| and |aggregationCoordinator|:
+1. Let |debugScope| be a new [=debug scope=].
+1. Set |global|'s [=InterestGroupScriptRunnerGlobalScope/worklet function=] to |workletFunction|.
+1. Set |global|'s [=InterestGroupScriptRunnerGlobalScope/private aggregation=] to a new
+  [=PrivateAggregation=] with the following [=struct/items=]:
+    : <a spec="private-aggregation-api" for="PrivateAggregation">allowed to use</a>
+    :: |reportingContext|'s [=reporting context/private aggregation allowed=].
+    : <a spec="private-aggregation-api" for="PrivateAggregation">scoping details</a>
+    :: a new [=scoping details=] with the [=struct/items=]:
+      : <a spec="private-aggregation-api" for="scoping details">get batching scope steps</a>
+      :: An algorithm that performs the following steps:
+          1. If |aggregationCoordinator| is null, set |aggregationCoordinator| to
+            the [=default aggregation coordinator=].
+          1. Return the result of running [=get or create a batching scope=] given
+              |origin|, |aggregationCoordinator| and |reportingContext|.
+      : <a spec="private-aggregation-api" for="scoping details">get debug scope steps</a>
+      :: An algorithm that returns |debugScope|.
+
+</div>
+
+<div algorithm>
+To <dfn>finalize private aggregation debug info</dfn> given a
+{{InterestGroupScriptRunnerGlobalScope}} |global|:
+  1. Let |debugScope| be the result of running |global|'s {{InterestGroupScriptRunnerGlobalScope/
+    privateAggregation}}'s
+      <a spec="private-aggregation-api" for="PrivateAggregation">scoping details</a>'s
+      <a spec="private-aggregation-api" for="scoping details">get debug scope steps</a>.
+  1. Let |debugDetails| be the result of [=get a debug details=] given |debugScope|.
+  1. Let |onEventContributionMap| be |global|'s [=InterestGroupScriptRunnerGlobalScope/on event
+    contribution map=].
+  1. [=map/For each=] <var ignore>event</var> → |entries| of |onEventContributionMap|:
+    1. [=list/For each=] |onEventEntry| of |entries|:
+        1. If |onEventEntry|'s [=on event contribution entry/debug scope=] is |debugScope|,
+          set |onEventEntry|'s [=on event contribution entry/debug details=] to |debugDetails|.
+  1. [=Mark a debug scope complete=] given |debugScope|.
+</div>
+
+<div algorithm>
+To <dfn>extract private aggregation contributions</dfn> given a
+{{InterestGroupScriptRunnerGlobalScope}} |global|:
+  1. Return |global|'s [=InterestGroupScriptRunnerGlobalScope/on event contribution map=].
+
+Issue: TODO: regular histograms need to work the same way, too, so they get discarded for k-anon
+runs; this method exists as an abstraction to help add that.
+</div>
+
+<div algorithm>
+To <dfn>commit private aggregation contributions</dfn> given an [=Private Aggregation
+contributions=] |onEventMap|, a [=reporting bid key=] |bidKey|, and a [=reporting context=]
+|reportingContext|:
+  1. [=map/For each=] |event| → |contributions| of |onEventMap|:
+    1. Let |key| be (|bidKey|, |event|).
+    1. If |reportingContext|'s [=reporting context/private aggregation on event contributions=][|key|]
+      does not [=map/exist=], set it to a new [=list=].
+    1. [=list/Extend=] |reportingContext|'s [=reporting context/private aggregation on event
+      contributions=][|key|] with |contributions|.
+</div>
+
+<div algorithm>
+To <dfn>get or create a batching scope</dfn> given an [=origin=] |origin|, an
+[=aggregation coordinator=] |aggregationCoordinator| and a [=reporting context=] |reportingContext|,
+perform the following steps. They return a [=batching scope=].
+1. Let |batchingScopeMap| be |reportingContext|'s [=reporting context/private aggregation
+  batching scope map=].
+1. Let |tuple| be (|origin|, |aggregationCoordinator|).
+1. If |batchingScopeMap|[|tuple|] does not [=map/exist=]:
+    1. Set |batchingScopeMap|[|tuple|] to a new [=batching scope=].
+    1. If |aggregationCoordinator| is not null, [=set the aggregation coordinator for a batching
+      scope=] given |aggregationCoordinator| and |batchingScopeMap|[|tuple|].
+1. Return |batchingScopeMap|[|tuple|].
+
+</div>
+
+<div algorithm>
+To <dfn>process the Private Aggregation contributions</dfn> given an [=auction config=]
+|auctionConfig| and a [=reporting context map=] |reportingContextMap|:
+
+1. [=Process the Private Aggregation contributions for an auction=] given |auctionConfig|,
+  |reportingContextMap|[|auctionConfig|].
+1. [=list/For each=] |componentAuction| in |auctionConfig|'s [=auction config/component
+  auctions=]:
+  1. [=Process the Private Aggregation contributions for an auction=] given |componentAuction|,
+    |reportingContextMap|[|componentAuction|].
+
+</div>
+
+<div algorithm>
+To <dfn>process the Private Aggregation contributions for an auction</dfn> given
+an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingContext|:
+1. If |auctionConfig|'s [=auction config/aborted=] is true, return.
+1. Let |winnerId| be |reportingContext|'s [=reporting context/winner reporting id=]
+1. Let |leadingBidInfo| be |reportingContext|'s [=reporting context/local leader info=].
+1. Let |bidderOnceRep| be null.
+1. If |reportingContext|'s [=reporting context/bidder participants=] [=set/is not empty=],
+  set |bidderOnceRep| to a random [=set/item=] of [=reporting context/bidder participants=].
+1. Let |sellerOnceRep| be null.
+1. If |reportingContext|'s [=reporting context/seller participants=] [=set/is not empty=],
+  set |sellerOnceRep| to a random [=set/item=] of [=reporting context/seller participants=].
+1. [=map/For each=] (|bidId|, |event|) → |contributions| of
+  |reportingContext|'s [=reporting context/private aggregation on event contributions=]:
+  1. If |event| is "`reserved.win`" or does not [=string/start with=] "`reserved.`":
+    1. If |bidId| is not |winnerId|, [=iteration/continue=].
+  1. If |event| is "`reserved.loss`" and |bidId| is |winnerId|, [=iteration/continue=].
+  1. [=list/For each=] |onEventEntry| of |contributions|:
+    1. If |event| is "`reserved.once`":
+      1. If |onEventEntry|'s [=on event contribution entry/worklet function=] is [=worklet function/
+        generate-bid=]:
+        1. If |bidId| &ne; |bidderOnceRep|, [=iteration/continue=].
+      1. Otherwise:
+        1. If |bidId| &ne; |sellerOnceRep|, [=iteration/continue=].
+    1. Let |filledInContribution| be the result of [=filling in the contribution=] given
+      |onEventEntry|'s [=on event contribution entry/contribution=] and |leadingBidInfo|.
+
+      Issue: Once <a href="https://github.com/WICG/turtledove/issues/627">WICG/turtledove#627</a>
+      is resolved, align 'filling in' logic with `forDebuggingOnly`.
+
+    1. If |event| does not [=string/start with=] "`reserved.`":
+      1. Store |event|, |filledInContribution|, |onEventEntry|'s [=on event contribution entry/debug
+        details=] in the {{FencedFrameConfig}} as appropriate.
+
+      Note: Each non-reserved |event| will have a different [=batching scope=].
+
+      Issue: Once <a href="https://github.com/WICG/turtledove/issues/616">WICG/turtledove#616</a>
+      and any successors are landed, align integration and fill in fenced frame's
+      <a spec="fenced-frame">report a private aggregation event</a>.
+    1. Otherwise:
+      1. Let |entry| be a new [=contribution cache entry=] with the items:
+          : <a spec="private-aggregation-api" for="contribution cache entry">contribution</a>
+          :: |filledInContribution|
+          : <a spec="private-aggregation-api" for="contribution cache entry">batching scope</a>
+          :: |onEventEntry|'s [=on event contribution entry/batching scope=]
+          : <a spec="private-aggregation-api" for="contribution cache entry">debug scope</a>
+          :: |onEventEntry|'s [=on event contribution entry/debug scope=]
+          : <a spec="private-aggregation-api" for="contribution cache entry">debug details</a>
+          :: |onEventEntry|'s [=on event contribution entry/debug details=]
+      1. [=Append an entry to the contribution cache|Append=] |entry| to the [=contribution cache=].
+1. Let |sellerBatchingScope| be the result of [=get or create a batching
+    scope|getting or creating a batching scope=] given |auctionConfig|'s [=auction config/seller=],
+    |auctionConfig|'s [=auction config/seller Private Aggregation coordinator=], and
+    |reportingContext|.
+1. Let |auctionReportBuyersDebugScope| be a new [=debug scope=].
+1. [=map/For each=] |reportType| → |reportBuyerConfig| of |auctionConfig|'s
+  [=auction config/auction report buyers=]:
+  1. [=map/For each=] |buyerOrigin| → |buyerOffset| of |auctionConfig|'s
+    [=auction config/auction report buyer keys=]:
+    1. Let |bucket| be the sum of |buyerOffset| and |reportBuyerConfig|'s
+      {{AuctionReportBuyersConfig/bucket}}.
+
+      Issue: Handle overflow here or in validation. See <a
+        href="https://github.com/WICG/turtledove/issues/1040">WICG/turtledove#1040</a>.
+    1. Let |value| be the result (a {{double}}) of switching on
+        |reportType|:
+        <dl class="switch">
+        : "`interestGroupCount`"
+        :: The number of interest groups in the [=user agent=]'s <a
+            spec="turtledove">interest group set</a> whose <a
+            spec="turtledove" for="interest group">owner</a> is
+            |buyerOrigin|.
+        : "`bidCount`"
+        :: The number of valid bids generated by interest groups whose <a
+            spec="turtledove" for="interest group">owner</a> is
+            |buyerOrigin|.
+        : "`totalGenerateBidLatency`"
+        :: The sum of execution time in milliseconds for all `generateBid()`
+            calls in the auction for interest groups whose <a
+            spec="turtledove" for="interest group">owner</a> is
+            |buyerOrigin|.
+        : "`totalSignalsFetchLatency`"
+        :: The total time spent fetching trusted buyer signals in
+            milliseconds, or 0 if the interest group didn't fetch any
+            trusted signals.
+        : None of the above values
+        :: [=Assert=]: false, as this enum value is validated in [=validate and convert auction
+          ad config=]
+
+        </dl>
+
+        Issue: More formally spec the values here.
+
+    1. Set |value| to the result of multiplying |reportBuyerConfig|'s
+        {{AuctionReportBuyersConfig/scale}} with |value|.
+    1. Set |value| to the maximum of 0.0 and |value|.
+    1. Set |value| to the result of converting |value| to an integer by
+        truncating its fractional part.
+    1. Set |value| to the minimum of |value| and 2<sup>31</sup>−1.
+    1. Let |contribution| be a new {{PAHistogramContribution}} with the
+        items:
+        : {{PAHistogramContribution/bucket}}
+        :: |bucket|
+        : {{PAHistogramContribution/value}}
+        :: |value|
+        : {{PAHistogramContribution/filteringId}}
+        :: 0
+
+          Issue: Consider allowing the filtering ID to be set here.
+    1. [=map/For each=] |ig| of the [=user agent=]'s <a spec="turtledove">
+        interest group set</a> whose
+        <a spec="turtledove" for="interest group">owner</a> is |buyerOrigin|:
+      1. If seller capabilities of |ig| don't allow this reporting, [=iteration/continue=].
+
+        Issue: Align behavior with seller capabilities handling once <a
+            href="https://github.com/WICG/turtledove/issues/966">
+            WICG/turtledove#966</a> is resolved.
+      1. Let |entry| be a new [=contribution cache entry=] with the items:
+          : <a spec="private-aggregation-api" for="contribution cache entry">contribution</a>
+          :: |contribution|
+          : <a spec="private-aggregation-api" for="contribution cache entry">batching scope</a>
+          :: |sellerBatchingScope|
+          : <a spec="private-aggregation-api" for="contribution cache entry">debug scope</a>
+          :: |auctionReportBuyersDebugScope|
+      1. [=Append an entry to the contribution cache|Append=] |entry| to
+          the [=contribution cache=].
+1. [=Mark a debug scope complete=] given |auctionReportBuyersDebugScope| and
+    |auctionConfig|'s [=auction config/auction report buyer debug details=].
+1. [=map/For each=] (|origin|, <var ignore>aggregationCoordinator</var>) →
+    |batchingScope| of |reportingContext|'s [=reporting context/private aggregation batching
+    scope map=]:
+  1. [=Process contributions for a batching scope=] given |batchingScope|, |origin|,
+    "<code>protected-audience</code>" and null.
+
+</div>
+
+<div algorithm>
+To <dfn>fill in the contribution</dfn> given a {{PAExtendedHistogramContribution}} |contribution|
+and a [=leading bid info=] |leadingBidInfo|, perform the following steps. They return a
+{{PAHistogramContribution}}:
+1. Let |bucket| be |contribution|["{{PAExtendedHistogramContribution/bucket}}"].
+1. If |bucket| is a {{PASignalValue}}, set |bucket| to the result of [=filling
+    in the signal value=] given |bucket|, 2<sup>128</sup>−1 and |leadingBidInfo|.
+1. Let |value| be |contribution|["{{PAExtendedHistogramContribution/value}}"].
+1. If |value| is a {{PASignalValue}}, set |value| to the result of [=filling in
+    the signal value=] given |value|, 2<sup>31</sup>−1 and |leadingBidInfo|.
+1. Let |filledInContribution| be a new {{PAHistogramContribution}} with the
+    items:
+    : {{PAHistogramContribution/bucket}}
+    :: |bucket|
+    : {{PAHistogramContribution/value}}
+    :: |value|
+    : {{PAHistogramContribution/filteringId}}
+    :: |contribution|["{{PAExtendedHistogramContribution/filteringId}}"]
+1. Return |filledInContribution|.
+
+</div>
+
+<div algorithm>
+To <dfn>fill in the signal value</dfn> given a {{PASignalValue}} |value|, an
+integer |maxAllowed| and a [=leading bid info=] |leadingBidInfo|, perform the following steps.
+They return an integer.
+1. [=Assert=]: |value|["{{PASignalValue/baseValue}}"] is a valid [=signal base
+    value=].
+1. Let |returnValue| be the result of [=determining a signal's numeric value=]
+    given |value|["{{PASignalValue/baseValue}}"] and |leadingBidInfo|.
+1. If |value|["{{PASignalValue/scale}}"] [=map/exists=], set |returnValue| to
+    the result of multiplying |value|["{{PASignalValue/scale}}"] with
+    |returnValue|.
+1. Set |returnValue| to the result of converting |returnValue| to an integer by
+    truncating its fractional part.
+1. If |value|["{{PASignalValue/offset}}"] [=map/exists=], set |returnValue| to
+    the result of adding |returnValue| to |value|["{{PASignalValue/offset}}"].
+1. Clamp |returnValue| to [=the inclusive range|the range=] 0 to |maxAllowed|,
+    inclusive, and return the result.
+
+</div>
+
+
+<div algorithm>
+To <dfn>determine a signal's numeric value</dfn> given a [=signal base value=]
+|signalBaseValue| and a [=leading bid info=] |leadingBidInfo|, perform the following steps.
+They return a {{double}}.
+1. If |signalBaseValue| is "<code>[=signal base value/winning-bid=]</code>":
+  1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return 0.
+  1. Otherwise, return  |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/bid=].
+1. If |signalBaseValue| is
+    "<code>[=signal base value/highest-scoring-other-bid=]</code>":
+  1. If |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] is null, return 0.
+  1. Otherwise, return |leadingBidInfo|'s [=leading bid info/highest scoring other bid=]'s
+    [=generated bid/bid=].
+1. If |signalBaseValue| is "<code>[=signal base value/script-run-time=]</code>":
+    1. Return the number of milliseconds of CPU time that the calling function
+        (e.g. `generateBid()`) took to run.
+1. If |signalBaseValue| is "<code>[=signal base value/signals-fetch-time=]</code>":
+    Switch on the associated [=worklet function=]:
+    <dl class="switch">
+    : <code>[=worklet function/generate-bid=]</code>
+    :: Return the number of milliseconds it took for the trusted bidding signals
+        fetch to complete, or 0 if no fetch was made.
+    : <code>[=worklet function/score-ad=]</code>
+    :: Return the number of milliseconds it took for the trusted scoring signals
+        fetch to complete or 0 if no fetch was made.
+    : <code>[=worklet function/report-result=]</code>
+    : <code>[=worklet function/report-win=]</code>
+    :: Return 0.
+
+    </dl>
+1. If |signalBaseValue| is "<code>[=signal base value/bid-reject-reason=]</code>":
+  1. If the bid did not succeed purely because it didn't meet the required
+      <a spec="turtledove">k-anonymity threshold</a>, return 8.
+  1. Let |bidRejectReason| be "`not-available`".
+  1. If the seller provided a reject reason, set |bidRejectReason| to that
+      value.
+  1. If |bidRejectReason| is:
+      <dl class="switch">
+      : "`not-available`"
+      :: Return 0.
+      : "`invalid-bid`"
+      :: Return 1.
+      : "`bid-below-auction-floor`"
+      :: Return 2.
+      : "`pending-approval-by-exchange`"
+      :: Return 3.
+      : "`disapproved-by-exchange`"
+      :: Return 4.
+      : "`blocked-by-publisher`"
+      :: Return 5.
+      : "`language-exclusions`"
+      :: Return 6.
+      : "`category-exclusions`"
+      :: Return 7.
+      : None of the above values
+      :: [=Assert=]: false
+
+        Note: this enum value is validated in `scoreAd()`.
+
+        Issue: Verify this once
+        <a href="https://github.com/WICG/turtledove/issues/627">WICG/turtledove#627</a> is resolved.
+
+        Issue: There are some automatically generated values that are not described here.
+
+        Issue: Verify handling when the bid was not rejected.
+
+      </dl>
+
+</div>
+
+## Get storage interest groups for owner ## {#get-storage-interest-groups-for-owner-header}
+
+*This first introductory paragraph is non-normative.*
+
+The [=get storage interest groups for owner=] algorithm returns a Web IDL array of interest groups. This allows a Protected Audience buyer within a shared storage worklet to gain insights into their users and to send Private Aggregation reports.
+
+<xmp class="idl">
+dictionary StorageInterestGroup : AuctionAdInterestGroup {
+  unsigned long long joinCount;
+  unsigned long long bidCount;
+  sequence<PreviousWin> prevWinsMs;
+  USVString joiningOrigin;
+  long long timeSinceGroupJoinedMs;
+  long long lifetimeRemainingMs;
+  long long timeSinceLastUpdateMs;
+  long long timeUntilNextUpdateMs;
+  unsigned long long estimatedSize;
+};
+</xmp>
+
+<div algorithm>
+  To <dfn>get storage interest groups for owner</dfn> given an [=origin=] |owner|:
+
+  1. Let |resultIgs| be an empty [=list=].
+  1. Let |now| be a [=moment=] equal to the [=current coarsened wall time=].
+  1. [=list/For each=] |ig| of [=user agent=]'s [=interest group set=]:
+    1. If |ig|'s [=interest group/owner=] does not equal |owner|, then [=iteration/continue=].
+    1. Let |resultIg| be an empty {{StorageInterestGroup}} dictionary.
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/owner}}"] to the [=serialization of an origin|serialization=] of |ig|'s [=interest group/owner=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/name}}"] to |ig|'s [=interest group/name=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/enableBiddingSignalsPrioritization}}"] to |ig|'s [=interest group/enable bidding signals prioritization=].
+    1. If |ig|'s [=interest group/priority vector=] is not null:
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/priorityVector}}"] to |ig|'s [=interest group/priority vector=].
+    1. If |ig|'s [=interest group/seller capabilities=] is not null:
+      1. Let |resultSellerCapabilities| be an [=ordered map=].
+      1. [=map/For each=] |origin| → |originSellerCapabilities| of |ig|'s [=interest group/seller capabilities=]:
+        1. Let |serializedOrigin| be the [=serialization of an origin|serialization=] of |origin|.
+        1. [=map/Set=] |resultSellerCapabilities|[|serializedOrigin|] to |originSellerCapabilities|.
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/sellerCapabilities}}"] to |resultSellerCapabilities|.
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/executionMode}}"] to |ig|'s [=interest group/execution mode=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/biddingLogicURL}}"] to the [=serialize a URL|serialization=] of |ig|'s [=interest group/bidding url=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/biddingWasmHelperURL}}"] to the [=serialize a URL|serialization=] of |ig|'s [=interest group/bidding wasm helper url=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/updateURL}}"] to the [=serialize a URL|serialization=] of |ig|'s [=interest group/update url=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/trustedBiddingSignalsURL}}"] to the [=serialize a URL|serialization=] of |ig|'s [=interest group/trusted bidding signals url=].
+    1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null:
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/trustedBiddingSignalsKeys}}"] to |ig|'s [=interest group/trusted bidding signals keys=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/trustedBiddingSignalsSlotSizeMode}}"] to |ig|'s [=interest group/trusted bidding signals slot size mode=].
+    1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"] to |ig|'s [=interest group/max trusted bidding signals url length=].
+    1. If |ig|'s [=interest group/user bidding signals=] is not null:
+      1. Let |parsedUserBiddingSignals| be |ig|'s [=interest group/user bidding signals=] [=parsing a JSON string to a JavaScript value|parsed to a JavaScript value=].
+      1. If [=an exception was thrown=], then return failure.
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/userBiddingSignals}}"] to |parsedUserBiddingSignals|.
+    1. If |ig|'s [=interest group/ads=] is not null:
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/ads}}"] to |ig|'s [=interest group/ads=] [=converted to an AuctionAd sequence=].
+      1. If [=an exception was thrown=], then return failure.
+    1. If |ig|'s [=interest group/ad components=] is not null:
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/adComponents}}"] to |ig|'s [=interest group/ad components=] [=converted to an AuctionAd sequence=].
+      1. If [=an exception was thrown=], then return failure.
+    1. If |ig|'s [=interest group/ad sizes=] is not null:
+      1. Let |resultAdSizes| be an [=ordered map=].
+      1. [=map/For each=] |sizeName| → |adSize| of |ig|'s [=interest group/ad sizes=]:
+        1. [=map/Set=] |resultAdSizes|[|sizeName|] to |adSize| [=convert an ad size to a map|converted to a map=].
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/adSizes}}"] to |resultAdSizes|.
+    1. If |ig|'s [=interest group/size groups=] is not null:
+      1. [=map/Set=] |resultIg|["{{GenerateBidInterestGroup/sizeGroups}}"] to |ig|'s [=interest group/size groups=].
+    1. [=map/Set=] |resultIg|["{{AuctionAdInterestGroup/priority}}"] to |ig|'s [=interest group/priority=].
+    1. If |ig|'s [=interest group/priority signals overrides=] is not null:
+      1. [=map/Set=] |resultIg|["{{AuctionAdInterestGroup/prioritySignalsOverrides}}"] to |ig|'s [=interest group/priority signals overrides=].
+    1. If |ig|'s [=interest group/additional bid key=] is not null:
+      1. Let |encoded| be the result of running [=forgiving-base64 encode=] with |ig|'s [=interest group/additional bid key=].
+      1. If |encoded| is failure, then return failure.
+      1. [=map/Set=] |resultIg|["{{AuctionAdInterestGroup/additionalBidKey}}"] to the result of running [=forgiving-base64 encode=] with |ig|'s [=interest group/additional bid key=].
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/joinCount}}"] to the sum of |ig|'s [=interest group/join counts=] for all days within the last 30 days.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/bidCount}}"] to the sum of |ig|'s [=interest group/bid counts=] for all days within the last 30 days.
+    1. Let |resultPrevWins| be a new <code>[=sequence=]<{{PreviousWin}}></code>.
+    1. [=list/For each=] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
+      the last 30 days:
+      1. Let |timeDelta| be (|now| &minus; |prevWin|'s [=previous win/time=]) in millseconds.
+      1. Set |timeDelta| to 0 if |timeDelta| is negative, |timeDelta|'s nearest second (rounding down)
+        otherwise.
+      1. Let |metadata| be |prevWin|'s [=interest group ad/metadata=] [=parsing a JSON string to a JavaScript value|parsed to a JavaScript value=].
+      1. If [=an exception was thrown=], then return failure.
+      1. Let |prevWinAdIDL| be a new {{AuctionAd}} with the following [=struct/items=]:
+        : {{AuctionAd/renderURL}}
+        :: the [=URL serializer|serialization=] of |prevWin|'s [=interest group ad/render url=]
+        : {{AuctionAd/metadata}}
+        :: |metadata|.
+        : {{AuctionAd/adRenderId}}
+        :: |prevWin|'s [=interest group ad/ad render ID=]
+      1. Let |prevWinElement| be the <code>[=sequence=]<{{PreviousWinElement}}></code> «|timeDelta|, |prevWinAdIDL|».
+      1. [=list/Append=] |prevWinElement| to |resultPrevWins|.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/prevWinsMs}}"] to |resultPrevWins|.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/joiningOrigin}}"] to the [=serialization of an origin|serialization=] of |ig|'s [=interest group/joining origin=].
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/timeSinceGroupJoinedMs}}"] to (|now| &minus; |ig|'s [=interest group/join time=]) in millseconds.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/lifetimeRemainingMs}}"] to (|ig|'s [=interest group/expiry=] &minus; |now|) in millseconds.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/timeSinceLastUpdateMs}}"] to (|now| &minus; |ig|'s [=interest group/last updated=]) in millseconds.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/timeUntilNextUpdateMs}}"] to (|ig|'s [=interest group/next update after=] &minus; |now|) in millseconds.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/estimatedSize}}"] to |ig|'s [=interest group/estimated size=].
+    1. [=list/Append=] |resultIg| to |resultIgs|.
+  1. Return |resultIgs|.
 </div>
 
 # Additional Bids and Negative Targeting # {#additional-bids-and-negative-targeting}
@@ -4512,7 +5106,8 @@ from querying the server during an auction.
   To <dfn>query k-anonymity cache</dfn> given a [=SHA-256=] |hashCode|:
     1. If the [=user agent=]'s [=k-anonymity cache=] does not [=map/contain=] |hashCode|, then return false.
     1. Let |record| be the [=user agent=]'s [=k-anonymity cache=][|hashCode|].
-    1. If the difference between [=current wall time=] and |record|'s [=k-anonymity record/timestamp=] is more than 7 days then return false.
+    1. If the difference between [=current coarsened wall time=] and |record|'s [=k-anonymity
+      record/timestamp=] is more than 7 days then return false.
     1. Return |record|'s [=k-anonymity record/is k-anonymous=].
 </div>
 
@@ -4614,7 +5209,7 @@ from querying the server during an auction.
   To <dfn>update k-anonymity cache for key</dfn> given a [=SHA-256=] |hashCode|:
     1. [=Assert=] that these steps are running [=in parallel=].
     1. Let |record| be a new [=k-anonymity record=].
-    1. Set |record|'s [=k-anonymity record/timestamp=] field to the [=current wall time=].
+    1. Set |record|'s [=k-anonymity record/timestamp=] field to the [=current coarsened wall time=].
     1. Set |record|'s [=k-anonymity record/is k-anonymous=] field to the result of executing [=query k-anonymity count=] for |hashCode|.
     1. [=map/Set=] |record|[|hashCode|] to |record|.
 </div>
@@ -4788,14 +5383,15 @@ of the following global objects:
 
 <div algorithm>
   To <dfn>evaluate a bidding script</dfn> given a [=string=] |script|, an {{unsigned short}}
-  |multiBidLimit|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|,
-  a {{GenerateBidInterestGroup}} |igGenerateBid|, a [=string=]-or-null
-  |auctionSignals|, a [=string=]-or-null |perBuyerSignals|, an [=ordered map=]-or-null
-  |sameOriginTrustedBiddingSignals|, an [=ordered map=]-or-null |crossOriginTrustedBiddingSignals|,
-  a {{BiddingBrowserSignals}} |browserSignals|, a {{DirectFromSellerSignalsForBuyer}}
-  |directFromSellerSignalsForBuyer|, and an integer millisecond [=duration=] |timeout|, perform the
-  following steps. They return a [=tuple=] ([=list=] of [=generated bids=],
-  [=bid debug reporting info=], [=list=] of [=real time reporting contributions=]).
+  |multiBidLimit|, an [=interest group=] |ig|, a [=reporting context=] |reportingContext|,
+  a [=currency tag=] |expectedCurrency|, a {{GenerateBidInterestGroup}} |igGenerateBid|,
+  a [=string=]-or-null |auctionSignals|, a [=string=]-or-null |perBuyerSignals|,
+  an [=ordered map=]-or-null |sameOriginTrustedBiddingSignals|, an [=ordered map=]-or-null
+  |crossOriginTrustedBiddingSignals|, a {{BiddingBrowserSignals}} |browserSignals|,
+  a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, and an integer
+  millisecond [=duration=] |timeout|, perform the following steps. They return a [=tuple=] ([=list=]
+  of [=generated bids=], [=bid debug reporting info=], [=list=] of [=real time reporting
+  contributions=]).
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupBiddingScriptRunnerGlobalScope}}.
@@ -4808,6 +5404,9 @@ of the following global objects:
       [=InterestGroupBiddingScriptRunnerGlobalScope/group has ad components=] to true if |ig|'s
       [=interest group/ad components=] is not null, or false otherwise.
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/expected currency=] to |expectedCurrency|.
+    1. [=Prepare for private aggregation=] given |global|, [=worklet function/generate-bid=],
+      |reportingContext|, |ig|'s [=interest group/owner=] and |ig|'s [=interest group/Private
+      Aggregation coordinator=].
     1. Let |isComponentAuction| be true if |browserSignals|["{{BiddingBrowserSignals/topLevelSeller}}"] is not null, or
       false otherwise.
     1. Set |global|'s [=InterestGroupBiddingScriptRunnerGlobalScope/is component auction=] to
@@ -4879,20 +5478,31 @@ of the following global objects:
       1. If |contribution|'s [=real time reporting contribution/latency threshold=] is not null, and
         &ge; |duration|, then [=iteration/continue=].
       1. [=list/Append=] |contribution| to |realTimeContributions|.
-    1. Return a [=tuple=] (|generatedBids|, |bidDebugReportInfo|, |realTimeContributions|).
+    1. [=Finalize private aggregation debug info=] given |global|.
+    1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
+      |global|.
+    1. Return a [=tuple=] (|generatedBids|, |bidDebugReportInfo|, |realTimeContributions|,
+                           |paContributions|).
 </div>
 
 <div algorithm>
   To <dfn>evaluate a scoring script</dfn> given a [=string=] |script|, a [=string=] |adMetadata|,
-  a {{double}} |bidValue|, an {{AuctionAdConfig}} |auctionConfigIDL|, an [=ordered map=]-or-null
-  |sameOriginTrustedScoringSignals|, an [=ordered map=]-or-null |crossOriginTrustedScoringSignals|,
+  a {{double}} |bidValue|, an [=auction config=] |auctionConfig|, a [=reporting context=]
+  |reportingContext|, an [=ordered map=]-or-null |sameOriginTrustedScoringSignals|,
+  an [=ordered map=]-or-null |crossOriginTrustedScoringSignals|,
   {{ScoringBrowserSignals}} |browserSignals|, a {{DirectFromSellerSignalsForSeller}}
   |directFromSellerSignalsForSeller|, and an integer millisecond [=duration=] |timeout|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupScoringScriptRunnerGlobalScope}}.
+    1. Let |global| be |realm|'s [=realm/global object=].
+    1. Let |settings| be |realm|'s [=realm/settings object=].
+    1. [=Prepare for private aggregation=] given |global|, [=worklet function/score-ad=],
+      |reportingContext|, |auctionConfig|'s [=auction config/seller=] and |auctionConfig|'s
+      [=auction config/seller Private Aggregation coordinator=].
     1. Let |browserSignalsJS| be |browserSignals| [=converted to ECMAScript values=].
-    1. Let |auctionConfigJS| be |auctionConfigIDL| [=converted to ECMAScript values=].
+    1. Let |auctionConfigJS| be |auctionConfig|'s [=auction config/config idl=] [=converted to
+      ECMAScript values=].
     1. Let |sameOriginTrustedScoringSignalsJS| be |sameOriginTrustedScoringSignals|
        [=converted to ECMAScript values=].
     1. Let |crossOriginTrustedScoringSignalsJS| be |crossOriginTrustedScoringSignals|
@@ -4918,17 +5528,26 @@ of the following global objects:
       1. If |contribution|'s [=real time reporting contribution/latency threshold=] is not null, and
         &ge; |duration|, then [=iteration/continue=].
       1. [=list/Append=] |contribution| to |realTimeContributions|.
-    1. Return « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions| ».
+    1. [=Finalize private aggregation debug info=] given |global|.
+    1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
+      |global|.
+    1. Return « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions|,
+        |paContributions| ».
 </div>
 
 <div algorithm>
   To <dfn>evaluate a reporting script</dfn> given a [=string=] |script|, a [=string=]
-  |functionName|, an integer millisecond [=duration=] |timeout|, and a [=list=] of arguments
-  |arguments|:
+  |functionName|, a [=reporting context=] |reportingContext|, an [=origin=] |origin|, an
+  [=origin=] |privateAggregationCoordinator|, an integer millisecond [=duration=] |timeout|,
+  and a [=list=] of arguments |arguments|:
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupReportingScriptRunnerGlobalScope}}.
     1. Let |global| be |realm|'s [=realm/global object=].
+    1. Let |function| be [=worklet function/report-win=]
+    1. If |functionName| is `"reportResult"`, set |function| to [=worklet function/report-result=].
+    1. [=Prepare for private aggregation=] given |global|, |function|, |reportingContext|, |origin|,
+      and |privateAggregationCoordinator|.
     1. Let |argumentsJS| be the result of [=converting a Web IDL arguments list to an ECMAScript
       arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
       [=exception/throws=] an exception, return « "null", null, null, null ».
@@ -4945,8 +5564,12 @@ of the following global objects:
     1. If |reportURL| is failure, set |reportURL| to null.
     1. Let |macroMap| be |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting macro map=]
       if |functionName| is "`reportWin`" or "`reportAdditionalBidWin`", null otherwise.
+    1. [=Finalize private aggregation debug info=] given |global|.
+    1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
+      |global|.
     1. Return « |resultJSON|, |reportURL|,
-      |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap| ».
+      |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap|,
+      |paContributions| ».
 </div>
 
 <div algorithm>
@@ -5013,9 +5636,121 @@ specification are those that explicitly list the global names provided here.
 <pre class="idl">
 [Exposed=InterestGroupScriptRunnerGlobalScope]
 interface InterestGroupScriptRunnerGlobalScope {
+  readonly attribute PrivateAggregation? privateAggregation;
+};
+
+dictionary PASignalValue {
+  required DOMString baseValue;
+  double scale;
+  (bigint or long) offset;
+};
+
+dictionary PAExtendedHistogramContribution {
+  required (PASignalValue or bigint) bucket;
+  required (PASignalValue or long) value;
+  bigint filteringId = 0;
+};
+
+[Exposed=InterestGroupScriptRunnerGlobalScope]
+partial interface PrivateAggregation {
+  undefined contributeToHistogramOnEvent(
+      DOMString event, PAExtendedHistogramContribution contribution);
 };
 
 </pre>
+
+Each {{InterestGroupScriptRunnerGlobalScope}} has a
+<dl dfn-for="InterestGroupScriptRunnerGlobalScope">
+  : <dfn>private aggregation</dfn>
+  :: Null, or a [=PrivateAggregation=]. Initially null.
+  : <dfn>on event contribution map</dfn>
+  :: A [=map=] from [=string=] to a [=list=] of [=on event contribution entries=].
+  : <dfn>worklet function</dfn>
+  :: A [=worklet function=]. Affects some
+    [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api)
+    functionality.
+</dl>
+
+<div algorithm>
+The <dfn attribute for=InterestGroupScriptRunnerGlobalScope>privateAggregation</dfn> [=getter
+  steps=] are:
+
+  1. Return [=this=]'s [=relevant global object=]'s
+    [=InterestGroupScriptRunnerGlobalScope/private aggregation=].
+</div>
+
+<div algorithm>
+The <dfn method for="PrivateAggregation">contributeToHistogramOnEvent(DOMString
+event, PAExtendedHistogramContribution contribution)</dfn> method steps are:
+1. Let |global| be [=this=]'s [=relevant global object=].
+1. Let |function| be |global|'s [=InterestGroupScriptRunnerGlobalScope/worklet function=].
+1. If [=this=]'s <a spec="private-aggregation-api" for="PrivateAggregation">
+  allowed to use</a> is false, [=exception/throw=] a {{TypeError}}.
+1. Let |scopingDetails| be [=this=]'s <a spec="private-aggregation-api" for="PrivateAggregation">
+  scoping details</a>
+1. If |event| [=string/starts with=] "`reserved.`" and « "`reserved.always`",
+    "`reserved.loss`", "`reserved.win`", "`reserved.once`" » does not [=list/contain=] |event|,
+    return.
+
+    Note: No error is thrown to allow forward compatibility if additional
+        reserved event types are added later.
+1. If |event| is "`reserved.once`" and |function| is [=worklet function/report-result=] or
+  [=worklet function/report-win=], [=exception/throw=] a {{TypeError}}.
+1. Let |bucket| be |contribution|["{{PAExtendedHistogramContribution/bucket}}"].
+1. If |bucket| is a {{PASignalValue}}:
+    1. If |bucket|["{{PASignalValue/baseValue}}"] is not a valid [=signal base
+        value=], [=exception/throw=] a {{TypeError}}.
+    1. If |bucket|["{{PASignalValue/offset}}"] is not a {{bigint}}, [=exception/
+        throw=] a {{TypeError}}.
+1. Otherwise, if |contribution|["{{PAExtendedHistogramContribution/bucket}}"] is
+    not [=set/contained=] in [=the exclusive range|the range=] 0 to
+    2<sup>128</sup>, exclusive, [=exception/throw=] a {{TypeError}}.
+
+    Issue: Make the error type consistent with
+        {{PrivateAggregation/contributeToHistogram(contribution)}}.
+1. Let |value| be |contribution|["{{PAExtendedHistogramContribution/value}}"].
+1. If |value| is a {{PASignalValue}}:
+    1. If |value|["{{PASignalValue/baseValue}}"] is not a valid [=signal base
+        value=], [=exception/throw=] a {{TypeError}}.
+    1. If |value|["{{PASignalValue/offset}}"] is a {{bigint}}, [=exception/
+        throw=] a {{TypeError}}.
+1. Otherwise, if |contribution|["{{PAExtendedHistogramContribution/value}}"] is
+    negative, [=exception/throw=] a {{TypeError}}.
+1. If |contribution|["{{PAExtendedHistogramContribution/filteringId}}"] is
+    not [=set/contained=] in [=the exclusive range|the range=] 0 to
+    256<sup>[=default filtering ID max bytes=]</sup>, exclusive, [=exception/
+    throw=] a {{TypeError}}.
+
+    Issue: Make the error types on validation issues here and above consistent
+        with {{PrivateAggregation/contributeToHistogram(contribution)}}.
+
+    Note: It is not currently possible to set a non-default filtering ID max
+        bytes for Protected Audience.
+1. Let |batchingScope| be null.
+1. If |event| [=string/starts with=] "`reserved.`", set |batchingScope| to the
+    result of running |scopingDetails|' <a spec="private-aggregation-api" for="scoping details">
+    get batching scope steps</a>.
+
+    Note: Each non-reserved |event| will have a different [=batching scope=]
+        that is created later.
+1. Let |entry| be a new [=on event contribution entry=] with the items:
+    : [=on event contribution entry/contribution=]
+    :: |contribution|
+    : [=on event contribution entry/batching scope=]
+    :: |batchingScope|
+    : [=on event contribution entry/debug scope=]
+    :: The result of running |scopingDetails|' <a spec="private-aggregation-api"
+      for="scoping details">get debug scope steps</a>.
+    : [=on event contribution entry/worklet function=]
+    :: |function|
+
+1. Let |onEventContributionMap| be |global|'s
+    [=InterestGroupScriptRunnerGlobalScope/on event contribution map=].
+1. If |onEventContributionMap|[|event|] does not [=map/exist=], set
+    |onEventContributionMap|[|event|] to a new [=list=].
+1. [=list/Append=] |entry| to |onEventContributionMap|[|event|].
+
+</div>
 
 <pre class="idl">
 [Exposed=InterestGroupBiddingAndScoringScriptRunnerGlobalScope]
@@ -5542,7 +6277,7 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
 1. [=list/For each=] |owner| of |owners|:
   1. [=list/For each=] |originalInterestGroup| of the [=user agent=]'s [=interest group set=] whose
     [=interest group/owner=] is |owner| and [=interest group/next update after=] is before
-    the [=current wall time=] and whose [=interest group/update url=] is not null:
+    the [=current coarsened wall time=] and whose [=interest group/update url=] is not null:
 
     Note: Implementations can consider loading only a portion of these interest groups
     at a time to avoid issuing too many requests at once.
@@ -5824,8 +6559,9 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
       * |ig|'s [=interest group/ads=] is not null, and |ig|'s [=interest group/additional bid key=]
         is not null;
       * |ig|'s [=interest group/estimated size=] is greater than 1048576 bytes.
-    1. Set |ig|'s [=interest group/next update after=] to the [=current wall time=] plus 24 hours.
-    1. Set |ig|'s [=interest group/last updated=] to the [=current wall time=].
+    1. Set |ig|'s [=interest group/next update after=] to the [=current coarsened wall time=] plus
+      24 hours.
+    1. Set |ig|'s [=interest group/last updated=] to the [=current coarsened wall time=].
     1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
       [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
     1. <i id=abort-update>Abort update</i>: We jump here if some part of the
@@ -5848,10 +6584,10 @@ To <dfn>process updateIfOlderThanMs</dfn> given an [=origin=] |buyer|, and an [=
   1. Let |ig| be the [=interest group=] of the [=user agent=]'s [=interest group set=] whose
     [=interest group/owner=] is |buyer| and whose [=interest group/name=] is |igName|, or null if
     [=interest group set=] does not have such an interest group.
-  1. If |ig| is not null and the [=current wall time=] &minus; |ig|'s
+  1. If |ig| is not null and the [=current coarsened wall time=] &minus; |ig|'s
      [=interest group/last updated=] ≥ |updateIfOlderThan|:
     1. Set |ig|'s [=interest group/next update after=] to
-      [=current wall time=] + |updateIfOlderThan|.
+      [=current coarsened wall time=] + |updateIfOlderThan|.
     1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
       [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
 
@@ -7489,7 +8225,7 @@ requests into smaller number of fetches. It's a [=struct=] with the following [=
   : <dfn>request map</dfn>
   :: A [=map=] from a tuple of [=script fetcher=], a [=URL=] representating the trusted signals
     base [=URL=], {{unsigned short}} or null for experiment ID, and
-    [=origin=], representing the top frame's [=origin], to a [=list=] of [=trusted scoring signals
+    [=origin=], representing the top frame's [=origin=], to a [=list=] of [=trusted scoring signals
     requests=]. This organizes fetches that can possibly be merged together.
   : <dfn>url length limit</dfn>
   :: A {{long}} denoting a user-configured limit which should not be exceeded due to combining of
