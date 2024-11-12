@@ -3070,6 +3070,27 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
      equals |componentAd|. If there is no matching element, return failure.
   1. [=list/Append=] a new [=ad descriptor=] whose [=ad descriptor/url=] is
      |componentAd| to |winningAdComponents|.
+1. Let |bidDebugReportingInfo| be a new [=bid debug reporting info=].
+1. [=list/For each=] |key| → |maybeDebugReportUrl| in |response|'s
+  [=server auction response/component win debugging only reports=]:
+  1. If |key|'s [=server auction debug report key/from seller=] is true:
+    1. Set |bidDebugReportingInfo|'s [=bid debug reporting info/component seller=] to |seller|.
+    1. If |key|'s [=server auction debug report key/is debug win=] is true, then set
+      |bidDebugReportingInfo|'s [=bid debug reporting info/seller debug win report url=] to
+      |maybeDebugReportUrl|.
+    1. Otherwise, then set |bidDebugReportingInfo|'s
+      [=bid debug reporting info/seller debug loss report url=] to |maybeDebugReportUrl|.
+  1. Otherwise,
+    1. Set |bidDebugReportingInfo|'s [=bid debug reporting info/interest group owner=] to
+      |response|'s [=server auction response/interest group owner=].
+    1. If |key|'s [=server auction debug report key/is debug win=] is true, then set
+      |bidDebugReportingInfo|'s [=bid debug reporting info/bidder debug win report url=] to
+      |maybeDebugReportUrl|.
+    1. Otherwise, then set |bidDebugReportingInfo|'s
+      [=bid debug reporting info/bidder debug loss report url=] to |maybeDebugReportUrl|.
+1. Set |bidDebugReportingInfo|'s [=bid debug reporting info/server filtered debugging only reports=]
+  to [=server auction response/server filtered debugging only reports=].
+1. Set |reportingContextMap|[|auctionConfig|] to |bidDebugReportingInfo|.
 1. Let |reportingId| be a [=reporting bid key=] with the following [=struct/items=]:
   : [=reporting bid key/context=]
   :: |reportingContextMap|[|auctionConfig|]
@@ -3174,23 +3195,6 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
   1. If [=current coarsened wall time=] &minus; |ig|'s [=interest group/last updated=] ≥
      |updateIfOlderThan|, set |ig|'s [=interest group/next update after=] to the
      [=current coarsened wall time=] + |updateIfOlderThan|.
-1. Let |bidDebugReportingInfo| be a new [=bid debug reporting info=]. 
-1. [=list/For each=] |key| → |maybeDebugReportUrl| in |response|'s
-  [=server auction response/component win debugging only reports=]:
-  1. If |key|'s [=server auction debug report key/from seller=] is true:
-    1. If |key|'s [=server auction debug report key/is debug win=] is true, then set
-      |bidDebugReportingInfo|'s [=bid debug reporting info/seller debug win report url=] to
-      |maybeDebugReportUrl|.
-    1. Otherwise, then set |bidDebugReportingInfo|'s
-      [=bid debug reporting info/seller debug loss report url=] to |maybeDebugReportUrl|.
-  1. Otherwise,
-    1. If |key|'s [=server auction debug report key/is debug win=] is true, then set
-      |bidDebugReportingInfo|'s [=bid debug reporting info/bidder debug win report url=] to
-      |maybeDebugReportUrl|.
-    1. Otherwise, then set |bidDebugReportingInfo|'s
-      [=bid debug reporting info/bidder debug loss report url=] to |maybeDebugReportUrl|.
-1. Set |bidDebugReportingInfo|'s [=bid debug reporting info/server filtered debugging only reports=]
-  to [=server auction response/server filtered debugging only reports=].
 1. Return |winningBidInfo|.
 
 </div>
@@ -3879,7 +3883,6 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
     [=short cooldown period=] otherwise.
   1. Set [=user agent=]'s [=debug report cooldown=][|origin|] to [=current coarsened wall time=]
     plus |cooldownPeriod|.
-  1. Return |canSendAfterSampled|.
 </div>
 
 ## {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/realTimeReporting}} ## {#real-time-reporting-header}
