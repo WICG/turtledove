@@ -947,6 +947,8 @@ The arguments to `generateBid()` are:
       'adComponentsLimit': 40, /* Maximum number of ad components generateBid() may return */
       'multiBidLimit': 5, /* If set, maximum number of bids that can be returned at once;
                              see perBuyerMultiBidLimits */
+      'viewCounts': { pastHour: 1, pastDay: 2, pastWeek: 3, past30Days: 3, past90Days: 3 },
+      'clickCounts': { pastHour: 0, pastDay: 0, pastWeek: 1, past30Days: 1, past90Days: 1 },
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
@@ -1160,10 +1162,10 @@ User clickiness, the propensity of a user to interact with ads, is an important 
 
 ```
 <img src="https://advertiser.example/pixel"
-     attributionsrc="'https://adtech.example/register-view?metadata=...">
+     attributionsrc="https://adtech.example/register-view?metadata=...">
 
 <script src="https://advertiser.example/register-view"
-        attributionsrc="'https://adtech.example/register-view?metadata=...">
+        attributionsrc="https://adtech.example/register-view?metadata=...">
 ```
 
 **Clicks** can be registered on HTML anchor tags:
