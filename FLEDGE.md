@@ -1208,7 +1208,7 @@ Ad-Auction-Register-Event: type=[view|click]; eligible-origins=https://www.examp
 ```
 
  * `type`: Required. Indicates whether this event should be counted as a "view" or a "click". The browser will verify that the type of event being registered matches the type for which this request is eligible - "view" or "click" - and discard events for which this request is not eligible.
- * `eligible-origins`: Optional. Conveys one or more origins for which this event should be included in the computed view and click counts that will be provided to UDFs in Protected Audience auctions. If omitted or blank, this event will **only** be included in the counts available to the origin that returned that `Ad-Auction-Register-Event`.
+ * `eligible-origins`: Optional. Conveys one or more interest group owner origins for which this event should be included in the computed view and click counts that will be provided to their `generateBid()` invocations in Protected Audience auctions. If omitted or blank, this event will **only** be included in the counts available to the origin that returned that `Ad-Auction-Register-Event`.
 
 
 The "providing origin" is the origin from which the `Ad-Auction-Register-Event` header was received. The browser will only record view and click events for the providing origin if its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) is attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). Similarly, the browser will only retain eligible origins whose site (scheme, eTLD+1) is attested for Protected Audience API.
