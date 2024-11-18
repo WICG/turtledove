@@ -239,6 +239,7 @@ dictionary GenerateBidInterestGroup {
   sequence<USVString> trustedBiddingSignalsKeys;
   DOMString trustedBiddingSignalsSlotSizeMode = "none";
   long maxTrustedBiddingSignalsURLLength;
+  USVString trustedBiddingSignalsCoordinator;
   any userBiddingSignals;
   sequence<AuctionAd> ads;
   sequence<AuctionAd> adComponents;
@@ -379,6 +380,12 @@ This is detectable because it can change the set of fields that are read from th
       |interestGroup|'s [=interest group/max trusted bidding signals url length=] to
       |group|["{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}"], otherwise
       [=exception/throw=] a {{TypeError}}.
+  1. If |group|["{{GenerateBidInterestGroup/trustedBiddingSignalsCoordinator}}"] [=map/exists=]:
+    1. Let |parsedCoordinator| be the result of [=parsing an https origin=] on
+      |group|["{{GenerateBidInterestGroup/trustedBiddingSignalsCoordinator}}"].
+    1. If |parsedCoordinator| is failure, then [=exception/throw=] a {{TypeError}}.
+    1. Set |interestGroup|'s [=interest group/trusted bidding signals coordinator=] to
+      |parsedCoordinator|.
   1. If |group|["{{GenerateBidInterestGroup/userBiddingSignals}}"] [=map/exists=]:
     1. Set |interestGroup|'s [=interest group/user bidding signals=] to the result of
       [=serializing a JavaScript value to a JSON string=], given
@@ -742,6 +749,7 @@ dictionary AuctionAdConfig {
 
   USVString trustedScoringSignalsURL;
   long maxTrustedScoringSignalsURLLength;
+  USVString trustedScoringSignalsCoordinator;
   sequence<USVString> interestGroupBuyers;
   Promise<any> auctionSignals;
   Promise<any> sellerSignals;
@@ -1255,6 +1263,12 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     [=auction config/max trusted scoring signals url length=] to
     |config|["{{AuctionAdConfig/maxTrustedScoringSignalsURLLength}}"], otherwise [=exception/throw=]
     a {{TypeError}}.
+1. If |config|["{{AuctionAdConfig/trustedScoringSignalsCoordinator}}"] [=map/exists=]:
+    1. Let |parsedCoordinator| be the result of [=parsing an https origin=] on
+      |config|["{{AuctionAdConfig/trustedScoringSignalsCoordinator}}"].
+    1. If |parsedCoordinator| is failure, then [=exception/throw=] a {{TypeError}}.
+    1. Set |auctionConfig|'s [=auction config/trusted scoring signals coordinator=] to
+      |parsedCoordinator|.
 1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=]:
   1. Let |buyers| be a new empty [=list=].
   1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
@@ -2011,6 +2025,8 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
             and |settings|'s [=environment settings object/policy container=].
         1. [=Fetch the current outstanding trusted signals batch=] given |trustedBiddingSignalsBatcher|,
             |signalsUrl|, |buyer|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
+        1. [=Fetch the trusted key value signals batch=] given |trustedBiddingSignalsBatcher|,
+            |signalsUrl|, |buyer|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
       1. [=Process updateIfOlderThanMs=] with |buyer|, and |trustedBiddingSignalsBatcher|'s
          [=trusted bidding signals batcher/all per interest group data=].
       1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to |settings|'s
@@ -2178,6 +2194,8 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dd>|ig|'s [=interest group/trusted bidding signals slot size mode=]
       <dt>{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}
       <dd>|ig|'s [=interest group/max trusted bidding signals url length=]
+      <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsCoordinator}}
+      <dd>|ig|'s [=interest group/trusted bidding signals coordinator=]
       <dt>{{GenerateBidInterestGroup/userBiddingSignals}}
       <dd>[=Parse a JSON string to a JavaScript value=] given |ig|'s [=interest group/user bidding signals=]
 
@@ -2259,6 +2277,15 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
 
       : [=trusted scoring signals request/policy container=]
       :: |policyContainer|
+
+      : [=trusted scoring signals request/signal coordinator=]
+      :: |auctionConfig|'s [=auction config/trusted scoring signals coordinator=]
+
+      : [=trusted scoring signals request/owner origin=]
+      :: |generatedBid|'s [=generated bid=/interest group=]'s [=interest group/owner=]
+
+      : [=trusted scoring signals request/joining origin=]
+      :: |generatedBid|'s [=generated bid=/interest group=]'s [=interest group/joining origin=]
 
   1. If |auctionConfig|'s [=auction config/trusted scoring signals url=]'s [=url/origin=] is not
     [=same origin=] with |auctionConfig|'s [=auction config/seller=], then set |isCrossOrigin| to
@@ -2662,6 +2689,81 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |script
     1. [=map/Set=] |signals|[|key|] to the result of [=serializing an Infra value to a JSON string=]
       given |value|.
   1. Return « |signals|, |perInterestGroupData|, |dataVersion| ».
+</div>
+
+<div algorithm>
+To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte sequence=] |body|, a string
+|context|, an [=origin=] |scriptOrigin|, a [=policy container=] |policyContainer|, an |indexMap|, and a
+[=boolean=] |isBiddingSignal|:
+
+1. Let |request| be a new [=request=] with the following properties:
+  :   [=request/URL=]
+  ::  |url|
+  :   [=request/method=]
+  ::  `POST`
+  :   [=request/body=]
+  ::  |body|
+  :   [=request/origin=]
+  ::  |scriptOrigin|
+  :   [=request/header list=]
+  ::  «`Accept`: `application/json`»
+  :   [=request/client=]
+  ::  `null`
+  :   [=request/mode=]
+  ::  "`cors`"
+  :   [=request/referrer=]
+  :: "`no-referrer`"
+  :   [=request/credentials mode=]
+  ::  "`omit`"
+  :   [=request/redirect mode=]
+  :: "`error`"
+  :   [=request/policy container=]
+  ::  A new [=policy container=] whose [=policy container/IP address space=] is |policyContainer|'s
+    [=policy container/IP address space=]
+
+  Issue: One of the side-effects of a `null` client for this subresource request is it neuters all
+  service worker interceptions, despite not having to set the service workers mode.
+
+1. Let |resultList| be the result of deserializing |responseBody| using |context|. The
+  deserialization method may follow that described in
+  [Section 2.3.6 of the Protected Audience Key Value Services](https://privacysandbox.github.io/draft-ietf-protected-audience-key-value-service/draft-ietf-protected-audience-key-value-services.html#name-parsing-a-response).
+1. Let |signals| be null.
+1. Let |dataVersion| be an empty [=ordered map=].
+1. Let |perInterestGroupData| be an [=ordered map=].
+1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
+  [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
+  and null, failure, or a [=byte sequence=] |responseBody|:
+  1. If [=validate fetching response=] with |response|, |responseBody| and
+    "`message/ad-auction-trusted-signals-response`" returns false, set |signals| to failure and return.
+  1. [=list/For each=] |result| in |resultList|:
+    1. If |isBiddingSignal| is true:
+      1. [=map/For each=] |name| → |value| in |result|["interestGroupNames"]:
+        1. If |indexMap|[|name|] does not equal to |result|["index"], set |signals| to failure and return.
+        1. Set |perInterestGroupData|[|name|] to |value|.
+        1. If |result| [=map/contain=] "dataVersion":
+          1. If |result|["dataVersion"] is not an integer, or is less than 0 or more than
+            2<sup>32</sup>&minus;1, set |signals| to failure and return.
+          1. Otherwise, set |dataVersion|[|name|] to |result|["dataVersion"].
+      1. [=map/For each=] |key| → |value| in |result|["keys"]:
+        1. Set |siganls|[|key|] to |value|.
+    1. Otherwise:
+      1. [=map/For each=] |url| → |value| in |result|["renderUrls"]:
+        1. Set |siganls|[|url|] to |value|.
+        1. If |result| [=map/contain=] `"dataVersion"`:
+          1. If |result|["dataVersion"] is not an integer, or is less than 0 or more than
+            2<sup>32</sup>&minus;1, set |signals| to failure and return.
+          1. Otherwise, set |dataVersion|[|url|] to |result|["dataVersion"].
+      1. [=map/For each=] |url| → |value| in |result|["adComponentRenderUrls"]:
+        1. Set |siganls|[|url|] to |value|.
+1. Return « |signals|, |perInterestGroupData|, |dataVersion| ».
+
+</div>
+
+<div algorithm="update CORS-safelisted request-header">
+
+Add "message/ad-auction-trusted-signals-request" to essence check list under content-type in
+[CORS-safelisted request-header](https://fetch.spec.whatwg.org/#cors-safelisted-request-header).
+
 </div>
 
 <div algorithm>
@@ -3560,11 +3662,11 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
 </div>
 
 <div algorithm>
-  To <dfn>look up the server encryption key</dfn> given an [=origin=] |seller|
+  To <dfn>look up the server encryption key</dfn> given an [=origin=] |origin|
   and an [=origin=] |coordinator|:
   1. Let |keys| be a [=list=] of ([=byte sequence=], [=byte=]) [=tuples=] returned
      from looking up the [[RFC9180|HPKE]] public key encryption keys and their
-     corresponding key IDs for |seller| specified by |coordinator|. The actual
+     corresponding key IDs for |origin| specified by |coordinator|. The actual
      implementation of this lookup is [=implementation-defined=], and may
      consist of fetching the keys from a known [=URL=].
   1. If |keys| is failure or |keys| [=list/is empty=], return failure.
@@ -6427,6 +6529,16 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
             [=interest group/max trusted bidding signals url length=] to |convertedValue|.
         1. Otherwise, jump to the step labeled <i><a href=#abort-update>Abort update</a></i>.
 
+        <dt>"`trustedBiddingSignalsCoordinator`"
+        <dd>
+        1. If |value| is null:
+          1. Set |ig|'s [=interest group/trusted bidding signals coordinator=] to null.
+        1. If |value| is a [=string=]:
+          1. Let |parsedCoordinator| be the result of [=parsing an https origin=] on |value|.
+          1. If |parsedCoordinator| is a failure, jump to the step labeled <i><a href=#abort-update>
+            Abort update</a></i>.
+          1. Set |ig|'s [=interest group/trusted bidding signals coordinator=] to |parsedCoordinator|.
+
         <dt>"`userBiddingSignals`"
         <dd>
         1. Set |ig|'s [=interest group/user bidding signals=] to the result of [=serialize an Infra
@@ -6594,6 +6706,8 @@ The <dfn for=ProtectedAudience method>queryFeatureSupport(feature)</dfn> method 
     ::  true
     :   "reportingTimeout"
     ::  true
+    :   "trustedSignalsKVv2"
+    ::  true
 1. If |feature| is "*", then return |featuresTable|.
 1. If |featuresTable|[|feature|] [=map/exists=], then return |featuresTable|[|feature|].
 1. Return `undefined`.
@@ -6646,6 +6760,8 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   1. The [=string/length=] of |key|.
 1. If |ig|'s [=interest group/max trusted bidding signals url length=] is not null:
   1. 4, which is the size of |ig|'s [=interest group/max trusted bidding signals url length=].
+1. If |ig|'s [=interest group/trusted bidding signals coordinator=] is not null:
+  1. The [=string/length=] of |ig|'s [=interest group/trusted bidding signals coordinator=].
 1. The [=string/length=] of |ig|'s [=interest group/user bidding signals=].
 1. If |ig|'s [=interest group/ads=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
@@ -7454,6 +7570,8 @@ An <dfn export>interest group</dfn> is a [=struct=] with the following [=struct/
   : <dfn>max trusted bidding signals url length</dfn>
   :: A {{long}} integer, initially 0. Indicates the maximum trusted bidding signals fetch url length
     for the interest group. 0 means no limit.
+  : <dfn>trusted bidding signals coordinator</dfn>
+  :: Null or an [=origin=].
   : <dfn>user bidding signals</dfn>
   :: Null or a [=string=]. Additional metadata that the owner can use during on-device bidding.
   : <dfn>ads</dfn>
@@ -7613,6 +7731,8 @@ An <dfn export>auction config</dfn> is a [=struct=] with the following [=struct/
   : <dfn>max trusted scoring signals url length</dfn>
   :: A {{long}} integer, initially 0. Indicates the maximum trusted scoring signals fetch url length
     for the auction config. 0 means no limit.
+  : <dfn>trusted scoring signals coordinator</dfn>
+  :: Null or an [=origin=].
   : <dfn>interest group buyers</dfn>
   :: Null or a [=list=] of [=origins=].
     Owners of interest groups allowed to participate in the auction. Each [=origin's=]
@@ -8037,6 +8157,9 @@ into smaller number of fetches. It's a [=struct=] with the following [=struct/it
   : <dfn>length limit</dfn>
   :: A {{long}}, initially 2147483647 (the maximum value that it can hold). Describes the URL length
      limit the current batch is limited to, the smallest of the limits of the interest groups included.
+  : <dfn>key value interest groups</dfn>
+  :: An [=ordered map=] whose [=map/keys=] are a tuple of an [=origin=] and an [=origin=] and whose
+    [=map/values=] is a [=set=] of [=interest group=].
 </dl>
 
 A <dfn>bidding signals per interest group data</dfn> is a [=struct=] with the following
@@ -8162,40 +8285,148 @@ To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding s
      [=bidding signals per interest group data/updateIfOlderThanMs=], but it will get null passed in
      to its bidding function.
 
-  1. Let |putativeKeys| be a [=set/clone=] of |trustedBiddingSignalsBatcher|'s
-     [=trusted bidding signals batcher/keys=].
-  1. Let |putativeIgNames| be a [=set/clone=] of |trustedBiddingSignalsBatcher|'s
-     [=trusted bidding signals batcher/ig names=].
-  1. Let |putativeLengthLimit| be  |ig|'s [=interest group/max trusted bidding signals url length=].
-  1. If |ig|'s [=interest group/max trusted bidding signals url length=] is 0 or &gt;
-    |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=],
-    then set |putativeLengthLimit| to |trustedBiddingSignalsBatcher|'s
-    [=trusted bidding signals batcher/length limit=].
-  1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, [=list/extend=]
-     |putativeKeys| with |ig|'s [=interest group/trusted bidding signals keys=].
-  1. [=list/Append=] |igName| to |putativeIgNames|.
-  1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
-    |signalsUrl|, |putativeKeys|, |putativeIgNames|, |experimentGroupId|, |topLevelOrigin|, and
-    |slotSizeQueryParam|.
-  1. If [=URL serializer|serialized=] |biddingSignalsUrl|'s [=string/length=] &le; |putativeLengthLimit|:
-      1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to |putativeKeys|.
+  1. If |ig|'s [=interest group/trusted bidding signals coordinator=] is null:
+    1. Let |putativeKeys| be a [=set/clone=] of |trustedBiddingSignalsBatcher|'s
+      [=trusted bidding signals batcher/keys=].
+    1. Let |putativeIgNames| be a [=set/clone=] of |trustedBiddingSignalsBatcher|'s
+      [=trusted bidding signals batcher/ig names=].
+    1. Let |putativeLengthLimit| be  |ig|'s [=interest group/max trusted bidding signals url length=].
+    1. If |ig|'s [=interest group/max trusted bidding signals url length=] is 0 or &gt;
+      |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=],
+      then set |putativeLengthLimit| to |trustedBiddingSignalsBatcher|'s
+      [=trusted bidding signals batcher/length limit=].
+    1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, [=list/extend=]
+      |putativeKeys| with |ig|'s [=interest group/trusted bidding signals keys=].
+    1. [=list/Append=] |igName| to |putativeIgNames|.
+    1. Let |biddingSignalsUrl| be the result of [=building trusted bidding signals url=] with
+      |signalsUrl|, |putativeKeys|, |putativeIgNames|, |experimentGroupId|, |topLevelOrigin|, and
+      |slotSizeQueryParam|.
+    1. If [=URL serializer|serialized=] |biddingSignalsUrl|'s [=string/length=] &le; |putativeLengthLimit|:
+        1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to |putativeKeys|.
+        1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=] to
+          |putativeIgNames|.
+        1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=] to
+          |putativeLengthLimit|.
+    1. Otherwise:
+      1. [=Fetch the current outstanding trusted signals batch=] given |trustedBiddingSignalsBatcher|,
+        |signalsUrl|, |scriptOrigin|, |experimentGroupId|, |topLevelOrigin|, |slotSizeQueryParam|, and
+        |policyContainer|.
+      1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, set
+        |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
+        [=list/clone=] of |ig|'s [=interest group/trusted bidding signals keys=].
+      1. Otherwise, set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
+        new [=list=].
       1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=] to
-        |putativeIgNames|.
+          « |igName| ».
       1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=] to
-        |putativeLengthLimit|.
+        |ig|'s [=interest group/max trusted bidding signals url length=].
   1. Otherwise:
-    1. [=Fetch the current outstanding trusted signals batch=] given |trustedBiddingSignalsBatcher|,
-      |signalsUrl|, |scriptOrigin|, |experimentGroupId|, |topLevelOrigin|, |slotSizeQueryParam|, and
-      |policyContainer|.
-    1. If |ig|'s [=interest group/trusted bidding signals keys=] is not null, set
-      |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
-      [=list/clone=] of |ig|'s [=interest group/trusted bidding signals keys=].
-    1. Otherwise, set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/keys=] to a
-       new [=list=].
-    1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/ig names=] to
-        « |igName| ».
-    1. Set |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/length limit=] to
-      |ig|'s [=interest group/max trusted bidding signals url length=].
+    1. Let |keyValueInterestGroups| be |trustedBiddingSignalsBatcher|'s [=trusted bidding signals
+      batcher/key value interest groups=].
+    1. Let |key| be {|ig|'s [=interest group/trusted bidding signals coordinator=], |ig|'s
+      [=interest group/owner=]}.
+    1. If |keyValueInterestGroups| [=map/contain=] |key|, [=set/Append=] |ig| to |keyValueInterestGroups|
+      [|key|].
+    1. Otherwise:
+      1. Let |keyValueInterestGroups|[|key|] be an empty [=set=].
+      1. [=set/Append=] |ig| to |keyValueInterestGroups| [|key|].
+
+</div>
+
+<div algorithm>
+
+To <dfn>build trusted key value bidding signals request body</dfn> given, a [=set=] |interestGroups|,
+an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|, a [=string=]
+|slotSizeQueryParam|, an [=origin=] |coordinator|, and an [=origin=] |owner|:
+
+1. Let |compressionGroups| be an empty [=list=].
+1. Let |compressionGroupMap| be an empty [=map=].
+1. Let |compressionIdMap| be an empty [=map=].
+1. Let |interestGroupIdMap| be an empty [=map=].
+1. Let |slotSizeParams| be the result of [=strictly splitting=] |slotSizeQueryParam| on U+003D (=).
+1. Set |nextCompressionGroupId| to 0.
+1. [=list/For each=] |group| of |interestGroups|:
+  1. Set |joiningOrigin| to |group|'s [=interest group/joining origin=].
+  1. Let |compressionGroupId| be an integer.
+  1. Let |partitionId| be an integer.
+  1. If |compressionIdMap| does not [=map/contain=] |joiningOrigin|:
+    1. Set |compressionIdMap|[|joiningOrigin|] to |nextCompressionGroupId|.
+    1. Increase |nextCompressionGroupId| by 1.
+  1. Set |compressionGroupId| to |compressionIdMap|[|joiningOrigin|].
+  1. If |compressionGroupMap| does not [=map/contain=] |compressionGroupId|:
+    1. Let |compressionGroupMap|[|compressionGroupId|] be an empty [=map=].
+  1. Set |executionMode| to |group|'s [=interest group/execution mode=].
+  1. If |executionMode| equal to "`group-by-origin`", set |partitionId| to 0.
+  1. Otherwise:
+    1. If |compressionGroupMap|[|compressionGroupId|] [=map/contain=] 0, set |partitionId| to
+      [=map/size=] of |compressionGroupMap|[|compressionGroupId|].
+    1. Otherwise, set |partitionId| to sum [=list/size=] of |compressionGroupMap|[|joiningOrigin|]
+      and 1.
+  1. Set |interestGroupIdMap|[|group|'s [=interest group/name=]] to [=tuple=] of |compressionGroupId|
+    and |partitionId|.
+  1. If |compressionGroupMap|[|compressionGroupId|] does not [=map/contain=] |partitionId|:
+    1. Let |partition| be an empty [=map=].
+    1. Set |partition|["id"] to |partitionId|.
+    1. Set |partition|["interest_group_names"] to [|group|'s [=interest group/name=]].
+    1. Set |partition|["bidding_keys"] to |group|'s [=interest group/trusted bidding signals keys=].
+    1. Let |metadata| be an empty [=map=].
+    1. Set |metadata|["experiment_group_id"] to |experimentGroupId|.
+    1. Set |metadata|[|slotSizeParams|[0]] to |slotSizeParams|[1].
+    1. Set |partition|["metadata"] to |metadata|.
+    1. Set |compressionGroupMap|[|compressionGroupId|][|partitionId|] to |partition|.
+  1. Otherwise:
+    1. [=list/Append=] |group|'s [=interest group/name=] into |compressionGroupMap|[|compressionGroupId|]
+      [|partitionId|]["interest_group_names"].
+    1. [=list/Append=] |group|'s [=interest group/trusted bidding signals keys=] into
+      |compressionGroupMap|[|compressionGroupId|][|partitionId|]["bidding_keys"].
+1. [=map/For each=] |id| → |group| in |compressionGroupMap|:
+  1. Let |compressionGroup| be an empty [=map=].
+  1. Set |compressionGroup|["compression_group_id"] to |id|.
+  1. Set |compressionGroup|["partitions"] to an empty [=list=].
+  1. [=list/For each=] |partition| in |group|'s [=map/values=]:
+    1. [=list/Append=] |partition| to |compressionGroup|["partitions"].
+  1. [=list/Append=] |compressionGroup| to |compressionGroups|.
+1. Let |metadata| be an empty [=map=].
+1. Let |hostname| be the result of [=string/UTF-8 percent-encoding=] the
+  [=serialization of an origin|serialized=] |topLevelOrigin| using [=component percent-encode set=].
+1. Set |metadata|["hostname"] to |hostname|.
+1. Let |keyInfo| be the result of [=looking up the server encryption key=] with |owner| and
+  |coordinator|.
+1. Let (|requestBlob|, |context|) be the result of generating request |keyInfo|, |metadata| and
+  |compressionGroups|. The generation method may follow that described in 
+  [Section 2.2.4 of the Protected Audience Key Value Services](https://privacysandbox.github.io/draft-ietf-protected-audience-key-value-service/draft-ietf-protected-audience-key-value-services.html#name-generating-a-request).
+1. Return |requestBlob|, |interestGroupIdMap| and |context|.
+
+</div>
+
+<div algorithm>
+To <dfn>fetch the trusted key value signals batch</dfn> given a
+[=trusted bidding signals batcher=] |trustedBiddingSignalsBatcher|, a [=URL=] |signalsUrl|,
+an [=origin=] |scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=]
+|topLevelOrigin|, a [=string=] |slotSizeQueryParam|, and a [=policy container=] |policyContainer|:
+
+  1. If |signalsUrl| is null, return.
+  1. [=map/For each=] {|coordinator|, |owner|} → |interestGroups| of [=trusted bidding signals
+    batcher/key value interest groups=]:
+    1. Let « |requestBody|, |interestGroupIdMap|, |context| » be the result of [=building trusted
+      key value bidding signals request body=] with |signalsUrl|, |interestGroups|,
+      |experimentGroupId|, |topLevelOrigin|, |slotSizeQueryParam|, |coordinator| and |owner|.
+    1. Let « |partialTrustedBiddingSignals|, |partialPerInterestGroupData|, |dataVersion| » be the
+      result of [=fetching trusted key value signals=] with |signalsUrl|, |requestBody|, |context|,
+      |scriptOrigin|, |policyContainer|, |interestGroupIdMap| and true.
+    1. If |partialTrustedBiddingSignals| is not null:
+      1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|, [=map/set=]
+        |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding
+        signals=][|key|] to |value|.
+      1. Let |igNames| be |interestGroupIdMap|'s [=map/keys=].
+      1. [=set/For each=] |igName| of |igNames|, [=map/set=] |trustedBiddingSignalsBatcher|'s
+        [=trusted bidding signals batcher/data versions=][|igName|] to |dataVersion|[|igName|].
+      1. [=Append to a bidding signals per-interest group data map=] with
+        |partialPerInterestGroupData|, |igNames|, and |trustedBiddingSignalsBatcher|'s
+        [=trusted bidding signals batcher/all per interest group data=].
+    1. Otherwise, [=set/for each=] |igName| of |igNames|:
+      1. [=map/Set=] |trustedBiddingSignalsBatcher|'s
+        [=trusted bidding signals batcher/no signals flags=][|igName|] to "fetch-failed".
 
 </div>
 
@@ -8210,9 +8441,9 @@ requests into smaller number of fetches. It's a [=struct=] with the following [=
     batching.
   : <dfn>request map</dfn>
   :: A [=map=] from a tuple of [=script fetcher=], a [=URL=] representating the trusted signals
-    base [=URL=], {{unsigned short}} or null for experiment ID, and
-    [=origin=], representing the top frame's [=origin=], to a [=list=] of [=trusted scoring signals
-    requests=]. This organizes fetches that can possibly be merged together.
+    base [=URL=], {{unsigned short}} or null for experiment ID, [=origin=] or null for coordinator,
+    and [=origin=], representing the top frame's [=origin], to a [=list=] of [=trusted scoring
+    signals requests=]. This organizes fetches that can possibly be merged together.
   : <dfn>url length limit</dfn>
   :: A {{long}} denoting a user-configured limit which should not be exceeded due to combining of
     fetches. 0 denotes no limit, and is the initial value.
@@ -8241,6 +8472,12 @@ invocation:
     fetch.
   : <dfn>policy container</dfn>
   :: A [=policy container=] to use for the network fetch.
+  : <dfn>signal coordinator</dfn>
+  :: An [=origin=] to use for the public key fetch.
+  : <dfn>owner origin</dfn>
+  :: An [=origin=] of the owner on behalf of the initial interest group.
+  : <dfn>joining origin</dfn>
+  :: An [=origin=] of the owner's joining origin on behalf of the initial interest group.
   : <dfn>reply</dfn>
   :: A [=trusted scoring signals reply=], null, or failure. Initially null. Set to a non-null value
     when the fetch has been completed.
@@ -8349,6 +8586,93 @@ scoring signals requests=] |entriesToBatch|:
 
 <div algorithm>
 
+To <dfn>build trusted key value scoring signals request body</dfn> given a non-empty [=list=] of
+[=trusted scoring signals requests=] |entriesToBatch|:
+
+1. Let |firstRequest| be |entriesToBatch|[0].
+1. Let |compressionGroupMap| be an empty [=map=].
+1. Let |compressionIdMap| be an empty [=map=].
+1. Let |renderUrlIdMap| be an empty [=map=].
+1. Let |nextCompressionGroupId| be 0.
+1. [=map/For each=] |request| of |entriesToBatch|:
+  1. Let |compressionGroupId| be an integer.
+  1. Let |partitionId| be an integer.
+  1. Set |joiningOrigin| to |group|'s [=interest group/joining origin=].
+  1. Let |ownerOrigin| be |request|'s [=trusted scoring signals request/owner origin=].
+  1. Let |mapKey| be a tuple of |ownerOrigin| and |joiningOrigin|.
+  1. If |compressionIdMap| does not [=map/contain=] |mapKey|:
+    1. Set |compressionIdMap|[|mapKey|] to |nextCompressionGroupId|.
+    1. Increase |nextCompressionGroupId| by 1.
+  1. Set |compressionGroupId| to |compressionIdMap|[|mapKey|].
+  1. If |compressionGroupMap| does not [=map/contain=] |compressionGroupId|:
+    1. Let |compressionGroupMap|[|compressionGroupId|] be an empty [=map=].
+  1. Set |partitionId| to [=list/size=] of |compressionGroups|[|compressionGroupId|].
+  1. Set |renderUrlIdMap|[|request|'s [=trusted scoring signals request/render URL=]] to [=tuple=]
+    of |compressionGroupId| and |partitionId|.
+  1. Let |partition| be an empty [=map=].
+  1. Set |partition|["id"] to |partitionId|.
+  1. Set |partition|["render_url"] to [|request|'s [=trusted scoring signals request/render URL=]].
+  1. Set |partition|["ad_component_render_urls"] to |request|'s [=trusted scoring signals request/ad
+    component URLs=].
+  1. Let |metadata| be an empty [=map=].
+  1. Set |metadata|["experiment_group_id"] to |firstRequest|'s [=trusted scoring signals
+      request/seller experiment group id=].
+  1. Set |partition|["metadata"] to |metadata|.
+  1. Set |compressionGroups|[|compressionGroupId|][|partitionId|] to |partition|.
+1. [=map/For each=] |id| → |group| in |compressionGroupMap|:
+  1. Let |compressionGroup| be an empty [=map=].
+  1. Set |compressionGroup|["compression_group_id"] to |id|.
+  1. Set |compressionGroup|["partitions"] to an empty [=list=].
+  1. [=list/For each=] |partition| in |group|'s [=map/values=]:
+    1. [=list/Append=] |partition| to |compressionGroup|["partitions"].
+  1. [=list/Append=] |compressionGroup| to |compressionGroups|.
+1. Let |metadata| be an empty [=map=].
+1. Let |hostname| be the result of [=string/UTF-8 percent-encoding=] the
+  [=serialization of an origin|serialized=] |firstRequest|'s [=trusted scoring signals request/top
+    level origin=] using [=component percent-encode set=].
+1. Set |metadata|["hostname"] to |hostname|.
+1. Let |keyInfo| be the result of [=looking up the server encryption key=] with |firstRequest|'s
+  [=trusted scoring signals request/seller=] and |firstRequest|'s [=trusted scoring signals
+  request/signal coordinator=].
+1. Let (|requestBlob|, |context|) be the result of generating request |keyInfo|, |metadata| and
+  |compressionGroups|. The generation method may follow that described in
+  [Section 2.2.4 of the Protected Audience Key Value Services](https://privacysandbox.github.io/draft-ietf-protected-audience-key-value-service/draft-ietf-protected-audience-key-value-services.html#name-generating-a-request).
+1. Return |requestBlob|, |renderUrlIdMap| and |context|.
+
+</div>
+
+<div algorithm>
+
+To <dfn>build batched trusted key value scoring signals request body</dfn> given a non-empty [=list=] of
+[=trusted scoring signals requests=] |entriesToBatch|:
+
+1. Let |firstEntry| be |entriesToBatch|[0].
+1. Let |renderURLs| be an empty [=ordered set=] of [=strings=].
+1. Let |adComponentRenderURLs| be an empty [=ordered set=] of [=strings=]
+  |adComponentRenderURLs|
+1. [=list/For each=] |entry| of |entriesToBatch|:
+  1. [=Assert=] that |entry|'s [=trusted scoring signals request/base URL=] is equal to
+    |firstEntry|'s [=trusted scoring signals request/base URL=].
+  1. [=Assert=] that |entry|'s [=trusted scoring signals request/seller=] is equal to
+    |firstEntry|'s [=trusted scoring signals request/seller=].
+  1. [=Assert=] that |entry|'s [=trusted scoring signals request/seller experiment group id=] is
+    equal to |firstEntry|'s [=trusted scoring signals request/seller experiment group id=].
+  1. [=Assert=] that |entry|'s [=trusted scoring signals request/top level origin=] is equal to
+    |firstEntry|'s [=trusted scoring signals request/top level origin=].
+  1. [=Assert=] that |entry|'s [=trusted scoring signals request/seller script fetcher=] is equal to
+    |firstEntry|'s [=trusted scoring signals request/seller script fetcher=].
+  1. [=Assert=] that |entry|'s [=trusted scoring signals request/policy container=] is equal to
+    |firstEntry|'s [=trusted scoring signals request/policy container=].
+  1. [=set/Append=] |entry|'s [=trusted scoring signals request/render URL=] to |renderURLs|.
+  1. [=list/Extend=] |adComponentRenderURLs| with |entry|'s [=trusted scoring signals request/
+    ad component URLs=].
+1. Return the result of [=building trusted key value scoring signals request body=] with
+   |entriesToBatch|.
+
+</div>
+
+<div algorithm>
+
 To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring signals batcher=]
 |batcher|:
 
@@ -8372,49 +8696,81 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
     1. Let |key| be (|request|'s [=trusted scoring signals request/seller script fetcher=],
       |request|'s [=trusted scoring signals request/base url=], |request|'s [=trusted scoring
       signals request/seller experiment group id=], |request|'s [=trusted scoring signals request/
-      top level origin=]).
+      top level origin=], |request|'s [=trusted scoring signals request/signal coordinator=]).
     1. If |batcher|'s [=trusted scoring signals batcher/request map=][|key|] does not [=map/exist=],
       then [=map/set=] |batcher|'s [=trusted scoring signals batcher/request map=][|key|] to an
       [=list/is empty|empty=] [=list=].
     1. [=list/Append=] |request| to |batcher|'s [=trusted scoring signals batcher/request
       map=][|key|].
-  1. Some number of times, heuristically, select a |key| and a non-[=list/is empty|empty=] [=set/
-    subset=] of |batcher|'s [=trusted scoring signals batcher/request map=][|key|], called
-    |entriesToBatch|, such that [=checking if trusted scoring signals batch honors URL length
-    limit=] on |batcher| and |entriesToBatch| returns true:
+  1. Some number of times, heuristically, select a |key| from |batcher|'s [=trusted scoring signals
+    batcher/request map=]:
+    1. If |key|'s [=trusted scoring signals request/signal coordinator=] is null:
+      1. Select a non-[=list/is empty|empty=] [=set/subset=] of |batcher|'s [=trusted scoring
+        signals batcher/request map=][|key|], called |entriesToBatch|, such that [=checking if
+        trusted scoring signals batch honors URL length limit=] on |batcher| and |entriesToBatch|
+        returns true:
 
-      Note: implementations are free to wait to collect more requests to merge (by leaving things
-      in the |batcher|'s [=trusted scoring signals batcher/request map=]), or send them
-      individually, but need to take into account the configured URL length limit if they do combine
-      requests. All entries need to be handled eventually.
+        Note: implementations are free to wait to collect more requests to merge (by leaving things
+        in the |batcher|'s [=trusted scoring signals batcher/request map=]), or send them
+        individually, but need to take into account the configured URL length limit if they do
+        combine requests. All entries need to be handled eventually.
 
-      1. [=list/Remove=] |entriesToBatch| from |batcher|'s [=trusted scoring signals batcher/
-        request map=][|key|].
-      1. If |batcher|'s [=trusted scoring signals batcher/request map=][|key|] [=list/is empty=],
-        then [=map/remove=] |key| from |batcher|'s [=trusted scoring signals batcher/request map=].
-      1. Let |fullSignalsUrl| be the result of [=building batched trusted scoring signals url=] for
-        |entriesToBatch|.
+        1. [=list/Remove=] |entriesToBatch| from |batcher|'s [=trusted scoring signals batcher/
+          request map=][|key|].
+        1. If |batcher|'s [=trusted scoring signals batcher/request map=][|key|] [=list/is empty=],
+          then [=map/remove=] |key| from |batcher|'s [=trusted scoring signals batcher/request map=].
+        1. Let |fullSignalsUrl| be the result of [=building batched trusted scoring signals url=] for
+          |entriesToBatch|.
+        1. Let |seller| be |entriesToBatch|[0]'s [=trusted scoring signals request/seller=].
+        1. Let |scriptFetcher| be |entriesToBatch|[0]'s [=trusted scoring signals request/seller
+          script fetcher=].
+        1. Let |policyContainer| be |entriesToBatch|[0]'s [=trusted scoring signals request/policy
+          container=].
+        1. If |fullSignalsUrl|'s [=url/origin=] is not [=same origin=] with |seller| then:
+          1. Let |allowCrossOriginTrustedScoringSignalsFrom| be the result of [=wait for cross origin
+            trusted scoring signals authorization from a fetcher=] given |scriptFetcher|.
+          1. If |allowCrossOriginTrustedScoringSignalsFrom| does not [=list/contain=]
+            |fullSignalsUrl|'s [=url/origin=], set |fullSignalsUrl| to null.
+        1. Let |result| be failure.
+        1. If |fullSignalsUrl| is not null:
+          1. Let «|allTrustedScoringSignals|, <var ignore>ignored</var>, |scoringDataVersion|» be
+            the result of [=fetching trusted signals=] with |fullSignalsUrl|, |seller|,
+            |policyContainer|, and false.
+          1. If |allTrustedScoringSignals| is an [=ordered map=]:
+            1. Set |result| to a new [=trusted scoring signals reply=]
+            1. Set |result|'s [=trusted scoring signals reply/all trusted scoring signals=] to
+              |allTrustedScoringSignals|.
+            1. Set |result|'s [=trusted scoring signals reply/data version=] to |scoringDataVersion|.
+        1. [=list/For each=] |entry| in |entriesToBatch|:
+          1. Set |entry|'s [=trusted scoring signals request/reply=] to |result|.
+    1. Otherwise:
+      1. Set |entriesToBatch| to |batcher|'s [=trusted scoring signals batcher/request map=][|key|].
+      1. [=map/remove=] |key| from |batcher|'s [=trusted scoring signals batcher/request map=].
+      1. Let « |requestBody|, |renderUrlIdMap|, |context| » be the result of [=building batched
+        trusted key value scoring signals request body=] for |entriesToBatch|.
+      1. Let |baseUrl| be |entriesToBatch|[0]'s [=trusted scoring signals request/base url=].
       1. Let |seller| be |entriesToBatch|[0]'s [=trusted scoring signals request/seller=].
       1. Let |scriptFetcher| be |entriesToBatch|[0]'s [=trusted scoring signals request/seller
         script fetcher=].
       1. Let |policyContainer| be |entriesToBatch|[0]'s [=trusted scoring signals request/policy
         container=].
-      1. If |fullSignalsUrl|'s [=url/origin=] is not [=same origin=] with |seller| then:
+      1. If |baseUrl|'s [=url/origin=] is not [=same origin=] with |seller| then:
         1. Let |allowCrossOriginTrustedScoringSignalsFrom| be the result of [=wait for cross origin
           trusted scoring signals authorization from a fetcher=] given |scriptFetcher|.
         1. If |allowCrossOriginTrustedScoringSignalsFrom| does not [=list/contain=]
-          |fullSignalsUrl|'s [=url/origin=], set |fullSignalsUrl| to null.
+          |baseUrl|'s [=url/origin=], set |baseUrl| to null.
       1. Let |result| be failure.
-      1. If |fullSignalsUrl| is not null:
+      1. If |baseUrl| is not null:
         1. Let «|allTrustedScoringSignals|, <var ignore>ignored</var>, |scoringDataVersion|» be
-          the result of [=fetching trusted signals=] with |fullSignalsUrl|, |seller|,
-          |policyContainer|, and false.
+          the result of [=fetching trusted key value signals=] with |baseUrl|, |requestBody|,
+          |context|, |seller|, |policyContainer|, |renderUrlIdMap| and false.
         1. If |allTrustedScoringSignals| is an [=ordered map=]:
           1. Set |result| to a new [=trusted scoring signals reply=]
           1. Set |result|'s [=trusted scoring signals reply/all trusted scoring signals=] to
             |allTrustedScoringSignals|.
-          1. Set |result|'s [=trusted scoring signals reply/data version=] to |scoringDataVersion|.
       1. [=list/For each=] |entry| in |entriesToBatch|:
+        1. Set |result|'s [=trusted scoring signals reply/data version=] to |scoringDataVersion|
+          [|entry|'s [=trusted scoring signals request/render URL=]].
         1. Set |entry|'s [=trusted scoring signals request/reply=] to |result|.
 
 </div>
