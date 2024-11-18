@@ -1784,8 +1784,8 @@ following steps. They return a failure if failing to fetch the script or wasm, o
     |ig|'s [=interest group/bidding url=], and |settings|.
   1. Let |biddingScript| be the result of [=waiting for script body from a fetcher=] given
      |biddingScriptFetcher|.
-  1. [=Add a sample to an averager=] given |metrics|'s [=execution metrics/average code fetch
-    time=] and |biddingScriptFetcher|'s [=script fetcher/fetch duration=].
+  1. [=Add a sample to an averager=] given |metrics|'s [=execution metrics/code fetch time
+    averager=] and |biddingScriptFetcher|'s [=script fetcher/fetch duration=].
   1. If |biddingScript| is failure, return failure.
   1. If |ig|'s [=interest group/bidding wasm helper url=] is not null:
     1. Let |wasmFetchStart| be |settings|'s [=environment settings object/current monotonic time=].
@@ -1793,8 +1793,8 @@ following steps. They return a failure if failing to fetch the script or wasm, o
       [=interest group/bidding wasm helper url=] and |settings|.
     1. Let |wasmFetchDuration| be the [=duration from=] |wasmFetchStart| to
         |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
-    1. [=Add a sample to an averager=] given |metrics|'s [=execution metrics/average code fetch
-      time=] and |wasmFetchDuration|.
+    1. [=Add a sample to an averager=] given |metrics|'s [=execution metrics/code fetch time
+      averager=] and |wasmFetchDuration|.
     1. If |wasmModuleObject| is not failure, then [=map/set=]
       |browserSignals|["{{BiddingBrowserSignals/wasmHelper}}"] to |wasmModuleObject|.
     1. Otherwise, return failure.
@@ -2369,8 +2369,8 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   1. Return.
 1. Let |metrics| be the result of [=access per-participant metrics=] given |reportingContext|,
   |auctionConfig|'s [=auction config/seller=], [=worklet function/score-ad=].
-1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/average code fetch
-  time=] and |decisionLogicFetcher|'s [=script fetcher/fetch duration=].
+1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/code fetch time
+  averager=] and |decisionLogicFetcher|'s [=script fetcher/fetch duration=].
 1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions|,
   |paContributions| » be the result of [=evaluating a scoring script=] with |decisionLogicScript|,
   |adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|, |reportingContext|,
@@ -2916,8 +2916,8 @@ and a [=global object=] |global|:
      |config|'s [=auction config/decision logic url=] and |global|'s [=relevant settings object=].
   1. Let |sellerReportingScript| be the result of [=waiting for script body from a fetcher=] given
      |sellerReportingScriptFetcher|.
-  1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/average code fetch
-    time=] and |sellerReportingScriptFetcher|'s [=script fetcher/fetch duration=].
+  1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/code fetch time
+    averager=] and |sellerReportingScriptFetcher|'s [=script fetcher/fetch duration=].
   1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored, |paContributions| » be the
     result of [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`",
     |reportingContext|, |config|'s [=auction config/seller=], |config|'s
@@ -3016,8 +3016,8 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
      |winner|'s [=generated bid/interest group=]'s [=interest group/bidding url=] and |settings|.
   1. Let |buyerReportingScript| be the result of [=waiting for script body from a fetcher=] given
      |buyerReportingScriptFetcher|.
-  1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/average code fetch
-    time=] and |buyerReportingScriptFetcher|'s [=script fetcher/fetch duration=].
+  1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/code fetch time
+    averager=] and |buyerReportingScriptFetcher|'s [=script fetcher/fetch duration=].
   1. Let |reportFunctionName| be "`reportWin`".
   1. If |winner|'s [=generated bid/provided as additional bid=] is true:
     1. Set |reportFunctionName| be "`reportAdditionalBidWin`".
@@ -3718,8 +3718,8 @@ auction in a multi-party auction).
     |bidDebugReportInfo|.
   1. Let |metrics| be the result of [=access per-participant metrics=] given |reportingContext|,
     |ig|'s [=interest group/owner=], [=worklet function/generate-bid=].
-  1. [=Merge samples to an averager=] given |metrics|'s [=per participant metrics/average code fetch
-    time=] and |executionMetrics|'s [=execution metrics/average code fetch time=].
+  1. [=Merge samples to an averager=] given |metrics|'s [=per participant metrics/code fetch time
+    averager=] and |executionMetrics|'s [=execution metrics/code fetch time averager=].
   1. [=set/Insert=] |id| into |reportingContext|'s [=reporting context/bidder participants=].
   1. [=Commit private aggregation contributions=] given |paContributions|, |id| and
     |reportingContext|.
@@ -4122,7 +4122,9 @@ A signal base value is one of the following:
   for this particular worklet function, for this participant.
 : "<dfn><code>participating-ig-count</code></dfn>"
 :: The numeric value is the number of interest groups for the buyer actually participating in the
-  auction, after considering prioritization and capabilities.
+  auction, after considering prioritization and capabilities. Interest groups included in this might
+  not actually get to bid if the cumulative timeout expires, or the script fails to load, etc; or
+  might decide not to bid, but they would have gotten a chance if nothing went wrong.
 
 </dl>
 
@@ -4186,21 +4188,21 @@ An <dfn>averager</dfn> is a a [=struct=] with the following [=struct/items=]:
 
 <div algorithm>
 To <dfn>add a sample to an averager</dfn> given an [=averager=] |averager|, a {{double}} |sample|:
-1. Set |averager|'s [=averager/count=] to |averager|'s [=averager/count=] + 1.
-1. Set |averager|'s [=averager/sum=] to |averager|'s [=averager/sum=] + |sample|.
+1. Increment |averager|'s [=averager/count=] by 1.
+1. Increment |averager|'s [=averager/sum=] by |sample|.
 
 </div>
 
 <div algorithm>
 To <dfn>merge samples to an averager</dfn> given [=averagers=] |dest| and |source|:
-1. Set |dest|'s [=averager/count=] to |dest|'s [=averager/count=] + |source|'s [averager/count=].
-1. Set |dest|'s [=averager/sum=] to |dest|'s [=averager/sum=] + |source|'s [averager/sum=].
+1. Set |dest|'s [=averager/count=] to |dest|'s [=averager/count=] + |source|'s [=averager/count=].
+1. Set |dest|'s [=averager/sum=] to |dest|'s [=averager/sum=] + |source|'s [=averager/sum=].
 
 </div>
 
 <div algorithm>
 To <dfn>get the value to report from an averager</dfn> given an [=averager=] |averager|:
-1. If |averager|'s [=averager/count=] = 0, return 0.
+1. If |averager|'s [=averager/count=] is 0, return 0.
 1. Return |averager|'s [=averager/sum=] / [=averager/count=].
 
 </div>
@@ -4208,7 +4210,7 @@ To <dfn>get the value to report from an averager</dfn> given an [=averager=] |av
 ### Metrics structures ### {#private-aggregation-metrics-structures}
 An <dfn>execution metrics</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="execution metrics">
-  : <dfn>average code fetch time</dfn>
+  : <dfn>code fetch time averager</dfn>
   :: An [=averager=].
 </dl>
 
@@ -4216,7 +4218,7 @@ A <dfn>per participant metrics</dfn> is a [=struct=] with the following [=struct
 <dl dfn-for="per participant metrics">
   : <dfn>participating interest group count</dfn>
   :: A {{long}}, initially 0.
-  : <dfn>average code fetch time</dfn>
+  : <dfn>code fetch time averager</dfn>
   :: An [=averager=].
 </dl>
 
@@ -4575,8 +4577,8 @@ They return a {{double}}.
 
       </dl>
 1. If |signalBaseValue| is "<code>[=signal base value/average-code-fetch-time=]</code>":
-  1. Return the result of [=getting  the value to report from an averager=] given |metrics|'s [=per
-    participant metrics/average code fetch time=].
+  1. Return the result of [=getting the value to report from an averager=] given |metrics|'s [=per
+    participant metrics/code fetch time averager=].
 1. If |signalBaseValue| is "<code>[=signal base value/participating-ig-count=]</code>":
   1. Return |bidAndScoreMetrics|'s [=per participant metrics/participating interest group count=].
 
