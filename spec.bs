@@ -1752,7 +1752,7 @@ a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, a [=dur
 [=moment=] |auctionStartTime|, and an [=environment settings object=] |settings|, perform the
 following steps. They return a failure if failing to fetch the script or wasm, otherwise a
 [=tuple=] of ([=list=] of [=generated bids=], [=bid debug reporting info=],
-[=list=] of [=real time reporting contributions=]).
+[=list=] of [=real time reporting contributions=], [=execution metrics=]).
   1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=] with
     |ig|.
   1. Set |browserSignals|["{{BiddingBrowserSignals/joinCount}}"] to the sum of |ig|'s
@@ -1792,7 +1792,7 @@ following steps. They return a failure if failing to fetch the script or wasm, o
     1. Let |wasmModuleObject| be the result of [=fetching WebAssembly=] with |ig|'s
       [=interest group/bidding wasm helper url=] and |settings|.
     1. Let |wasmFetchDuration| be the [=duration from=] |wasmFetchStart| to
-        |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
+      |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
     1. [=Add a sample to an averager=] given |metrics|'s [=execution metrics/code fetch time
       averager=] and |wasmFetchDuration|.
     1. If |wasmModuleObject| is not failure, then [=map/set=]
@@ -1991,9 +1991,8 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
       1. [=map/For each=] slotSizeQueryParam → |perSignalsUrlGenerator| of |perSlotSizeQueryParam|:
         1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
           1. [=list/Remove=] from |groups| any [=interest group=] [=list/contained=] in |igs|.
-          1. Set |metrics|'s [=per participant metrics/participating interest group count=] to
-            |metrics|'s [=per participant metrics/participating interest group count=] + [=list/
-            size=] of |groups|.
+          1. Increment |metrics|'s [=per participant metrics/participating interest group count=]
+            by [=list/size=] of |groups|.
   1. Let |perBuyerSignals| be null.
   1. If |auctionConfig|'s [=auction config/per buyer signals=] is not null and
     [=auction config/per buyer signals=][|buyer|] [=map/exists=], then set |perBuyerSignals| to
@@ -3673,8 +3672,7 @@ To <dfn>access per-participant metrics</dfn> given a [=reporting context=] |repo
 an [=origin=] |origin| and [=worklet function=] |workletFunction|:
 1. Let |key| be (|origin|, |workletFunction|).
 1. If |reportingContext|'s [=reporting context/participant metrics=][|key|] does not [=map/exist=],
-  set |reportingContext|'s [=reporting context/participant metrics=][|key|] to a new [=per participant
-  metrics=].
+  set it to a new [=per participant metrics=].
 1. Return |reportingContext|'s [=reporting context/participant metrics=][|key|].
 
 </div>
@@ -4163,7 +4161,7 @@ A worklet function is one of the following:
 <div algorithm>
 To <dfn>find corresponding bid and score phase function</dfn> given a [=worklet function=] |fn|:
 
-  1.Switch on on |fn|:
+  1.Switch on |fn|:
     <dl class="switch">
     : [=worklet function/generate-bid=]
     :: Return [=worklet function/generate-bid=].
@@ -4208,13 +4206,16 @@ To <dfn>get the value to report from an averager</dfn> given an [=averager=] |av
 </div>
 
 ### Metrics structures ### {#private-aggregation-metrics-structures}
-An <dfn>execution metrics</dfn> is a [=struct=] with the following [=struct/items=]:
+An <dfn>execution metrics</dfn> is a [=struct=] with the following [=struct/items=], representing
+metrics collected from a single execution of a worklet function:
 <dl dfn-for="execution metrics">
   : <dfn>code fetch time averager</dfn>
   :: An [=averager=].
 </dl>
 
-A <dfn>per participant metrics</dfn> is a [=struct=] with the following [=struct/items=]:
+A <dfn>per participant metrics</dfn> is a [=struct=] with the following [=struct/items=],
+representing metrics aggregated over everything a particular participant does in an auction,
+including all bids, scoring, etc. it does:
 <dl dfn-for="per participant metrics">
   : <dfn>participating interest group count</dfn>
   :: A {{long}}, initially 0.
@@ -5494,7 +5495,7 @@ of the following global objects:
   a {{DirectFromSellerSignalsForBuyer}} |directFromSellerSignalsForBuyer|, and an integer
   millisecond [=duration=] |timeout|, perform the following steps. They return a [=tuple=] ([=list=]
   of [=generated bids=], [=bid debug reporting info=], [=list=] of [=real time reporting
-  contributions=]).
+  contributions=], [=execution metrics=]).
 
     1. Let |realm| be the result of [=creating a new script runner realm=] given
       {{InterestGroupBiddingScriptRunnerGlobalScope}}.
@@ -8134,6 +8135,7 @@ a [=script fetcher=] |fetcher|:
       1. Set |fetcher|'s [=script fetcher/fetch duration=] to the [=duration from=] |fetchStart| to
         |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
       1. Set |fetcher|'s [=script fetcher/script body=] to failure.
+      1. Return.
     1. Set |fetcher|'s [=script fetcher/origins authorized for cross origin trusted signals=] to the
       result of [=parsing allowed trusted scoring signals origins=] given |response|'s [=response/
       header list=].
