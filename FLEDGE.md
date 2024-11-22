@@ -44,7 +44,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [5.4 Reporting IDs](#54-reporting-ids)
     - [5.5 Losing Bidder Reporting](#55-losing-bidder-reporting)
   - [6. Additional Bids](#6-additional-bids)
-    - [6.1 Auction and Bid Nonces](#61-auction-nonce)
+    - [6.1 Auction and Bid Nonces](#61-auction-and-bid-nonces)
     - [6.2 Negative Targeting](#62-negative-targeting)
       - [6.2.1 Negative Interest Groups](#621-negative-interest-groups)
       - [6.2.2 How Additional Bids Specify their Negative Interest Groups](#622-how-additional-bids-specify-their-negative-interest-groups)
@@ -1465,7 +1465,7 @@ The fields in `interestGroup` facilitate running `reportAdditionalBidWin()` for 
 
 Each additional bid may provide a value for **at most** one of the `negativeInterestGroup` and `negativeInterestGroups` fields. These fields are described below in section [6.2.2 How Additional Bids Specify their Negative Interest Groups](#622-how-additional-bids-specify-their-negative-interest-groups).
 
-The `auctionNonce`, `bidNonce`, `seller`, and `topLevelSeller` fields are used to prevent replay of this additional bid.  Each additional bid must provide a value for exactly one of the `auctionNonce` or `bidNonce` fields. The `auctionNonce` and `bidNonce` fields are described below in section [6.1 Auction and Bid Nonces](#61-auction-nonce). The `seller` and `topLevelSeller` fields echo those present in the `browserSignals` argument to `generateBid()` as described in section [3.2 On-Device Bidding](#32-on-device-bidding). In `generateBid()`, these are meant to ensure that the buyer acknowledges and accepts that their bid can participate in an auction with those parties. Additional bids don't have a corresponding call to `generateBid()`, and so the `seller` and `topLevelSeller` fields in an additional bid are intended to allow for the same acknowledgement as those in `browserSignals`.
+The `auctionNonce`, `bidNonce`, `seller`, and `topLevelSeller` fields are used to prevent replay of this additional bid.  Each additional bid must provide a value for exactly one of the `auctionNonce` or `bidNonce` fields. The `auctionNonce` and `bidNonce` fields are described below in section [6.1 Auction and Bid Nonces](#61-auction-and-bid-nonces). The `seller` and `topLevelSeller` fields echo those present in the `browserSignals` argument to `generateBid()` as described in section [3.2 On-Device Bidding](#32-on-device-bidding). In `generateBid()`, these are meant to ensure that the buyer acknowledges and accepts that their bid can participate in an auction with those parties. Additional bids don't have a corresponding call to `generateBid()`, and so the `seller` and `topLevelSeller` fields in an additional bid are intended to allow for the same acknowledgement as those in `browserSignals`.
 
 Additional bids are not provided through the auction config passed to `runAdAuction()`, but rather through the response headers of a Fetch request or `iframe` navigation, as described below in section [6.3 HTTP Response Headers](#63-http-response-headers). However, the auction config still has an `additionalBids` field, which is a Promise with no value, used only to signal to the auction that the additional bids have arrived and are ready to be accepted in the auction. For each additional bid, its owner must be included in  interestGroupBuyers  for that additional bid to participate in the auction.
 
@@ -1477,7 +1477,7 @@ navigator.runAdAuction({
 });
 ```
 
-#### 6.1 Auction Nonce
+#### 6.1 Auction and Bid Nonces
 
 To prevent unintended replaying of additional bids, any auction config, whether top-level or component auction config, must include an auction nonce value if it includes additional bids.  The auction nonce is created and provided like so:
 
@@ -1610,7 +1610,7 @@ Ad-Auction-Additional-Bid:
     <auction nonce>:<seller nonce>:<base64-encoding of the signed additional bid>
 ```
 
-The browser uses the auction nonce from each response header to associate each additional bid to its corresponding auction. For single-seller auctions, this maps to a particular call to `runAdAuction()`, whereas for multi-seller auctions, this maps to a particular component auction. The browser uses the seller nonce from each response header to compute the bid nonce used to prevent replay of this additional bid. For information on constructing a bid nonce, see [6.1 Auction and Bid Nonces](#61-auction-nonce).
+The browser uses the auction nonce from each response header to associate each additional bid to its corresponding auction. For single-seller auctions, this maps to a particular call to `runAdAuction()`, whereas for multi-seller auctions, this maps to a particular component auction. The browser uses the seller nonce from each response header to compute the bid nonce used to prevent replay of this additional bid. For information on constructing a bid nonce, see [6.1 Auction and Bid Nonces](#61-auction-and-bid-nonces).
 
 For backwards compatibility, a seller that is passing auction nonce as-is to buyers may return an `Ad-Auction-Additional-Bid` header that includes only the auction nonce and not a seller nonce:
 
