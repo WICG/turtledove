@@ -3115,7 +3115,8 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
       [=bid debug reporting info/bidder debug loss report url=] to |maybeDebugReportUrl|.
 1. Set |bidDebugReportingInfo|'s [=bid debug reporting info/server filtered debugging only reports=]
   to [=server auction response/server filtered debugging only reports=].
-1. Set |reportingContextMap|[|auctionConfig|] to |bidDebugReportingInfo|.
+1. Set |reportingContextMap|[|auctionConfig|]'s [=reporting context/debug reporting info=] to
+  |bidDebugReportingInfo|.
 1. Let |reportingId| be a [=reporting bid key=] with the following [=struct/items=]:
   : [=reporting bid key/context=]
   :: |reportingContextMap|[|auctionConfig|]
@@ -3716,8 +3717,7 @@ an [=origin=] |origin| and [=worklet function=] |workletFunction|:
 </div>
 
 A <dfn>reporting context map</dfn> is a [=map=] from [=auction config=] to [=reporting context=].
-Here the keys are configurations for auctions that actually produce bids (e.g. not the top-level
-auction in a multi-seller auction).
+Here the keys are configurations for auctions that actually produce bids.
 
 <div algorithm>
   To <dfn>create a reporting context map</dfn> given the [=auction config=] |auctionConfig| and
@@ -3842,13 +3842,19 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
           1. If the result of running [=is debugging only in cooldown or lockout=] with
             |invokingOrigin| is false, then [=update debug report cooldown=] with |invokingOrigin|.
           1. [=iteration/Continue=].
+
+          Note: An entry for |invokingOrigin| is still needed when |debugURLs| is empty. It could
+            happen when the forDebuggingOnly API is called but the bidding and auction server
+            filtered the debug report URL out with downsampling algorithm. In this case the client
+            still needs to know that the debug report API was called and update its cooldown
+            information.
         1. [=list/For each=] |url| of |debugURLs|:
           1. [=Collect a single forDebuggingOnly report=] with |url|, |invokingOrigin|,
             |fromServer| (true), and |auctionReportInfo|'s [=auction report info/debug loss report urls=].
 
-            Note: For server filtered ones, post auction signals were filled on the server side. As
-              a result, there's no difference if they go to loss or win lists, since post auction
-              signals was the difference.
+            Note: For server filtered ones, post auction signals were filled on the server side, so
+              it's fine to collect them all to [=auction report info/debug loss report urls=] without
+              the need of getting post auction signals for debug win urls.
   1. Return |auctionReportInfo|.
 </div>
 
@@ -3902,7 +3908,7 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
 <div algorithm>
   To <dfn>sample a debug report</dfn> given an [=origin=] |origin| and a [=boolean=] |fromServer|:
 
-  Note: forDebuggingOnly reports from [=server auction response=] were downsampled on truested
+  Note: forDebuggingOnly reports from [=server auction response=] were downsampled on trusted
     auction servers, so do not downsample them again on client.
   1. Let |canSendAfterSampled| be false.
   1. Let |sampleRand| be a random {{long}}, 0 &le; |sampleRand| &lt; 1000, so each possible long would be
