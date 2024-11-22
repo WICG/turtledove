@@ -139,6 +139,7 @@ navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
 ```
 
 ## Selectable Reporting IDs
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/1cWqBPHngd0)
 
 From context of a web page:
 ```

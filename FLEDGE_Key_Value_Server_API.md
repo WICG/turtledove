@@ -135,6 +135,18 @@ In the request, one major difference from V1/BYOS is that the keys are now group
       },
       "description": "Algorithm accepted by the browser for the response."
     },
+    "metadata": {
+      "title": "tkv.request.v2.RequestMetadata",
+      "description": "metadata",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hostname": {
+          "description": "The hostname of the top-level frame calling runAdAuction().",
+          "type": "string"
+        }
+      }
+    },
     "partitions": {
       "description": "A list of partitions. Each must be processed independently. Accessible by UDF.",
       "type": "array",
@@ -158,10 +170,6 @@ In the request, one major difference from V1/BYOS is that the keys are now group
             "type": "object",
             "additionalProperties": false,
             "properties": {
-              "hostname": {
-                "description": "The hostname of the top-level frame calling runAdAuction().",
-                "type": "string"
-              },
               "experimentGroupId": {
                 "type": "string"
               },
@@ -267,12 +275,14 @@ Example trusted bidding signals request from Chrome:
     "none",
     "gzip"
   ],
+  "metadata": {
+    "hostname": "example.com"
+  },
   "partitions": [
     {
       "id": 0,
       "compressionGroupId": 0,
       "metadata": {
-        "hostname": "example.com",
         "experimentGroupId": "12345",
         "slotSize": "100,200",
       },
