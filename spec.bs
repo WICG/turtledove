@@ -3070,17 +3070,28 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
      equals |componentAd|. If there is no matching element, return failure.
   1. [=list/Append=] a new [=ad descriptor=] whose [=ad descriptor/url=] is
      |componentAd| to |winningAdComponents|.
+1. Let |reportingContext| be |reportingContextMap|[|auctionConfig|].
+1. Let |reportingId| be a [=reporting bid key=] with the following [=struct/items=]:
+  : [=reporting bid key/context=]
+  :: |reportingContext|
+  : [=reporting bid key/source=]
+  :: [=reporting bid source/bidding-and-auction-services=]
+  : [=reporting bid key/bidder origin=]
+  :: |response|'s [=server auction response/interest group owner=]
+  : [=reporting bid key/bid identifier=]
+  :: |response|'s [=server auction response/interest group name=]
+1. [=Commit private aggregation contributions=] given |response|'s
+  [=server auction response/component win private aggregation contributions=], |reportingId| and
+  |reportingContext|.
+1. [=Commit private aggregation contributions=] given |response|'s
+  [=server auction response/server filtered private aggregation reserved contributions=],
+  |reportingId| and |reportingContext|.
+1. [=Commit private aggregation contributions=] given |response|'s
+  [=server auction response/server filtered private aggregation non reserved contributions=],
+  |reportingId| and |reportingContext|.
 1. Let |winningBid| be a new [=generated bid=] with the following [=struct/items=]:
   : [=generated bid/reporting id=]
-  :: A [=reporting bid key=] with the following [=struct/items=]:
-    : [=reporting bid key/context=]
-    :: |reportingContextMap|[|auctionConfig|]
-    : [=reporting bid key/source=]
-    :: [=reporting bid source/bidding-and-auction-services=]
-    : [=reporting bid key/bidder origin=]
-    :: |response|'s [=server auction response/interest group owner=]
-    : [=reporting bid key/bid identifier=]
-    :: |response|'s [=server auction response/interest group name=]
+  :: |reportingId|
   : [=generated bid/bid=]
   :: |response|'s [=server auction response/bid=]
   : [=generated bid/bid in seller currency=]
@@ -3403,15 +3414,20 @@ from an auction executed on the trusted auction server. It has the following [=s
   :: Null or [=server auction reporting info=].
   : <dfn>component seller reporting</dfn>
   :: Null or [=server auction reporting info=].
-  : <dfn>component win private aggregation reports</dfn>
-  :: A [=map=] whose [=map/keys=] are [=server auction debug report keys=], and whose [=map/values=]
-    are [=lists=] of [=urls=].
-  : <dfn>server filtered private aggregation reserved reports</dfn>
+  : <dfn>component win private aggregation contributions</dfn>
+  :: A [=map=] whose [=map/keys=] are ([=reporting bid key=], [=string=]), and whose [=map/values=]
+    are [=lists=] of [=on event contribution entries=]. Private aggregation contributions from
+    winners of component auctions run on trusted auction servers. These need to be filtered by the
+    client based on the top level auction's outcome.
+  : <dfn>server filtered private aggregation reserved contributions</dfn>
   :: A [=map=] from a tuple of ([=reporting bid key=], [=string=]) to a [=list=] of [=on event
-    contribution entries=].
-  : <dfn>server filtered private aggregation non reserved reports</dfn>
+    contribution entries=]. Server filtered private aggregation contributions with reserved event
+    types (already set to "reserved.always"), which are not dependent on the final auction result and
+    should always be reported.
+  : <dfn>server filtered private aggregation non reserved contributions</dfn>
   :: A [=map=] from a tuple of ([=reporting bid key=], [=string=]) to a [=list=] of [=on event
-    contribution entries=].
+    contribution entries=]. Server filtered private aggregation contributions with non reserved event
+    types, which are not dependent on the final auction result and should always be reported.
 </dl>
 
 A <dfn>server auction reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
@@ -3628,12 +3644,6 @@ A <dfn>reporting context</dfn> is a [=struct=] with the following [=struct/items
     Note: Does not include [=batching scopes=] for contributions conditional on
         non-reserved events.
   : <dfn>private aggregation on event contributions</dfn>
-  :: A [=map=] from a tuple of ([=reporting bid key=], [=string=]) to a [=list=] of [=on event
-    contribution entries=].
-  : <dfn>server filtered private aggregation reserved</dfn>
-  :: A [=map=] from a tuple of ([=reporting bid key=], [=string=]) to a [=list=] of [=on event
-    contribution entries=].
-  : <dfn>server filtered private aggregation non reserved</dfn>
   :: A [=map=] from a tuple of ([=reporting bid key=], [=string=]) to a [=list=] of [=on event
     contribution entries=].
   : <dfn>private aggregation allowed</dfn>
@@ -4087,8 +4097,7 @@ A signal base value is one of the following:
 : "<dfn><code>bid-reject-reason</code></dfn>"
 :: The numeric value is an integer representing the reason a bid was rejected.
 
-    Note: this mapping to an integer is defined in [=determine a signal's
-        numeric value=].
+    Note: this mapping to an integer is defined in [=determine a signal's numeric value=].
 
 </dl>
 
@@ -4105,6 +4114,9 @@ An on event contribution entry is a [=struct=] with the following items:
 :: A [=debug details=] or null (default null)
 : <dfn>worklet function</dfn>
 :: A [=worklet function=].
+: <dfn>server filtered</dfn>
+:: A [=boolean=], initially false. Only set to true when the contribution is already filtered by the
+  trusted auction server before sent back to the client.
 
 </dl>
 
@@ -4220,6 +4232,7 @@ To <dfn>process the Private Aggregation contributions</dfn> given an [=auction c
 <div algorithm>
 To <dfn>process the Private Aggregation contributions for an auction</dfn> given
 an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingContext|:
+
 1. If |auctionConfig|'s [=auction config/aborted=] is true, return.
 1. Let |winnerId| be |reportingContext|'s [=reporting context/winner reporting id=]
 1. Let |leadingBidInfo| be |reportingContext|'s [=reporting context/local leader info=].
@@ -4229,10 +4242,13 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
 1. Let |sellerOnceRep| be null.
 1. If |reportingContext|'s [=reporting context/seller participants=] [=set/is not empty=],
   set |sellerOnceRep| to a random [=set/item=] of [=reporting context/seller participants=].
-1. [=map/For each=] (|bidId|, |event|) → |contributions| of
-  |reportingContext|'s [=reporting context/private aggregation on event contributions=]:
-  1. If |event| is "`reserved.win`" or does not [=string/start with=] "`reserved.`":
-    1. If |bidId| is not |winnerId|, [=iteration/continue=].
+1. [=map/For each=] (|bidId|, |event|) → |contributions| of |reportingContext|'s
+  [=reporting context/private aggregation on event contributions=]:
+  1. If |event| does not [=string/start with=] "`reserved.`":
+    1. [=list/For each=] |onEventEntry| of |contributions|:
+      1. If |onEventEntry|'s [=on event contribution entry/server filtered=] is false and |bidId| is
+        not |winnerId|, then [=list/remove=] |onEventEntry| from |contributions|.
+  1. If |event| is "`reserved.win`" and |bidId| is not |winnerId|, then [=iteration/continue=].
   1. If |event| is "`reserved.loss`" and |bidId| is |winnerId|, [=iteration/continue=].
   1. [=list/For each=] |onEventEntry| of |contributions|:
     1. If |event| is "`reserved.once`":
