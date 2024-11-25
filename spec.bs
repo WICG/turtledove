@@ -2377,9 +2377,9 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   |reportingContext|, |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals|,
   |browserSignals|, |directFromSellerSignalsForSeller|, and |auctionConfig|'s [=auction config/
   seller timeout=].
-1. Increment|metrics|'s [=per participant metrics/script executions attempted=] by 1.
-1. If |executionMetrics|'s [=execution metrics/script timeout occurred=] is true, increment
-  |metrics|'s [=per participant metrics/script timeouts occurred=] by 1.
+1. Increment |metrics|'s [=per participant metrics/script executions attempted=] by 1.
+1. If |executionMetrics|'s [=execution metrics/script timed out=] is true, increment |metrics|'s
+  [=per participant metrics/script timeouts occurred=] by 1.
 1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
 
   Note: Non-k-anonymous bids do not participate in reporting (except for platform real-time
@@ -2930,7 +2930,7 @@ and a [=global object=] |global|:
     config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |config|'s [=auction config/config idl=], |browserSignals|, |directFromSellerSignals| ».
   1. Set |metrics|'s [=per participant metrics/script executions attempted=] to 1.
-  1. If |executionMetrics|'s [=execution metrics/script timeout occurred=] is true, set |metrics|'s
+  1. If |executionMetrics|'s [=execution metrics/script timed out=] is true, set |metrics|'s
     [=per participant metrics/script timeouts occurred=] to 1.
   1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
      : [=reporting result/report url=]
@@ -3039,7 +3039,7 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
       {{AuctionAdConfig/auctionSignals}}, |perBuyerSignalsForBuyer|, |sellerSignals|,
       |reportWinBrowserSignals|, |directFromSellerSignals| ».
   1. Set |metrics|'s [=per participant metrics/script executions attempted=] to 1.
-  1. If |executionMetrics|'s [=execution metrics/script timeout occurred=] is true, set |metrics|'s
+  1. If |executionMetrics|'s [=execution metrics/script timed out=] is true, set |metrics|'s
     [=per participant metrics/script timeouts occurred=] to 1.
   1. [=Commit private aggregation contributions=] given |paContributions|, |winner|'s [=generated
     bid/reporting id=] and |reportingContext|.
@@ -3733,8 +3733,8 @@ auction in a multi-party auction).
     averager=] and |executionMetrics|'s [=execution metrics/code fetch time averager=].
   1. Set |metrics|'s [=per participant metrics/script executions attempted=] to
     |metrics|'s [=per participant metrics/participating interest group count=].
-  1. If |executionMetrics|'s [=execution metrics/script timeout occurred=] is true, increment
-    |metrics|'s [=per participant metrics/script timeouts occurred=] by 1.
+  1. If |executionMetrics|'s [=execution metrics/script timed out=] is true, increment |metrics|'s
+    [=per participant metrics/script timeouts occurred=] by 1.
   1. [=set/Insert=] |id| into |reportingContext|'s [=reporting context/bidder participants=].
   1. [=Commit private aggregation contributions=] given |paContributions|, |id| and
     |reportingContext|.
@@ -4231,7 +4231,7 @@ metrics collected from a single execution of a worklet function:
 <dl dfn-for="execution metrics">
   : <dfn>code fetch time averager</dfn>
   :: An [=averager=].
-  : <dfn>script timeout occurred</dfn>
+  : <dfn>script timed out</dfn>
   :: A [=boolean=], initially false.
 </dl>
 
@@ -5570,7 +5570,7 @@ of the following global objects:
     1. Let |crossOriginTrustedBiddingSignalsJS| be |crossOriginTrustedBiddingSignals|
        [=converted to ECMAScript values=].
     1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
-    1. Let (|result|, |executionMetrics|'s [=execution metrics/script timeout occurred=]) be the
+    1. Let (|result|, |executionMetrics|'s [=execution metrics/script timed out=]) be the
       result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
       « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |sameOriginTrustedBiddingSignalsJS|,
         |browserSignalsJS|, |directFromSellerSignalsJS|, |crossOriginTrustedBiddingSignalsJS| »,
@@ -5655,7 +5655,7 @@ of the following global objects:
       [=converted to ECMAScript values=].
     1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
     1. Let |executionMetrics| be a new [=execution metrics=].
-    1. Let (|scoreAdResult|, |executionMetrics|'s [=execution metrics/script timeout occurred=]) be
+    1. Let (|scoreAdResult|, |executionMetrics|'s [=execution metrics/script timed out=]) be
       the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
       «|adMetadata|, |bidValue|, |auctionConfigJS|, |sameOriginTrustedScoringSignalsJS|,
       |browserSignalsJS|, |directFromSellerSignalsJs|, |crossOriginTrustedScoringSignalsJS|»,
@@ -5698,7 +5698,7 @@ of the following global objects:
       arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
       [=exception/throws=] an exception, return « "null", null, null, null ».
     1. Let |executionMetrics| be a new [=execution metrics=].
-    1. Let (|result|, |executionMetrics|'s [=execution metrics/script timeout occurred=]) be the
+    1. Let (|result|, |executionMetrics|'s [=execution metrics/script timed out=]) be the
       result of [=evaluating a script=] with |realm|, |script|, |functionName|, |argumentsJS|,
       and |timeout|.
     1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null, null ».
@@ -5733,7 +5733,7 @@ of the following global objects:
 
     1. If |timeout| &le; 0, return (new [=ECMAScript/throw completion=] given null, true).
 
-    1. Let |timeoutOccurred| be false.
+    1. Let |timedOut| be false.
 
     1. Let |global| be |realm|'s [=realm/global object=], and run these steps in |realm|'s [=realm/agent=]:
 
@@ -5765,7 +5765,7 @@ of the following global objects:
 
        In |timeout| milliseconds, if the invocation of [$Call$] has not completed,
        [=immediately=] interrupt the execution, set |finalCompletion| to a new
-       [=ECMAScript/throw completion=] given null, and set |timeoutOccurred| to true.
+       [=ECMAScript/throw completion=] given null, and set |timedOut| to true.
 
     1. <i id=evaluate-script-return>Return</i>: at this point |finalCompletion| will be set to a
        [=ECMAScript/Completion Record=].
@@ -5774,7 +5774,7 @@ of the following global objects:
          execution context|running JavaScript execution context=], and remove it from the
          [=ECMAScript/execution context stack|JavaScript execution context stack=].
 
-      1. Return (|finalCompletion|, timeoutOccurred).
+      1. Return (|finalCompletion|, timedOut).
 </div>
 
 ## Global scopes ## {#global-scopes}
