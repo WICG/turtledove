@@ -3095,17 +3095,40 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
      equals |componentAd|. If there is no matching element, return failure.
   1. [=list/Append=] a new [=ad descriptor=] whose [=ad descriptor/url=] is
      |componentAd| to |winningAdComponents|.
+1. Let |bidDebugReportingInfo| be a new [=bid debug reporting info=].
+1. [=list/For each=] |key| → |maybeDebugReportUrl| in |response|'s
+  [=server auction response/component win debugging only reports=]:
+  1. If |key|'s [=server auction debug report key/from seller=] is true:
+    1. Set |bidDebugReportingInfo|'s [=bid debug reporting info/component seller=] to |seller|.
+    1. If |key|'s [=server auction debug report key/is debug win=] is true, then set
+      |bidDebugReportingInfo|'s [=bid debug reporting info/seller debug win report url=] to
+      |maybeDebugReportUrl|.
+    1. Otherwise, set |bidDebugReportingInfo|'s
+      [=bid debug reporting info/seller debug loss report url=] to |maybeDebugReportUrl|.
+  1. Otherwise,
+    1. Set |bidDebugReportingInfo|'s [=bid debug reporting info/interest group owner=] to
+      |response|'s [=server auction response/interest group owner=].
+    1. If |key|'s [=server auction debug report key/is debug win=] is true, then set
+      |bidDebugReportingInfo|'s [=bid debug reporting info/bidder debug win report url=] to
+      |maybeDebugReportUrl|.
+    1. Otherwise, set |bidDebugReportingInfo|'s
+      [=bid debug reporting info/bidder debug loss report url=] to |maybeDebugReportUrl|.
+1. Set |bidDebugReportingInfo|'s [=bid debug reporting info/server filtered debugging only reports=]
+  to [=server auction response/server filtered debugging only reports=].
+1. Set |reportingContextMap|[|auctionConfig|]'s [=reporting context/debug reporting info=] to
+  |bidDebugReportingInfo|.
+1. Let |reportingId| be a [=reporting bid key=] with the following [=struct/items=]:
+  : [=reporting bid key/context=]
+  :: |reportingContextMap|[|auctionConfig|]
+  : [=reporting bid key/source=]
+  :: [=reporting bid source/bidding-and-auction-services=]
+  : [=reporting bid key/bidder origin=]
+  :: |response|'s [=server auction response/interest group owner=]
+  : [=reporting bid key/bid identifier=]
+  :: |response|'s [=server auction response/interest group name=]
 1. Let |winningBid| be a new [=generated bid=] with the following [=struct/items=]:
   : [=generated bid/reporting id=]
-  :: A [=reporting bid key=] with the following [=struct/items=]:
-    : [=reporting bid key/context=]
-    :: |reportingContextMap|[|auctionConfig|]
-    : [=reporting bid key/source=]
-    :: [=reporting bid source/bidding-and-auction-services=]
-    : [=reporting bid key/bidder origin=]
-    :: |response|'s [=server auction response/interest group owner=]
-    : [=reporting bid key/bid identifier=]
-    :: |response|'s [=server auction response/interest group name=]
+  :: |reportingId|
   : [=generated bid/bid=]
   :: |response|'s [=server auction response/bid=]
   : [=generated bid/bid in seller currency=]
@@ -3197,7 +3220,7 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
   1. If |updateIfOlderThan| is less than 10 mintues, set it to 10 minutes.
   1. If [=current coarsened wall time=] &minus; |ig|'s [=interest group/last updated=] ≥
      |updateIfOlderThan|, set |ig|'s [=interest group/next update after=] to the
-        [=current coarsened wall time=] + |updateIfOlderThan|.
+     [=current coarsened wall time=] + |updateIfOlderThan|.
 1. Return |winningBidInfo|.
 
 </div>
@@ -3317,6 +3340,8 @@ dictionary AdAuctionDataBuyerConfig {
     specified.
 </dl>
 
+A <dfn>server auction</dfn> is an auction executed on a trusted auction server.
+
 A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="server auction interest group">
   : <dfn>name</dfn>
@@ -3374,8 +3399,8 @@ A <dfn>server auction request context</dfn> is a [=struct=] with the following [
      [Section 2.2.4 of Bidding and Auction Services](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-generating-a-request)
 </dl>
 
-A <dfn>server auction response</dfn> is a [=struct=] that contains auction result
-from an auction executed on the trusted auction server. It has the following [=struct/items=]:
+A <dfn>server auction response</dfn> is a [=struct=] that contains auction result from a
+[=server auction=]. It has the following [=struct/items=]:
 
 <dl dfn-for="server auction response">
   : <dfn>ad render url</dfn>
@@ -3428,6 +3453,11 @@ from an auction executed on the trusted auction server. It has the following [=s
   :: Null or [=server auction reporting info=].
   : <dfn>component seller reporting</dfn>
   :: Null or [=server auction reporting info=].
+  : <dfn>component win debugging only reports</dfn>
+  :: A [=map=] whose [=map/keys=] are [=server auction debug report keys=], and whose [=map/values=]
+    are [=lists=] of [=urls=].
+  : <dfn>server filtered debugging only reports</dfn>
+  :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=lists=] of [=urls=].
 </dl>
 
 A <dfn>server auction reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
@@ -3437,6 +3467,14 @@ A <dfn>server auction reporting info</dfn> is a [=struct=] with the following [=
   : <dfn>beacon urls</dfn>
   :: [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=]
      are [=URLs=] whose [=url/schemes=] are "`https`".
+</dl>
+
+a <dfn>server auction debug report key</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction debug report key">
+  : <dfn>from seller</dfn>
+  :: A [=boolean=].
+  : <dfn>is debug win</dfn>
+  :: A [=boolean=].
 </dl>
 
 <div algorithm="getInterestGroupAdAuctionData()">
@@ -3679,8 +3717,6 @@ an [=origin=] |origin| and [=worklet function=] |workletFunction|:
 </div>
 
 A <dfn>reporting context map</dfn> is a [=map=] from [=auction config=] to [=reporting context=].
-Here the keys are configurations for auctions that actually produce bids (e.g. not the top-level
-auction in a multi-party auction).
 
 <div algorithm>
   To <dfn>create a reporting context map</dfn> given the [=auction config=] |auctionConfig| and
@@ -3738,7 +3774,7 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
 
 <div algorithm>
   To <dfn>collect a single forDebuggingOnly report</dfn> given a [=URL=] |reportUrl|, an [=origin=]
-  |invokingOrigin|, and a [=list=] |debugReportUrls|:
+  |invokingOrigin|, a [=boolean=] |fromServer|, and a [=list=] |debugReportUrls|:
 
   Note: While the browser is experimenting with third party cookie deprecation (before they have
   been fully removed), the {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}
@@ -3747,8 +3783,8 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
 
   1. If |reportUrl| is null, or the result of running [=is debugging only in cooldown or lockout=]
     with |invokingOrigin| is true, then return.
-  1. If the result of running [=sample a debug report=] with |invokingOrigin| is true, then
-    [=list/append=] |reportUrl| to |debugReportUrls|.
+  1. If the result of running [=sample a debug report=] with |invokingOrigin| and |fromServer| is
+    true, then [=list/append=] |reportUrl| to |debugReportUrls|.
 </div>
 
 <div algorithm>
@@ -3761,42 +3797,64 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
   1. [=map/For each=] _ → |reportingContext| of |reportingContextMap|:
     1. [=map/For each=] |reportingId| -> |bidDebugReportInfo| of |reportingContext|'s
       [=reporting context/debug reporting info=]:
+      1. Let |fromServer| be true if |reportingId|'s [=reporting bid key/source=] is
+        [=reporting bid source/bidding-and-auction-services=], false otherwise.
       1. If |winningBid| is not null and |reportingId| is equal to |winningBid|'s
         [=generated bid/reporting id=]:
         1. [=Assert=] that |winningBid|'s [=generated bid/reporting id=] is not null.
         1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
           [=bid debug reporting info/bidder debug win report url=], |bidDebugReportInfo|'s
-          [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
+          [=bid debug reporting info/interest group owner=], |fromServer|, and |auctionReportInfo|'s
           [=auction report info/debug win report urls=].
         1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
           1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-            [=bid debug reporting info/seller debug win report url=], |seller|, and
+            [=bid debug reporting info/seller debug win report url=], |seller|, |fromServer|, and
             |auctionReportInfo|'s [=auction report info/debug win report urls=].
         1. Otherwise:
           1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
             [=bid debug reporting info/seller debug win report url=], |bidDebugReportInfo|'s
-            [=bid debug reporting info/component seller=], |auctionReportInfo|'s
+            [=bid debug reporting info/component seller=], |fromServer|, and |auctionReportInfo|'s
             [=auction report info/debug win report urls=].
           1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-            [=bid debug reporting info/top level seller debug win report url=], |seller|, and
-            |auctionReportInfo|'s [=auction report info/debug win report urls=].
+            [=bid debug reporting info/top level seller debug win report url=], |seller|, |fromServer|,
+            and |auctionReportInfo|'s [=auction report info/debug win report urls=].
       1. Otherwise:
         1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
           [=bid debug reporting info/bidder debug loss report url=], |bidDebugReportInfo|'s
-          [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
+          [=bid debug reporting info/interest group owner=], |fromServer|, and |auctionReportInfo|'s
           [=auction report info/debug loss report urls=].
         1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
           1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-            [=bid debug reporting info/seller debug loss report url=], |seller|, and
+            [=bid debug reporting info/seller debug loss report url=], |seller|, |fromServer|, and
             |auctionReportInfo|'s [=auction report info/debug loss report urls=].
         1. Otherwise:
           1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
             [=bid debug reporting info/seller debug loss report url=], |bidDebugReportInfo|'s
-            [=bid debug reporting info/component seller=], |auctionReportInfo|'s
+            [=bid debug reporting info/component seller=], |fromServer|, |auctionReportInfo|'s
             [=auction report info/debug loss report urls=].
           1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-            [=bid debug reporting info/top level seller debug loss report url=], |seller|, and
-            |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+            [=bid debug reporting info/top level seller debug loss report url=], |seller|,
+            |fromServer|, and |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+      1. [=map/For each=] |invokingOrigin| → |debugURLs| of |bidDebugReportInfo|'s
+        [=bid debug reporting info/server filtered debugging only reports=]:
+        1. If |debugURLs| [=list/is empty=]:
+          1. If the result of running [=is debugging only in cooldown or lockout=] with
+            |invokingOrigin| is false, then [=update debug report cooldown=] with |invokingOrigin|.
+          1. [=iteration/Continue=].
+
+          Note: An entry for |invokingOrigin| is still needed when |debugURLs| is empty. It could
+            happen when forDebuggingOnly API is called but the bidding and auction server
+            filtered the debug report URL out with the downsampling algorithm. In this case the
+            client still needs to know that forDebuggingOnly API was called and update its cooldown
+            information. This is different from forDebuggingOnly API not being called by one origin,
+            in which case the list won't have an entry for that origin.
+        1. [=list/For each=] |url| of |debugURLs|:
+          1. [=Collect a single forDebuggingOnly report=] with |url|, |invokingOrigin|,
+            |fromServer| (true), and |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+
+            Note: For server filtered ones, post auction signals were filled on the server side, so
+              it's fine to collect them all to [=auction report info/debug loss report urls=] without
+              the need of getting post auction signals for debug win urls.
   1. Return |auctionReportInfo|.
 </div>
 
@@ -3848,23 +3906,30 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
 </div>
 
 <div algorithm>
-  To <dfn>sample a debug report</dfn> given an [=origin=] |origin|:
+  To <dfn>sample a debug report</dfn> given an [=origin=] |origin| and a [=boolean=] |fromServer|:
 
+  Note: forDebuggingOnly reports from [=server auction response=] were downsampled on trusted
+    auction servers, so do not downsample them again on client.
   1. Let |canSendAfterSampled| be false.
   1. Let |sampleRand| be a random {{long}}, 0 &le; |sampleRand| &lt; 1000, so each possible long would be
     chosen with a probability equal to [=sampling rate=].
-  1. If |sampleRand| is 0:
+  1. If |fromServer| is true or |sampleRand| is 0:
     1. Set |canSendAfterSampled| to true.
     1. Set [=user agent=]'s [=debug report lockout until=] to [=current coarsened wall time=] plus
       [=lockout period=].
-  1. Let |cooldownRand| be a random {{long}} &ge; 0 and &lt; 10, which corresponds to
+  1. [=Update debug report cooldown=] with |origin|.
+  1. Return |canSendAfterSampled|.
+</div>
 
+<div algorithm>
+  To <dfn>update debug report cooldown</dfn> given an [=origin=] |origin|:
+
+  1. Let |cooldownRand| be a random {{long}} &ge; 0 and &lt; 10, which corresponds to
     [=long cooldown rate=].
   1. Let |cooldownPeriod| be [=long cooldown period=] if |cooldownRand| is 0,
     [=short cooldown period=] otherwise.
   1. Set [=user agent=]'s [=debug report cooldown=][|origin|] to [=current coarsened wall time=]
     plus |cooldownPeriod|.
-  1. Return |canSendAfterSampled|.
 </div>
 
 ## {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/realTimeReporting}} ## {#real-time-reporting-header}
@@ -5182,7 +5247,7 @@ from querying the server during an auction.
               1. Let |reportingHashCode| be the result of [=query reporting ID k-anonymity count=]
                 given |ig|, |igAd|, and |selectableReportingId|. 
               1. If [=query k-anonymity cache=] for |reportingHashCode| returns true, then
-                [=list/Append=] |selectableReportingId| to |kAnonRestrictedSelectableReportingIds|.
+                [=list/append=] |selectableReportingId| to |kAnonRestrictedSelectableReportingIds|.
             1. Set |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] to
               |kAnonRestrictedSelectableReportingIds|.
           1. [=list/Append=] |igAd| to |kAnonRestrictedIG|'s [=interest group/ads=].
@@ -8743,6 +8808,9 @@ A <dfn>bid debug reporting info</dfn> is a [=struct=] with the following [=struc
     won it, and was then scored by the top-level seller. Set by top-level seller's `scoreAd()`'s
     {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}'s
     {{ForDebuggingOnly/reportAdAuctionLoss(url)}}.
+  : <dfn>server filtered debugging only reports</dfn>
+  :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=lists=] of [=urls=].
+    forDebuggingOnly reports that have been filtered (also downsampled) by the trusted auction server.
 </dl>
 
 A <dfn>bid with currency</dfn> is a [=struct=] with the following [=struct/items=]:
