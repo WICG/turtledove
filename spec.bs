@@ -634,7 +634,7 @@ The <dfn for=Navigator method>leaveAdInterestGroup(group)</dfn> method steps are
     "[=join-ad-interest-group=]" [=policy-controlled feature=], then [=exception/throw=] a
     "{{NotAllowedError}}" {{DOMException}}.
 
-        Note: Both joining and leaving interest groups use the "join-ad-interest-group" feature.
+    Note: Both joining and leaving interest groups use the "join-ad-interest-group" feature.
   1. Let |owner| be the result of [=parsing an https origin=] with
     |group|["{{AuctionAdInterestGroupKey/owner}}"].
   1. If |owner| is failure, [=exception/throw=] a {{TypeError}}.
@@ -4232,7 +4232,8 @@ metrics collected from a single execution of a worklet function:
   : <dfn>code fetch time averager</dfn>
   :: An [=averager=].
   : <dfn>script timed out</dfn>
-  :: A [=boolean=], initially false.
+  :: A [=boolean=], initially false. This refers to the script hitting its own time out, and does
+    not include the cumulative timeout affecting buyers.
 </dl>
 
 A <dfn>per participant metrics</dfn> is a [=struct=] with the following [=struct/items=],
@@ -4306,9 +4307,8 @@ runs; this method exists as an abstraction to help add that.
 
 <div algorithm>
 To <dfn>commit private aggregation contributions</dfn> given an [=Private Aggregation
-contributions=] or null |onEventMap|, a [=reporting bid key=] |bidKey|, and a [=reporting context=]
+contributions=] |onEventMap|, a [=reporting bid key=] |bidKey|, and a [=reporting context=]
 |reportingContext|:
-  1. If |onEventMap| is null, return.
   1. [=map/For each=] |event| → |contributions| of |onEventMap|:
     1. Let |key| be (|bidKey|, |event|).
     1. If |reportingContext|'s [=reporting context/private aggregation on event contributions=][|key|]
@@ -4622,7 +4622,7 @@ To <dfn>compute a percentage metric</dfn> given {{long}}s |numerator| and |denom
   {{double}}s.
 1. If |result| &gt; 110.0, set |result| to 110.0
 
-  Note: since [=perform storage maintenance|Interest Group Storage Maintenance=] happens
+  Note: Since [=perform storage maintenance|Interest Group Storage Maintenance=] happens
   periodically, metrics measuring storage utilization <span class="allow-2119">may</span> report
   values that exceed 100%. The 110% cap exists to make it easier to allocate histogram bucket space
   for those metrics, by providing a predictable upper bound.
@@ -5703,8 +5703,8 @@ of the following global objects:
       and |privateAggregationCoordinator|.
     1. Let |argumentsJS| be the result of [=converting a Web IDL arguments list to an ECMAScript
       arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
-      [=exception/throws=] an exception, return « "null", null, null, null, null,
-      |executionMetrics| ».
+      [=exception/throws=] an exception, return « "null", null, null, null, a new [=Private
+      Aggregation Contributions=], |executionMetrics| ».
     1. Let |executionMetrics| be a new [=execution metrics=].
     1. Let (|result|, |executionMetrics|'s [=execution metrics/script timed out=]) be the
       result of [=evaluating a script=] with |realm|, |script|, |functionName|, |argumentsJS|,
@@ -5776,7 +5776,7 @@ of the following global objects:
     1. Set |finalCompletion| be [=ECMAScript/Completion Record|Completion=]([$Call$](F, `undefined`,
        |arguments|)).
 
-       In |timeout| milliseconds less the execution time of [$ScriptEvaluation$], if the invocation
+       In |timeout| milliseconds minus the execution time of [$ScriptEvaluation$], if the invocation
        of [$Call$] has not completed, [=immediately=] interrupt the execution, set |finalCompletion|
        to a new [=ECMAScript/throw completion=] given null, and set |timedOut| to true.
 
