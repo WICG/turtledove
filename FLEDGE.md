@@ -835,7 +835,7 @@ Either trusted server may optionally include a numeric `Data-Version` header on 
 
 ##### 3.1.2 Trusted Signals Server in TEE
 
-If `trustedBiddingSignalsCoordinator` or `trustedScoringSignalsCoordinator` is presented, the request will be sent to a trusted key-value-type server. Because the server is trusted, there is no k-anonymity constraint on this request. The browser needs to trust that the server's return value for each key will be based only on that key and the hostname, and that the server does no event-level logging and has no other side effects based on these requests.
+If `trustedBiddingSignalsCoordinator` or `trustedScoringSignalsCoordinator` is presented, the request will be sent in a version 2 protocol. Because the server is trusted, there is no k-anonymity constraint on this request. The browser needs to trust that the server's return value for each key will be based only on that key and the hostname, and that the server does no event-level logging and has no other side effects based on these requests.
 
 Once an on-device auction is initiated, the browser will make a HTTP POST fetch to a base URL such as `https://www.kv-server.example/getvalues`, which comes from the interest group's `trustedBiddingSignalsURL` or auction config's `trustedScoringSignalsURL`. All the other information for the trusted signals will be put into the request body, with CBOR encoding and encryption as decribed in [FLEDGE Key/Value Server APIs Explainer](https://github.com/WICG/turtledove/blob/master/FLEDGE_Key_Value_Server_API.md).
 
