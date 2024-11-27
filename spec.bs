@@ -4631,19 +4631,20 @@ They return a {{double}}.
   |reportingContext|, |onEventEntry|'s [=on event contribution entry/origin=], and the result of
   [=find corresponding bid and score phase function=] given [=on event contribution entry/worklet
   function=].
-1. If |signalBaseValue| is "<code>[=signal base value/winning-bid=]</code>":
-  1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return 0.
-  1. Otherwise, return  |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/bid=].
-1. If |signalBaseValue| is
-    "<code>[=signal base value/highest-scoring-other-bid=]</code>":
-  1. If |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] is null, return 0.
-  1. Otherwise, return |leadingBidInfo|'s [=leading bid info/highest scoring other bid=]'s
-    [=generated bid/bid=].
-1. If |signalBaseValue| is "<code>[=signal base value/script-run-time=]</code>":
-    1. Return the number of milliseconds of CPU time that the calling function
+1. If |signalBaseValue| is:
+  <dl class="switch">
+  : "<code>[=signal base value/winning-bid=]</code>"
+  :: 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return 0.
+     1. Otherwise, return  |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/bid=].
+  : "<code>[=signal base value/highest-scoring-other-bid=]</code>":
+  :: 1. If |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] is null, return 0.
+     1. Otherwise, return |leadingBidInfo|'s [=leading bid info/highest scoring other bid=]'s
+      [=generated bid/bid=].
+  : "<code>[=signal base value/script-run-time=]</code>"
+  :: Return the number of milliseconds of CPU time that the calling function
         (e.g. `generateBid()`) took to run.
-1. If |signalBaseValue| is "<code>[=signal base value/signals-fetch-time=]</code>":
-    Switch on the associated [=worklet function=]:
+  : "<code>[=signal base value/signals-fetch-time=]</code>"
+  :: Switch on the associated [=worklet function=]:
     <dl class="switch">
     : <code>[=worklet function/generate-bid=]</code>
     :: Return the number of milliseconds it took for the trusted bidding signals
@@ -4656,68 +4657,79 @@ They return a {{double}}.
     :: Return 0.
 
     </dl>
-1. If |signalBaseValue| is "<code>[=signal base value/bid-reject-reason=]</code>":
-  1. If the bid did not succeed purely because it didn't meet the required
-      <a spec="turtledove">k-anonymity threshold</a>, return 8.
-  1. Let |bidRejectReason| be "`not-available`".
-  1. If the seller provided a reject reason, set |bidRejectReason| to that
-      value.
-  1. If |bidRejectReason| is:
-      <dl class="switch">
-      : "`not-available`"
-      :: Return 0.
-      : "`invalid-bid`"
-      :: Return 1.
-      : "`bid-below-auction-floor`"
-      :: Return 2.
-      : "`pending-approval-by-exchange`"
-      :: Return 3.
-      : "`disapproved-by-exchange`"
-      :: Return 4.
-      : "`blocked-by-publisher`"
-      :: Return 5.
-      : "`language-exclusions`"
-      :: Return 6.
-      : "`category-exclusions`"
-      :: Return 7.
-      : None of the above values
-      :: [=Assert=]: false
+  : "<code>[=signal base value/bid-reject-reason=]</code>"
+  :: 1. If the bid did not succeed purely because it didn't meet the required
+        <a spec="turtledove">k-anonymity threshold</a>, return 8.
+     1. Let |bidRejectReason| be "`not-available`".
+     1. If the seller provided a reject reason, set |bidRejectReason| to that
+        value.
+     1. If |bidRejectReason| is:
+        <dl class="switch">
+        : "`not-available`"
+        :: Return 0.
+        : "`invalid-bid`"
+        :: Return 1.
+        : "`bid-below-auction-floor`"
+        :: Return 2.
+        : "`pending-approval-by-exchange`"
+        :: Return 3.
+        : "`disapproved-by-exchange`"
+        :: Return 4.
+        : "`blocked-by-publisher`"
+        :: Return 5.
+        : "`language-exclusions`"
+        :: Return 6.
+        : "`category-exclusions`"
+        :: Return 7.
+        : None of the above values
+        :: [=Assert=]: false
 
-        Note: this enum value is validated in `scoreAd()`.
+          Note: this enum value is validated in `scoreAd()`.
 
-        Issue: Verify this once
-        <a href="https://github.com/WICG/turtledove/issues/627">WICG/turtledove#627</a> is resolved.
+          Issue: Verify this once
+          <a href="https://github.com/WICG/turtledove/issues/627">WICG/turtledove#627</a> is resolved.
 
-        Issue: There are some automatically generated values that are not described here.
+          Issue: There are some automatically generated values that are not described here.
 
-        Issue: Verify handling when the bid was not rejected.
+          Issue: Verify handling when the bid was not rejected.
 
-      </dl>
-1. If |signalBaseValue| is "<code>[=signal base value/average-code-fetch-time=]</code>":
-  1. Return the result of [=getting the value to report from an averager=] given |metrics|'s [=per
+        </dl>
+  : "<code>[=signal base value/average-code-fetch-time=]</code>"
+  :: Return the result of [=getting the value to report from an averager=] given |metrics|'s [=per
     participant metrics/code fetch time averager=].
-1. If |signalBaseValue| is "<code>[=signal base value/participating-ig-count=]</code>":
-  1. Return |bidAndScoreMetrics|'s [=per participant metrics/participating interest group count=].
-1. If |signalBaseValue| is "<code>[=signal base value/percent-scripts-timeout=]</code>":
-  1. Return the result of [=computing a percentage metric=] given |metrics|'s [=per participant
+
+  : "<code>[=signal base value/participating-ig-count=]</code>"
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/participating interest group count=].
+
+  : "<code>[=signal base value/percent-scripts-timeout=]</code>"
+  :: Return the result of [=computing a percentage metric=] given |metrics|'s [=per participant
     metrics/script timeouts occurred=] and |metrics|'s [=per participant metrics/script executions
     attempted=].
-1. If |signalBaseValue| is "<code>[=signal base value/regular-igs-count=]</code>":
-  1. Return |bidAndScoreMetrics|'s [=per participant metrics/regular interest group count=].
-1. If |signalBaseValue| is "<code>[=signal base value/percent-regular-ig-count-quota-used=]</code>":
-  1. Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
-    participant metrics/regular interest group count=] and [=Max regular interest groups per owner=].
-1. If |signalBaseValue| is "<code>[=signal base value/negative-igs-count=]</code>":
-  1. Return |bidAndScoreMetrics|'s [=per participant metrics/negative interest group count=].
-1. If |signalBaseValue| is "<code>[=signal base value/percent-negative-ig-count-quota-used=]</code>":
-  1. Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
-    participant metrics/negative interest group count=] and [=Max negative interest groups per
+
+  : "<code>[=signal base value/regular-igs-count=]</code>"
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/regular interest group count=].
+
+  : "<code>[=signal base value/percent-regular-ig-count-quota-used=]</code>"
+  :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/regular interest group count=] and [=max regular interest groups per
     owner=].
-1. If |signalBaseValue| is "<code>[=signal base value/ig-storage-used=]</code>":
-  1. Return |bidAndScoreMetrics|'s [=per participant metrics/storage quota used=].
-1. If |signalBaseValue| is "<code>[=signal base value/percent-ig-storage-quota-used=]</code>":
-  1. Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
-    participant metrics/storage quota used=] and [=Max interest groups total size per owner=].
+
+  : "<code>[=signal base value/negative-igs-count=]</code>"
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/negative interest group count=].
+
+  : "<code>[=signal base value/percent-negative-ig-count-quota-used=]</code>":
+  :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/negative interest group count=] and [=max negative interest groups per
+    owner=].
+
+  : "<code>[=signal base value/ig-storage-used=]</code>":
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/storage quota used=].
+
+  : "<code>[=signal base value/percent-ig-storage-quota-used=]</code>":
+  :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/storage quota used=] and [=max interest groups total size per owner=].
+
+  </dl>
 
 </div>
 
