@@ -2387,9 +2387,9 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
   |reportingContext|, |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals|,
   |browserSignals|, |directFromSellerSignalsForSeller|, and |auctionConfig|'s [=auction config/
   seller timeout=].
-1. Increment|metrics|'s [=per participant metrics/script executions attempted=] by 1.
-1. If |executionMetrics|'s [=execution metrics/script timeout occurred=] is true, increment
-  |metrics|'s [=per participant metrics/script timeouts occurred=] by 1.
+1. Increment |metrics|'s [=per participant metrics/script executions attempted=] by 1.
+1. If |executionMetrics|'s [=execution metrics/script timed out=] is true, increment |metrics|'s
+  [=per participant metrics/script timeouts occurred=] by 1.
 1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
 
   Note: Non-k-anonymous bids do not participate in reporting (except for platform real-time
@@ -2940,7 +2940,7 @@ and a [=global object=] |global|:
     config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |config|'s [=auction config/config idl=], |browserSignals|, |directFromSellerSignals| ».
   1. Set |metrics|'s [=per participant metrics/script executions attempted=] to 1.
-  1. If |executionMetrics|'s [=execution metrics/script timeout occurred=] is true, set |metrics|'s
+  1. If |executionMetrics|'s [=execution metrics/script timed out=] is true, set |metrics|'s
     [=per participant metrics/script timeouts occurred=] to 1.
   1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
      : [=reporting result/report url=]
@@ -3049,7 +3049,7 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
       {{AuctionAdConfig/auctionSignals}}, |perBuyerSignalsForBuyer|, |sellerSignals|,
       |reportWinBrowserSignals|, |directFromSellerSignals| ».
   1. Set |metrics|'s [=per participant metrics/script executions attempted=] to 1.
-  1. If |executionMetrics|'s [=execution metrics/script timeout occurred=] is true, set |metrics|'s
+  1. If |executionMetrics|'s [=execution metrics/script timed out=] is true, set |metrics|'s
     [=per participant metrics/script timeouts occurred=] to 1.
   1. [=Commit private aggregation contributions=] given |paContributions|, |winner|'s [=generated
     bid/reporting id=] and |reportingContext|.
@@ -3117,17 +3117,40 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
      equals |componentAd|. If there is no matching element, return failure.
   1. [=list/Append=] a new [=ad descriptor=] whose [=ad descriptor/url=] is
      |componentAd| to |winningAdComponents|.
+1. Let |bidDebugReportingInfo| be a new [=bid debug reporting info=].
+1. [=list/For each=] |key| → |maybeDebugReportUrl| in |response|'s
+  [=server auction response/component win debugging only reports=]:
+  1. If |key|'s [=server auction debug report key/from seller=] is true:
+    1. Set |bidDebugReportingInfo|'s [=bid debug reporting info/component seller=] to |seller|.
+    1. If |key|'s [=server auction debug report key/is debug win=] is true, then set
+      |bidDebugReportingInfo|'s [=bid debug reporting info/seller debug win report url=] to
+      |maybeDebugReportUrl|.
+    1. Otherwise, set |bidDebugReportingInfo|'s
+      [=bid debug reporting info/seller debug loss report url=] to |maybeDebugReportUrl|.
+  1. Otherwise,
+    1. Set |bidDebugReportingInfo|'s [=bid debug reporting info/interest group owner=] to
+      |response|'s [=server auction response/interest group owner=].
+    1. If |key|'s [=server auction debug report key/is debug win=] is true, then set
+      |bidDebugReportingInfo|'s [=bid debug reporting info/bidder debug win report url=] to
+      |maybeDebugReportUrl|.
+    1. Otherwise, set |bidDebugReportingInfo|'s
+      [=bid debug reporting info/bidder debug loss report url=] to |maybeDebugReportUrl|.
+1. Set |bidDebugReportingInfo|'s [=bid debug reporting info/server filtered debugging only reports=]
+  to [=server auction response/server filtered debugging only reports=].
+1. Set |reportingContextMap|[|auctionConfig|]'s [=reporting context/debug reporting info=] to
+  |bidDebugReportingInfo|.
+1. Let |reportingId| be a [=reporting bid key=] with the following [=struct/items=]:
+  : [=reporting bid key/context=]
+  :: |reportingContextMap|[|auctionConfig|]
+  : [=reporting bid key/source=]
+  :: [=reporting bid source/bidding-and-auction-services=]
+  : [=reporting bid key/bidder origin=]
+  :: |response|'s [=server auction response/interest group owner=]
+  : [=reporting bid key/bid identifier=]
+  :: |response|'s [=server auction response/interest group name=]
 1. Let |winningBid| be a new [=generated bid=] with the following [=struct/items=]:
   : [=generated bid/reporting id=]
-  :: A [=reporting bid key=] with the following [=struct/items=]:
-    : [=reporting bid key/context=]
-    :: |reportingContextMap|[|auctionConfig|]
-    : [=reporting bid key/source=]
-    :: [=reporting bid source/bidding-and-auction-services=]
-    : [=reporting bid key/bidder origin=]
-    :: |response|'s [=server auction response/interest group owner=]
-    : [=reporting bid key/bid identifier=]
-    :: |response|'s [=server auction response/interest group name=]
+  :: |reportingId|
   : [=generated bid/bid=]
   :: |response|'s [=server auction response/bid=]
   : [=generated bid/bid in seller currency=]
@@ -3219,7 +3242,7 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
   1. If |updateIfOlderThan| is less than 10 mintues, set it to 10 minutes.
   1. If [=current coarsened wall time=] &minus; |ig|'s [=interest group/last updated=] ≥
      |updateIfOlderThan|, set |ig|'s [=interest group/next update after=] to the
-        [=current coarsened wall time=] + |updateIfOlderThan|.
+     [=current coarsened wall time=] + |updateIfOlderThan|.
 1. Return |winningBidInfo|.
 
 </div>
@@ -3339,6 +3362,8 @@ dictionary AdAuctionDataBuyerConfig {
     specified.
 </dl>
 
+A <dfn>server auction</dfn> is an auction executed on a trusted auction server.
+
 A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="server auction interest group">
   : <dfn>name</dfn>
@@ -3396,8 +3421,8 @@ A <dfn>server auction request context</dfn> is a [=struct=] with the following [
      [Section 2.2.4 of Bidding and Auction Services](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-generating-a-request)
 </dl>
 
-A <dfn>server auction response</dfn> is a [=struct=] that contains auction result
-from an auction executed on the trusted auction server. It has the following [=struct/items=]:
+A <dfn>server auction response</dfn> is a [=struct=] that contains auction result from a
+[=server auction=]. It has the following [=struct/items=]:
 
 <dl dfn-for="server auction response">
   : <dfn>ad render url</dfn>
@@ -3450,6 +3475,11 @@ from an auction executed on the trusted auction server. It has the following [=s
   :: Null or [=server auction reporting info=].
   : <dfn>component seller reporting</dfn>
   :: Null or [=server auction reporting info=].
+  : <dfn>component win debugging only reports</dfn>
+  :: A [=map=] whose [=map/keys=] are [=server auction debug report keys=], and whose [=map/values=]
+    are [=lists=] of [=urls=].
+  : <dfn>server filtered debugging only reports</dfn>
+  :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=lists=] of [=urls=].
 </dl>
 
 A <dfn>server auction reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
@@ -3459,6 +3489,14 @@ A <dfn>server auction reporting info</dfn> is a [=struct=] with the following [=
   : <dfn>beacon urls</dfn>
   :: [=ordered map=] whose [=map/keys=] are [=strings=] and whose [=map/values=]
      are [=URLs=] whose [=url/schemes=] are "`https`".
+</dl>
+
+a <dfn>server auction debug report key</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction debug report key">
+  : <dfn>from seller</dfn>
+  :: A [=boolean=].
+  : <dfn>is debug win</dfn>
+  :: A [=boolean=].
 </dl>
 
 <div algorithm="getInterestGroupAdAuctionData()">
@@ -3701,8 +3739,6 @@ an [=origin=] |origin| and [=worklet function=] |workletFunction|:
 </div>
 
 A <dfn>reporting context map</dfn> is a [=map=] from [=auction config=] to [=reporting context=].
-Here the keys are configurations for auctions that actually produce bids (e.g. not the top-level
-auction in a multi-party auction).
 
 <div algorithm>
   To <dfn>create a reporting context map</dfn> given the [=auction config=] |auctionConfig| and
@@ -3743,8 +3779,8 @@ auction in a multi-party auction).
     averager=] and |executionMetrics|'s [=execution metrics/code fetch time averager=].
   1. Set |metrics|'s [=per participant metrics/script executions attempted=] to
     |metrics|'s [=per participant metrics/participating interest group count=].
-  1. If |executionMetrics|'s [=execution metrics/script timeout occurred=] is true, increment
-    |metrics|'s [=per participant metrics/script timeouts occurred=] by 1.
+  1. If |executionMetrics|'s [=execution metrics/script timed out=] is true, increment |metrics|'s
+    [=per participant metrics/script timeouts occurred=] by 1.
   1. [=set/Insert=] |id| into |reportingContext|'s [=reporting context/bidder participants=].
   1. [=Commit private aggregation contributions=] given |paContributions|, |id| and
     |reportingContext|.
@@ -3764,7 +3800,7 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
 
 <div algorithm>
   To <dfn>collect a single forDebuggingOnly report</dfn> given a [=URL=] |reportUrl|, an [=origin=]
-  |invokingOrigin|, and a [=list=] |debugReportUrls|:
+  |invokingOrigin|, a [=boolean=] |fromServer|, and a [=list=] |debugReportUrls|:
 
   Note: While the browser is experimenting with third party cookie deprecation (before they have
   been fully removed), the {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}
@@ -3773,8 +3809,8 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
 
   1. If |reportUrl| is null, or the result of running [=is debugging only in cooldown or lockout=]
     with |invokingOrigin| is true, then return.
-  1. If the result of running [=sample a debug report=] with |invokingOrigin| is true, then
-    [=list/append=] |reportUrl| to |debugReportUrls|.
+  1. If the result of running [=sample a debug report=] with |invokingOrigin| and |fromServer| is
+    true, then [=list/append=] |reportUrl| to |debugReportUrls|.
 </div>
 
 <div algorithm>
@@ -3787,42 +3823,64 @@ methods for event-level <dfn>forDebuggingOnly reports</dfn> for winning and losi
   1. [=map/For each=] _ → |reportingContext| of |reportingContextMap|:
     1. [=map/For each=] |reportingId| -> |bidDebugReportInfo| of |reportingContext|'s
       [=reporting context/debug reporting info=]:
+      1. Let |fromServer| be true if |reportingId|'s [=reporting bid key/source=] is
+        [=reporting bid source/bidding-and-auction-services=], false otherwise.
       1. If |winningBid| is not null and |reportingId| is equal to |winningBid|'s
         [=generated bid/reporting id=]:
         1. [=Assert=] that |winningBid|'s [=generated bid/reporting id=] is not null.
         1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
           [=bid debug reporting info/bidder debug win report url=], |bidDebugReportInfo|'s
-          [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
+          [=bid debug reporting info/interest group owner=], |fromServer|, and |auctionReportInfo|'s
           [=auction report info/debug win report urls=].
         1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
           1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-            [=bid debug reporting info/seller debug win report url=], |seller|, and
+            [=bid debug reporting info/seller debug win report url=], |seller|, |fromServer|, and
             |auctionReportInfo|'s [=auction report info/debug win report urls=].
         1. Otherwise:
           1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
             [=bid debug reporting info/seller debug win report url=], |bidDebugReportInfo|'s
-            [=bid debug reporting info/component seller=], |auctionReportInfo|'s
+            [=bid debug reporting info/component seller=], |fromServer|, and |auctionReportInfo|'s
             [=auction report info/debug win report urls=].
           1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-            [=bid debug reporting info/top level seller debug win report url=], |seller|, and
-            |auctionReportInfo|'s [=auction report info/debug win report urls=].
+            [=bid debug reporting info/top level seller debug win report url=], |seller|, |fromServer|,
+            and |auctionReportInfo|'s [=auction report info/debug win report urls=].
       1. Otherwise:
         1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
           [=bid debug reporting info/bidder debug loss report url=], |bidDebugReportInfo|'s
-          [=bid debug reporting info/interest group owner=], and |auctionReportInfo|'s
+          [=bid debug reporting info/interest group owner=], |fromServer|, and |auctionReportInfo|'s
           [=auction report info/debug loss report urls=].
         1. If |bidDebugReportInfo|'s [=bid debug reporting info/component seller=] is null:
           1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-            [=bid debug reporting info/seller debug loss report url=], |seller|, and
+            [=bid debug reporting info/seller debug loss report url=], |seller|, |fromServer|, and
             |auctionReportInfo|'s [=auction report info/debug loss report urls=].
         1. Otherwise:
           1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
             [=bid debug reporting info/seller debug loss report url=], |bidDebugReportInfo|'s
-            [=bid debug reporting info/component seller=], |auctionReportInfo|'s
+            [=bid debug reporting info/component seller=], |fromServer|, |auctionReportInfo|'s
             [=auction report info/debug loss report urls=].
           1. [=Collect a single forDebuggingOnly report=] with |bidDebugReportInfo|'s
-            [=bid debug reporting info/top level seller debug loss report url=], |seller|, and
-            |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+            [=bid debug reporting info/top level seller debug loss report url=], |seller|,
+            |fromServer|, and |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+      1. [=map/For each=] |invokingOrigin| → |debugURLs| of |bidDebugReportInfo|'s
+        [=bid debug reporting info/server filtered debugging only reports=]:
+        1. If |debugURLs| [=list/is empty=]:
+          1. If the result of running [=is debugging only in cooldown or lockout=] with
+            |invokingOrigin| is false, then [=update debug report cooldown=] with |invokingOrigin|.
+          1. [=iteration/Continue=].
+
+          Note: An entry for |invokingOrigin| is still needed when |debugURLs| is empty. It could
+            happen when forDebuggingOnly API is called but the bidding and auction server
+            filtered the debug report URL out with the downsampling algorithm. In this case the
+            client still needs to know that forDebuggingOnly API was called and update its cooldown
+            information. This is different from forDebuggingOnly API not being called by one origin,
+            in which case the list won't have an entry for that origin.
+        1. [=list/For each=] |url| of |debugURLs|:
+          1. [=Collect a single forDebuggingOnly report=] with |url|, |invokingOrigin|,
+            |fromServer| (true), and |auctionReportInfo|'s [=auction report info/debug loss report urls=].
+
+            Note: For server filtered ones, post auction signals were filled on the server side, so
+              it's fine to collect them all to [=auction report info/debug loss report urls=] without
+              the need of getting post auction signals for debug win urls.
   1. Return |auctionReportInfo|.
 </div>
 
@@ -3874,23 +3932,30 @@ and [=map/values=] are [=moments=] at which the cool down for the origin key exp
 </div>
 
 <div algorithm>
-  To <dfn>sample a debug report</dfn> given an [=origin=] |origin|:
+  To <dfn>sample a debug report</dfn> given an [=origin=] |origin| and a [=boolean=] |fromServer|:
 
+  Note: forDebuggingOnly reports from [=server auction response=] were downsampled on trusted
+    auction servers, so do not downsample them again on client.
   1. Let |canSendAfterSampled| be false.
   1. Let |sampleRand| be a random {{long}}, 0 &le; |sampleRand| &lt; 1000, so each possible long would be
     chosen with a probability equal to [=sampling rate=].
-  1. If |sampleRand| is 0:
+  1. If |fromServer| is true or |sampleRand| is 0:
     1. Set |canSendAfterSampled| to true.
     1. Set [=user agent=]'s [=debug report lockout until=] to [=current coarsened wall time=] plus
       [=lockout period=].
-  1. Let |cooldownRand| be a random {{long}} &ge; 0 and &lt; 10, which corresponds to
+  1. [=Update debug report cooldown=] with |origin|.
+  1. Return |canSendAfterSampled|.
+</div>
 
+<div algorithm>
+  To <dfn>update debug report cooldown</dfn> given an [=origin=] |origin|:
+
+  1. Let |cooldownRand| be a random {{long}} &ge; 0 and &lt; 10, which corresponds to
     [=long cooldown rate=].
   1. Let |cooldownPeriod| be [=long cooldown period=] if |cooldownRand| is 0,
     [=short cooldown period=] otherwise.
   1. Set [=user agent=]'s [=debug report cooldown=][|origin|] to [=current coarsened wall time=]
     plus |cooldownPeriod|.
-  1. Return |canSendAfterSampled|.
 </div>
 
 ## {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/realTimeReporting}} ## {#real-time-reporting-header}
@@ -4166,8 +4231,8 @@ A signal base value is one of the following:
 : "<dfn><code>ig-storage-used</code></dfn>"
 :: Bytes of storage used by the given buyer. (0 if this is used by a seller).
 : "<dfn><code>percent-ig-storage-quota-used</code></dfn>"
-:: Percentage of [=max interest groups total size per owner=] used by the given buyer, capped to
-  110.
+:: Percentage of [=max interest groups total size per owner=] used by the given buyer,
+  capped to 110.
 : "<dfn><code>cumulative-buyer-time</code></dfn>"
 :: Time spent by the buyer from their cumulative buyer timeout limit; if the limit has been exceeded
   returns the limit + 1000. 0 if this is a seller, or no cumulative buyer timeout is configured.
@@ -4262,8 +4327,9 @@ metrics collected from a single execution of a worklet function:
 <dl dfn-for="execution metrics">
   : <dfn>code fetch time averager</dfn>
   :: An [=averager=].
-  : <dfn>script timeout occurred</dfn>
-  :: A [=boolean=], initially false.
+  : <dfn>script timed out</dfn>
+  :: A [=boolean=], initially false. This refers to the script hitting its own time out, and does
+    not include the cumulative timeout affecting buyers.
 </dl>
 
 A <dfn>per participant metrics</dfn> is a [=struct=] with the following [=struct/items=],
@@ -4582,19 +4648,20 @@ They return a {{double}}.
   |reportingContext|, |onEventEntry|'s [=on event contribution entry/origin=], and the result of
   [=find corresponding bid and score phase function=] given [=on event contribution entry/worklet
   function=].
-1. If |signalBaseValue| is "<code>[=signal base value/winning-bid=]</code>":
-  1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return 0.
-  1. Otherwise, return  |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/bid=].
-1. If |signalBaseValue| is
-    "<code>[=signal base value/highest-scoring-other-bid=]</code>":
-  1. If |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] is null, return 0.
-  1. Otherwise, return |leadingBidInfo|'s [=leading bid info/highest scoring other bid=]'s
-    [=generated bid/bid=].
-1. If |signalBaseValue| is "<code>[=signal base value/script-run-time=]</code>":
-    1. Return the number of milliseconds of CPU time that the calling function
+1. If |signalBaseValue| is:
+  <dl class="switch">
+  : "<code>[=signal base value/winning-bid=]</code>"
+  :: 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return 0.
+     1. Otherwise, return  |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/bid=].
+  : "<code>[=signal base value/highest-scoring-other-bid=]</code>":
+  :: 1. If |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] is null, return 0.
+     1. Otherwise, return |leadingBidInfo|'s [=leading bid info/highest scoring other bid=]'s
+      [=generated bid/bid=].
+  : "<code>[=signal base value/script-run-time=]</code>"
+  :: Return the number of milliseconds of CPU time that the calling function
         (e.g. `generateBid()`) took to run.
-1. If |signalBaseValue| is "<code>[=signal base value/signals-fetch-time=]</code>":
-    Switch on the associated [=worklet function=]:
+  : "<code>[=signal base value/signals-fetch-time=]</code>"
+  :: Switch on the associated [=worklet function=]:
     <dl class="switch">
     : <code>[=worklet function/generate-bid=]</code>
     :: Return the number of milliseconds it took for the trusted bidding signals
@@ -4607,74 +4674,87 @@ They return a {{double}}.
     :: Return 0.
 
     </dl>
-1. If |signalBaseValue| is "<code>[=signal base value/bid-reject-reason=]</code>":
-  1. If the bid did not succeed purely because it didn't meet the required
-      <a spec="turtledove">k-anonymity threshold</a>, return 8.
-  1. Let |bidRejectReason| be "`not-available`".
-  1. If the seller provided a reject reason, set |bidRejectReason| to that
-      value.
-  1. If |bidRejectReason| is:
-      <dl class="switch">
-      : "`not-available`"
-      :: Return 0.
-      : "`invalid-bid`"
-      :: Return 1.
-      : "`bid-below-auction-floor`"
-      :: Return 2.
-      : "`pending-approval-by-exchange`"
-      :: Return 3.
-      : "`disapproved-by-exchange`"
-      :: Return 4.
-      : "`blocked-by-publisher`"
-      :: Return 5.
-      : "`language-exclusions`"
-      :: Return 6.
-      : "`category-exclusions`"
-      :: Return 7.
-      : None of the above values
-      :: [=Assert=]: false
+  : "<code>[=signal base value/bid-reject-reason=]</code>"
+  :: 1. If the bid did not succeed purely because it didn't meet the required
+        <a spec="turtledove">k-anonymity threshold</a>, return 8.
+     1. Let |bidRejectReason| be "`not-available`".
+     1. If the seller provided a reject reason, set |bidRejectReason| to that
+        value.
+     1. If |bidRejectReason| is:
+        <dl class="switch">
+        : "`not-available`"
+        :: Return 0.
+        : "`invalid-bid`"
+        :: Return 1.
+        : "`bid-below-auction-floor`"
+        :: Return 2.
+        : "`pending-approval-by-exchange`"
+        :: Return 3.
+        : "`disapproved-by-exchange`"
+        :: Return 4.
+        : "`blocked-by-publisher`"
+        :: Return 5.
+        : "`language-exclusions`"
+        :: Return 6.
+        : "`category-exclusions`"
+        :: Return 7.
+        : None of the above values
+        :: [=Assert=]: false
 
-        Note: this enum value is validated in `scoreAd()`.
+          Note: this enum value is validated in `scoreAd()`.
 
-        Issue: Verify this once
-        <a href="https://github.com/WICG/turtledove/issues/627">WICG/turtledove#627</a> is resolved.
+          Issue: Verify this once
+          <a href="https://github.com/WICG/turtledove/issues/627">WICG/turtledove#627</a> is resolved.
 
-        Issue: There are some automatically generated values that are not described here.
+          Issue: There are some automatically generated values that are not described here.
 
-        Issue: Verify handling when the bid was not rejected.
+          Issue: Verify handling when the bid was not rejected.
 
-      </dl>
-1. If |signalBaseValue| is "<code>[=signal base value/average-code-fetch-time=]</code>":
-  1. Return the result of [=getting the value to report from an averager=] given |metrics|'s [=per
+        </dl>
+  : "<code>[=signal base value/average-code-fetch-time=]</code>"
+  :: Return the result of [=getting the value to report from an averager=] given |metrics|'s [=per
     participant metrics/code fetch time averager=].
-1. If |signalBaseValue| is "<code>[=signal base value/participating-ig-count=]</code>":
-  1. Return |bidAndScoreMetrics|'s [=per participant metrics/participating interest group count=].
-1. If |signalBaseValue| is "<code>[=signal base value/percent-scripts-timeout=]</code>":
-  1. Return the result of [=computing a percentage metric=] given |metrics|'s [=per participant
+
+  : "<code>[=signal base value/participating-ig-count=]</code>"
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/participating interest group count=].
+
+  : "<code>[=signal base value/percent-scripts-timeout=]</code>"
+  :: Return the result of [=computing a percentage metric=] given |metrics|'s [=per participant
     metrics/script timeouts occurred=] and |metrics|'s [=per participant metrics/script executions
     attempted=].
-1. If |signalBaseValue| is "<code>[=signal base value/regular-igs-count=]</code>":
-  1. Return |bidAndScoreMetrics|'s [=per participant metrics/regular interest group count=].
-1. If |signalBaseValue| is "<code>[=signal base value/percent-regular-ig-count-quota-used=]</code>":
-  1. Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
-    participant metrics/regular interest group count=] and [=Max regular interest groups per owner=].
-1. If |signalBaseValue| is "<code>[=signal base value/negative-igs-count=]</code>":
-  1. Return |bidAndScoreMetrics|'s [=per participant metrics/negative interest group count=].
-1. If |signalBaseValue| is "<code>[=signal base value/percent-negative-ig-count-quota-used=]</code>":
-  1. Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
-    participant metrics/negative interest group count=] and [=Max negative interest groups per
+
+  : "<code>[=signal base value/regular-igs-count=]</code>"
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/regular interest group count=].
+
+  : "<code>[=signal base value/percent-regular-ig-count-quota-used=]</code>"
+  :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/regular interest group count=] and [=max regular interest groups per
     owner=].
-1. If |signalBaseValue| is "<code>[=signal base value/ig-storage-used=]</code>":
-  1. Return |bidAndScoreMetrics|'s [=per participant metrics/storage quota used=].
-1. If |signalBaseValue| is "<code>[=signal base value/percent-ig-storage-quota-used=]</code>":
-  1. Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
-    participant metrics/storage quota used=] and [=Max interest groups total size per owner=].
-1. If |signalBaseValue| is "<code>[=signal base value/cumulative-buyer-time=]</code>":
-  1. Return |bidAndScoreMetrics|'s [=per participant metrics/cumulative buyer time=].
-1. If |signalBaseValue| is "<code>[=signal base value/percent-igs-cumulative-timeout=]</code>":
-  1. Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+
+  : "<code>[=signal base value/negative-igs-count=]</code>"
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/negative interest group count=].
+
+  : "<code>[=signal base value/percent-negative-ig-count-quota-used=]</code>"
+  :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/negative interest group count=] and [=max negative interest groups per
+    owner=].
+
+  : "<code>[=signal base value/ig-storage-used=]</code>"
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/storage quota used=].
+
+  : "<code>[=signal base value/percent-ig-storage-quota-used=]</code>"
+  :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/storage quota used=] and [=max interest groups total size per owner=].
+
+  : "<code>[=signal base value/cumulative-buyer-time=]</code>"
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/cumulative buyer time=].
+
+  : "<code>[=signal base value/percent-igs-cumulative-timeout=]</code>"
+  :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
     participant metrics/cumulative timeouts occurred=] and |bidAndScoreMetrics|'s [=per participant
     metrics/script executions attempted=].
+
+  </dl>
 
 </div>
 
@@ -4684,6 +4764,12 @@ To <dfn>compute a percentage metric</dfn> given {{long}}s |numerator| and |denom
 1. Let |result| be 100.0 * |numerator| / |denominator|, performing the computation with
   {{double}}s.
 1. If |result| &gt; 110.0, set |result| to 110.0
+
+  Note: Since [=perform storage maintenance|Interest Group Storage Maintenance=] happens
+  periodically, metrics measuring storage utilization <span class="allow-2119">may</span> report
+  values that exceed 100%. The 110% cap exists to make it easier to allocate histogram bucket space
+  for those metrics, by providing a predictable upper bound.
+
 1. Return |result|.
 
 </div>
@@ -5310,7 +5396,7 @@ from querying the server during an auction.
               1. Let |reportingHashCode| be the result of [=query reporting ID k-anonymity count=]
                 given |ig|, |igAd|, and |selectableReportingId|. 
               1. If [=query k-anonymity cache=] for |reportingHashCode| returns true, then
-                [=list/Append=] |selectableReportingId| to |kAnonRestrictedSelectableReportingIds|.
+                [=list/append=] |selectableReportingId| to |kAnonRestrictedSelectableReportingIds|.
             1. Set |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] to
               |kAnonRestrictedSelectableReportingIds|.
           1. [=list/Append=] |igAd| to |kAnonRestrictedIG|'s [=interest group/ads=].
@@ -5659,7 +5745,7 @@ of the following global objects:
     1. Let |crossOriginTrustedBiddingSignalsJS| be |crossOriginTrustedBiddingSignals|
        [=converted to ECMAScript values=].
     1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
-    1. Let (|result|, |executionMetrics|'s [=execution metrics/script timeout occurred=]) be the
+    1. Let (|result|, |executionMetrics|'s [=execution metrics/script timed out=]) be the
       result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
       « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |sameOriginTrustedBiddingSignalsJS|,
         |browserSignalsJS|, |directFromSellerSignalsJS|, |crossOriginTrustedBiddingSignalsJS| »,
@@ -5744,7 +5830,7 @@ of the following global objects:
       [=converted to ECMAScript values=].
     1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
     1. Let |executionMetrics| be a new [=execution metrics=].
-    1. Let (|scoreAdResult|, |executionMetrics|'s [=execution metrics/script timeout occurred=]) be
+    1. Let (|scoreAdResult|, |executionMetrics|'s [=execution metrics/script timed out=]) be
       the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
       «|adMetadata|, |bidValue|, |auctionConfigJS|, |sameOriginTrustedScoringSignalsJS|,
       |browserSignalsJS|, |directFromSellerSignalsJs|, |crossOriginTrustedScoringSignalsJS|»,
@@ -5785,9 +5871,10 @@ of the following global objects:
       and |privateAggregationCoordinator|.
     1. Let |argumentsJS| be the result of [=converting a Web IDL arguments list to an ECMAScript
       arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
-      [=exception/throws=] an exception, return « "null", null, null, null ».
+      [=exception/throws=] an exception, return « "null", null, null, null, a new [=Private
+      Aggregation Contributions=], |executionMetrics| ».
     1. Let |executionMetrics| be a new [=execution metrics=].
-    1. Let (|result|, |executionMetrics|'s [=execution metrics/script timeout occurred=]) be the
+    1. Let (|result|, |executionMetrics|'s [=execution metrics/script timed out=]) be the
       result of [=evaluating a script=] with |realm|, |script|, |functionName|, |argumentsJS|,
       and |timeout|.
     1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null, null ».
@@ -5822,7 +5909,7 @@ of the following global objects:
 
     1. If |timeout| &le; 0, return (new [=ECMAScript/throw completion=] given null, true).
 
-    1. Let |timeoutOccurred| be false.
+    1. Let |timedOut| be false.
 
     1. Let |global| be |realm|'s [=realm/global object=], and run these steps in |realm|'s [=realm/agent=]:
 
@@ -5832,7 +5919,7 @@ of the following global objects:
        unlike traditional [=scripts=] on the web platform.
 
     1. If |result| is a list of errors, return
-       Completion { \[[Type]]: `throw`, \[[Value]]: |result|, \[[Target]]: `empty` }.
+       (Completion { \[[Type]]: `throw`, \[[Value]]: |result|, \[[Target]]: `empty` }, false).
 
     1. [=Assert=]: |result| is a [=ECMAScript/Script Record=].
 
@@ -5841,6 +5928,11 @@ of the following global objects:
        context|running JavaScript execution context=].
 
     1. Let |evaluationStatus| be the result of [$ScriptEvaluation$](result).
+
+      In |timeout| milliseconds, if the invocation of [$ScriptEvaluation$] has not completed,
+      [=immediately=] interrupt the execution, set |finalCompletion| to a new
+      [=ECMAScript/throw completion=] given null, set |timedOut| to true, and jump to the step
+      labeled <i><a href="#evaluate-script-return">return</a></i>.
 
     1. If |evaluationStatus| is an [=ECMAScript/abrupt completion=], jump to the step labeled <i>
        <a href="#evaluate-script-return">return</a></i>.
@@ -5852,9 +5944,9 @@ of the following global objects:
     1. Set |finalCompletion| be [=ECMAScript/Completion Record|Completion=]([$Call$](F, `undefined`,
        |arguments|)).
 
-       In |timeout| milliseconds, if the invocation of [$Call$] has not completed,
-       [=immediately=] interrupt the execution, set |finalCompletion| to a new
-       [=ECMAScript/throw completion=] given null, and set |timeoutOccurred| to true.
+       In |timeout| milliseconds minus the execution time of [$ScriptEvaluation$], if the invocation
+       of [$Call$] has not completed, [=immediately=] interrupt the execution, set |finalCompletion|
+       to a new [=ECMAScript/throw completion=] given null, and set |timedOut| to true.
 
     1. <i id=evaluate-script-return>Return</i>: at this point |finalCompletion| will be set to a
        [=ECMAScript/Completion Record=].
@@ -5863,7 +5955,7 @@ of the following global objects:
          execution context|running JavaScript execution context=], and remove it from the
          [=ECMAScript/execution context stack|JavaScript execution context stack=].
 
-      1. Return (|finalCompletion|, timeoutOccurred).
+      1. Return (|finalCompletion|, timedOut).
 </div>
 
 ## Global scopes ## {#global-scopes}
@@ -8879,6 +8971,9 @@ A <dfn>bid debug reporting info</dfn> is a [=struct=] with the following [=struc
     won it, and was then scored by the top-level seller. Set by top-level seller's `scoreAd()`'s
     {{InterestGroupBiddingAndScoringScriptRunnerGlobalScope/forDebuggingOnly}}'s
     {{ForDebuggingOnly/reportAdAuctionLoss(url)}}.
+  : <dfn>server filtered debugging only reports</dfn>
+  :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=lists=] of [=urls=].
+    forDebuggingOnly reports that have been filtered (also downsampled) by the trusted auction server.
 </dl>
 
 A <dfn>bid with currency</dfn> is a [=struct=] with the following [=struct/items=]:
