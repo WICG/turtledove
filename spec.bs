@@ -2195,7 +2195,7 @@ To <dfn>build an interest group passed to generateBid</dfn> given an [=interest 
       <dt>{{GenerateBidInterestGroup/maxTrustedBiddingSignalsURLLength}}
       <dd>|ig|'s [=interest group/max trusted bidding signals url length=]
       <dt>{{GenerateBidInterestGroup/trustedBiddingSignalsCoordinator}}
-      <dd>|ig|'s [=interest group/trusted bidding signals coordinator=]
+      <dd>The [=serialization of an origin|serialization=] of |ig|'s [=interest group/trusted bidding signals coordinator=]
       <dt>{{GenerateBidInterestGroup/userBiddingSignals}}
       <dd>[=Parse a JSON string to a JavaScript value=] given |ig|'s [=interest group/user bidding signals=]
 
@@ -2692,7 +2692,7 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |script
 </div>
 
 <div algorithm>
-To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte sequence=] |body|, a string
+To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte sequence=] |body|, a [=string=]
 |context|, an [=origin=] |scriptOrigin|, a [=policy container=] |policyContainer|, an |indexMap|, and a
 [=boolean=] |isBiddingSignal|:
 
@@ -2739,7 +2739,7 @@ To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte se
     1. If |isBiddingSignal| is true:
       1. [=map/For each=] |name| → |value| in |result|["interestGroupNames"]:
         1. If |indexMap|[|name|] does not equal to |result|["index"], set |signals| to failure and return.
-        1. Set |perInterestGroupData|[|name|] to |value|.
+        1. [=map/Set=] |perInterestGroupData|[|name|] to |value|.
         1. If |result| [=map/contain=] "dataVersion":
           1. If |result|["dataVersion"] is not an integer, or is less than 0 or more than
             2<sup>32</sup>&minus;1, set |signals| to failure and return.
@@ -2749,7 +2749,7 @@ To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte se
     1. Otherwise:
       1. [=map/For each=] |url| → |value| in |result|["renderUrls"]:
         1. Set |siganls|[|url|] to |value|.
-        1. If |result| [=map/contain=] `"dataVersion"`:
+        1. If |result| [=map/contains=] `"dataVersion"`:
           1. If |result|["dataVersion"] is not an integer, or is less than 0 or more than
             2<sup>32</sup>&minus;1, set |signals| to failure and return.
           1. Otherwise, set |dataVersion|[|url|] to |result|["dataVersion"].
@@ -6761,7 +6761,7 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
 1. If |ig|'s [=interest group/max trusted bidding signals url length=] is not null:
   1. 4, which is the size of |ig|'s [=interest group/max trusted bidding signals url length=].
 1. If |ig|'s [=interest group/trusted bidding signals coordinator=] is not null:
-  1. The [=string/length=] of |ig|'s [=interest group/trusted bidding signals coordinator=].
+  1. The [=string/length=] of the [=serialization of an origin|serialization=] of |ig|'s [=interest group/trusted bidding signals coordinator=].
 1. The [=string/length=] of |ig|'s [=interest group/user bidding signals=].
 1. If |ig|'s [=interest group/ads=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
@@ -8158,8 +8158,8 @@ into smaller number of fetches. It's a [=struct=] with the following [=struct/it
   :: A {{long}}, initially 2147483647 (the maximum value that it can hold). Describes the URL length
      limit the current batch is limited to, the smallest of the limits of the interest groups included.
   : <dfn>key value interest groups</dfn>
-  :: An [=ordered map=] whose [=map/keys=] are a tuple of an [=origin=] and an [=origin=] and whose
-    [=map/values=] is a [=set=] of [=interest group=].
+  :: An [=ordered map=] whose [=map/keys=] are [=tuples=] of ([=origin=], [=origin=]) and whose
+    [=map/values=] are [=sets=] of [=interest groups=].
 </dl>
 
 A <dfn>bidding signals per interest group data</dfn> is a [=struct=] with the following
@@ -8335,7 +8335,7 @@ To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding s
 
 <div algorithm>
 
-To <dfn>build trusted key value bidding signals request body</dfn> given, a [=set=] |interestGroups|,
+To <dfn>build trusted key value bidding signals request body</dfn> given a [=set=] |interestGroups|,
 an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|, a [=string=]
 |slotSizeQueryParam|, an [=origin=] |coordinator|, and an [=origin=] |owner|:
 
@@ -8344,14 +8344,14 @@ an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin
 1. Let |compressionIdMap| be an empty [=map=].
 1. Let |interestGroupIdMap| be an empty [=map=].
 1. Let |slotSizeParams| be the result of [=strictly splitting=] |slotSizeQueryParam| on U+003D (=).
-1. Set |nextCompressionGroupId| to 0.
+1. Let |nextCompressionGroupId| be 0.
 1. [=list/For each=] |group| of |interestGroups|:
   1. Set |joiningOrigin| to |group|'s [=interest group/joining origin=].
   1. Let |compressionGroupId| be an integer.
   1. Let |partitionId| be an integer.
   1. If |compressionIdMap| does not [=map/contain=] |joiningOrigin|:
-    1. Set |compressionIdMap|[|joiningOrigin|] to |nextCompressionGroupId|.
-    1. Increase |nextCompressionGroupId| by 1.
+    1. [=map/Set=] |compressionIdMap|[|joiningOrigin|] to |nextCompressionGroupId|.
+    1. Increment |nextCompressionGroupId| by 1.
   1. Set |compressionGroupId| to |compressionIdMap|[|joiningOrigin|].
   1. If |compressionGroupMap| does not [=map/contain=] |compressionGroupId|:
     1. Let |compressionGroupMap|[|compressionGroupId|] be an empty [=map=].
@@ -8408,7 +8408,7 @@ an [=origin=] |scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|,
 |topLevelOrigin|, a [=string=] |slotSizeQueryParam|, and a [=policy container=] |policyContainer|:
 
   1. If |signalsUrl| is null, return.
-  1. [=map/For each=] {|coordinator|, |owner|} → |interestGroups| of [=trusted bidding signals
+  1. [=map/For each=] (|coordinator|, |owner|) → |interestGroups| of [=trusted bidding signals
     batcher/key value interest groups=]:
     1. Let « |requestBody|, |interestGroupIdMap|, |context| » be the result of [=building trusted
       key value bidding signals request body=] with |signalsUrl|, |interestGroups|,
