@@ -147,6 +147,14 @@ navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
     "selectableReportingIds")
 ```
 
+## Seller Nonce
+
+From context of a web page:
+```
+navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
+    "sellerNonce")
+```
+
 ## Trusted Signals KVv2 Support
 Intent to Ship(TBD)
 
