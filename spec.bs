@@ -1985,6 +1985,10 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
       1. [=map/For each=] slotSizeQueryParam → |perSignalsUrlGenerator| of |perSlotSizeQueryParam|:
         1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
           1. [=list/Extend=] |igs| with |groups|.
+    1. [=Update storage metrics=] given |metrics| and |igs|.
+
+      Note: This is done before any filtering, since it represents storage resource usage.
+
     1. [=list/Sort in descending order=] |igs|, with |a| being less than |b| if |a|'s
       [=interest group/priority=] is less than |b|'s [=interest group/priority=].
     1. [=list/Remove=] the first |buyerGroupLimit| items from |igs|.
@@ -2372,10 +2376,14 @@ or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, a
 1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/code fetch time
   averager=] and |decisionLogicFetcher|'s [=script fetcher/fetch duration=].
 1. Let « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions|,
-  |paContributions| » be the result of [=evaluating a scoring script=] with |decisionLogicScript|,
-  |adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|, |reportingContext|,
-  |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals|, |browserSignals|,
-  |directFromSellerSignalsForSeller|, and |auctionConfig|'s [=auction config/seller timeout=].
+  |paContributions|, |executionMetrics| » be the result of [=evaluating a scoring script=] with
+  |decisionLogicScript|, |adMetadata|, |bidValue|'s [=bid with currency/value=], |auctionConfig|,
+  |reportingContext|, |sameOriginTrustedScoringSignals|, |crossOriginTrustedScoringSignals|,
+  |browserSignals|, |directFromSellerSignalsForSeller|, and |auctionConfig|'s [=auction config/
+  seller timeout=].
+1. Increment |metrics|'s [=per participant metrics/script executions attempted=] by 1.
+1. If |executionMetrics|'s [=execution metrics/script timed out=] is true, increment |metrics|'s
+  [=per participant metrics/script timeouts occurred=] by 1.
 1. If |generatedBid|'s [=generated bid/for k-anon auction=] is true:
 
   Note: Non-k-anonymous bids do not participate in reporting (except for platform real-time
@@ -2918,13 +2926,17 @@ and a [=global object=] |global|:
      |sellerReportingScriptFetcher|.
   1. [=Add a sample to an averager=] given |metrics|'s [=per participant metrics/code fetch time
     averager=] and |sellerReportingScriptFetcher|'s [=script fetcher/fetch duration=].
-  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored, |paContributions| » be the
-    result of [=evaluating a reporting script=] with |sellerReportingScript|, "`reportResult`",
-    |reportingContext|, |config|'s [=auction config/seller=], |config|'s
+  1. Let « |sellerSignals|, |reportUrl|, |reportingBeaconMap|, ignored, |paContributions|,
+    |executionMetrics| » be the result of [=evaluating a reporting script=] with
+    |sellerReportingScript|, "`reportResult`",  |reportingContext|,
+    |config|'s [=auction config/seller=], |config|'s
     [=auction config/seller Private Aggregation coordinator=],  |config|'s [=auction config/
     config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |config|'s [=auction config/config idl=], |browserSignals|, |directFromSellerSignals| ».
-   1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
+  1. Set |metrics|'s [=per participant metrics/script executions attempted=] to 1.
+  1. If |executionMetrics|'s [=execution metrics/script timed out=] is true, set |metrics|'s
+    [=per participant metrics/script timeouts occurred=] to 1.
+  1. Let |reportingResult| be a [=reporting result=] with the following [=struct/items=]:
      : [=reporting result/report url=]
      :: |reportUrl|
      : [=reporting result/reporting beacon map=]
@@ -3021,14 +3033,18 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
   1. Let |reportFunctionName| be "`reportWin`".
   1. If |winner|'s [=generated bid/provided as additional bid=] is true:
     1. Set |reportFunctionName| be "`reportAdditionalBidWin`".
-  1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap|, |paContributions| » be
-    the result of [=evaluating a reporting script=] with |buyerReportingScript|,
-    |reportFunctionName|, |reportingContext|, |ig|'s [=interest group/owner=], |ig|'s [=interest
-    group/Private Aggregation coordinator=], |leadingBidInfo|'s [=leading bid info/auction config=]'s
+  1. Let « ignored, |resultUrl|, |reportingBeaconMap|, |reportingMacroMap|, |paContributions|,
+    |executionMetrics| » be the result of [=evaluating a reporting script=] with
+    |buyerReportingScript|, |reportFunctionName|, |reportingContext|, |ig|'s
+    [=interest group/owner=], |ig|'s [=interest group/
+    Private Aggregation coordinator=], |leadingBidInfo|'s [=leading bid info/auction config=]'s
     [=auction config/config idl=]'s {{AuctionAdConfig/reportingTimeout}}, and
     « |leadingBidInfo|'s [=leading bid info/auction config=]'s [=auction config/config idl=]'s
       {{AuctionAdConfig/auctionSignals}}, |perBuyerSignalsForBuyer|, |sellerSignals|,
       |reportWinBrowserSignals|, |directFromSellerSignals| ».
+  1. Set |metrics|'s [=per participant metrics/script executions attempted=] to 1.
+  1. If |executionMetrics|'s [=execution metrics/script timed out=] is true, set |metrics|'s
+    [=per participant metrics/script timeouts occurred=] to 1.
   1. [=Commit private aggregation contributions=] given |paContributions|, |winner|'s [=generated
     bid/reporting id=] and |reportingContext|.
   1. Set |leadingBidInfo|'s [=leading bid info/buyer reporting result=] to a [=reporting result=]
@@ -3762,6 +3778,10 @@ A <dfn>reporting context map</dfn> is a [=map=] from [=auction config=] to [=rep
     |ig|'s [=interest group/owner=], [=worklet function/generate-bid=].
   1. [=Merge samples to an averager=] given |metrics|'s [=per participant metrics/code fetch time
     averager=] and |executionMetrics|'s [=execution metrics/code fetch time averager=].
+  1. Set |metrics|'s [=per participant metrics/script executions attempted=] to
+    |metrics|'s [=per participant metrics/participating interest group count=].
+  1. If |executionMetrics|'s [=execution metrics/script timed out=] is true, increment |metrics|'s
+    [=per participant metrics/script timeouts occurred=] by 1.
   1. [=set/Insert=] |id| into |reportingContext|'s [=reporting context/bidder participants=].
   1. [=Commit private aggregation contributions=] given |paContributions|, |id| and
     |reportingContext|.
@@ -4196,6 +4216,24 @@ A signal base value is one of the following:
   auction, after considering prioritization and capabilities. Interest groups included in this might
   not actually get to bid if the cumulative timeout expires, or the script fails to load, etc; or
   might decide not to bid, but they would have gotten a chance if nothing went wrong.
+: "<dfn><code>percent-scripts-timeout</code></dfn>"
+:: The numeric value is percentage of executions of this script that hit their individual timeout,
+  out of all executions that were expected to happen.
+: "<dfn><code>regular-igs-count</code></dfn>"
+:: Number of [=regular interest groups=] for the given buyer. (0 if this is used by a seller).
+: "<dfn><code>percent-regular-ig-count-quota-used</code></dfn>"
+:: Ratio of number of [=regular interest groups=] for the given buyer and [=Max regular interest
+  groups per owner=] expressed as a percentage, capped to 110.
+: "<dfn><code>negative-igs-count</code></dfn>"
+:: Number of [=negative interest groups=] for the given buyer. (0 if this is used by a seller).
+: "<dfn><code>percent-negative-ig-count-quota-used</code></dfn>"
+:: Ratio of number of [=negative interest groups=] for the given buyer and [=Max negative interest
+  groups per owner=] expressed as a percentage, capped to 110.
+: "<dfn><code>ig-storage-used</code></dfn>"
+:: Bytes of storage used by the given buyer. (0 if this is used by a seller).
+: "<dfn><code>percent-ig-storage-quota-used</code></dfn>"
+:: Percentage of [=max interest groups total size per owner=] used by the given buyer,
+  capped to 110.
 
 </dl>
 
@@ -4284,6 +4322,9 @@ metrics collected from a single execution of a worklet function:
 <dl dfn-for="execution metrics">
   : <dfn>code fetch time averager</dfn>
   :: An [=averager=].
+  : <dfn>script timed out</dfn>
+  :: A [=boolean=], initially false. This refers to the script hitting its own time out, and does
+    not include the cumulative timeout affecting buyers.
 </dl>
 
 A <dfn>per participant metrics</dfn> is a [=struct=] with the following [=struct/items=],
@@ -4293,6 +4334,16 @@ representing metrics aggregated over a particular participant (e.g. bidder or se
   :: A {{long}}, initially 0.
   : <dfn>code fetch time averager</dfn>
   :: An [=averager=].
+  : <dfn>script timeouts occurred</dfn>
+  :: A {{long}}, initially 0.
+  : <dfn>script executions attempted</dfn>
+  :: A {{long}}, initially 0.
+  : <dfn>regular interest group count</dfn>
+  :: A {{long}}, initially 0.
+  : <dfn>negative interest group count</dfn>
+  :: A {{long}}, initially 0.
+  : <dfn>storage quota used</dfn>
+  :: A {{long}}, initially 0.
 </dl>
 
 <h4 dfn-type=dfn>Private Aggregation contributions</h4>
@@ -4587,19 +4638,20 @@ They return a {{double}}.
   |reportingContext|, |onEventEntry|'s [=on event contribution entry/origin=], and the result of
   [=find corresponding bid and score phase function=] given [=on event contribution entry/worklet
   function=].
-1. If |signalBaseValue| is "<code>[=signal base value/winning-bid=]</code>":
-  1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return 0.
-  1. Otherwise, return  |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/bid=].
-1. If |signalBaseValue| is
-    "<code>[=signal base value/highest-scoring-other-bid=]</code>":
-  1. If |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] is null, return 0.
-  1. Otherwise, return |leadingBidInfo|'s [=leading bid info/highest scoring other bid=]'s
-    [=generated bid/bid=].
-1. If |signalBaseValue| is "<code>[=signal base value/script-run-time=]</code>":
-    1. Return the number of milliseconds of CPU time that the calling function
+1. If |signalBaseValue| is:
+  <dl class="switch">
+  : "<code>[=signal base value/winning-bid=]</code>"
+  :: 1. If |leadingBidInfo|'s [=leading bid info/leading bid=] is null, return 0.
+     1. Otherwise, return  |leadingBidInfo|'s [=leading bid info/leading bid=]'s [=generated bid/bid=].
+  : "<code>[=signal base value/highest-scoring-other-bid=]</code>":
+  :: 1. If |leadingBidInfo|'s [=leading bid info/highest scoring other bid=] is null, return 0.
+     1. Otherwise, return |leadingBidInfo|'s [=leading bid info/highest scoring other bid=]'s
+      [=generated bid/bid=].
+  : "<code>[=signal base value/script-run-time=]</code>"
+  :: Return the number of milliseconds of CPU time that the calling function
         (e.g. `generateBid()`) took to run.
-1. If |signalBaseValue| is "<code>[=signal base value/signals-fetch-time=]</code>":
-    Switch on the associated [=worklet function=]:
+  : "<code>[=signal base value/signals-fetch-time=]</code>"
+  :: Switch on the associated [=worklet function=]:
     <dl class="switch">
     : <code>[=worklet function/generate-bid=]</code>
     :: Return the number of milliseconds it took for the trusted bidding signals
@@ -4612,48 +4664,108 @@ They return a {{double}}.
     :: Return 0.
 
     </dl>
-1. If |signalBaseValue| is "<code>[=signal base value/bid-reject-reason=]</code>":
-  1. If the bid did not succeed purely because it didn't meet the required
-      <a spec="turtledove">k-anonymity threshold</a>, return 8.
-  1. Let |bidRejectReason| be "`not-available`".
-  1. If the seller provided a reject reason, set |bidRejectReason| to that
-      value.
-  1. If |bidRejectReason| is:
-      <dl class="switch">
-      : "`not-available`"
-      :: Return 0.
-      : "`invalid-bid`"
-      :: Return 1.
-      : "`bid-below-auction-floor`"
-      :: Return 2.
-      : "`pending-approval-by-exchange`"
-      :: Return 3.
-      : "`disapproved-by-exchange`"
-      :: Return 4.
-      : "`blocked-by-publisher`"
-      :: Return 5.
-      : "`language-exclusions`"
-      :: Return 6.
-      : "`category-exclusions`"
-      :: Return 7.
-      : None of the above values
-      :: [=Assert=]: false
+  : "<code>[=signal base value/bid-reject-reason=]</code>"
+  :: 1. If the bid did not succeed purely because it didn't meet the required
+        <a spec="turtledove">k-anonymity threshold</a>, return 8.
+     1. Let |bidRejectReason| be "`not-available`".
+     1. If the seller provided a reject reason, set |bidRejectReason| to that
+        value.
+     1. If |bidRejectReason| is:
+        <dl class="switch">
+        : "`not-available`"
+        :: Return 0.
+        : "`invalid-bid`"
+        :: Return 1.
+        : "`bid-below-auction-floor`"
+        :: Return 2.
+        : "`pending-approval-by-exchange`"
+        :: Return 3.
+        : "`disapproved-by-exchange`"
+        :: Return 4.
+        : "`blocked-by-publisher`"
+        :: Return 5.
+        : "`language-exclusions`"
+        :: Return 6.
+        : "`category-exclusions`"
+        :: Return 7.
+        : None of the above values
+        :: [=Assert=]: false
 
-        Note: this enum value is validated in `scoreAd()`.
+          Note: this enum value is validated in `scoreAd()`.
 
-        Issue: Verify this once
-        <a href="https://github.com/WICG/turtledove/issues/627">WICG/turtledove#627</a> is resolved.
+          Issue: Verify this once
+          <a href="https://github.com/WICG/turtledove/issues/627">WICG/turtledove#627</a> is resolved.
 
-        Issue: There are some automatically generated values that are not described here.
+          Issue: There are some automatically generated values that are not described here.
 
-        Issue: Verify handling when the bid was not rejected.
+          Issue: Verify handling when the bid was not rejected.
 
-      </dl>
-1. If |signalBaseValue| is "<code>[=signal base value/average-code-fetch-time=]</code>":
-  1. Return the result of [=getting the value to report from an averager=] given |metrics|'s [=per
+        </dl>
+  : "<code>[=signal base value/average-code-fetch-time=]</code>"
+  :: Return the result of [=getting the value to report from an averager=] given |metrics|'s [=per
     participant metrics/code fetch time averager=].
-1. If |signalBaseValue| is "<code>[=signal base value/participating-ig-count=]</code>":
-  1. Return |bidAndScoreMetrics|'s [=per participant metrics/participating interest group count=].
+
+  : "<code>[=signal base value/participating-ig-count=]</code>"
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/participating interest group count=].
+
+  : "<code>[=signal base value/percent-scripts-timeout=]</code>"
+  :: Return the result of [=computing a percentage metric=] given |metrics|'s [=per participant
+    metrics/script timeouts occurred=] and |metrics|'s [=per participant metrics/script executions
+    attempted=].
+
+  : "<code>[=signal base value/regular-igs-count=]</code>"
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/regular interest group count=].
+
+  : "<code>[=signal base value/percent-regular-ig-count-quota-used=]</code>"
+  :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/regular interest group count=] and [=max regular interest groups per
+    owner=].
+
+  : "<code>[=signal base value/negative-igs-count=]</code>"
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/negative interest group count=].
+
+  : "<code>[=signal base value/percent-negative-ig-count-quota-used=]</code>":
+  :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/negative interest group count=] and [=max negative interest groups per
+    owner=].
+
+  : "<code>[=signal base value/ig-storage-used=]</code>":
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/storage quota used=].
+
+  : "<code>[=signal base value/percent-ig-storage-quota-used=]</code>":
+  :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/storage quota used=] and [=max interest groups total size per owner=].
+
+  </dl>
+
+</div>
+
+<div algorithm>
+To <dfn>compute a percentage metric</dfn> given {{long}}s |numerator| and |denominator|:
+1. If |denominator| is 0, return 0.
+1. Let |result| be 100.0 * |numerator| / |denominator|, performing the computation with
+  {{double}}s.
+1. If |result| &gt; 110.0, set |result| to 110.0
+
+  Note: Since [=perform storage maintenance|Interest Group Storage Maintenance=] happens
+  periodically, metrics measuring storage utilization <span class="allow-2119">may</span> report
+  values that exceed 100%. The 110% cap exists to make it easier to allocate histogram bucket space
+  for those metrics, by providing a predictable upper bound.
+
+1. Return |result|.
+
+</div>
+
+<div algorithm>
+To <dfn>update storage metrics</dfn> given [=per participant metrics=] |metrics| and a [=list=] of
+[=interest groups=] |igs|:
+1. [=list/For each=] |ig| of |igs|:
+  1. If [=interest group/additional bid key=] is null, increment |metrics|'s [=per participant
+    metrics/regular interest group count=] by 1.
+  1. Otherwise, increment |metrics|'s [=per participant metrics/negative interest group count=]
+    by 1.
+  1. Increment |metrics|'s [=per participant metrics/storage quota used=] by |ig|'s [=interest
+    group/estimated size=]
 
 </div>
 
@@ -5604,7 +5716,8 @@ of the following global objects:
     1. Let |crossOriginTrustedBiddingSignalsJS| be |crossOriginTrustedBiddingSignals|
        [=converted to ECMAScript values=].
     1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
-    1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
+    1. Let (|result|, |executionMetrics|'s [=execution metrics/script timed out=]) be the
+      result of [=evaluating a script=] with |realm|, |script|, "`generateBid`",
       « |igJS|, |auctionSignalsJS|, |perBuyerSignalsJS|, |sameOriginTrustedBiddingSignalsJS|,
         |browserSignalsJS|, |directFromSellerSignalsJS|, |crossOriginTrustedBiddingSignalsJS| »,
         and |timeout|.
@@ -5687,7 +5800,9 @@ of the following global objects:
     1. Let |directFromSellerSignalsJs| be |directFromSellerSignalsForSeller|
       [=converted to ECMAScript values=].
     1. Let |startTime| be |settings|'s [=environment settings object/current monotonic time=].
-    1. Let |scoreAdResult| be the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
+    1. Let |executionMetrics| be a new [=execution metrics=].
+    1. Let (|scoreAdResult|, |executionMetrics|'s [=execution metrics/script timed out=]) be
+      the result of [=evaluating a script=] with |realm|, |script|, "`scoreAd`",
       «|adMetadata|, |bidValue|, |auctionConfigJS|, |sameOriginTrustedScoringSignalsJS|,
       |browserSignalsJS|, |directFromSellerSignalsJs|, |crossOriginTrustedScoringSignalsJS|»,
       and |timeout|.
@@ -5709,7 +5824,7 @@ of the following global objects:
     1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
       |global|.
     1. Return « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions|,
-        |paContributions| ».
+        |paContributions|, |executionMetrics| ».
 </div>
 
 <div algorithm>
@@ -5727,9 +5842,12 @@ of the following global objects:
       and |privateAggregationCoordinator|.
     1. Let |argumentsJS| be the result of [=converting a Web IDL arguments list to an ECMAScript
       arguments list|converting=] |arguments| to an ECMAScript arguments list. If this
-      [=exception/throws=] an exception, return « "null", null, null, null ».
-    1. Let |result| be the result of [=evaluating a script=] with |realm|, |script|,
-      |functionName|, |argumentsJS|, and |timeout|.
+      [=exception/throws=] an exception, return « "null", null, null, null, a new [=Private
+      Aggregation Contributions=], |executionMetrics| ».
+    1. Let |executionMetrics| be a new [=execution metrics=].
+    1. Let (|result|, |executionMetrics|'s [=execution metrics/script timed out=]) be the
+      result of [=evaluating a script=] with |realm|, |script|, |functionName|, |argumentsJS|,
+      and |timeout|.
     1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null, null ».
     1. Let |resultJSON| be "null".
     1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
@@ -5746,20 +5864,23 @@ of the following global objects:
       |global|.
     1. Return « |resultJSON|, |reportURL|,
       |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap|,
-      |paContributions| ».
+      |paContributions|, |executionMetrics| ».
 </div>
 
 <div algorithm>
   To <dfn>evaluate a script</dfn> with a [=ECMAScript/realm=] |realm|, [=string=] |script|, [=string=]
   |functionName|, a [=list=] |arguments|, and an integer millisecond [=duration=] |timeout|, run these steps.
-  They return a [=ECMAScript/Completion Record=], which is either an [=ECMAScript/abrupt completion=] (in
-  the case of a parse failure or execution error), or a [=ECMAScript/normal completion=] populated with the
-  [=ECMAScript/ECMAScript language value=] result of invoking |functionName|.
+  They return a tuple of a [=ECMAScript/Completion Record=], which is either an [=ECMAScript/abrupt
+  completion=] (in the case of a parse failure or execution error), or a [=ECMAScript/normal
+  completion=] populated with the [=ECMAScript/ECMAScript language value=] result of invoking
+  |functionName|, and a [=boolean=] stating whether the script was interrupted due to reaching
+  |timeout|.
 
     1. [=Assert=] that these steps are running [=in parallel=].
 
-    1. If |timeout| &le; 0, [=immediately=] interrupt the execution and set |finalCompletion| to a
-      new [=ECMAScript/throw completion=] given null.
+    1. If |timeout| &le; 0, return (new [=ECMAScript/throw completion=] given null, true).
+
+    1. Let |timedOut| be false.
 
     1. Let |global| be |realm|'s [=realm/global object=], and run these steps in |realm|'s [=realm/agent=]:
 
@@ -5769,7 +5890,7 @@ of the following global objects:
        unlike traditional [=scripts=] on the web platform.
 
     1. If |result| is a list of errors, return
-       Completion { \[[Type]]: `throw`, \[[Value]]: |result|, \[[Target]]: `empty` }.
+       (Completion { \[[Type]]: `throw`, \[[Value]]: |result|, \[[Target]]: `empty` }, false).
 
     1. [=Assert=]: |result| is a [=ECMAScript/Script Record=].
 
@@ -5778,6 +5899,11 @@ of the following global objects:
        context|running JavaScript execution context=].
 
     1. Let |evaluationStatus| be the result of [$ScriptEvaluation$](result).
+
+      In |timeout| milliseconds, if the invocation of [$ScriptEvaluation$] has not completed,
+      [=immediately=] interrupt the execution, set |finalCompletion| to a new
+      [=ECMAScript/throw completion=] given null, set |timedOut| to true, and jump to the step
+      labeled <i><a href="#evaluate-script-return">return</a></i>.
 
     1. If |evaluationStatus| is an [=ECMAScript/abrupt completion=], jump to the step labeled <i>
        <a href="#evaluate-script-return">return</a></i>.
@@ -5789,9 +5915,9 @@ of the following global objects:
     1. Set |finalCompletion| be [=ECMAScript/Completion Record|Completion=]([$Call$](F, `undefined`,
        |arguments|)).
 
-       In |timeout| milliseconds, if the invocation of [$Call$] has not completed,
-       [=immediately=] interrupt the execution and set |finalCompletion| to a new
-       [=ECMAScript/throw completion=] given null.
+       In |timeout| milliseconds minus the execution time of [$ScriptEvaluation$], if the invocation
+       of [$Call$] has not completed, [=immediately=] interrupt the execution, set |finalCompletion|
+       to a new [=ECMAScript/throw completion=] given null, and set |timedOut| to true.
 
     1. <i id=evaluate-script-return>Return</i>: at this point |finalCompletion| will be set to a
        [=ECMAScript/Completion Record=].
@@ -5800,7 +5926,7 @@ of the following global objects:
          execution context|running JavaScript execution context=], and remove it from the
          [=ECMAScript/execution context stack|JavaScript execution context stack=].
 
-      1. Return |finalCompletion|.
+      1. Return (|finalCompletion|, timedOut).
 </div>
 
 ## Global scopes ## {#global-scopes}
