@@ -3098,7 +3098,10 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
   * |response|'s [=server auction response/buyer and seller reporting id=] is not null and not
     |winningAd|'s [=interest group ad/buyer and seller reporting ID=];
   * |response|'s [=server auction response/buyer reporting id=] is not null and not
-    |winningAd|'s [=interest group ad/buyer reporting ID=].
+    |winningAd|'s [=interest group ad/buyer reporting ID=];
+  * |response|'s [=server auction response/selected buyer and seller reporting ID=] is not null,
+    |winningAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] is not null and it
+    does not [=list/contain=] |response|'s [=server auction response/selected buyer and seller reporting ID=].
 1. Let |winningAdDescriptor| be a new [=ad descriptor=] whose [=ad descriptor/url=] is
    |response|'s [=server auction response/ad render url=].
 1. Let |winningAdComponents| be a new [=list=] of [=ad descriptors=].
@@ -3456,6 +3459,9 @@ A <dfn>server auction response</dfn> is a [=struct=] that contains auction resul
   : <dfn>buyer and seller reporting id</dfn>
   :: Null or a [=string=]. When not null, this will be verified with the winning bid's
     [=generated bid/ad=]'s [=interest group ad/buyer and seller reporting ID=].
+  : <dfn>selected buyer and seller reporting id</dfn>
+  :: Null or a [=string=], initially null. When not null, this will be verified with the winning bid's
+    [=generated bid/ad=]'s [=interest group ad/selectable buyer and seller reporting IDs=].
   : error
   :: Null or [=string=]. When not null, contains an error message from the
      auction executed on the trusted auction server. May be used to provide
@@ -5468,9 +5474,10 @@ from querying the server during an auction.
           [=ad descriptor/url=].
         1. If [=query k-anonymity cache=] for |componentAdHashCode| returns false, return false.
     1. If |bid|'s [=generated bid/selected buyer and seller reporting ID=] is not null:
-      1. Let |reportingHashCode| be the result of [=query reporting ID k-anonymity count=] with the |bid|'s [=generated bid/interest group=],
-        the |bid|'s [=generated bid/ad=], and the |bid|'s [=generated bid/selected buyer and seller reporting ID=].
-      1. If [=query k-anonymity cache=] for |reportingHashCode| returns false, return false.
+      1. Let |isKAnon| the result of running [=query reporting ID k-anonymity count=] with |bid|'s
+        [=generated bid/interest group=], |bid|'s [=generated bid/ad=], and |bid|'s
+        [=generated bid/selected buyer and seller reporting ID=].
+      1. If |isKAnon| is false, return false.
     1. Return true.
 </div>
 
@@ -6227,10 +6234,11 @@ Each {{InterestGroupBiddingScriptRunnerGlobalScope}} has a
 </dl>
 
 <div algorithm>
-To <dfn>convert one or many GenerateBidOutputs to a list of generated bids</dfn> given a ({{GenerateBidOutput}} or [=sequence=]<{{GenerateBidOutput}}>)
-|oneOrManyBids|, an {{unsigned short}} |multiBidLimit|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|, a [=boolean=]
-
+To <dfn>convert one or many GenerateBidOutputs to a list of generated bids</dfn> given a
+({{GenerateBidOutput}} or [=sequence=]<{{GenerateBidOutput}}>) |oneOrManyBids|, an {{unsigned short}}
+|multiBidLimit|, an [=interest group=] |ig|, a [=currency tag=] |expectedCurrency|, a [=boolean=]
 |isComponentAuction| and a [=boolean=] |groupHasAdComponents|:
+
   1. Let |bidSequence| be [=sequence=]<{{GenerateBidOutput}}>.
   1. If the [=specific type=] of |oneOrManyBids| is {{GenerateBidOutput}}, then set |bidSequence| to « |oneOrManyBids| ».
   1. Otherwise, set |bidSequence| to |oneOrManyBids|.
@@ -6384,16 +6392,22 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
 
   1. Let |adUrl| be |adDescriptor|'s [=ad descriptor/url=].
   1. If |adUrl|'s [=url/scheme=] is not "`https`", return null.
+  1. Let |maybeMatchingAd| be an [=interest group ad=]-or null, set to null.
   1. Let |adSize| be |adDescriptor|'s [=ad descriptor/size=].
   1. Let |adList| be |ig|'s [=interest group/ad components=] if |isComponent|, otherwise |ig|'s
      [=interest group/ads=].
   1. [=list/For each=] |ad| in |adList|:
     1. If |ad|'s [=interest group ad/render url=] does not equal |adUrl|, [=iteration/continue=].
-    1. If |ad|'s [=interest group ad/size group=] is null, return |ad|.
-    1. If |adSize| is null, return |ad|.
+    1. If |ad|'s [=interest group ad/size group=] is null and |adSize| is null, set |maybeMatchingAd|
+      to |ad|, and [=iteration/break=].
+    1. If one of |ad|'s [=interest group ad/size group=] OR |adSize| is null, set |maybeMatchingAd|
+      to |ad|, and [=iteration/break=].
+
+      Note: When only one of the two ads has a size specification, they are considered matching. The
+        caller is responsible for discarding the extraneous size information.
     1. [=list/For each=] |igSize| in (|ig|'s [=interest group/size groups=])[|ad|'s
        [=interest group ad/size group=]]:
-      1. If |igSize| equals |adSize|, return |ad|.
+      1. If |igSize| equals |adSize|, set |maybeMatchingAd| to |ad|, and [=iteration/break=].
   1. Return null.
 </div>
 
