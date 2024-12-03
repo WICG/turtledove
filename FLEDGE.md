@@ -242,7 +242,7 @@ The `executionMode` attribute is optional, and may contain one of the following 
 
 `trustedBiddingSignalsSlotSizeMode`, `maxTrustedBiddingSignalsURLLength`, and `trustedBiddingSignalsCoordinator` are three optional fields related to fetching trusted bidding signals.
 
-* `trustedBiddingSignalsSlotSizeMode` has three modes: `none` (default), `slot-size`, and `all-slots-requested-sizes`. These modes are used to attach the size information of ad slots.  See [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) for more information.
+* `trustedBiddingSignalsSlotSizeMode` has three modes: `none` (default), `slot-size`, and `all-slots-requested-sizes`. These modes are used to attach the size information of ad slots. See [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) for more information.
 
 * `maxTrustedBiddingSignalsURLLength` is used to set the maximum URL length when constructing the URL for the trusted signals server in the BYOS (Bring Your Own Server) model. If set to 0 or not specified, the URL length is considered unlimited. See [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) for more information.
 
@@ -606,7 +606,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   crossOriginTrustedSignals: like `trustedScoringSignals`, but used when the server is cross-origin
     to the seller script. The value is an object that has as a key the trusted server's origin, e.g.
     `"https://example.org"`, and as value an object in format `trustedScoringSignals` uses. See
-    [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals) for more
+    [3.1.3 Cross-Origin Trusted Server Signals](#313-cross-origin-trusted-server-signals) for more
     details.
 
 The output of `scoreAd()` is an object with the following fields:
@@ -977,7 +977,7 @@ The arguments to `generateBid()` are:
     cross-origin to the buyer's script. The value is an object that has as a key the trusted
     server's origin, e.g. `"https://www.kv-server.example"`, and as value an object in format
     `trustedBiddingSignals` uses. See
-    [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals) for more
+    [3.1.3 Cross-Origin Trusted Server Signals](#313-cross-origin-trusted-server-signals) for more
     details.
 
 In the case of component auctions, an interest group's `generateBid()` function will be invoked in all component auctions for which it qualifies, though the `bidCount` value passed to future auctions will only be incremented by one for participation in that auction as a whole.
