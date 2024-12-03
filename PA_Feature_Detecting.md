@@ -155,8 +155,7 @@ navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
     "sellerNonce")
 ```
 
-## Trusted Signals KVv2 Support
-Intent to Ship(TBD)
+## [Trusted Key-Value Server Support](https://chromestatus.com/feature/5072384013631488)
 
 From context of a web page:
 ```
