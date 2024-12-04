@@ -2555,6 +2555,9 @@ failure, or a [=byte sequence=] |responseBody|, and a [=string=] |mimeType|:
     * |mimeType| is "`application/wasm`" and the result of [=header list/getting=] "`Content-Type`"
       from |response|'s [=response/header list=] is null or not [=byte-case-insensitive=] equal to
       "`application/wasm`".
+    * |mimeType| is "`message/ad-auction-trusted-signals-response`" and the result of
+      [=header list/getting=] "`Content-Type`" from |response|'s [=response/header list=] is null
+      or not [=byte-case-insensitive=] equal to "`message/ad-auction-trusted-signals-response`".
 
       Note: This was intended to match the behavior of [=compiling a potential WebAssembly
       response=], but diverges by failing to remove leading and trailing [=HTTP tab or space
@@ -2659,7 +2662,8 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |script
   1. Let |signals| be null.
   1. Let |dataVersion| be null.
   1. Let |formatVersion| be null.
-  1. Let |perInterestGroupData| be an [=ordered map=].
+  1. Let |perInterestGroupData| be an [=ordered map=] whose [=map/keys=] are [=interest group/name=]
+    [=strings=] and whose [=map/values=] are [=bidding signals per interest group data=].
   1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
     [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
     and null, failure, or a [=byte sequence=] |responseBody|:
@@ -2706,7 +2710,8 @@ To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte se
   :   [=request/origin=]
   ::  |scriptOrigin|
   :   [=request/header list=]
-  ::  «`Accept`: `application/json`»
+  ::  «`Content-Type`: `message/ad-auction-trusted-signals-request`»
+  ::  «`Accept`: `message/ad-auction-trusted-signals-response`»
   :   [=request/client=]
   ::  `null`
   :   [=request/mode=]
@@ -2723,18 +2728,18 @@ To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte se
   ::  A new [=policy container=] whose [=policy container/IP address space=] is |policyContainer|'s
     [=policy container/IP address space=]
 
-
-1. Let |resultList| be the result of deserializing |responseBody| using |context|. The
-  deserialization method may follow that described in
-  [Section 2.3.6 of the Protected Audience Key Value Services](https://privacysandbox.github.io/draft-ietf-protected-audience-key-value-service/draft-ietf-protected-audience-key-value-services.html#name-parsing-a-response).
 1. Let |signals| be null.
 1. Let |dataVersion| be an empty [=ordered map=], whose [=map/keys=] are [=strings=] and [=map/values=] are integers.
-1. Let |perInterestGroupData| be an [=ordered map=].
+1. Let |perInterestGroupData| be an [=ordered map=] whose [=map/keys=] are [=interest group/name=] [=strings=]
+  and whose [=map/values=] are [=bidding signals per interest group data=].
 1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
   [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
   and null, failure, or a [=byte sequence=] |responseBody|:
   1. If [=validate fetching response=] with |response|, |responseBody| and
     "`message/ad-auction-trusted-signals-response`" returns false, set |signals| to failure and return.
+  1. Let |resultList| be the result of deserializing |responseBody| using |context|. The
+    deserialization method may follow that described in
+    [Section 2.3.6 of the Protected Audience Key Value Services](https://privacysandbox.github.io/draft-ietf-protected-audience-key-value-service/draft-ietf-protected-audience-key-value-services.html#name-parsing-a-response).
   1. [=list/For each=] |result| in |resultList|:
     1. If |isBiddingSignal| is true:
       1. [=map/For each=] |name| → |value| in |result|["interestGroupNames"]:
@@ -7575,7 +7580,7 @@ An <dfn export>interest group</dfn> is a [=struct=] with the following [=struct/
     used for encryption and decryption in communication with a trusted bidding signal server running
     in a Trust Execution Environment (TEE). When this field is specified, the request will be sent to
     a trusted bidding signals server running in a TEE, and the value of
-    [=interest group/trusted bidding signals url=] is ignored.
+    [=interest group/max trusted bidding signals url length=] is ignored.
   : <dfn>user bidding signals</dfn>
   :: Null or a [=string=]. Additional metadata that the owner can use during on-device bidding.
   : <dfn>ads</dfn>
@@ -8166,7 +8171,8 @@ into smaller number of fetches. It's a [=struct=] with the following [=struct/it
   :: A {{long}}, initially 2147483647 (the maximum value that it can hold). Describes the URL length
      limit the current batch is limited to, the smallest of the limits of the interest groups included.
   : <dfn>key value interest groups</dfn>
-  :: An [=ordered map=] whose [=map/keys=] are [=tuples=] of ([=origin=], [=origin=]) and whose
+  :: An [=ordered map=] whose [=map/keys=] are [=tuples=] of (an [=origin=] for
+    [=interest group/joining origin=], an [=origin=] for [=interest group/owner=]) and whose
     [=map/values=] are [=sets=] of [=interest groups=].
 </dl>
 
@@ -8182,7 +8188,7 @@ A <dfn>bidding signals per interest group data</dfn> is a [=struct=] with the fo
     or explicitly by the {{Navigator/updateAdInterestGroups()}} method.
 </dl>
 
-A <dfn>compression group</dfn> is a collection of partitions that can be compressed together
+A <dfn>compression group</dfn> is a collection of [=partitions=] that can be compressed together
 in the signals response. It's a [=struct=] with the following [=struct/items=]:
 
 <dl dfn-for="compression group">
@@ -8192,17 +8198,19 @@ in the signals response. It's a [=struct=] with the following [=struct/items=]:
   :: A [=list=] of [=partition=]. Contains all the partitions belong to this compression group.
 </dl>
 
-A <dfn>partition</dfn> is a collection of keys that can be processed together by the service
-without any potential privacy leakage. It's a [=struct=] with the following [=struct/items=]:
+A <dfn>partition</dfn> is a collection of [=trusted bidding signals batcher/keys=] that can be
+processed together by the service without any potential privacy leakage. It's a [=struct=] with
+the following [=struct/items=]:
 
 <dl dfn-for="partition">
   : <dfn>id</dfn>
   :: An integer indicates the index of this partition.
   : <dfn>namespace</dfn>
-  :: An empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=list=] of
-    [=strings=].
+  :: A [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=list=] of
+    [=strings=]. A namespace contains all [=interest group/name=]s and
+    [=interest group/trusted bidding signals keys=]s in the partition.
   : <dfn>metadata</dfn>
-  :: An empty [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
+  :: A [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
 </dl>
 
 <div algorithm>
@@ -8354,13 +8362,12 @@ To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding s
   1. Otherwise:
     1. Let |keyValueInterestGroups| be |trustedBiddingSignalsBatcher|'s [=trusted bidding signals
       batcher/key value interest groups=].
-    1. Let |key| be {|ig|'s [=interest group/trusted bidding signals coordinator=], |ig|'s
-      [=interest group/owner=]}.
-    1. If |keyValueInterestGroups| [=map/contain=] |key|, [=set/Append=] |ig| to |keyValueInterestGroups|
-      [|key|].
+    1. Let |key| be [=tuple=] of (|ig|'s [=interest group/joining origin=], |ig|'s [=interest group/owner=]).
+    1. If |keyValueInterestGroups| [=map/contains=] |key|, [=set/append=] |ig| to
+      |keyValueInterestGroups|[|key|].
     1. Otherwise:
-      1. Let |keyValueInterestGroups|[|key|] be an empty [=set=], whose [=map/values=] are [=strings=].
-      1. [=set/Append=] |ig| to |keyValueInterestGroups| [|key|].
+      1. Let |keyValueInterestGroups|[|key|] be an empty [=set=], whose [=set/items=] are [=strings=].
+      1. [=set/Append=] |ig| to |keyValueInterestGroups|[|key|].
 
 </div>
 
@@ -8370,9 +8377,11 @@ To <dfn>build trusted key value bidding signals request body</dfn> given a [=set
 an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|, a [=string=]
 |slotSizeQueryParam|, an [=origin=] |coordinator|, and an [=origin=] |owner|:
 
-1. Let |compressionGroups| be an empty [=list=], whose values are [=compression group=].
-1. Let |compressionGroupMap| be an empty [=map=], whose [=map/keys=] are integers and [=map/values=] are [=maps=].
-1. Let |compressionIdMap| be an empty [=map=], whose keys [=origins=] and [=map/values=] are integers.
+1. Let |compressionGroups| be an empty [=list=], whose [=list/items=] are [=compression groups=].
+1. Let |compressionGroupMap| be an empty [=map=], where the [=map/keys=] are integers as
+  [=compression group/compression group id=], and the [=map/values=] are [=maps=] with integers as [=map/keys=]
+  for [=partition/id=], and [=partitions=] as their [=map/values=].
+1. Let |compressionIdMap| be an empty [=map=], whose [=map/keys=] are [=origins=] and [=map/values=] are integers.
 1. Let |interestGroupIdMap| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=tuples=]
   of (interger, integer).
 1. Let |slotSizeParams| be the result of [=strictly splitting=] |slotSizeQueryParam| on U+003D (=).
@@ -8390,7 +8399,7 @@ an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin
   1. Set |executionMode| to |group|'s [=interest group/execution mode=].
   1. If |executionMode| equal to "`group-by-origin`", set |partitionId| to 0.
   1. Otherwise:
-    1. If |compressionGroupMap|[|compressionGroupId|] [=map/contain=] 0, set |partitionId| to
+    1. If |compressionGroupMap|[|compressionGroupId|] [=map/contains=] 0, set |partitionId| to
       [=map/size=] of |compressionGroupMap|[|compressionGroupId|].
     1. Otherwise, set |partitionId| to sum [=list/size=] of |compressionGroupMap|[|joiningOrigin|]
       and 1.
@@ -8441,11 +8450,11 @@ an [=origin=] |scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|,
 |topLevelOrigin|, a [=string=] |slotSizeQueryParam|, and a [=policy container=] |policyContainer|:
 
   1. If |signalsUrl| is null, return.
-  1. [=map/For each=] (|coordinator|, |owner|) → |interestGroups| of [=trusted bidding signals
+  1. [=map/For each=] (|joining_origin|, |owner|) → |interestGroups| of [=trusted bidding signals
     batcher/key value interest groups=]:
     1. Let « |requestBody|, |interestGroupIdMap|, |context| » be the result of [=building trusted
       key value bidding signals request body=] with |interestGroups|, |experimentGroupId|,
-      |topLevelOrigin|, |slotSizeQueryParam|, |coordinator| and |owner|.
+      |topLevelOrigin|, |slotSizeQueryParam|, |joining_origin| and |owner|.
     1. Let « |partialTrustedBiddingSignals|, |partialPerInterestGroupData|, |dataVersion| » be the
       result of [=fetching trusted key value signals=] with |signalsUrl|, |requestBody|, |context|,
       |scriptOrigin|, |policyContainer|, |interestGroupIdMap| and true.
