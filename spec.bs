@@ -2712,23 +2712,23 @@ To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte se
   :   [=request/mode=]
   ::  "`cors`"
   :   [=request/referrer=]
-  :: "`no-referrer`"
+  ::  "`no-referrer`"
   :   [=request/credentials mode=]
   ::  "`omit`"
   :   [=request/redirect mode=]
-  :: "`error`"
+  ::  "`error`"
+  :   [=request/service-workers mode=]
+  ::  "`none`"
   :   [=request/policy container=]
   ::  A new [=policy container=] whose [=policy container/IP address space=] is |policyContainer|'s
     [=policy container/IP address space=]
 
-  Issue: One of the side-effects of a `null` client for this subresource request is it neuters all
-  service worker interceptions, despite not having to set the service workers mode.
 
 1. Let |resultList| be the result of deserializing |responseBody| using |context|. The
   deserialization method may follow that described in
   [Section 2.3.6 of the Protected Audience Key Value Services](https://privacysandbox.github.io/draft-ietf-protected-audience-key-value-service/draft-ietf-protected-audience-key-value-services.html#name-parsing-a-response).
 1. Let |signals| be null.
-1. Let |dataVersion| be an empty [=ordered map=], whose keys are [=strings=] and values are integers.
+1. Let |dataVersion| be an empty [=ordered map=], whose [=map/keys=] are [=strings=] and [=map/values=] are integers.
 1. Let |perInterestGroupData| be an [=ordered map=].
 1. [=Fetch=] |request| with [=fetch/useParallelQueue=] set to true, and
   [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
@@ -2745,16 +2745,16 @@ To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte se
             2<sup>32</sup>&minus;1, set |signals| to failure and return.
           1. Otherwise, set |dataVersion|[|name|] to |result|["dataVersion"].
       1. [=map/For each=] |key| → |value| in |result|["keys"]:
-        1. Set |siganls|[|key|] to |value|.
+        1. Set |signals|[|key|] to |value|.
     1. Otherwise:
       1. [=map/For each=] |url| → |value| in |result|["renderUrls"]:
-        1. Set |siganls|[|url|] to |value|.
+        1. Set |signals|[|url|] to |value|.
         1. If |result| [=map/contains=] `"dataVersion"`:
           1. If |result|["dataVersion"] is not an integer, or is less than 0 or more than
             2<sup>32</sup>&minus;1, set |signals| to failure and return.
           1. Otherwise, set |dataVersion|[|url|] to |result|["dataVersion"].
       1. [=map/For each=] |url| → |value| in |result|["adComponentRenderUrls"]:
-        1. Set |siganls|[|url|] to |value|.
+        1. Set |signals|[|url|] to |value|.
 1. Return « |signals|, |perInterestGroupData|, |dataVersion| ».
 
 </div>
@@ -3048,7 +3048,7 @@ a {{ReportingBrowserSignals}} |browserSignals|, a [=direct from seller signals=]
       <dd>|leadingBidInfo|'s [=leading bid info/bidding data version=] if it is not null,
         {{undefined}} otherwise.
       <dt>{{ReportWinBrowserSignals/adCost}}
-      <dd>[=Round a value|Rounded=] |winner|’s [=generated bid/ad cost=]
+      <dd>[=Round a value|Rounded=] |winner|'s [=generated bid/ad cost=]
       <dt>{{ReportWinBrowserSignals/seller}}
       <dd>[=serialization of an origin|Serialized=] |config|'s [=auction config/seller=]
       <dt>{{ReportWinBrowserSignals/madeHighestScoringOtherBid}}
@@ -5010,7 +5010,7 @@ A <dfn>decoded additional bid</dfn> is a [=struct=] with the following [=struct/
 
 *This first introductory paragraph is non-normative.*
 
-In online ad auctions for ad space, it’s sometimes useful to prevent showing an ad to certain
+In online ad auctions for ad space, it's sometimes useful to prevent showing an ad to certain
 audiences, a concept known as <dfn>negative targeting</dfn>. To facilitate [=negative targeting=] in
 Protected Audience [=auctions=], each [=additional bid=] is allowed to identify one or more
 [=negative interest groups=]. If the user has been joined to any of the identified
@@ -6694,7 +6694,7 @@ interface ProtectedAudience {
 <div algorithm>
 
 The <dfn for=ProtectedAudience method>queryFeatureSupport(feature)</dfn> method steps are:
-1. Let |featuresTable| be an [=ordered map=] whose keys are {{DOMString}}s and whose values are
+1. Let |featuresTable| be an [=ordered map=] whose [=map/keys=] are {{DOMString}}s and whose [=map/values=] are
    {{boolean}}s or {{long}}s, with the following entries:
     :   "adComponentsLimit"
     ::  40
@@ -7139,7 +7139,7 @@ response by either repeating the header or by specifying multiple hashes separat
 
 <div algorithm="ad auction fetch redirect patch">
 The following steps will be added to the [=HTTP fetch=] algorithm, immediately under the step "If
-<var ignore>internalResponse</var>’s [=status=] is a [=redirect status=]:"
+<var ignore>internalResponse</var>'s [=status=] is a [=redirect status=]:"
 
 1. [=header list/Delete=] "[:Ad-Auction-Signals:]" from |response|'s
   [=response/header list=].
@@ -8120,7 +8120,7 @@ a [=script fetcher=] |fetcher|:
     1. Set |fetcher|'s [=script fetcher/origins authorized for cross origin trusted signals=] to the
       result of [=parsing allowed trusted scoring signals origins=] given |response|'s [=response/
       header list=].
-    1. Let |bodyStream| be |response|’s [=response/body=]’s [=body/stream=].
+    1. Let |bodyStream| be |response|'s [=response/body=]'s [=body/stream=].
     1. Let |bodyReader| be result of [=ReadableStream/getting a reader=] from |bodyStream|.
     1. Let |successSteps| be a set of steps that take a [=byte sequence=] |responseBody|, and
       perform the following:
@@ -8336,7 +8336,7 @@ To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding s
     1. If |keyValueInterestGroups| [=map/contain=] |key|, [=set/Append=] |ig| to |keyValueInterestGroups|
       [|key|].
     1. Otherwise:
-      1. Let |keyValueInterestGroups|[|key|] be an empty [=set=], whose values are [=strings=].
+      1. Let |keyValueInterestGroups|[|key|] be an empty [=set=], whose [=map/values=] are [=strings=].
       1. [=set/Append=] |ig| to |keyValueInterestGroups| [|key|].
 
 </div>
@@ -8347,10 +8347,10 @@ To <dfn>build trusted key value bidding signals request body</dfn> given a [=set
 an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|, a [=string=]
 |slotSizeQueryParam|, an [=origin=] |coordinator|, and an [=origin=] |owner|:
 
-1. Let |compressionGroups| be an empty [=list=], whose values are [=maps=].
-1. Let |compressionGroupMap| be an empty [=map=], whose keys are integers and values are [=maps=].
-1. Let |compressionIdMap| be an empty [=map=], whose keys [=origins=] and values are integers.
-1. Let |interestGroupIdMap| be an empty [=map=], whose keys are [=strings=] and values are [=tuples=]
+1. Let |compressionGroups| be an empty [=list=], whose [=map/values=] are [=maps=].
+1. Let |compressionGroupMap| be an empty [=map=], whose [=map/keys=] are integers and [=map/values=] are [=maps=].
+1. Let |compressionIdMap| be an empty [=map=], whose keys [=origins=] and [=map/values=] are integers.
+1. Let |interestGroupIdMap| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=tuples=]
   of (interger, integer).
 1. Let |slotSizeParams| be the result of [=strictly splitting=] |slotSizeQueryParam| on U+003D (=).
 1. Let |nextCompressionGroupId| be 0.
@@ -8362,8 +8362,8 @@ an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin
     1. Increment |nextCompressionGroupId| by 1.
   1. Let |compressionGroupId| be |compressionIdMap|[|joiningOrigin|].
   1. If |compressionGroupMap| does not [=map/contain=] |compressionGroupId|:
-    1. Let |compressionGroupMap|[|compressionGroupId|] be an empty [=map=], whose keys are integers
-      and values are [=maps=].
+    1. Let |compressionGroupMap|[|compressionGroupId|] be an empty [=map=], whose [=map/keys=] are integers
+      and [=map/values=] are [=maps=].
   1. Set |executionMode| to |group|'s [=interest group/execution mode=].
   1. If |executionMode| equal to "`group-by-origin`", set |partitionId| to 0.
   1. Otherwise:
@@ -8374,15 +8374,15 @@ an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin
   1. Set |interestGroupIdMap|[|group|'s [=interest group/name=]] to [=tuple=] of |compressionGroupId|
     and |partitionId|.
   1. If |compressionGroupMap|[|compressionGroupId|] does not [=map/contain=] |partitionId|:
-    1. Let |partition| be an empty [=map=], whose keys are [=strings=] and values are integers or
+    1. Let |partition| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are integers or
       [=maps=].
     1. Set |partition|["id"] to |partitionId|.
-    1. Let |namespace| be an empty [=map=], whose keys are [=strings=] and values are [=strings=] or
+    1. Let |namespace| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=strings=] or
       [=list=] of [=strings=].
     1. Set |namespace|["interest_group_names"] to [|group|'s [=interest group/name=]].
     1. Set |namespace|["bidding_keys"] to |group|'s [=interest group/trusted bidding signals keys=].
     1. Set |partition|["namespace"] to |namespace|.
-    1. Let |metadata| be an empty [=map=], whose keys and values are [=strings=].
+    1. Let |metadata| be an empty [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
     1. Set |metadata|["experiment_group_id"] to |experimentGroupId|.
     1. Set |metadata|[|slotSizeParams|[0]] to |slotSizeParams|[1].
     1. Set |partition|["metadata"] to |metadata|.
@@ -8393,14 +8393,14 @@ an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin
     1. [=list/Append=] |group|'s [=interest group/trusted bidding signals keys=] into
       |compressionGroupMap|[|compressionGroupId|][|partitionId|]["bidding_keys"].
 1. [=map/For each=] |id| → |group| in |compressionGroupMap|:
-  1. Let |compressionGroup| be an empty [=map=], whose keys are [=strings=] and values are integers or
+  1. Let |compressionGroup| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are integers or
     [=lists=] of [=maps=].
   1. Set |compressionGroup|["compression_group_id"] to |id|.
   1. Set |compressionGroup|["partitions"] to an empty [=list=].
   1. [=list/For each=] |partition| in |group|'s [=map/values=]:
     1. [=list/Append=] |partition| to |compressionGroup|["partitions"].
   1. [=list/Append=] |compressionGroup| to |compressionGroups|.
-1. Let |metadata| be an empty [=map=], whose keys and values are [=strings=].
+1. Let |metadata| be an empty [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
 1. Let |hostname| be the result of [=string/UTF-8 percent-encoding=] the
   [=serialization of an origin|serialized=] |topLevelOrigin| using [=component percent-encode set=].
 1. Set |metadata|["hostname"] to |hostname|.
@@ -8604,11 +8604,11 @@ To <dfn>build trusted key value scoring signals request body</dfn> given a non-e
 [=trusted scoring signals requests=] |entriesToBatch|:
 
 1. Let |firstRequest| be |entriesToBatch|[0].
-1. Let |compressionGroups| be an empty [=list=], whose values are [=maps=].
-1. Let |compressionGroupMap| be an empty [=map=], whose keys are integers and keys are [=maps=].
-1. Let |compressionIdMap| be an empty [=map=], whose keys are [=tuples=] of ([=origin=],
-  [=origin=]) and values are integers.
-1. Let |renderUrlIdMap| be an empty [=map=], whose keys are [=URLs=] and values are [=tuples=]
+1. Let |compressionGroups| be an empty [=list=], whose [=map/values=] are [=maps=].
+1. Let |compressionGroupMap| be an empty [=map=], whose [=map/keys=] are integers and keys are [=maps=].
+1. Let |compressionIdMap| be an empty [=map=], whose [=map/keys=] are [=tuples=] of ([=origin=],
+  [=origin=]) and [=map/values=] are integers.
+1. Let |renderUrlIdMap| be an empty [=map=], whose [=map/keys=] are [=URLs=] and [=map/values=] are [=tuples=]
   of (interger, integer).
 1. Let |nextCompressionGroupId| be 0.
 1. [=map/For each=] |request| of |entriesToBatch|:
@@ -8621,34 +8621,34 @@ To <dfn>build trusted key value scoring signals request body</dfn> given a non-e
     1. Increase |nextCompressionGroupId| by 1.
   1. Let |compressionGroupId| be |compressionIdMap|[|mapKey|].
   1. If |compressionGroupMap| does not [=map/contain=] |compressionGroupId|:
-    1. Let |compressionGroupMap|[|compressionGroupId|] be an empty [=map=], whose keys are integers
-      and values are [=maps=].
+    1. Let |compressionGroupMap|[|compressionGroupId|] be an empty [=map=], whose [=map/keys=] are integers
+      and [=map/values=] are [=maps=].
   1. Set |partitionId| to [=list/size=] of |compressionGroupMap|[|compressionGroupId|].
   1. Set |renderUrlIdMap|[|request|'s [=trusted scoring signals request/render URL=]] to [=tuple=]
     of |compressionGroupId| and |partitionId|.
-  1. Let |partition| be an empty [=map=], whose keys are [=strings=] and values are [=strings=] or
+  1. Let |partition| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=strings=] or
       [=list=] of [=strings=].
   1. Set |partition|["id"] to |partitionId|.
-  1. Let |namespace| be an empty [=map=], whose keys are [=strings=] and values are [=strings=] or
+  1. Let |namespace| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=strings=] or
       [=list=] of [=strings=].
   1. Set |namespace|["render_url"] to [|request|'s [=trusted scoring signals request/render URL=]].
   1. Set |namespace|["ad_component_render_urls"] to |request|'s [=trusted scoring signals request/ad
     component URLs=].
   1. Set |partition|["namespace"] to |namespace|.
-  1. Let |metadata| be an empty [=map=], whose keys and values are [=strings=].
+  1. Let |metadata| be an empty [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
   1. Set |metadata|["experiment_group_id"] to |firstRequest|'s [=trusted scoring signals
       request/seller experiment group id=].
   1. Set |partition|["metadata"] to |metadata|.
   1. Set |compressionGroupMap|[|compressionGroupId|][|partitionId|] to |partition|.
 1. [=map/For each=] |id| → |group| in |compressionGroupMap|:
-  1. Let |compressionGroup| be an empty [=map=], whose keys are [=strings=] and values are integers or
+  1. Let |compressionGroup| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are integers or
     [=lists=] of [=maps=].
   1. Set |compressionGroup|["compression_group_id"] to |id|.
   1. Set |compressionGroup|["partitions"] to an empty [=list=].
   1. [=list/For each=] |partition| in |group|'s [=map/values=]:
     1. [=list/Append=] |partition| to |compressionGroup|["partitions"].
   1. [=list/Append=] |compressionGroup| to |compressionGroups|.
-1. Let |metadata| be an empty [=map=], whose keys and values are [=strings=].
+1. Let |metadata| be an empty [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
 1. Let |hostname| be the result of [=string/UTF-8 percent-encoding=] the
   [=serialization of an origin|serialized=] |firstRequest|'s [=trusted scoring signals request/top
     level origin=] using [=component percent-encode set=].
@@ -8792,7 +8792,7 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
             |allTrustedScoringSignals|.
       1. [=list/For each=] |entry| in |entriesToBatch|:
         1. Set |result|'s [=trusted scoring signals reply/data version=] to |scoringDataVersion|
-          [|entry|'s [=trusted scoring signals request/render URL=]].
+          [|entry|'s [=URL serializer|serialized=] [=trusted scoring signals request/render URL=]].
         1. Set |entry|'s [=trusted scoring signals request/reply=] to |result|.
 
 </div>
@@ -9300,8 +9300,8 @@ An <dfn>auction data buyer config</dfn> is a [=struct=] with the following [=str
 # Privacy Considerations # {#privacy-considerations}
 
 Protected Audience aims to advance the privacy of remarketing and custom audience
-advertising on the web, so naturally privacy considerations are paramount to Protected Audience’s
-design.  Partitioning data by site is the central mechanism to prevent joining a user’s identity
+advertising on the web, so naturally privacy considerations are paramount to Protected Audience's
+design.  Partitioning data by site is the central mechanism to prevent joining a user's identity
 across sites:
 - Interest group definitions come from just one site, the site that called
   {{Navigator/joinAdInterestGroup()}}.
@@ -9329,7 +9329,7 @@ Protected Audience involves the browser running untrusted JavaScript downloaded 
 parties, so security concerns are top of mind. Fortunately Protected Audience is a highly
 constrained API not attempting to be a general purpose execution environment. Execution of this
 JavaScript is controlled and limited as follows:
-- Protected Audience requires the origin of the scripts’ URLs to match that of the origin of the
+- Protected Audience requires the origin of the scripts' URLs to match that of the origin of the
   interest group owner, which is in turn required to match the origin of the context calling the
   {{Navigator/joinAdInterestGroup()}}.
 - URL schemes are required to be HTTPS.
