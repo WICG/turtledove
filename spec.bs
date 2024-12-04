@@ -6657,10 +6657,10 @@ To <dfn>process updateIfOlderThanMs</dfn> given an [=origin=] |buyer|, and an [=
 
 1. [=map/For each=] |igName| → |perIgData| of |perInterestGroupData|, the following steps should be
   done:
-  1. If |perIgData|'s [=bidding signals per interest group data/updateIfOlderThanMs=] is null,
+  1. If |perIgData|'s [=bidding signals per interest group data/update if older than ms=] is null,
     [=iteration/continue=].
   1. Let |updateIfOlderThan| be a [=duration=] of |perIgData|'s
-    [=bidding signals per interest group data/updateIfOlderThanMs=] milliseconds.
+    [=bidding signals per interest group data/update if older than ms=] milliseconds.
   1. Let |ig| be the [=interest group=] of the [=user agent=]'s [=interest group set=] whose
     [=interest group/owner=] is |buyer| and whose [=interest group/name=] is |igName|, or null if
     [=interest group set=] does not have such an interest group.
@@ -7571,9 +7571,9 @@ An <dfn export>interest group</dfn> is a [=struct=] with the following [=struct/
   :: A {{long}} integer, initially 0. Indicates the maximum trusted bidding signals fetch url length
     for the interest group. 0 means no limit.
   : <dfn>trusted bidding signals coordinator</dfn>
-  :: Null or an [=origin=]. This is used to specify where to obtain the public key used for
-    encryption and decryption in communication with a trusted bidding signal server running in a
-    Trust Execution Environment (TEE). When this field is specified, the request will be sent to
+  :: Null or an [=origin=], initially null. This is used to specify where to obtain the public key
+    used for encryption and decryption in communication with a trusted bidding signal server running
+    in a Trust Execution Environment (TEE). When this field is specified, the request will be sent to
     a trusted bidding signals server running in a TEE, and the value of
     [=interest group/trusted bidding signals url=] is ignored.
   : <dfn>user bidding signals</dfn>
@@ -7736,9 +7736,9 @@ An <dfn export>auction config</dfn> is a [=struct=] with the following [=struct/
   :: A {{long}} integer, initially 0. Indicates the maximum trusted scoring signals fetch url length
     for the auction config. 0 means no limit.
   : <dfn>trusted scoring signals coordinator</dfn>
-  :: Null or an [=origin=]. This is used to specify where to obtain the public key used for
-    encryption and decryption in communication with a trusted scoring signal server running in a
-    Trust Execution Environment (TEE). When this field is specified, the request will be sent to
+  :: Null or an [=origin=], initially null. This is used to specify where to obtain the public key
+    used for encryption and decryption in communication with a trusted scoring signal server running
+    in a Trust Execution Environment (TEE). When this field is specified, the request will be sent to
     a trusted scoring signals server running in a TEE, and the value of
     [=auction config/max trusted scoring signals url length=] is ignored.
   : <dfn>interest group buyers</dfn>
@@ -8174,12 +8174,35 @@ A <dfn>bidding signals per interest group data</dfn> is a [=struct=] with the fo
 [=struct/items=]:
 
 <dl dfn-for="bidding signals per interest group data">
-  : <dfn>updateIfOlderThanMs</dfn>
+  : <dfn>update if older than ms</dfn>
   :: Null or a {{double}}. If non-null, it is the [=duration=] in milliseconds after which the
     [=interest group=] is eligible for an [update](#interest-group-update), if it hasn't been joined
     or updated within that duration. When eligible, the update is performed either following a call
     to {{Navigator/runAdAuction()}}, for each of the passed {{AuctionAdConfig/interestGroupBuyers}},
     or explicitly by the {{Navigator/updateAdInterestGroups()}} method.
+</dl>
+
+A <dfn>compression group</dfn> is a collection of partitions that can be compressed together
+in the signals response. It's a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="compression group">
+  : <dfn>compression group id</dfn>
+  :: An integer indicates the index of this compression group.
+  : <dfn>partitions</dfn>
+  :: A [=list=] of [=partition=]. Contains all the partitions belong to this compression group.
+</dl>
+
+A <dfn>partition</dfn> is a collection of keys that can be processed together by the service
+without any potential privacy leakage. It's a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="partition">
+  : <dfn>id</dfn>
+  :: An integer indicates the index of this partition.
+  : <dfn>namespace</dfn>
+  :: An empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=list=] of
+    [=strings=].
+  : <dfn>metadata</dfn>
+  :: An empty [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
 </dl>
 
 <div algorithm>
@@ -8197,9 +8220,9 @@ To <dfn>append to a bidding signals per-interest group data map</dfn> given an [
     1. If |updateIfOlderThanMs| &lt; 600,000, set |updateIfOlderThanMs| to 600,000.
 
       Note: 600,000 milliseconds is 10 minutes.
-    1. Set |perGroupData|'s [=bidding signals per interest group data/updateIfOlderThanMs=] to
+    1. Set |perGroupData|'s [=bidding signals per interest group data/update if older than ms=] to
       |updateIfOlderThanMs|.
-  1. If |perGroupData|'s [=bidding signals per interest group data/updateIfOlderThanMs=] is not
+  1. If |perGroupData|'s [=bidding signals per interest group data/update if older than ms=] is not
     null, then [=map/set=] |destinationMap|[|sourceKey|] to |perGroupData|.
 
 </div>
@@ -8290,7 +8313,7 @@ To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding s
 
      Note: An interest group with no trusted signals keys requests would still fetch and process
      per-interest group data like priorityVector and
-     [=bidding signals per interest group data/updateIfOlderThanMs=], but it will get null passed in
+     [=bidding signals per interest group data/update if older than ms=], but it will get null passed in
      to its bidding function.
 
   1. If |ig|'s [=interest group/trusted bidding signals coordinator=] is null:
@@ -8347,7 +8370,7 @@ To <dfn>build trusted key value bidding signals request body</dfn> given a [=set
 an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin|, a [=string=]
 |slotSizeQueryParam|, an [=origin=] |coordinator|, and an [=origin=] |owner|:
 
-1. Let |compressionGroups| be an empty [=list=], whose [=map/values=] are [=maps=].
+1. Let |compressionGroups| be an empty [=list=], whose values are [=compression group=].
 1. Let |compressionGroupMap| be an empty [=map=], whose [=map/keys=] are integers and [=map/values=] are [=maps=].
 1. Let |compressionIdMap| be an empty [=map=], whose keys [=origins=] and [=map/values=] are integers.
 1. Let |interestGroupIdMap| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=tuples=]
@@ -8374,18 +8397,17 @@ an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin
   1. Set |interestGroupIdMap|[|group|'s [=interest group/name=]] to [=tuple=] of |compressionGroupId|
     and |partitionId|.
   1. If |compressionGroupMap|[|compressionGroupId|] does not [=map/contain=] |partitionId|:
-    1. Let |partition| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are integers or
-      [=maps=].
-    1. Set |partition|["id"] to |partitionId|.
-    1. Let |namespace| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=strings=] or
-      [=list=] of [=strings=].
+    1. Let |partition| be an empty [=partition=].
+    1. Set |partition|'s [=partition/id=] to |partitionId|.
+    1. Let |namespace| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=list=]
+      of [=strings=].
     1. Set |namespace|["interest_group_names"] to [|group|'s [=interest group/name=]].
     1. Set |namespace|["bidding_keys"] to |group|'s [=interest group/trusted bidding signals keys=].
-    1. Set |partition|["namespace"] to |namespace|.
+    1. Set |partition|'s [=partition/namespace=] to |namespace|.
     1. Let |metadata| be an empty [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
     1. Set |metadata|["experiment_group_id"] to |experimentGroupId|.
     1. Set |metadata|[|slotSizeParams|[0]] to |slotSizeParams|[1].
-    1. Set |partition|["metadata"] to |metadata|.
+    1. Set |partition|'s [=partition/metadata=] to |metadata|.
     1. Set |compressionGroupMap|[|compressionGroupId|][|partitionId|] to |partition|.
   1. Otherwise:
     1. [=list/Append=] |group|'s [=interest group/name=] into |compressionGroupMap|[|compressionGroupId|]
@@ -8393,12 +8415,11 @@ an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin
     1. [=list/Append=] |group|'s [=interest group/trusted bidding signals keys=] into
       |compressionGroupMap|[|compressionGroupId|][|partitionId|]["bidding_keys"].
 1. [=map/For each=] |id| → |group| in |compressionGroupMap|:
-  1. Let |compressionGroup| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are integers or
-    [=lists=] of [=maps=].
-  1. Set |compressionGroup|["compression_group_id"] to |id|.
-  1. Set |compressionGroup|["partitions"] to an empty [=list=].
+  1. Let |compressionGroup| be an empty [=compression group=].
+  1. Set |compressionGroup|'s [=compression group/compression group id=] to |id|.
+  1. Set |compressionGroup|'s [=compression group/partition=] to an empty [=list=].
   1. [=list/For each=] |partition| in |group|'s [=map/values=]:
-    1. [=list/Append=] |partition| to |compressionGroup|["partitions"].
+    1. [=list/Append=] |partition| to |compressionGroup|'s [=compression group/partition=].
   1. [=list/Append=] |compressionGroup| to |compressionGroups|.
 1. Let |metadata| be an empty [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
 1. Let |hostname| be the result of [=string/UTF-8 percent-encoding=] the
@@ -8604,7 +8625,7 @@ To <dfn>build trusted key value scoring signals request body</dfn> given a non-e
 [=trusted scoring signals requests=] |entriesToBatch|:
 
 1. Let |firstRequest| be |entriesToBatch|[0].
-1. Let |compressionGroups| be an empty [=list=], whose [=map/values=] are [=maps=].
+1. Let |compressionGroups| be an empty [=list=], whose values are [=maps=].
 1. Let |compressionGroupMap| be an empty [=map=], whose [=map/keys=] are integers and keys are [=maps=].
 1. Let |compressionIdMap| be an empty [=map=], whose [=map/keys=] are [=tuples=] of ([=origin=],
   [=origin=]) and [=map/values=] are integers.
