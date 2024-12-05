@@ -13,7 +13,7 @@ This document seeks to propose an API for web pages to perform Protected Audienc
 To execute an on-server Protected Audience auction, sellers begin by calling `navigator.getInterestGroupAdAuctionData()` with returns a `Promise<AdAuctionData>`:
 
 ```javascript
-const auctionBlob = navigator.getInterestGroupAdAuctionData({
+const auctionBlob = await navigator.getInterestGroupAdAuctionData({
   // ‘seller’ works the same as for runAdAuction.
   'seller': 'https://www.example-ssp.com',
   // 'coordinatorOrigin' of the TEE coordinator, defaults to
@@ -35,6 +35,8 @@ const auctionBlob = navigator.getInterestGroupAdAuctionData({
     'https://buyer2.origin.example.com': {}
   }
 });
+const request = auctionBlob.request;
+const requestId = auctionBlob.requestId;
 ```
 
 The `seller` field will be checked to ensure it matches the `seller` specified
@@ -45,7 +47,7 @@ request. The `coordinatorOrigin` must be a coordinator that is known to Chrome
 The `requestSize` and `perBuyerConfig` fields are described in more detail in
 the [Request Size and Configuration](#request-size-and-configuration) section below.
 
-The returned `auctionBlob` is a Promise that will resolve to an `AdAuctionData` object. This object contains `requestId` and `request` fields.
+The `navigator.getInterestGroupAdAuctionData()` returns a Promise that will resolve to an `AdAuctionData` object, in this case `auctionBlob`. This object contains `requestId` and `request` fields.
 The `requestId` contains a UUID that needs to be presented to `runAdAuction()` along with the response.
 The `request` field is a `Uint8Array` containing the information needed for the [ProtectedAudienceInput](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#protectedaudienceinput) in a `SelectAd` B&A call,
 encrypted using HPKE with an encryption header like that used in [OHTTP](https://www.ietf.org/archive/id/draft-thomson-http-oblivious-01.html).
@@ -60,12 +62,12 @@ The `seller` is required to have its [site](https://html.spec.whatwg.org/multipa
 
 ### Step 2: Send auction blob to servers
 
-A seller’s JavaScript then sends auctionBlob to their server, perhaps by initiating a [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) using a PUT or POST method with auctionBlob attached as the request body:
+A seller’s JavaScript then sends `request` to their server, perhaps by initiating a [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) using a PUT or POST method with `request` attached as the request body:
 
 <pre>
 fetch('https://www.example-ssp.com/auction', {
   method: "PUT",
-  <b>body: auctionBlob</b>,
+  <b>body: request</b>,
   …
 })
 </pre>
@@ -103,7 +105,7 @@ Ad-Auction-Result: 9UTB-u-WshX66Xqz5DNCpEK9z-x5oCS5SXvgyeoRB1k=
 ```
 and both versions should be accepted.
 
-It should be noted that the `fetch()` request using `adAuctionHeaders` can also be used to send `auctionBlob` (e.g. in the request body) and receive the response blob (e.g. in the response body).
+It should be noted that the `fetch()` request using `adAuctionHeaders` can also be used to send `request` (e.g. in the request body) and receive the response blob (e.g. in the response body).
 
 ### Step 4: Complete auction in browser
 
@@ -385,7 +387,7 @@ Then the request is zero padded to a set of pre-configured lengths (TBD).
 
 ### Example
 
-The JSON equivalent of an example `auctionBlob` would look like this:
+The JSON equivalent of an example `request` would look like this:
 
 ```json
 {
@@ -428,8 +430,8 @@ The JSON equivalent of the interest group would look like the following example:
 
 The response blob from a B&A auction contains an HPKE encrypted message containing the information from [AuctionResult](https://github.com/privacysandbox/bidding-auction-servers/blob/main/api/bidding_auction_servers.proto#L193).
 This response has an encryption header like that
-used in OHTTP and serves as the response for the encryption context started by the `auctionBlob` from `navigator.getInterestGroupAdAuctionData`.
-The response contains a framing header like the request and contains a blob of compressed data, using the same schema version and same compression algorithm as specified in the `auctionBlob`.
+used in OHTTP and serves as the response for the encryption context started by the `request` from `navigator.getInterestGroupAdAuctionData`.
+The response contains a framing header like the request and contains a blob of compressed data, using the same schema version and same compression algorithm as specified in the `request`.
 The response needs to be padded to a set of sizes to limit the amount of information leaking from the auction.
 
 Prior to compression and encryption, the AuctionResult is encoded as CBOR with the following schema (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
