@@ -34,9 +34,9 @@ const auctionBlob = await navigator.getInterestGroupAdAuctionData({
     },
     'https://buyer2.origin.example.com': {}
   }
+});
 const request = auctionBlob.request;
 const requestId = auctionBlob.requestId;
-});
 ```
 
 The `seller` field will be checked to ensure it matches the `seller` specified
