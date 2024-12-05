@@ -13,7 +13,7 @@ This document seeks to propose an API for web pages to perform Protected Audienc
 To execute an on-server Protected Audience auction, sellers begin by calling `navigator.getInterestGroupAdAuctionData()` with returns a `Promise<AdAuctionData>`:
 
 ```javascript
-const auctionBlob = navigator.getInterestGroupAdAuctionData({
+const auctionBlob = await navigator.getInterestGroupAdAuctionData({
   // ‘seller’ works the same as for runAdAuction.
   'seller': 'https://www.example-ssp.com',
   // 'coordinatorOrigin' of the TEE coordinator, defaults to
@@ -34,6 +34,8 @@ const auctionBlob = navigator.getInterestGroupAdAuctionData({
     },
     'https://buyer2.origin.example.com': {}
   }
+const request = auctionBlob.request;
+const requestId = auctionBlob.requestId;
 });
 ```
 
@@ -45,7 +47,7 @@ request. The `coordinatorOrigin` must be a coordinator that is known to Chrome
 The `requestSize` and `perBuyerConfig` fields are described in more detail in
 the [Request Size and Configuration](#request-size-and-configuration) section below.
 
-The returned `auctionBlob` is a Promise that will resolve to an `AdAuctionData` object. This object contains `requestId` and `request` fields.
+The `navigator.getInterestGroupAdAuctionData()` returns a Promise that will resolve to an `AdAuctionData` object, in this case `auctionBlob`. This object contains `requestId` and `request` fields.
 The `requestId` contains a UUID that needs to be presented to `runAdAuction()` along with the response.
 The `request` field is a `Uint8Array` containing the information needed for the [ProtectedAudienceInput](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#protectedaudienceinput) in a `SelectAd` B&A call,
 encrypted using HPKE with an encryption header like that used in [OHTTP](https://www.ietf.org/archive/id/draft-thomson-http-oblivious-01.html).
