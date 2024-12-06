@@ -38,8 +38,8 @@ function generateBid(...) {
 
 ## Configuring the encrypted payload and emitting it in `reportWin`
 
-In order to avoid the length (and other metadata) about the payload being a privacy leak vector, it cannot be configured based on protected cross-site data (e.g. from within `generateBid`). We propose enabling this kind of configuration from within `reportWin`.
-
+In order to avoid the length (and other metadata) about the payload being a privacy leak vector, it cannot be configured based on protected cross-site data (e.g. from within `generateBid`). We propose enabling this kind of configuration from within `reportWin`,
+which will configure a new function (`reportAggregateWin`) to run. This new function will have access to the `aggregateWinSignals` returned from `generateBid`.
 
 ```javascript
 function reportWin(...) {
