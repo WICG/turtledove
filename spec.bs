@@ -2032,9 +2032,9 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
         |fetchSignalDuration|.
       1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
         1. [=list/For each=] |ig| of |groups|:
-          1. If |cumulativeTimeoutTracker| [=cumulative timeout tracker/is expired=] then:
-            1. Increment |metrics|'s [=per participant metrics/cumulative timeouts occurred=] by 1.
-            1. [=iteration/continue=].
+          1. If |cumulativeTimeoutTracker| [=cumulative timeout tracker/is expired=] then
+            increment |metrics|'s [=per participant metrics/cumulative timeouts occurred=] by 1 and
+            [=iteration/continue=].
           1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
           1. Let |effectiveBuyerTimeout| be the result of [=computing effective timeout=] given
             |cumulativeTimeoutTracker| and |perBuyerTimeout|.
@@ -2135,7 +2135,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
               |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
-  1. [=Update cumulative buyer time=] given |metrics| and |cumulativeTimeoutTracker|.
+  1. [=Update cumulative buyer time metrics=] given |metrics| and |cumulativeTimeoutTracker|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
@@ -4235,10 +4235,11 @@ A signal base value is one of the following:
   capped to 110.
 : "<dfn><code>cumulative-buyer-time</code></dfn>"
 :: Time spent by the buyer from their cumulative buyer timeout limit; if the limit has been exceeded
-  returns the limit + 1000. 0 if this is a seller, or no cumulative buyer timeout is configured.
+  returns the limit + 1000; if this is used by a seller, or no cumulative buyer timeout is
+  configured, returns 0.
 : "<dfn><code>percent-igs-cumulative-timeout</code></dfn>"
-:: Percentage of participating interest groups that did not get to participate due to a cumulative
-  buyer timeout occurring.
+:: Percentage of participating interest groups that did not get a chance to actually bid in the
+  auction due to a cumulative buyer timeout occurring.
 
 </dl>
 
@@ -4788,7 +4789,7 @@ To <dfn>update storage metrics</dfn> given [=per participant metrics=] |metrics|
 </div>
 
 <div algorithm>
-To <dfn>update cumulative buyer time</dfn> given [=per participant metrics=] |metrics| and a
+To <dfn>update cumulative buyer time metrics</dfn> given [=per participant metrics=] |metrics| and a
 [=cumulative timeout tracker=] |tracker|:
 1. If |tracker|'s [=cumulative timeout tracker/limit=] is null, return.
 1. If |tracker| [=cumulative timeout tracker/is expired=], set |metrics|'s
@@ -9306,9 +9307,9 @@ A <dfn>cumulative timeout tracker</dfn> is a [=struct=] with the following [=str
 <dl dfn-for="cumulative timeout tracker">
   : <dfn>remaining</dfn>
   :: A [=duration=] in milliseconds or null. When non-null, records how much of the timeout
-    has been consumed. When null, states there is no limit. Initially null.
+    remains to be consumed. When null, states there is no limit. Initially null.
   : <dfn>limit</dfn>
-  :: A [=duration=] in milliseconds, or null.
+  :: A [=duration=] in milliseconds, or null (reprensenting no limit).
 </dl>
 
 <div algorithm>
@@ -9318,7 +9319,7 @@ and an [=origin=] |buyer|:
 1. Set |tracker|'s [=cumulative timeout tracker/limit=] to |auctionConfig|'s
     [=auction config/all buyers cumulative timeout=].
 1. If |auctionConfig|'s [=auction config/per buyer cumulative timeouts=] is not null and
-  [=auction config/per buyer cumulative timeouts=][|buyer|] [=map/exists=], then set
+  [=auction config/per buyer cumulative timeouts=] [=map/contains=] |buyer|, then set
   |tracker|'s [=cumulative timeout tracker/limit=] to |auctionConfig|'s [=auction config/per
   buyer cumulative timeouts=][|buyer|].
 1. Set |tracker|'s [=cumulative timeout tracker/remaining=] to |tracker|'s [=cumulative timeout
@@ -9349,8 +9350,7 @@ To <dfn>compute effective timeout</dfn> given a [=cumulative timeout tracker=] |
 <div algorithm>
 The <dfn for="cumulative timeout tracker">is expired</dfn> of a [=cumulative timeout tracker=]
 |tracker| is:
-1. False if |tracker|'s [=cumulative timeout tracker/remaining=] is null.
-1. False if |tracker|'s [=cumulative timeout tracker/remaining=] is positive.
+1. False if |tracker|'s [=cumulative timeout tracker/remaining=] is null or positive.
 1. True otherwise, that is, if |tracker|'s [=cumulative timeout tracker/remaining=] &leq; 0.
 
 </div>
