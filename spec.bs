@@ -1961,20 +1961,16 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   1. Decrement |pendingAdditionalBids| by 1.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
-  1. Let |perBuyerCumulativeTimeout| be |auctionConfig|'s
-    [=auction config/all buyers cumulative timeout=].
-  1. If |auctionConfig|'s [=auction config/per buyer cumulative timeouts=] is not null and
-    [=auction config/per buyer cumulative timeouts=][|buyer|] [=map/exists=], then set
-    |perBuyerCumulativeTimeout| to |auctionConfig|'s
-    [=auction config/per buyer cumulative timeouts=][|buyer|].
+  1. Let |cumulativeTimeoutTracker| be the result of [=creating a cumulative timeout tracker=] given
+    |auctionConfig| and |buyer|.
   1. Let |buyerExperimentGroupId| be |allBuyersExperimentGroupId|.
   1. Let |perBuyerExperimentGroupIds| be |auctionConfig|'s
     [=auction config/per buyer experiment group ids=].
   1. If |perBuyerExperimentGroupIds| is not null and |perBuyerExperimentGroupIds|[|buyer|]
     [=map/exists=], then set |buyerExperimentGroupId| to |perBuyerExperimentGroupIds|[|buyer|].
+  1. Let |metrics| be the result of [=accessing per-participant metrics=] for |reportingContext|,
+    |buyer|, [=worklet function/generate-bid=].
   1. <dfn>Apply interest groups limits to prioritized list</dfn>:
-    1. Let |metrics| be the result of [=accessing per-participant metrics=] for |reportingContext|,
-      |buyer|, [=worklet function/generate-bid=].
     1. Let |buyerGroupLimit| be |allBuyersGroupLimit|.
     1. Let |perBuyerGroupLimits| be |auctionConfig|'s
       [=auction config/per buyer group limits=].
@@ -2032,14 +2028,16 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
          [=trusted bidding signals batcher/all per interest group data=].
       1. Let |fetchSignalDuration| be the [=duration from=] |fetchSignalStartTime| to |settings|'s
         [=environment settings object/current monotonic time=], in milliseconds.
-      1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout| by
+      1. [=Expend cumulative timeout time=] given |cumulativeTimeoutTracker| and
         |fetchSignalDuration|.
       1. [=map/For each=] joiningOrigin → |groups| of |perSignalsUrlGenerator|:
         1. [=list/For each=] |ig| of |groups|:
-          1. If |perBuyerCumulativeTimeout| is negative, then [=iteration/break=].
+          1. If |cumulativeTimeoutTracker| [=cumulative timeout tracker/is expired=] then
+            increment |metrics|'s [=per participant metrics/cumulative timeouts occurred=] by 1 and
+            [=iteration/continue=].
           1. If |ig|'s [=interest group/bidding url=] is null, [=iteration/continue=].
-          1. If |perBuyerCumulativeTimeout| is not null and is less than |perBuyerTimeout|, then set
-            |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
+          1. Let |effectiveBuyerTimeout| be the result of [=computing effective timeout=] given
+            |cumulativeTimeoutTracker| and |perBuyerTimeout|.
           1. Let |generateBidStartTime| be |settings|'s
             [=environment settings object/current monotonic time=].
           1. Let |directFromSellerSignalsForBuyer| be the result of running
@@ -2068,7 +2066,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
           1. Let |generateBidResult| be the result of [=generate potentially multiple bids=] given
             |allTrustedBiddingSignals|, |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|,
             a [=map/clone=] of |browserSignals|, |perBuyerSignals|,
-            |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
+            |directFromSellerSignalsForBuyer|, |effectiveBuyerTimeout|, |expectedCurrency|,
             |multiBidLimit|, |ig|, |reportingContext|, |auctionStartTime|, and |settings|.
           1. If |generateBidResult| is failure, then:
             1. If |optedInForRealTimeReporting| is true, then [=add a platform contribution=] with
@@ -2078,8 +2076,11 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
                   |executionMetrics|) be |generateBidResult|.
           1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to |settings|'s
             [=environment settings object/current monotonic time=], in milliseconds.
-          1. If |perBuyerCumulativeTimeout| is not null, decrement |perBuyerCumulativeTimeout| by
+          1. [=Expend cumulative timeout time=] given |cumulativeTimeoutTracker| and
             |generateBidDuration|.
+          1. If |cumulativeTimeoutTracker| [=cumulative timeout tracker/is expired=] then:
+            1. Increment |metrics|'s [=per participant metrics/cumulative timeouts occurred=] by 1.
+            1. [=iteration/continue=].
           1. Let |bidsToScore| be the result of applying [=adjust bid list based on k-anonymity=] to |bidsBatch|.
           1. Let |foundKAnonBids| be false.
           1. [=list/For each=] |generatedBid| of |bidsToScore|:
@@ -2095,24 +2096,28 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
             [=query k-anonymity count=].
             1. Let |kAnonRestrictedIG| be the result of running [=create a k-anon restricted deep copy of the interest group=]
               given |ig|.
-            1. If |perBuyerCumulativeTimeout| is not null and is &lt; |perBuyerTimeout|, then set
-              |perBuyerTimeout| to |perBuyerCumulativeTimeout|.
+            1. Let |effectiveBuyerTimeout| be the result of [=computing effective timeout=] given
+              |cumulativeTimeoutTracker| and |perBuyerTimeout|.
             1. Let |generateBidStartTime| be |settings|'s
               [=environment settings object/current monotonic time=].
             1. Set (|generatedBids|, |bidDebugReportInfo|, |realTimeContributions|,
               |paContributions|, |executionMetrics|) to the result of running [=generate potentially
               multiple bids=] with |allTrustedBiddingSignals|,
               |crossOriginTrustedBiddingSignalsOrigin|, |auctionSignals|, a [=map/clone=] of |browserSignals|,
-              |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |perBuyerTimeout|, |expectedCurrency|,
-              1 (for multiBidLimit), |kAnonRestrictedIG|, |reportingContext|, |auctionStartTime|,
-              and |settings|.
+              |perBuyerSignals|, |directFromSellerSignalsForBuyer|, |effectiveBuyerTimeout|,
+              |expectedCurrency|, 1 (for multiBidLimit), |kAnonRestrictedIG|, |reportingContext|,
+              |auctionStartTime|, and |settings|.
 
               Note: passing 1 for multiBidLimit limits the rerun to producing at most a single bid.
 
             1. Let |generateBidDuration| be the [=duration from=] |generateBidStartTime| to
               |settings|'s [=environment settings object/current monotonic time=], in milliseconds.
-            1. If |perBuyerCumulativeTimeout| is not null, then decrement |perBuyerCumulativeTimeout|
-              by |generateBidDuration|.
+            1. [=Expend cumulative timeout time=] given |cumulativeTimeoutTracker| and
+              |generateBidDuration|.
+            1. If |cumulativeTimeoutTracker| [=cumulative timeout tracker/is expired=] then:
+              1. Increment |metrics|'s [=per participant metrics/cumulative timeouts occurred=]
+                by 1.
+              1. [=iteration/continue=].
             1. [=Assert=] that [=list/size=] of |generatedBids| &le; 1.
             1. [=list/For each=] |generatedBid| of |generatedBids|:
               1. [=Assert=] that [=query generated bid k-anonymity count=] given |generatedBid| returns true.
@@ -2130,6 +2135,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
               |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
               |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
               |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
+  1. [=Update cumulative buyer time metrics=] given |metrics| and |cumulativeTimeoutTracker|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
 1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
@@ -4229,6 +4235,13 @@ A signal base value is one of the following:
 : "<dfn><code>percent-ig-storage-quota-used</code></dfn>"
 :: Percentage of [=max interest groups total size per owner=] used by the given buyer,
   capped to 110.
+: "<dfn><code>cumulative-buyer-time</code></dfn>"
+:: Time spent by the buyer from their cumulative buyer timeout limit; if the limit has been exceeded
+  returns the limit + 1000; if this is used by a seller, or no cumulative buyer timeout is
+  configured, returns 0.
+: "<dfn><code>percent-igs-cumulative-timeout</code></dfn>"
+:: Percentage of participating interest groups that did not get a chance to actually bid in the
+  auction due to a cumulative buyer timeout occurring.
 
 </dl>
 
@@ -4326,19 +4339,31 @@ A <dfn>per participant metrics</dfn> is a [=struct=] with the following [=struct
 representing metrics aggregated over a particular participant (e.g. bidder or seller). It has:
 <dl dfn-for="per participant metrics">
   : <dfn>participating interest group count</dfn>
-  :: A {{long}}, initially 0.
+  :: A {{long}}, initially 0. See "<code>[=signal base value/participating-ig-count=]</code>".
   : <dfn>code fetch time averager</dfn>
-  :: An [=averager=].
+  :: An [=averager=]. Used to compute "<code>[=signal base value/average-code-fetch-time=]</code>".
   : <dfn>script timeouts occurred</dfn>
-  :: A {{long}}, initially 0.
+  :: A {{long}}, initially 0. Used to compute
+    "<code>[=signal base value/percent-scripts-timeout=]</code>".
+  : <dfn>cumulative timeouts occurred</dfn>
+  :: A {{long}}, initially 0. Number of interest groups affected by the cumulative timeout
+    happening. Used to compute "<code>[=signal base value/percent-igs-cumulative-timeout=]</code>".
+  : <dfn>cumulative buyer time</dfn>
+  :: A [=duration=] in milliseconds, initially 0.
+    See "<code>[=signal base value/cumulative-buyer-time=]</code>".
   : <dfn>script executions attempted</dfn>
-  :: A {{long}}, initially 0.
+  :: A {{long}}, initially 0. The denominator for computation of some percentage metrics, such as
+    "<code>[=signal base value/percent-scripts-timeout=]</code>" and
+    "<code>[=signal base value/percent-igs-cumulative-timeout=]</code>".
   : <dfn>regular interest group count</dfn>
-  :: A {{long}}, initially 0.
+  :: A {{long}}, initially 0. See "<code>[=signal base value/regular-igs-count=]</code>" and
+    "<code>[=signal base value/percent-regular-ig-count-quota-used=]</code>".
   : <dfn>negative interest group count</dfn>
-  :: A {{long}}, initially 0.
+  :: A {{long}}, initially 0. See "<code>[=signal base value/negative-igs-count=]</code>" and
+    "<code>[=signal base value/percent-negative-ig-count-quota-used=]</code>".
   : <dfn>storage quota used</dfn>
-  :: A {{long}}, initially 0.
+  :: A {{long}}, initially 0. See "<code>[=signal base value/ig-storage-used=]</code>" and
+    "<code>[=signal base value/percent-ig-storage-quota-used=]</code>".
 </dl>
 
 <h4 dfn-type=dfn>Private Aggregation contributions</h4>
@@ -4719,17 +4744,25 @@ They return a {{double}}.
   : "<code>[=signal base value/negative-igs-count=]</code>"
   :: Return |bidAndScoreMetrics|'s [=per participant metrics/negative interest group count=].
 
-  : "<code>[=signal base value/percent-negative-ig-count-quota-used=]</code>":
+  : "<code>[=signal base value/percent-negative-ig-count-quota-used=]</code>"
   :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
     participant metrics/negative interest group count=] and [=max negative interest groups per
     owner=].
 
-  : "<code>[=signal base value/ig-storage-used=]</code>":
+  : "<code>[=signal base value/ig-storage-used=]</code>"
   :: Return |bidAndScoreMetrics|'s [=per participant metrics/storage quota used=].
 
-  : "<code>[=signal base value/percent-ig-storage-quota-used=]</code>":
+  : "<code>[=signal base value/percent-ig-storage-quota-used=]</code>"
   :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
     participant metrics/storage quota used=] and [=max interest groups total size per owner=].
+
+  : "<code>[=signal base value/cumulative-buyer-time=]</code>"
+  :: Return |bidAndScoreMetrics|'s [=per participant metrics/cumulative buyer time=].
+
+  : "<code>[=signal base value/percent-igs-cumulative-timeout=]</code>"
+  :: Return the result of [=computing a percentage metric=] given |bidAndScoreMetrics|'s [=per
+    participant metrics/cumulative timeouts occurred=] and |bidAndScoreMetrics|'s [=per participant
+    metrics/script executions attempted=].
 
   </dl>
 
@@ -4761,6 +4794,18 @@ To <dfn>update storage metrics</dfn> given [=per participant metrics=] |metrics|
     by 1.
   1. Increment |metrics|'s [=per participant metrics/storage quota used=] by |ig|'s [=interest
     group/estimated size=]
+
+</div>
+
+<div algorithm>
+To <dfn>update cumulative buyer time metrics</dfn> given [=per participant metrics=] |metrics| and a
+[=cumulative timeout tracker=] |tracker|:
+1. If |tracker|'s [=cumulative timeout tracker/limit=] is null, return.
+1. If |tracker| [=cumulative timeout tracker/is expired=], set |metrics|'s
+  [=per participant metrics/cumulative buyer time=] to |tracker|'s [=cumulative timeout tracker/
+  limit=] + 1000ms.
+1. Otherwise, set |metrics|'s [=per participant metrics/cumulative buyer time=] to |tracker|'s
+  [=cumulative timeout tracker/limit=] - |tracker|'s [=cumulative timeout tracker/remaining=].
 
 </div>
 
@@ -9269,6 +9314,61 @@ An <dfn>auction data buyer config</dfn> is a [=struct=] with the following [=str
   :: {{unsigned long}} or null. An optional field, initially null, containing the
     size of the request to allocate to this buyer.
 </dl>
+
+<h3 id=cumul-timeout-tracker>Cumulative timeout tracker</h3>
+
+A <dfn>cumulative timeout tracker</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="cumulative timeout tracker">
+  : <dfn>remaining</dfn>
+  :: A [=duration=] in milliseconds or null. When non-null, records how much of the timeout
+    remains to be consumed. When null, states there is no limit. Initially null.
+  : <dfn>limit</dfn>
+  :: A [=duration=] in milliseconds, or null (reprensenting no limit).
+</dl>
+
+<div algorithm>
+To <dfn>create a cumulative timeout tracker</dfn> given an [=auction config=] |auctionConfig|
+and an [=origin=] |buyer|:
+1. Let |tracker| be a new [=cumulative timeout tracker=].
+1. Set |tracker|'s [=cumulative timeout tracker/limit=] to |auctionConfig|'s
+    [=auction config/all buyers cumulative timeout=].
+1. If |auctionConfig|'s [=auction config/per buyer cumulative timeouts=] is not null and
+  [=auction config/per buyer cumulative timeouts=] [=map/contains=] |buyer|, then set
+  |tracker|'s [=cumulative timeout tracker/limit=] to |auctionConfig|'s [=auction config/per
+  buyer cumulative timeouts=][|buyer|].
+1. Set |tracker|'s [=cumulative timeout tracker/remaining=] to |tracker|'s [=cumulative timeout
+  tracker/limit=].
+1. Return |tracker|.
+
+</div>
+
+<div algorithm>
+To <dfn>expend cumulative timeout time</dfn> given a [=cumulative timeout tracker=]
+|tracker| and a [=duration=] in milliseconds |timeUsed|:
+1. If |tracker|'s [=cumulative timeout tracker/remaining=] is null, return.
+1. Decrement |tracker|'s [=cumulative timeout tracker/remaining=] by |timeUsed|.
+
+</div>
+
+
+<div algorithm>
+To <dfn>compute effective timeout</dfn> given a [=cumulative timeout tracker=] |tracker| and a
+[=duration=] in milliseconds |perBuyerTimeout|:
+1. If |tracker|'s [=cumulative timeout tracker/remaining=] is null, return |perBuyerTimeout|.
+1. If |perBuyerTimeout| &lt; |tracker|'s [=cumulative timeout tracker/remaining=], return
+  |perBuyerTimeout|.
+1. Return |tracker|'s [=cumulative timeout tracker/remaining=].
+
+</div>
+
+<div algorithm>
+The <dfn for="cumulative timeout tracker">is expired</dfn> of a [=cumulative timeout tracker=]
+|tracker| is:
+1. False if |tracker|'s [=cumulative timeout tracker/remaining=] is null or positive.
+1. True otherwise, that is, if |tracker|'s [=cumulative timeout tracker/remaining=] &leq; 0.
+
+</div>
 
 # Privacy Considerations # {#privacy-considerations}
 
