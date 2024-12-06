@@ -19,18 +19,17 @@ Note: while supporting model training for auction _losers_ is a worthwhile goal,
 
 ## Contributing to the encrypted modeling signals byte vector
 
-Within `generateBid`, the buyer can supply an arbitrarily sized `Uint8Array` as the raw bytes to be encrypted. This can optionally replace the `modelingSignals` return value.
+Within `generateBid`, the buyer can supply an arbitrary JSON-serializable output (`aggregateWinSignals`), which can be processed later on into an encrypted report.
 
 
 ```javascript
-function generateBid(..., reportingMechanisms) {
+function generateBid(...) {
   ...
-  let mySignals = new Float32Array([1.3, 12.19, ...])
-  let rawBytes = new Uint8Array(mySignals.buffer);
+  let mySignals = [1.3, 12.19, ...]
   ...
   return {
     ...,
-    modelingSignals: rawBytes
+    aggregateWinSignals: mySignals
   };
 }
 ```
@@ -39,35 +38,37 @@ function generateBid(..., reportingMechanisms) {
 
 ## Configuring the encrypted payload and emitting it in `reportWin`
 
-In order to avoid the length (and other metadata) about the payload being a privacy leak vector, it cannot be configured based on protected cross-site data (e.g. from within `generateBid`). We propose enabling this kind of configuration from within `reportWin`. While currently `modelingSignals`, `recency`, and `joinCount` are exposed directly to this function, we propose that they move to be wrapped in an opaque object that can expose multiple mechanisms.
+In order to avoid the length (and other metadata) about the payload being a privacy leak vector, it cannot be configured based on protected cross-site data (e.g. from within `generateBid`). We propose enabling this kind of configuration from within `reportWin`.
 
 
 ```javascript
 function reportWin(...) {
   ...
   if (useNewMLTrainingAPI) {
-    // Will POST the encrypted modeling signals to the specified enpoint.
-    let signals = browserSignals.dynamicModelingSignals;
-    signals.sendEncryptedTo("https://ad-tech.example/id=123", {
-      aggregationCoordinatorOrigin: "...",
-      length: 256, // payload will be padded with null bytes
+    // Queues up the function reportAggregateWin which is executed immediately after this function.
+    queueReportAggregateWin({
+      modelingSignalsConfig: {
+        destination: "https://ad-tech.example/id=123",
+        aggregationCoordinatorOrigin: "...",
+        payloadLength: 256, // payload will be padded with null bytes
+      }, // Extensible for future configs (e.g. for Private Aggregation API)
     });
   } else {
     // The status quo locally noised signals (recency, joinCount, and modelingSignals)
-    // can be recovered in one of two ways:
-    // 1. By calling a new method on dynamicModelingSignals e.g.     
-    //    signals.randomizedResponse('recency'). Details TBD.
-    // 2. By querying directly for modelingSignals, joinCount or recency. This is a
-    //    legacy path to avoid backwards incompatibility, but may be removed in the
-    //    future.
-    //
-    // If randomized response is (wrongly) invoked when a Uint8Array was passed in the
-    // return value of generateBid, we will perform randomized response on the value of
-    // 0 (as if the caller passed 0 in generateBid).
-    //
-    // It will be an error (details TBD) to both call methods on dynamicModelingSignals
-    // and also use the legacy modelingSignals / joinCount / recency properties.
+    // can still be used. If they are read we will disallow the generation of the encrypted
+    // private modeling signals later on.
   }
+}
+
+function reportAggregateWin(aggregateWinSignals, modelingSignalsConfig, <reportWinInputs>) {
+  // Allow processing outside of the critical bidding path.
+  let processedModelingSignals = process(aggregateWinSignals);
+
+  // Will POST the encypted modeling signals to the specified destination in modelingSignalsConfig.
+  // The format of this input is still TBD.
+  sendEncryptedModelingSignals(processedModelingSignals)
+
+  // The Private Aggregation API may be used here.
 }
 ```
 
