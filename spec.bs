@@ -2917,7 +2917,7 @@ and a [=global object=] |global|:
       to |winner|'s [=generated bid/selected buyer and seller reporting ID=].
     1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, [=map/set=]
       |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to it.
-  1. Otherwise, if the result of running [=query reporting ID k-anonymity count=] with |winner|'s 
+  1. Otherwise, if the result of running [=query reporting ID k-anonymity count=] with |winner|'s
     [=generated bid/interest group=], |igAd|, and null is true:
     1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, [=map/set=]
       |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to it.
@@ -3468,6 +3468,13 @@ A <dfn>server auction response</dfn> is a [=struct=] that contains auction resul
   : <dfn>selected buyer and seller reporting id</dfn>
   :: Null or a [=string=], initially null. When not null, this will be verified with the winning bid's
     [=generated bid/ad=]'s [=interest group ad/selectable buyer and seller reporting IDs=].
+  : <dfn>winner join candidates</dfn>
+  :: Null or [=server auction join candidates=]. When not null, contains the
+     k-anonymity hashes corresponding to the winning bid and indicates which
+     k-anonymity hashes were used for k-anonymity enforcement on the server.
+  : <dfn>ghost winner</dfn>
+  :: Null or [=server auction ghost winner=]. When not null, contains information
+     about the non-k-anonymous winner of a server auction.
   : error
   :: Null or [=string=]. When not null, contains an error message from the
      auction executed on the trusted auction server. May be used to provide
@@ -3483,6 +3490,57 @@ A <dfn>server auction response</dfn> is a [=struct=] that contains auction resul
     are [=lists=] of [=urls=].
   : <dfn>server filtered debugging only reports</dfn>
   :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=lists=] of [=urls=].
+</dl>
+
+<dfn>server auction join candidates</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction join candidates">
+  : <dfn>ad render url hash</dfn>
+  :: A [=SHA-256=] hash of the [=k-anonymity key=] for the ad in the winning bid,
+     as calculated using [=compute the key hash of ad=].
+  : <dfn>ad component render url hashes</dfn>
+  :: A [=list=] of [=SHA-256=] hashes for each of the ad components in the
+     winning bid, as calculated using [=compute the key hash of component ad=].
+  : <dfn>reporting id hash</dfn>
+  :: A [=SHA-256=] hash of the [=k-anonymity key=] for the reporting ID in the
+     winning bid, as calculated using [=compute the key hash of reporting ID=].
+</dl>
+
+<dfn>server auction ghost winner</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server aucthion ghost winner">
+  : <dfn>candidates</dfn>
+  :: [=server auction join candidates=] associated with this winner.
+  : <dfn>interest group owner</dfn>
+  :: An [=origin=]. The non-k-anonymous winning bid's interest group [=interest group/owner=].
+  : <dfn>interest group name</dfn>
+  :: A [=string=]. The non-k-anonymous winning bid's interest group [=interest group/name=].
+  : <dfn>ghost winner bid info</dfn>
+  :: Null or a [=server auction ghost winner bid info=]. Contains information needed for
+     ghost winners in component auctions.
+</dl>
+
+A <dfn>server auction ghost winner bid info</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction ghost winner bid info">
+  : <dfn>ad render url</dfn>
+  :: [=URL=]. The [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] from the
+     auction.
+  : <dfn>ad components</dfn>
+  :: A [=list=] of [=URLs=]. A list of the non-k-anonymous winning bid's
+     [=generated bid/ad component descriptors=]'s [=ad descriptor/urls=] from the
+     auction.
+  : <dfn>modified_bid</dfn>
+  :: [=bid with currency=]. Contains the non-k-anonymous winning bid's [=generated bid/modified bid=]
+     when not null, otherwise the non-k-anonymous winning bid's [=generated bid/bid=].
+  : <dfn>ad metadata</dfn>
+  :: Null or a JSON [=string=]. Contains the component auction's non-k-anonymous winning bid's [=generated bid/ad=].
+  : <dfn>buyer reporting id</dfn>
+  :: Null or a [=string=]. When not null, this will be verified with the non-k-anonymous winning bid's
+    [=generated bid/ad=]'s [=interest group ad/buyer reporting ID=].
+  : <dfn>buyer and seller reporting id</dfn>
+  :: Null or a [=string=]. When not null, this will be verified with the non-k-anonymous winning bid's
+    [=generated bid/ad=]'s [=interest group ad/buyer and seller reporting ID=].
+  : <dfn>selected buyer and seller reporting id</dfn>
+  :: Null or a [=string=], initially null. When not null, this will be verified with the non-k-anonymous winning bid's
+    [=generated bid/ad=]'s [=interest group ad/selectable buyer and seller reporting IDs=].
 </dl>
 
 A <dfn>server auction reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
@@ -4921,7 +4979,7 @@ dictionary StorageInterestGroup : AuctionAdInterestGroup {
 is a one-time canonical [=string=] representation of a [=version 4 UUID=] that is uniquely
 associated with a single call to {{Window/navigator}}.{{Navigator/runAdAuction()}}. For multi-seller
 auctions, a distinct auction nonce can be uniquely associated with each of the
-{{AuctionAdConfig/componentAuctions}}. The auction nonce(s) will need to be passed back in via a 
+{{AuctionAdConfig/componentAuctions}}. The auction nonce(s) will need to be passed back in via a
 subsequent call to {{Window/navigator}}.{{Navigator/runAdAuction()}} via the {{AuctionAdConfig}}.
 This is currently only needed for [=auctions=] that use [=additional bids=], in which the auction
 nonce is combined with a [=signed additional bid with metadata/seller nonce=] to construct a bid
@@ -5401,17 +5459,17 @@ from querying the server during an auction.
         1. If [=query k-anonymity cache=] for |adHashCode| returns true:
           1. If |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] is not null:
             1. Let |kAnonRestrictedSelectableReportingIds| be a new empty [=list=] of [=string=]s.
-            1. [=list/For each=] |selectableReportingId| in |igAd|'s 
+            1. [=list/For each=] |selectableReportingId| in |igAd|'s
               [=interest group ad/selectable buyer and seller reporting IDs=]:
               1. Let |reportingHashCode| be the result of [=query reporting ID k-anonymity count=]
-                given |ig|, |igAd|, and |selectableReportingId|. 
+                given |ig|, |igAd|, and |selectableReportingId|.
               1. If [=query k-anonymity cache=] for |reportingHashCode| returns true, then
                 [=list/append=] |selectableReportingId| to |kAnonRestrictedSelectableReportingIds|.
             1. Set |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] to
               |kAnonRestrictedSelectableReportingIds|.
           1. [=list/Append=] |igAd| to |kAnonRestrictedIG|'s [=interest group/ads=].
     1. If |ig|'s [=interest group/ad components=] is not null:
-      1. Set |kAnonRestrictedIG|'s [=interest group/ad components=] to an empty [=list=] of 
+      1. Set |kAnonRestrictedIG|'s [=interest group/ad components=] to an empty [=list=] of
         [=interest group ad=].
       1. [=list/For each=] |igAdComponent| of |ig|'s [=interest group/ad components=]:
         1. Let |adComponentHashCode| be the result of running [=compute the key hash of component ad=] given |ig| and
@@ -5476,11 +5534,11 @@ from querying the server during an auction.
       * "SelectedBuyerAndSellerReportId"
       * |middle|
       * The result of [=compute the key part for one of multiple reporting ids=] given |selectedReportingId|
-      * The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s 
+      * The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s
         [=interest group ad/buyer and seller reporting ID=]
       * The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s
         [=interest group ad/buyer reporting ID=]
-    1. Otherwise: 
+    1. Otherwise:
       1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, set |keyString|
         to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
         * "BuyerAndSellerReportId"
@@ -7474,7 +7532,7 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
         1. Let |bidWithMetadata|'s [=signed additional bid with metadata/signed additional bid=] be
           |parts|[2].
         1. [=list/Append=] |bidWithMetadata| to |storedAdditionalBidsHeaders|[|auctionNonce|].
-      1. Otherwise, if |parts|'s [=list/size=] is 2: 
+      1. Otherwise, if |parts|'s [=list/size=] is 2:
         1. Let |auctionNonce| be |parts|[0].
         1. If |auctionNonce|'s [=string/length=] is not 36, then [=iteration/continue=].
         1. Let |bidWithMetadata|'s [=signed additional bid with metadata/signed additional bid=] be
@@ -7652,12 +7710,12 @@ dictionary ReportingBrowserSignals {
       and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
       interest group owner, bidding script URL, [=ad creative=] URL, and null.
     * Set if the wining bid had a [=generated bid/selected buyer and seller reporting ID=] and the
-      winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its listing in the 
+      winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its listing in the
       interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=]
       combined with interest group owner, bidding script URL, [=ad creative=] URL, the and winning bid's
       [=generated bid/selected buyer and seller reporting ID=].
   <dt>{{ReportingBrowserSignals/selectedBuyerAndSellerReportingId}}
-  <dd>A selected reporting id returned by "`generateBid()`". 
+  <dd>A selected reporting id returned by "`generateBid()`".
     Set if the winning bid had a [=generated bid/selected buyer and seller reporting ID=] set,
     and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
     [=interest group ad/buyer and seller reporting ID=], interest group owner,
@@ -7726,7 +7784,7 @@ enum KAnonStatus { "passedAndEnforced", "passedNotEnforced", "belowThreshold", "
       and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
       interest group owner, bidding script URL, [=ad creative=] URL, and null.
     * Set if the wining bid had a [=generated bid/selected buyer and seller reporting ID=] and the
-      winning ad had a [=interest group ad/buyer reporting ID=] set in its listing in the 
+      winning ad had a [=interest group ad/buyer reporting ID=] set in its listing in the
       interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=]
       combined with interest group owner, bidding script URL, [=ad creative=] URL,
       [=interest group ad/buyer and seller reporting ID=], and
@@ -7909,9 +7967,9 @@ An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/item
   : <dfn>buyer and seller reporting ID</dfn>
   :: Null or a [=string=]. Will be passed in place of interest group name or
     [=interest group ad/buyer reporting ID=], or alongside the
-    [=generated bid/selected buyer and seller reporting ID=], to [=report win=] and 
-    [=report result=], subject to [=k-anonymity=] checks. Also passed alongside 
-    [=generated bid/selected buyer and seller reporting ID=] to `scoreAd()` if 
+    [=generated bid/selected buyer and seller reporting ID=], to [=report win=] and
+    [=report result=], subject to [=k-anonymity=] checks. Also passed alongside
+    [=generated bid/selected buyer and seller reporting ID=] to `scoreAd()` if
     [=generated bid/selected buyer and seller reporting ID=] is present. Only meaningful in
     [=interest group/ads=], but ignored in [=interest group/ad components=].
   : <dfn>selectable buyer and seller reporting IDs</dfn>
@@ -8846,11 +8904,11 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
     in the auction. Must be null if the interest group making this bid has a null
     [=interest group/ad components=] field.
   : <dfn>selected buyer and seller reporting ID</dfn>
-  :: Null or [=string=]. The selected reporting id from the 
+  :: Null or [=string=]. The selected reporting id from the
     [=interest group ad/selectable buyer and seller reporting IDs=] within the
     [=generated bid/interest group=]. If present, this will be:
       * Passed alongside [=interest group ad/buyer reporting ID=] and
-        [=interest group ad/buyer and seller reporting ID=] to [=report win=] 
+        [=interest group ad/buyer and seller reporting ID=] to [=report win=]
         subject to [=k-anonymity=] checks.
       * Passed alongside [=interest group ad/buyer and seller reporting ID=]
         to [=report result=] subject to [=k-anonymity=] checks.
@@ -8927,13 +8985,13 @@ To <dfn>adjust bid list based on k-anonymity</dfn> given a [=list=] of [=generat
   1. [=Apply any component ads target to a bid=] given |bidCopy|.
   1. [=list/Append=] |bidCopy| to |bidsToScore|
   1. Let |selectedReportingId| be a [=string=]-or-null that is set to null.
-  1. If |generatedBid|'s [=generated bid/selected buyer and seller reporting ID=] is not null, set 
+  1. If |generatedBid|'s [=generated bid/selected buyer and seller reporting ID=] is not null, set
     |selectedReportingId| to it.
   1. Let |igAd| be the [=interest group ad=] from |generatedBid|'s [=generated bid/interest group=]'s
     [=interest group/ads=] whose [=interest group ad/render url=] is |generatedBid|'s
     [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
   1. Let |isBidKAnon| be the result of [=query generated bid k-anonymity count=] given |generatedBid|.
-  1. If |isBidKAnon| is true and running [=query reporting ID k-anonymity count=] with |generatedBid|'s 
+  1. If |isBidKAnon| is true and running [=query reporting ID k-anonymity count=] with |generatedBid|'s
     [=generated bid/interest group=], |igAd|, |selectedReportingId| is true:
     1. [=list/Append=] |generatedBid| to |bidsToScore|.
 
