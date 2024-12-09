@@ -148,6 +148,7 @@ navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
 ```
 
 ## Seller Nonce
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/jjFGRDm2Dr4)
 
 From context of a web page:
 ```
