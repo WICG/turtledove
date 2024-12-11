@@ -138,6 +138,24 @@ navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
     "realTimeReporting")
 ```
 
+## Selectable Reporting IDs
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/1cWqBPHngd0)
+
+From context of a web page:
+```
+navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
+    "selectableReportingIds")
+```
+
+## Seller Nonce
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/jjFGRDm2Dr4)
+
+From context of a web page:
+```
+navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
+    "sellerNonce")
+```
+
 ## Getting browser-side detectable features as an object
 Sometimes it's desirable to get status of all features detectable via `queryFeatureSupport` in a
 forward-compatible way. Sufficiently recent versions provide this functionality via
