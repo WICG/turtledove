@@ -462,7 +462,7 @@ else
 
 This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auctionSignals`, `sellerSignals`, and `perBuyerSignals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auctionSignals` are made available to everyone, while the other signals are given only to one party.
 
-`maxTrustedScoringSignalsURLLength` and `trustedScoringSignalsCoordinator` have the same functionality as `maxTrustedBiddingSignalsURLLength` and `trustedBiddingSignalsCoordinator`, as described in [1.2 Interest Group Attributes](#12-interest-group-attributes).
+`maxTrustedScoringSignalsURLLength` and `trustedScoringSignalsCoordinator` have the same functionality as `maxTrustedBiddingSignalsURLLength` and `trustedBiddingSignalsCoordinator`, as described in [1.2 Interest Group Attributes](#12-interest-group-attributes), but affect the seller's trusted scoring signals fetch as opposed to the trusted bidding signals fetch.
 
 The optional `requestedSize` field recommends a frame size for the auction, which will be available to bidders in browser signals. This size should be specified in the same format as the sizes in the `adSizes` field of `joinAdInterestGroup`. For convenience, the returned fenced frame config will automatically populate a `<fencedframe>`'s `width` and `height` attributes with the `requestedSize` when loaded, though the element's size attributes can still be modified if you want to change the element's container size. Bidders inside the auction may pick a different content size for the ad, and that resulting size will be visually scaled to fit inside the element's container size.
 
