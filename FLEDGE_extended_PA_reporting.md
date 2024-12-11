@@ -287,7 +287,7 @@ get sent, which can result in inaccuracy, especially for `percent-scripts-timeou
 
 ### Per-participant base values.
 
-The newly added base values are as following:
+The newly added base values, that work best with `reserved.once`, are as following:
 * `participating-ig-count`: number of interest groups that got a chance to participate in this
   (sub)auction, i.e. they had registered ads, did not have unsatisfied capabilities, and were not
   filtered based on priority. Interest groups included in this might not actually get to bid if the
