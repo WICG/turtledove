@@ -3149,7 +3149,8 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
   :: |response|'s [=server auction response/interest group owner=]
   : [=reporting bid key/bid identifier=]
   :: |response|'s [=server auction response/interest group name=]
-1. [=Handle server response private aggregation fields=] given |response| and |requestContext|.
+1. [=Handle server response private aggregation fields=] given |response|, |requestContext| and
+  |reportingId|.
 1. Let |winningBid| be a new [=generated bid=] with the following [=struct/items=]:
   : [=generated bid/reporting id=]
   :: |reportingId|
@@ -3251,11 +3252,27 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
 
 <div algorithm>
 To <dfn>handle server response private aggregation fields</dfn> given a [=server auction response=]
-|response|, and a [=reporting context=] |reportingContext|:
+|response|, a [=reporting context=] |reportingContext|, and a [=reporting bid key=] |reportingId|:
 
 1. [=Assert=] that these steps are running [=in parallel=].
-1. [=map/For each=] (|reportingOrigin|, |coordinator|, |event|) → |contributions| of |response|'s
-  [=server auction response/component win private aggregation contributions=]:
+1. [=Commit server response private aggregation contributions=] given |response|'s
+  [=server auction response/component win private aggregation contributions=], |reportingContext|,
+  |reportingId| and false.
+1. [=Commit server response private aggregation contributions=] given |response|'s
+  [=server auction response/server filtered private aggregation reserved contributions=],
+  |reportingContext|, |reportingId| and true.
+1. [=Commit server response private aggregation contributions=] given |response|'s
+  [=server auction response/server filtered private aggregation non reserved contributions=],
+  |reportingContext|, |reportingId| and true.
+
+</div>
+
+<div algorithm>
+To <dfn>commit server response private aggregation contributions</dfn> given a
+[=server auction response=] |contributionsMap|, a [=reporting context=] |reportingContext|, a
+[=reporting bid key=] |reportingId| and a [=boolean=] |serverFiltered|:
+
+1. [=map/For each=] (|reportingOrigin|, |coordinator|, |event|) → |contributions| of |contributionsMap|:
   1. Let |eventToContributionsMap| be a new [=Private Aggregation contributions=].
   1. Let |scopingDetails| be a new [=scoping details=] with the [=struct/items=]:
     : <a spec="private-aggregation-api" for="scoping details">get batching scope steps</a>
@@ -3283,53 +3300,9 @@ To <dfn>handle server response private aggregation fields</dfn> given a [=server
         :: The result of running |scopingDetails|' <a spec="private-aggregation-api"
           for="scoping details">get debug scope steps</a>.
         : [=on event contribution entry/worklet function=]
-        :: "`generate-bid`" (it does not matter for server returned contribution)
-        : [=on event contribution entry/origin=]
-        :: |reportingOrigin|
-    1. If |eventToContributionsMap|[|event|] does not [=map/exist=], set
-      |eventToContributionsMap|[|event|] to « |entry| ».
-    1. Otherwise, [=list/append=] |eventToContributionsMap|[|event|] with |entry|.
-1. [=Commit private aggregation contributions=] given |eventToContributionsMap|, |reportingId| and
-  |reportingContext|.
-1. [=map/For each=] (|reportingOrigin|, |coordinator|, |event|) → |contributions| of |response|'s
-  [=server auction response/server filtered private aggregation reserved contributions=]:
-  1. Let |eventToContributionsMap| be a new [=Private Aggregation contributions=].
-  1. [=list/For each=] |contribution| of |contributions|:
-    1. Let |entry| be a new [=on event contribution entry=] with the items:
-        : [=on event contribution entry/contribution=]
-        :: |contribution|
-        : [=on event contribution entry/batching scope=]
-        :: |batchingScope|
-        : [=on event contribution entry/debug scope=]
-        :: The result of running |scopingDetails|' <a spec="private-aggregation-api"
-          for="scoping details">get debug scope steps</a>.
-        : [=on event contribution entry/worklet function=]
-        :: "`generate-bid`" (it does not matter for server returned contribution)
+        :: "`generate-bid`" (it does not matter for server returned contributions)
         : [=on event contribution entry/server filtered=]
-        :: true
-        : [=on event contribution entry/origin=]
-        :: |reportingOrigin|
-    1. If |eventToContributionsMap|[|event|] does not [=map/exist=], set
-      |eventToContributionsMap|[|event|] to « |entry| ».
-    1. Otherwise, [=list/append=] |eventToContributionsMap|[|event|] with |entry|.
-1. [=Commit private aggregation contributions=] given |eventToContributionsMap|, |reportingId| and
-  |reportingContext|.
-1. [=map/For each=] (|reportingOrigin|, |coordinator|, |event|) → |contributions| of |response|'s
-  [=server auction response/server filtered private aggregation non reserved contributions=]:
-  1. Let |eventToContributionsMap| be a new [=Private Aggregation contributions=].
-  1. [=list/For each=] |contribution| of |contributions|:
-    1. Let |entry| be a new [=on event contribution entry=] with the items:
-        : [=on event contribution entry/contribution=]
-        :: |contribution|
-        : [=on event contribution entry/batching scope=]
-        :: |batchingScope|
-        : [=on event contribution entry/debug scope=]
-        :: The result of running |scopingDetails|' <a spec="private-aggregation-api"
-          for="scoping details">get debug scope steps</a>.
-        : [=on event contribution entry/worklet function=]
-        :: "`generate-bid`" (it does not matter for server returned contribution)
-        : [=on event contribution entry/server filtered=]
-        :: true
+        :: |serverFiltered|
         : [=on event contribution entry/origin=]
         :: |reportingOrigin|
     1. If |eventToContributionsMap|[|event|] does not [=map/exist=], set
