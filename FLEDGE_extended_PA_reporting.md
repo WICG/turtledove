@@ -264,7 +264,7 @@ or the winning bid.
 
 First, the new `reserved.once` event-type is a special value that, for each (sub)auction, selects a
 random invocation of `generateBid()` and of `scoreAd()` independently, and reports private
-aggregation contributions with that event only from those executions. (In case of an auction
+aggregation contributions with that event only from those invocations. (In case of an auction
 with component auctions, the top-level auction will have a single `scoreAd()` invocation selected as
 well).
 
@@ -273,8 +273,8 @@ once per auction level, `reserved.always` may be used instead.
 
 This feature is intended for reporting overall per-participant metrics only once rather than for
 every interest group participating. A number of new `baseValues` representing such values are
-available and described below, but it can also be useful with per-IG metrics which are not expected to
-vary much like `signals-fetch-time`, to sample them.
+available and described below, but it can also be useful with per-interest-group metrics which are
+not expected to vary much, like `signals-fetch-time`, to sample them once per (sub)auction.
 
 While usage of `reserved.once` will be ignored by older versions, newly added `baseValues` will not
 be, so the calls to `contributeToHistogramOnEvent()` should be individually wrapped in `try/catch`.
@@ -282,7 +282,7 @@ That is also encouraged in general since `contributeToHistogramOnEvent()` is spe
 on permission policy violations.
 
 Users using this are strongly encouraged to report their metrics during the beginning of their
-scripts, since if the script hits a per script time out before asking to report them nothing will
+scripts, since if the script hits a per script timeout before asking to report them nothing will
 get sent, which can result in inaccuracy, especially for `percent-scripts-timeout`.
 
 ### Per-participant base values.
@@ -291,20 +291,23 @@ The newly added base values are as following:
 * `participating-ig-count`: number of interest groups that got a chance to participate in this
   (sub)auction, i.e. they had registered ads, did not have unsatisfied capabilities, and were not
   filtered based on priority. Interest groups included in this might not actually get to bid if the
-  cumulative timeout expires, or the script fails to load, etc, but they would have if nothing went
-  wrong.
+  cumulative timeout expires, or the script fails to load, etc, but they would have otherwise.
 * `average-code-fetch-time`: average time of all code fetches (including JavaScript and WASM) used
   for all invocations of particular function type for given (sub)auction.
-* `percent-scripts-timeout`: percentage of script executions of this kind that hit the per-script
-  timeout.
+* `percent-scripts-timeout`: percentage of script executions of this kind that hit
+  `perBuyerTimeouts`, `sellerTimeout`, or `reportingTimeout`. For `generateBid()`, this is out of
+  of the interest groups that could have participated (see `participating-ig-count` above for
+  description of participation qualifications).
 * `percent-igs-cumulative-timeout`: percentage of interest groups from this buyer that did not get
-  to participate in this (sub)auction due to the per-buyer cumulative timeout
-  (`participating-ig-count` is the denominator here).
-* `cumulative-buyer-time`: total time spent for buyer's computation, in milliseconds; this is what
+  to participate in this (sub)auction due to the per-buyer cumulative timeout, out of the interest
+  groups that could have participated (see `participating-ig-count` above for description of
+  participation qualifications).
+* `cumulative-buyer-time`: total time spent for buyer's bid generation (downloading resources,
+  parsing them, and all generate bid calls), in milliseconds; this is what
   would normally be compared against the per-buyer cumulative timeout (which must be set for this
   to be non-zero). If the timeout is not hit, the value will be how long the buyer actually took,
   capped by the per-buyer cumulative timeout, if the timeout is hit, the reported value will be the
-  timeout + 1000.
+  timeout + 1000 (to make it easier to assign it to a different bucket).
 * `percent-regular-ig-count-quota-used`,`percent-negative-ig-count-quota-used`,
   `percent-ig-storage-quota-used`: percentage of the database quota used by the buyer for
   regular interest group count, negative targeting interest group count, and overall byte usage
@@ -315,7 +318,9 @@ The newly added base values are as following:
   respectively.  This is also capped at 1.1x the current quota, but please do keep in mind that the
   quota might increase in the future, so if you use these metrics rather than percentage-based ones,
   you may wish to reserve some extra margin around the bucket space (perhaps something like 15x) to
-  avoid confusion in the future.
+  avoid confusion in the future. If you use `ig-storage-used` base value for a contribution value
+  rather than for a bucket number, the local contribution budget cap may become an issue unless
+  it's scaled down considerably.
 
 Note that these metrics are measured only for some kinds of worklet executions &mdash; some are
 only relevant for bidders, and get 0 in the seller functions. In case of reporting functions,
