@@ -2697,8 +2697,9 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |script
 
 <div algorithm>
 To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte sequence=] |body|, a [=string=]
-|context|, an [=origin=] |scriptOrigin|, a [=policy container=] |policyContainer|, an |indexMap|, and a
-[=boolean=] |isBiddingSignal|:
+|context|, an [=origin=] |scriptOrigin|, a [=policy container=] |policyContainer|, an |indexMap| whose keys
+are [=strings=] and values are [=tuples=] consisting of an interger and an integer , and a [=boolean=]
+|isBiddingSignal|:
 
 1. Let |request| be a new [=request=] with the following properties:
   :   [=request/URL=]
@@ -2710,8 +2711,8 @@ To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte se
   :   [=request/origin=]
   ::  |scriptOrigin|
   :   [=request/header list=]
-  ::  «`Content-Type`: `message/ad-auction-trusted-signals-request`»
-  ::  «`Accept`: `message/ad-auction-trusted-signals-response`»
+  ::  «`Content-Type`: `message/ad-auction-trusted-signals-request`,
+       `Accept`: `message/ad-auction-trusted-signals-response`»
   :   [=request/client=]
   ::  `null`
   :   [=request/mode=]
@@ -2729,6 +2730,7 @@ To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte se
     [=policy container/IP address space=]
 
 1. Let |signals| be null.
+1. Let |signalsMap| be an empty [=map=], whose keys are [=strings=] and values are [=maps=].
 1. Let |dataVersion| be an empty [=ordered map=], whose [=map/keys=] are [=strings=] and [=map/values=] are integers.
 1. Let |perInterestGroupData| be an [=ordered map=] whose [=map/keys=] are [=interest group/name=] [=strings=]
   and whose [=map/values=] are [=bidding signals per interest group data=].
@@ -2741,25 +2743,23 @@ To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte se
     deserialization method may follow that described in
     [Section 2.3.6 of the Protected Audience Key Value Services](https://privacysandbox.github.io/draft-ietf-protected-audience-key-value-service/draft-ietf-protected-audience-key-value-services.html#name-parsing-a-response).
   1. [=list/For each=] |result| in |resultList|:
+    1. If |result| [=map/contains=] "`dataVersion`":
+      1. If |result|["dataVersion"] is not an integer, or is less than 0 or more than
+        2<sup>32</sup>&minus;1, set |signals| to failure and return.
     1. If |isBiddingSignal| is true:
       1. [=map/For each=] |name| → |value| in |result|["interestGroupNames"]:
         1. If |indexMap|[|name|] does not equal to |result|["index"], set |signals| to failure and return.
         1. [=map/Set=] |perInterestGroupData|[|name|] to |value|.
-        1. If |result| [=map/contain=] "dataVersion":
-          1. If |result|["dataVersion"] is not an integer, or is less than 0 or more than
-            2<sup>32</sup>&minus;1, set |signals| to failure and return.
-          1. Otherwise, set |dataVersion|[|name|] to |result|["dataVersion"].
+        1. If |result| [=map/contains=] "`dataVersion`", set |dataVersion|[|name|] to |result|["dataVersion"].
       1. [=map/For each=] |key| → |value| in |result|["keys"]:
-        1. Set |signals|[|key|] to |value|.
+        1. Set |signalsMap|[|key|] to |value|.
     1. Otherwise:
       1. [=map/For each=] |url| → |value| in |result|["renderUrls"]:
-        1. Set |signals|[|url|] to |value|.
-        1. If |result| [=map/contains=] `"dataVersion"`:
-          1. If |result|["dataVersion"] is not an integer, or is less than 0 or more than
-            2<sup>32</sup>&minus;1, set |signals| to failure and return.
-          1. Otherwise, set |dataVersion|[|url|] to |result|["dataVersion"].
+        1. Set |signalsMap|[|url|] to |value|.
+        1. If |result| [=map/contains=] `"dataVersion"`, set |dataVersion|[|url|] to |result|["dataVersion"].
       1. [=map/For each=] |url| → |value| in |result|["adComponentRenderUrls"]:
-        1. Set |signals|[|url|] to |value|.
+        1. Set |signalsMap|[|url|] to |value|.
+1. If |signalsMap| is not empty, set |signals| to |signalsMap|.
 1. Return « |signals|, |perInterestGroupData|, |dataVersion| ».
 
 </div>
@@ -8365,9 +8365,7 @@ To <dfn>batch or fetch trusted bidding signals</dfn> given a [=trusted bidding s
     1. Let |key| be [=tuple=] of (|ig|'s [=interest group/joining origin=], |ig|'s [=interest group/owner=]).
     1. If |keyValueInterestGroups| [=map/contains=] |key|, [=set/append=] |ig| to
       |keyValueInterestGroups|[|key|].
-    1. Otherwise:
-      1. Let |keyValueInterestGroups|[|key|] be an empty [=set=], whose [=set/items=] are [=strings=].
-      1. [=set/Append=] |ig| to |keyValueInterestGroups|[|key|].
+    1. Otherwise, set |keyValueInterestGroups|[|key|] to a [=set=] « |ig| ».
 
 </div>
 
@@ -8450,11 +8448,11 @@ an [=origin=] |scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|,
 |topLevelOrigin|, a [=string=] |slotSizeQueryParam|, and a [=policy container=] |policyContainer|:
 
   1. If |signalsUrl| is null, return.
-  1. [=map/For each=] (|joining_origin|, |owner|) → |interestGroups| of [=trusted bidding signals
+  1. [=map/For each=] (|joiningOrigin|, |owner|) → |interestGroups| of [=trusted bidding signals
     batcher/key value interest groups=]:
     1. Let « |requestBody|, |interestGroupIdMap|, |context| » be the result of [=building trusted
       key value bidding signals request body=] with |interestGroups|, |experimentGroupId|,
-      |topLevelOrigin|, |slotSizeQueryParam|, |joining_origin| and |owner|.
+      |topLevelOrigin|, |slotSizeQueryParam|, |joiningOrigin| and |owner|.
     1. Let « |partialTrustedBiddingSignals|, |partialPerInterestGroupData|, |dataVersion| » be the
       result of [=fetching trusted key value signals=] with |signalsUrl|, |requestBody|, |context|,
       |scriptOrigin|, |policyContainer|, |interestGroupIdMap| and true.
@@ -8642,20 +8640,17 @@ To <dfn>build trusted key value scoring signals request body</dfn> given a non-e
   of (interger, integer).
 1. Let |nextCompressionGroupId| be 0.
 1. [=map/For each=] |request| of |entriesToBatch|:
-  1. Let |partitionId| be an integer.
-  1. Set |joiningOrigin| to |group|'s [=interest group/joining origin=].
-  1. Let |ownerOrigin| be |request|'s [=trusted scoring signals request/owner origin=].
-  1. Let |mapKey| be a tuple of |ownerOrigin| and |joiningOrigin|.
+  1. Let |mapKey| be a tuple of (|request|'s [=trusted scoring signals request/owner origin=],
+    |request|'s [=trusted scoring signals request/joining origin=]).
   1. If |compressionIdMap| does not [=map/contain=] |mapKey|:
     1. Set |compressionIdMap|[|mapKey|] to |nextCompressionGroupId|.
-    1. Increase |nextCompressionGroupId| by 1.
+    1. Increment |nextCompressionGroupId| by 1.
   1. Let |compressionGroupId| be |compressionIdMap|[|mapKey|].
   1. If |compressionGroupMap| does not [=map/contain=] |compressionGroupId|:
-    1. Let |compressionGroupMap|[|compressionGroupId|] be an empty [=map=], whose [=map/keys=] are integers
-      and [=map/values=] are [=maps=].
-  1. Set |partitionId| to [=list/size=] of |compressionGroupMap|[|compressionGroupId|].
+    1. Set |compressionGroupMap|[|compressionGroupId|] to an empty [=map=], whose [=map/keys=] are integers
+  1. Let |partitionId| be [=list/size=] of |compressionGroupMap|[|compressionGroupId|].
   1. Set |renderUrlIdMap|[|request|'s [=trusted scoring signals request/render URL=]] to [=tuple=]
-    of |compressionGroupId| and |partitionId|.
+    of (|compressionGroupId|, |partitionId|).
   1. Let |partition| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=strings=] or
       [=list=] of [=strings=].
   1. Set |partition|["id"] to |partitionId|.
@@ -8665,10 +8660,10 @@ To <dfn>build trusted key value scoring signals request body</dfn> given a non-e
   1. Set |namespace|["ad_component_render_urls"] to |request|'s [=trusted scoring signals request/ad
     component URLs=].
   1. Set |partition|["namespace"] to |namespace|.
-  1. Let |metadata| be an empty [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
-  1. Set |metadata|["experiment_group_id"] to |firstRequest|'s [=trusted scoring signals
+  1. Let |partitionMetadata| be an empty [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
+  1. Set |partitionMetadata|["experiment_group_id"] to |firstRequest|'s [=trusted scoring signals
       request/seller experiment group id=].
-  1. Set |partition|["metadata"] to |metadata|.
+  1. Set |partition|["metadata"] to |partitionMetadata|.
   1. Set |compressionGroupMap|[|compressionGroupId|][|partitionId|] to |partition|.
 1. [=map/For each=] |id| → |group| in |compressionGroupMap|:
   1. Let |compressionGroup| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are integers or
@@ -8700,8 +8695,7 @@ To <dfn>build batched trusted key value scoring signals request body</dfn> given
 
 1. Let |firstEntry| be |entriesToBatch|[0].
 1. Let |renderURLs| be an empty [=ordered set=] of [=strings=].
-1. Let |adComponentRenderURLs| be an empty [=ordered set=] of [=strings=]
-  |adComponentRenderURLs|
+1. Let |adComponentRenderURLs| be an empty [=ordered set=] of [=strings=].
 1. [=list/For each=] |entry| of |entriesToBatch|:
   1. [=Assert=] that |entry|'s [=trusted scoring signals request/base URL=] is equal to
     |firstEntry|'s [=trusted scoring signals request/base URL=].
