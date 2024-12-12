@@ -215,7 +215,7 @@ registerAdMacro(‘SOURCE_URL_ENC’, ‘http%3A%2F%2Fpub%2Eexample%2Fpage’);
 
 ### registerAdBeacon
 
-The `reportResult` and `reportWin` worklet code will be able to register two new events, called `reserved.top_navigation_start` and `reserved.top_navigation_commit`, via `registerAdBeacon`. 
+The `reportResult` and `reportWin` worklet code will be able to register two new events, called `'reserved.top_navigation_start'` and `'reserved.top_navigation_commit'`, via `registerAdBeacon()`: 
 
 ```
 registerAdBeacon({
@@ -224,7 +224,7 @@ registerAdBeacon({
 });
 ```
 
-The new events, if registered, implies that an automatic beacon will be sent by the browser to the registered URL when a top-level navigation is invoked from within the fenced frame and the navigation was preceded by a call to [window.fence.setReportEventDataForAutomaticBeacons](#api-to-populate-event-data-for-reservedtop_navigation). More specifically, a `reserved.top_navigation_start` beacon will be sent when a top-level navigation [begins](https://html.spec.whatwg.org/multipage/browsing-the-web.html#beginning-navigation) and a `reserved.top_navigation_commit` beacon will be sent when the navigation successfully [completes](https://html.spec.whatwg.org/multipage/browsing-the-web.html#ending-navigation). This will impact top-level navigation initiated from the fenced frame in the same tab (via [unfencedTop target](https://github.com/WICG/fenced-frame/blob/master/explainer/integration_with_web_platform.md#top-level-navigation)) or in a different tab. Note that this beacon is gated on a transient user activation. More details about the beacon are below.
+The new events, if registered, implies that an automatic beacon will be sent by the browser to the registered URL when a top-level navigation is invoked from within the fenced frame and the navigation was preceded by a call to [window.fence.setReportEventDataForAutomaticBeacons](#api-to-populate-event-data-for-reservedtop_navigation). These events are not triggered by the Fenced Frame's initial navigation and commit (e.g. when rendering the original ad), only subsequent ones (e.g. when triggered by a user clicking on the ad). More specifically, a `reserved.top_navigation_start` beacon will be sent when a top-level navigation [begins](https://html.spec.whatwg.org/multipage/browsing-the-web.html#beginning-navigation) and a `reserved.top_navigation_commit` beacon will be sent when the navigation successfully [completes](https://html.spec.whatwg.org/multipage/browsing-the-web.html#ending-navigation). This will impact top-level navigation initiated from the fenced frame in the same tab (via [unfencedTop target](https://github.com/WICG/fenced-frame/blob/master/explainer/integration_with_web_platform.md#top-level-navigation)) or in a different tab. Note that this beacon is gated on a transient user activation (e.g. a click). More details about the beacon are below.
 
 ### reportEvent
 
