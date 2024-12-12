@@ -1757,11 +1757,11 @@ following steps. They return a failure if failing to fetch the script or wasm, o
   1. Let |igGenerateBid| be the result of [=building an interest group passed to generateBid=] with
     |ig|.
   1. Set |browserSignals|["{{BiddingBrowserSignals/joinCount}}"] to the sum of |ig|'s
-     [=interest group/join counts=] for all days within the last 30 days.
+     [=interest group/join counts=] for all days within the last 31 days in UTC, inclusive.
   1. Set |browserSignals|["{{BiddingBrowserSignals/recency}}"] to the [=current coarsened wall
     time=] minus |ig|'s [=interest group/join time=], in milliseconds.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/bidCount}}"] to the sum of |ig|'s
-     [=interest group/bid counts=] for all days within the last 30 days.
+     [=interest group/bid counts=] for all days within the last 31 days in UTC, inclusive.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/adComponentsLimit}}"] to 40.
   1. [=map/Set=] |browserSignals|["{{BiddingBrowserSignals/multiBidLimit}}"] to |multiBidLimit|.
   1. Let |prevWins| be a new <code>[=sequence=]<{{PreviousWin}}></code>.
@@ -3388,11 +3388,17 @@ A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=
 A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="server auction browser signals">
   : <dfn>bid count</dfn>
-  :: A count of the number of bids for this interest group in the last 30 days.
-    Calculated by summing the [=interest group/bid counts=] for all days within the last 30 days.
+  :: A count of the number of bids for this interest group in the last 31 days.
+    Calculated by summing the [=interest group/bid counts=].
+
+    NOTE: An additional day is added (31 vs. 30 days) to ensure that history is kept for at least as
+    long as the max group lifetime, since bid counts are kept by UTC day.
   : <dfn>join count</dfn>
-  :: A count of the number of joins for this interest group in the last 30 days.
+  :: A count of the number of joins for this interest group in the last 31 days, inclusive.
     Calculated by summing the [=interest group/join counts=].
+
+    NOTE: An additional day is added (31 vs. 30 days) to ensure that history is kept for at least as
+    long as the max group lifetime, since join counts are kept by UTC day.
   : <dfn>recency ms</dfn>
   :: A [=duration=], in milliseconds, representing the [=current coarsened wall time=] at
     the time this object was constructed minus the corresponding [=interest group=]'s
@@ -3557,9 +3563,11 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
       1. [=list/Append=] |serverPrevWin| to |prevWins|.
     1. Let |browserSignals| be a new [=server auction browser signals=] with the following [=struct/items=]:
       : [=server auction browser signals/bid count=]
-      :: the sum of |ig|'s [=interest group/bid counts=] with a bid day within the last 30 days
+      :: the sum of |ig|'s [=interest group/bid counts=] with a bid day within the last 31 days,
+        inclusive.
       : [=server auction browser signals/join count=]
-      :: the sum of |ig|'s [=interest group/join counts=] with a join day within the last 30 days
+      :: the sum of |ig|'s [=interest group/join counts=] with a join day within the last 31 days,
+        inclusive.
       : [=server auction browser signals/recency ms=]
       :: the [=current coarsened wall time=] minus |ig|'s [=interest group/join time=] in
          millseconds
@@ -4881,8 +4889,10 @@ dictionary StorageInterestGroup : AuctionAdInterestGroup {
       1. Let |encoded| be the result of running [=forgiving-base64 encode=] with |ig|'s [=interest group/additional bid key=].
       1. If |encoded| is failure, then return failure.
       1. [=map/Set=] |resultIg|["{{AuctionAdInterestGroup/additionalBidKey}}"] to the result of running [=forgiving-base64 encode=] with |ig|'s [=interest group/additional bid key=].
-    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/joinCount}}"] to the sum of |ig|'s [=interest group/join counts=] for all days within the last 30 days.
-    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/bidCount}}"] to the sum of |ig|'s [=interest group/bid counts=] for all days within the last 30 days.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/joinCount}}"] to the sum of |ig|'s [=interest
+      group/join counts=] for all days within the last 31 days, inclusive.
+    1. [=map/Set=] |resultIg|["{{StorageInterestGroup/bidCount}}"] to the sum of |ig|'s [=interest
+      group/bid counts=] for all days within the last 31 days, inclusive.
     1. Let |resultPrevWins| be a new <code>[=sequence=]<{{PreviousWin}}></code>.
     1. [=list/For each=] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
       the last 30 days:
