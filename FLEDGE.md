@@ -1238,7 +1238,8 @@ viewCounts: { pastHour: 1, pastDay: 2, pastWeek: 3, past30Days: 3, past90Days: 3
 clickCounts: { pastHour: 0, pastDay: 0, pastWeek: 1, past30Days: 1, past90Days: 1 }
 ```
 
-These fields will only be present if the interest group has registered views or clicks. The browser may place limits on view and click counts to conserve device resources (e.g. using coarser time resolution for older data).
+These fields will only be present if the browser has registered views or clicks from the interest group's `viewAndClickCountsProviders`. The browser may place limits on view and click counts to conserve device resources (e.g. using coarser time resolution for older data).
+
 
 #### 3.7.3 Lifespan and Limits of View and Click Data
 
