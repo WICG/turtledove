@@ -3268,9 +3268,10 @@ To <dfn>handle server response private aggregation fields</dfn> given a [=server
 </div>
 
 <div algorithm>
-To <dfn>commit server response private aggregation contributions</dfn> given a
-[=server auction response=] |contributionsMap|, a [=reporting context=] |reportingContext|, a
-[=reporting bid key=] |reportingId| and a [=boolean=] |serverFiltered|:
+To <dfn>commit server response private aggregation contributions</dfn> given a [=map=] from a
+[=tuple=] of ([=reporting bid key=], [=string=]) to a [=list=] of [=on event contribution entries=]
+|contributionsMap|, a [=reporting context=] |reportingContext|, a [=reporting bid key=]
+|reportingId| and a [=boolean=] |serverFiltered|:
 
 1. [=map/For each=] (|reportingOrigin|, |coordinator|, |event|) → |contributions| of |contributionsMap|:
   1. Let |eventToContributionsMap| be a new [=Private Aggregation contributions=].
@@ -3291,6 +3292,12 @@ To <dfn>commit server response private aggregation contributions</dfn> given a
     Note: Each non-reserved |event| will have a different [=batching scope=]
         that is created later.
   1. [=list/For each=] |contribution| of |contributions|:
+    1. [=Assert=] |contribution|["{{PAExtendedHistogramContribution/bucket}}"] is a {{bigint}} and
+      is [=set/contained=] in [=the exclusive range|the range=] 0 to 2<sup>128</sup>, exclusive.
+    1. [=Assert=] |contribution|["{{PAExtendedHistogramContribution/value}}"] is a {{long}}.
+
+      Note: All {{PAExtendedHistogramContribution/bucket}} and {{PAExtendedHistogramContribution/value}}
+        have been calculated on server side already.
     1. Let |entry| be a new [=on event contribution entry=] with the items:
         : [=on event contribution entry/contribution=]
         :: |contribution|
@@ -3307,7 +3314,7 @@ To <dfn>commit server response private aggregation contributions</dfn> given a
         :: |reportingOrigin|
     1. If |eventToContributionsMap|[|event|] does not [=map/exist=], set
       |eventToContributionsMap|[|event|] to « |entry| ».
-    1. Otherwise, [=list/append=] |eventToContributionsMap|[|event|] with |entry|.
+    1. Otherwise, [=list/append=] |entry| to |eventToContributionsMap|[|event|].
 1. [=Commit private aggregation contributions=] given |eventToContributionsMap|, |reportingId| and
   |reportingContext|.
 
@@ -3545,17 +3552,17 @@ A <dfn>server auction response</dfn> is a [=struct=] that contains auction resul
   : <dfn>component seller reporting</dfn>
   :: Null or [=server auction reporting info=].
   : <dfn>component win private aggregation contributions</dfn>
-  :: A [=map=] whose [=map/keys=] are ([=reporting bid key=], [=string=]), and whose [=map/values=]
-    are [=lists=] of [=on event contribution entries=]. Private aggregation contributions from
-    winners of component auctions run on trusted auction servers. These need to be filtered by the
-    client based on the top level auction's outcome.
+  :: A [=map=] whose [=map/keys=] are [=tuples=] of ([=reporting bid key=], [=string=]), and whose
+    [=map/values=] are [=lists=] of [=on event contribution entries=]. Private aggregation
+    contributions from winners of component auctions run on trusted auction servers. These need to
+    be filtered by the client based on the top level auction's outcome.
   : <dfn>server filtered private aggregation reserved contributions</dfn>
-  :: A [=map=] from a tuple of ([=reporting bid key=], [=string=]) to a [=list=] of [=on event
+  :: A [=map=] from a [=tuple=] of ([=reporting bid key=], [=string=]) to a [=list=] of [=on event
     contribution entries=]. Server filtered private aggregation contributions with reserved event
     types (already set to "reserved.always"), which are not dependent on the final auction result and
     should always be reported.
   : <dfn>server filtered private aggregation non reserved contributions</dfn>
-  :: A [=map=] from a tuple of ([=reporting bid key=], [=string=]) to a [=list=] of [=on event
+  :: A [=map=] from a [=tuple=] of ([=reporting bid key=], [=string=]) to a [=list=] of [=on event
     contribution entries=]. Server filtered private aggregation contributions with non reserved event
     types, which are not dependent on the final auction result and should always be reported.
   : <dfn>component win debugging only reports</dfn>
@@ -4565,14 +4572,12 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
   set |sellerOnceRep| to a random [=set/item=] of [=reporting context/seller participants=].
 1. [=map/For each=] (|bidId|, |event|) → |contributions| of |reportingContext|'s
   [=reporting context/private aggregation on event contributions=]:
-  1. If |event| does not [=string/start with=] "`reserved.`":
-    1. [=list/For each=] |onEventEntry| of |contributions|:
-      1. If |onEventEntry|'s [=on event contribution entry/server filtered=] is false and |bidId| is
-        not |winnerId|, then [=list/remove=] |onEventEntry| from |contributions|.
-  1. If |onEventEntry|'s [=on event contribution entry/server filtered=] is false:
-    1. If |event| is "`reserved.win`" and |bidId| is not |winnerId|, then [=iteration/continue=].
-    1. If |event| is "`reserved.loss`" and |bidId| is |winnerId|, [=iteration/continue=].
   1. [=list/For each=] |onEventEntry| of |contributions|:
+    1. If |onEventEntry|'s [=on event contribution entry/server filtered=] is false,
+      [=iteration/continue=] if any of the following conditions hold:
+      * |event| is "`reserved.win`" and |bidId| is not |winnerId|;
+      * |event| does not [=string/start with=] "`reserved.`" and |bidId| is not |winnerId|;
+      * |event| is "`reserved.loss`" and |bidId| is |winnerId|.
     1. If |event| is "`reserved.once`":
       1. If |onEventEntry|'s [=on event contribution entry/worklet function=] is [=worklet function/
         generate-bid=]:
