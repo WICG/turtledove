@@ -24,8 +24,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [2.3 Scoring Bids](#23-scoring-bids)
     - [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions)
     - [2.5 Additional Trusted Signals (directFromSellerSignals)](#25-additional-trusted-signals-directfromsellersignals)
-      - [2.5.1 Using Subresource Bundles](#251-using-subresource-bundles)
-      - [2.5.2 Using Response Headers](#252-using-response-headers)
+      - [2.5.1 Using Response Headers](#252-using-response-headers)
   - [3. Buyers Provide Ads and Bidding Functions (BYOS for now)](#3-buyers-provide-ads-and-bidding-functions-byos-for-now)
     - [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server)
       - [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals)
@@ -454,7 +453,7 @@ The optional `requestedSize` field recommends a frame size for the auction, whic
 
 `allSlotsRequestedSizes` may optionally be used to specify the size of all ad slots on the page, to be passed to each interest group's `trustedBuyerSignalsURL`, for interest groups that request it.  All sizes in the list must be distinct.
 
-The optional `directFromSellerSignalsHeaderAdSlot` field can also be used to pass signals to the auction, similar to `sellerSignals`,  `perBuyerSignals`, and `auctionSignals`. The difference is that signals from `directFromSellerSignalsHeaderAdSlot` are trusted to come from the seller because the content loads from response headers from an https fetch request made to the seller's origin, ensuring the authenticity and integrity of the signals. For more details, see [2.5 directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) and [2.5.2 directFromSellerSignalsHeaderAdSlot](#252-using-response-headers).
+The optional `directFromSellerSignalsHeaderAdSlot` field can also be used to coordinate passing signals into the auction, similar to `sellerSignals`,  `perBuyerSignals`, and `auctionSignals`. The difference is that signals from `directFromSellerSignalsHeaderAdSlot` are trusted to come from the seller because the content loads from response headers from an https fetch request made to the seller's origin, ensuring the authenticity and integrity of the signals. For more details, see [2.5 directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) and [2.5.1 directFromSellerSignalsHeaderAdSlot](#251-using-response-headers).
 
 In some cases, multiple SSPs may want to participate in an auction, with the winners of separate auctions being passed up to another auction, run by another SSP. To facilitate these "component auctions", `componentAuctions` can optionally contain additional auction configurations for each seller's "component auction". The winning bid of each of these "component auctions" will be passed to the "top-level" auction. How bids are scored in this case is further described in [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions). The `AuctionConfig` of component auctions may not have their own `componentAuctions`. When `componentAuctions` is non-empty, `interestGroupBuyers` must be empty.  That is, for any particular Protected Audience auction, either there is a single seller and no component auctions, or else all bids come from component auctions and the top-level auction can only choose among the component auctions' winners.
 
@@ -502,7 +501,7 @@ In the case of a component auction, all `AuctionConfig` parameters for that comp
 
 ##### 2.1.1 Providing Signals Asynchronously
 
-The values of some signals (those configured by fields `auctionSignals`, `sellerSignals`, `perBuyerSignals`, `perBuyerTimeouts`, `deprecatedRenderURLReplacements`, and `directFromSellerSignals`) can optionally be provided not as concrete values, but as [Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).  This permits some parts of the auction, such as loading of scripts and trusted signals, and launching of isolated worklet processes, to overlap the computation (or network retrieval) of those values.  The worklet scripts will only see the resolved values; if any such Promise rejects the auction will be aborted (unless it managed to fail already or get otherwise aborted anyway).
+The values of some signals (those configured by fields `auctionSignals`, `sellerSignals`, `perBuyerSignals`, `perBuyerTimeouts`, `deprecatedRenderURLReplacements`, and `directFromSellerSignalsHeaderAdSlot`) can optionally be provided not as concrete values, but as [Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).  This permits some parts of the auction, such as loading of scripts and trusted signals, and launching of isolated worklet processes, to overlap the computation (or network retrieval) of those values.  The worklet scripts will only see the resolved values; if any such Promise rejects the auction will be aborted (unless it managed to fail already or get otherwise aborted anyway).
 
 ##### 2.1.2 Seller Security Considerations
 
@@ -587,8 +586,8 @@ The function gets called once for each candidate ad in the auction.  The argumen
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
-    *   sellerSignals: Like auctionConfig.sellerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?sellerSignals`.
-    *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
+    *   sellerSignals: Like auctionConfig.sellerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism.
+    *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism.
 *   crossOriginTrustedSignals: like `trustedScoringSignals`, but used when the server is cross-origin
     to the seller script. The value is an object that has as a key the trusted server's origin, e.g.
     `"https://example.org"`, and as value an object in format `trustedScoringSignals` uses. See
@@ -631,39 +630,9 @@ The ultimate winner of the top-level auction is the single bid the top-level sel
 
 While the browser ensures (using TLS) that information stored in a buyer's interest group and coming from a buyer's trusted bidding signals server comes from the buyer, information passed into `runAdAuction()` is not known to come from the seller unless the seller calls `runAdAuction()` from its own iframe.  In a multi-seller auction it becomes impossible to have all sellers create the frame calling `runAdAuction()`.  `directFromSellerSignals` allows the browser to ensure the authenticity and integrity of information passed into an auction from the seller.
 
-##### 2.5.1 Using Subresource Bundles
+#### 2.5.1 Using Response Headers
 
-The optional `directFromSellerSignals` field can be used to pass signals to the auction, similar to `sellerSignals` and `perBuyerSignals`. The difference is that `directFromSellerSignals` are trusted to come from a seller because the content loads from a [subresource bundle](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md) loaded from a seller's origin. If present, `directFromSellerSignals` should be an HTTPS URL prefix using the seller's origin -- when combined with a browser-provided suffix (see details below), the resultant URL should be a resource in a subresource bundle that has been loaded by the current document, whose contents are of type `application/json`, with the following response headers: `Ad-Auction-Allowed: true` and `Ad-Auction-Only: true`.
-
-The URL prefix should not have a query string (i.e. `?a=b&c=d`). Different calls to `navigator.runAdAuction()` on a page may use different prefixes -- for instance, to give different signals to different ad slots. The browser will append the following suffixes to the prefix:
-
-*   `?perBuyerSignals=[origin]`, where [origin] is one of the origins in `interestGroupBuyers` (encoded as a URL component): this corresponds to the `perBuyerSignals` for the buyer `origin`
-*   `?sellerSignals`: this corresponds to the `sellerSignals` only delivered to the seller
-*   `?auctionSignals`: this corresponds to `auctionSignals` delivered to the seller, and all buyers
-
-`runAdAuction()` will check all of the above URLs (`perBuyerSignals` for all buyers, `sellerSignals`, and `auctionSignals`) to see if they have been pre-registered as a subresource URL via `<script type="application/webbundle">` tags (note that signals may come from separate bundle files, but each bundle must be served from the seller's origin) -- it's possible to register only a subset of all possible signals.
-
-The signals will be passed as the parameter `directFromSellerSignals` on worklet functions. See [generateBid()](#32-on-device-bidding), [scoreAd()](#23-scoring-bids), [reportWin()](#52-buyer-reporting-on-render-and-ad-events), and [reportResult()](#51-seller-reporting-on-render).
-
-If the signals subresource download somehow fails for a given signal, null will be set on the corresponding field of the directFromSellerSignals object passed to worklet functions. Worklet scripts expecting signals can decide to score / bid / report anyways, or fail (i.e. throw an exception).
-
-As the name implies, subresource bundles are bundles of HTTPS subresources.  These HTTPS subresources can contain various HTTPS response headers, including ones meant to enforce basic Web principles, e.g. CORS headers.  To prevent bypassing these basic Web principles by loading the bundles directly with [fetch()](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) or [XMLHttpRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) and ignoring the HTTPS headers within, the bundles should only be served when requested with the header `Sec-Fetch-Dest: webbundle`.  To protect against cross-origin side channel attacks, like what CORB does, the browser requires the subresources from the bundle are served with the header `Ad-Auction-Only` which ensures they are only loaded via `directFromSellerSignals`.
-
-The bundle may be fetched using credentials like cookies, as described in the [subresource bundles explainer](https://github.com/WICG/webpackage/blob/main/explainers/subresource-loading.md#requests-mode-and-credentials-mode).
-
-`directFromSellerSignals` supports multiple sellers -- it may be set on the top-level auction, and on component auctions.
-
-Worklet processes follow Chrome's standard site-isolation policies. On Android, due to resource constraints, it's possible that a worklet may run in the same process as a renderer.
-
-###### CORS Required
-
-The origin of the frame that called `runAdAuction()` is not required to match the origin of `directFromSellerSignals`, so CORS is used when fetching `directFromSellerSignals`.  This means subresources in the bundle should include the [Access-Control-Allow-Origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin) header to authorize the origin that calls `runAdAuction()` -- this should also be done on the bundle file itself.
-
-For the JSON response, only the `https` scheme is supported -- the `uuid-in-package` scheme isn't supported as that scheme doesn't support CORS.
-
-#### 2.5.2 Using Response Headers
-
-An alternative way to pass DirectFromSellerSignals without subresource bundles is via the `Ad-Auction-Signals` response header of some `fetch()` request or `iframe` navigation, together with the `directFromSellerSignalsHeaderAdSlot` field on `navigator.runAdAuction()`.
+The optional `directFromSellerSignalsHeaderAdSlot` field can be used to coordinate passing signals into the auction, similar to `auctionSignals`, `sellerSignals` and `perBuyerSignals`. The difference is that signals coordinated by `directFromSellerSignalsHeaderAdSlot` are trusted to come from a seller because the content loads from an HTTP header served by the seller’s origin over HTTPS. We refer to signals passed in via this mechanism as directFromSellerSignals.  DirectFromSellerSignals are passed via the `Ad-Auction-Signals` response header of some `fetch()` request or `iframe` navigation, together with the `directFromSellerSignalsHeaderAdSlot` field on `navigator.runAdAuction()`.
 
 To pass DirectFromSellerSignals using a [`fetch()`](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) call made by some script on the page (including in a subframe), specify an extra option, `{adAuctionHeaders: true}`:
 
@@ -681,7 +650,7 @@ To pass DirectFromSellerSignals using an [`iframe`](https://developer.mozilla.or
 
 If script that invokes `runAdAuction()` is part of the response to that iframe navigation, `directFromSellerSignalsHeaderAdSlot` can be specified directly without a Promise because `runAdAuction()` cannot be called until after the response - with its DirectFromSellerSignals headers - has been received.
 
-The browser will make the request for either the `fetch()` or the `iframe` navigation that it otherwise would, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that any `Ad-Auction-Signals` response header from the server will only be loaded in auctions via `directFromSellerSignalsHeaderAdSlot` (this is analogous to the guarantees of `Ad-Auction-Only` and `Sec-Fetch-Dest: webbundle` from the [subresource bundle version](#251-using-subresource-bundles) -- scripts on the page cannot set the `Sec-Ad-Auction-Fetch: ?1` request header without using the `{adAuctionHeaders: true}` option).
+The browser will make the request for either the `fetch()` or the `iframe` navigation that it otherwise would, with the exception that the request will also include a request header, `Sec-Ad-Auction-Fetch: ?1`. This header indicates to the server that any `Ad-Auction-Signals` response header from the server will only be loaded in auctions via `directFromSellerSignalsHeaderAdSlot` (scripts on the page cannot set the `Sec-Ad-Auction-Fetch: ?1` request header without using the `{adAuctionHeaders: true}` option).
 
 The value of the `Ad-Auction-Signals` header must be JSON formatted, with the following schema:
 
@@ -712,17 +681,17 @@ navigator.runAdAuction({
 });
 ```
 
-`directFromSellerSignalsHeaderAdSlot` is a string that should match the `adSlot` value contained in some `Ad-Auction-Signals` response served from the origin of that auction's seller. Note that for multi-seller or component auctions, each component auction / top-level can specify its own `directFromSellerSignalsHeaderAdSlot`, and the response should be served from that component / top-level auction's seller's origin. Different sellers may safely use the same `adSlot` names without conflict. If `directFromSellerSignalsHeaderAdSlot` matches multiple `adSlot`s from header responses, signals from the most recently-received response will be sent to worklet functions. Furthermore, if a response is received for an adSlot whose name matches that for existing captured signals, memory from the old signals will be released and the new signals will be stored. A response that specifices the same adSlot name in multiple dictionaries is invalid.
+`directFromSellerSignalsHeaderAdSlot` is a string that should match the `adSlot` value contained in some `Ad-Auction-Signals` response served from the origin of that auction's seller. Note that for multi-seller or component auctions, each top-level / component auction can specify its own `directFromSellerSignalsHeaderAdSlot`, and the response should be served from that component / top-level auction's seller's origin. Different sellers may safely use the same `adSlot` names without conflict. If `directFromSellerSignalsHeaderAdSlot` matches multiple `adSlot`s from header responses, signals from the most recently-received response will be sent to worklet functions. Furthermore, if a response is received for an adSlot whose name matches that for existing captured signals, memory from the old signals will be released and the new signals will be stored. A response that specifices the same adSlot name in multiple dictionaries is invalid.
 
-The JSON will be parsed by the browser, and passed via the same `directFromSellerSignals` worklet functions parameter as in [the subresource bundle](#251-using-subresource-bundles) version of DirectFromSellerSignals, with `sellerSignals` only being delivered to the seller, `perBuyerSignals` only being delivered to the buyer for each buyer origin key, and `auctionSignals` being delivered to all parties. Since the top-level JSON value is an array, multiple `adSlot` responses may be set for a given `Ad-Auction-Signals` header. In the dictionary with the `adSlot`, the `sellerSignals`, `auctionSignals`, and `perBuyerSignals` fields are optional -- they will be passed as null if not specified.
+The JSON will be parsed by the browser, and passed as the `directFromSellerSignals` parameter on [generateBid()](#32-on-device-bidding), [scoreAd()](#23-scoring-bids), [reportWin()](#52-buyer-reporting-on-render-and-ad-events), and [reportResult()](#51-seller-reporting-on-render), with `sellerSignals` only being delivered to the seller, `perBuyerSignals` only being delivered to the buyer for each buyer origin key, and `auctionSignals` being delivered to all parties. Since the top-level JSON value is an array, multiple `adSlot` responses may be set for a given `Ad-Auction-Signals` header. In the dictionary with the `adSlot`, the `sellerSignals`, `auctionSignals`, and `perBuyerSignals` fields are optional -- they will be passed as null if not specified.
 
-Since both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` (the fields on `navigator.runAdAuction()`) set the same `directFromSellerSignals` parameter on the worklet functions, it is not valid to use both `directFromSellerSignals` and `directFromSellerSignalsHeaderAdSlot` in the same auction. However, component auctions in the same top-level auction / the top-level itself do not all need to use the same type of DirectFromSellerSignals (and it's also valid if only some component auctions / the top-level use DirectFromSellerSignals).
+It's valid if only some component auctions / the top-level auction use DirectFromSellerSignals and some don't.
 
-Failure to find a matching `adSlot` results in the fields of the `directFromSellerSignals` object passed to worklet functions being set to null, similar to the [subresource bundle version](#251-using-subresource-bundles).
+Failure to find a matching `adSlot` results in the fields of the `directFromSellerSignals` object passed to worklet functions being set to null.
 
 Note that only the `Ad-Auction-Signals` response header from the server will only be loaded via `directFromSellerSignalsHeaderAdSlot` -- the payload of the request will be available to scripts running in that frame.
 
-Like `directFromSellerSignals`, `directFromSellerSignalsHeaderAdSlot` may be passed as a promise that resolves to the ad slot string -- the auction perform loading, but delays execution until the promise is resolved.
+`directFromSellerSignalsHeaderAdSlot` may be passed as a promise that resolves to the ad slot string -- the auction perform loading, but delays execution until the promise is resolved.
 
 The signals are only guaranteed to be available to `navigator.runAdAuction()` after the `fetch()` promise has resolved. Therefore, to avoid races, either `runAdAuction()` should be called after resolving the `fetch()` promise, or `directFromSellerSignalsHeaderAdSlot` should be passed a promise that only resolves after the `fetch()` promise resolves.
 
@@ -949,8 +918,8 @@ The arguments to `generateBid()` are:
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
-    *   perBuyerSignals: Like auctionConfig.perBuyerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
-    *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
+    *   perBuyerSignals: Like auctionConfig.perBuyerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism.
+    *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism.
 *   crossOriginTrustedSignals: Like `trustedBiddingSignals`, but used when the trusted-server is
     cross-origin to the buyer's script. The value is an object that has as a key the trusted
     server's origin, e.g. `"https://www.kv-server.example"`, and as value an object in format
@@ -1215,8 +1184,8 @@ The arguments to this function are:
     ```
     * `bidCurrency` and `highestScoringOtherBidCurrency` provide (highly redacted) information on what currency the corresponding numbers are in. Please refer to the section on [Currencies in Reporting](#53-currencies-in-reporting) for more details.
 *   directFromSellerSignals is an object that may contain the following fields:
-    *   sellerSignals: Like auctionConfig.sellerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?sellerSignals`.
-    *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
+    *   sellerSignals: Like auctionConfig.sellerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism.
+    *   auctionSignals: Like auctionConfig.auctionSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism.
 
 The `browserSignals` argument must be handled carefully to avoid tracking.  It certainly cannot include anything like the full list of interest groups, which would be too identifiable as a tracking signal.  The `renderURL` can be included since it has passed a k-anonymity check. Because `renderSize` will not be included in the k-anonymity check initially, it is not included in the browser signals.  The browser may limit the precision of the bid and desirability values by stochastically rounding them so that they fit into a floating point number with an 8 bit mantissa and 8 bit exponent to avoid these numbers exfiltrating information from the interest group's `userBiddingSignals`. On the upside, this set of signals can be expanded to include useful additional summary data about the wider range of bids that participated in the auction, e.g. the number of bids.  Additionally, the `dataVersion` will only be present if the `Data-Version` header was provided in the response headers from the Trusted Scoring server.
 
@@ -1260,8 +1229,8 @@ The arguments to this function are:
     *   The `reportingTimeout` field is `navigator.runAdAuction()` auctionConfig’s `reportingTimeout` capped to 5000 ms if provided, or a default timeout of 50 ms otherwise.
 
 *   `directFromSellerSignals` is an object that may contain the following fields:
-    *   `perBuyerSignals`: Like `auctionConfig.perBuyerSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?perBuyerSignals=[origin]`.
-    *   `auctionSignals`: Like `auctionConfig.auctionSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism. These are the signals whose subresource URL ends in `?auctionSignals`.
+    *   `perBuyerSignals`: Like `auctionConfig.perBuyerSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism.
+    *   `auctionSignals`: Like `auctionConfig.auctionSignals`, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism.
 
 The `reportWin()` function's reporting happens by calling `sendReportTo()`, same as for `reportResult()`, in the short-term, but will eventually go through the Private Aggregation API. Once the Private Aggregation API is the only allowed reporting mechanism available in Protected Audience, the `interestGroup` object passed to `generateBid()` will be available to `reportWin()`.
 
