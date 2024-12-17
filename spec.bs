@@ -3205,32 +3205,47 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
   1. If |topLevelAuctionConfig|'s [=auction config/seller=] is not equal to
     |response|'s [=server auction response/top level seller=], return failure.
 1. Otherwise if |topLevelAuctionConfig| is not null, return failure.
-1. Let |winningGroup| be the [=interest group=] in the [=user agent=]'s [=interest group set=]
+1. Let |kAnonWinningGroup| be the [=interest group=] in the [=user agent=]'s [=interest group set=]
    whose [=interest group/owner=] is |response|'s [=server auction response/interest group owner=] and
    [=interest group/name=] is |response|'s [=server auction response/interest group name=]. Return failure if none found.
-1. If |winningGroup|'s [=interest group/ads=] is null, then return failure.
-1. Let |winningAd| be null.
-1. [=list/For each=] |ad| of |winningGroup|'s [=interest group/ads=]:
+1. If |kAnonWinningGroup|'s [=interest group/ads=] is null, then return failure.
+1. Let |kAnonWinningAd| be null.
+1. [=list/For each=] |ad| of |kAnonWinningGroup|'s [=interest group/ads=]:
   1. If |response|'s [=server auction response/ad render url=] is |ad|'s
-    [=interest group ad/render url=], then set |winningAd| to |ad|, and [=iteration/break=].
+    [=interest group ad/render url=], then set |kAnonWinningAd| to |ad|, and [=iteration/break=].
 1. Return failure if any of the following conditions hold:
-  * |winningAd| is null;
+  * |kAnonWinningAd| is null;
   * |response|'s [=server auction response/buyer and seller reporting id=] is not null and not
-    |winningAd|'s [=interest group ad/buyer and seller reporting ID=];
+    |kAnonWinningAd|'s [=interest group ad/buyer and seller reporting ID=];
   * |response|'s [=server auction response/buyer reporting id=] is not null and not
-    |winningAd|'s [=interest group ad/buyer reporting ID=];
+    |kAnonWinningAd|'s [=interest group ad/buyer reporting ID=];
   * |response|'s [=server auction response/selected buyer and seller reporting ID=] is not null,
-    |winningAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] is not null and it
+    |kAnonWinningAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] is not null and it
     does not [=list/contain=] |response|'s [=server auction response/selected buyer and seller reporting ID=].
-1. Let |winningAdDescriptor| be a new [=ad descriptor=] whose [=ad descriptor/url=] is
+1. If |response|'s [=server auction response/winner join candidates=] is not null:
+  1. If |response|'s [=server auction response/winner join candidates=]'s
+     [=server auction join candidates/ad render url hash=] is not equal to the
+     result of running [=compute the key hash of ad=] on |kAnonWinningGroup| and
+     |kAnonWinningAd|, return failure.
+  1. If |response|'s [=server auction response/winner join candidates=]'s
+     [=server auction join candidates/reporting id hash=] is not equal to the
+     result of running [=compute the key hash of reporting ID=] on |kAnonWinningGroup|,
+     |kAnonWinningAd|, and |response|'s
+     [=server auction response/selected buyer and seller reporting id=], return failure.
+1. Let |kAnonWinningAdDescriptor| be a new [=ad descriptor=] whose [=ad descriptor/url=] is
    |response|'s [=server auction response/ad render url=].
-1. Let |winningAdComponents| be a new [=list=] of [=ad descriptors=].
+1. Let |kAnonWinningAdComponents| be a new [=list=] of [=ad descriptors=].
 1. [=list/For each=] |componentAd| in |response|'s [=server auction response/ad components=]:
-  1. Let |ad| be the [=interest group ad=] from |winningGroup|'s
+  1. Let |ad| be the [=interest group ad=] from |kAnonWinningGroup|'s
      [=interest group/ad components=] where the [=interest group ad/render url=]
      equals |componentAd|. If there is no matching element, return failure.
+  1. If |response|'s [=server auction response/winner join candidates=] is not
+     null and |response|'s [=server auction response/winner join candidates=]'s
+     [=server auction join candidates/ad component render url hashes=] does not
+     [=list/contain=] the result from [=compute the key hash of component ad=]
+     on |ad|, then return failure.
   1. [=list/Append=] a new [=ad descriptor=] whose [=ad descriptor/url=] is
-     |componentAd| to |winningAdComponents|.
+     |componentAd| to |kAnonWinningAdComponents|.
 1. Let |bidDebugReportingInfo| be a new [=bid debug reporting info=].
 1. [=list/For each=] |key| → |maybeDebugReportUrl| in |response|'s
   [=server auction response/component win debugging only reports=]:
@@ -3266,7 +3281,7 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
   :: |response|'s [=server auction response/interest group name=]
 1. [=Handle server response private aggregation fields=] given |response|, |requestContext| and
   |reportingId|.
-1. Let |winningBid| be a new [=generated bid=] with the following [=struct/items=]:
+1. Let |kAnonWinningBid| be a new [=generated bid=] with the following [=struct/items=]:
   : [=generated bid/reporting id=]
   :: |reportingId|
   : [=generated bid/bid=]
@@ -3276,17 +3291,17 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
   : [=generated bid/ad=]
   :: |response|'s [=server auction response/ad metadata=]
   : [=generated bid/ad descriptor=]
-  :: |winningAdDescriptor|
+  :: |kAnonWinningAdDescriptor|
   : [=generated bid/ad component descriptors=]
-  :: |winningAdComponents|
+  :: |kAnonWinningAdComponents|
   : [=generated bid/ad cost=]
   :: Null
   : [=generated bid/modeling signals=]
   :: Null
   : [=generated bid/interest group=]
-  :: |winningGroup|
+  :: |kAnonWinningGroup|
   : [=generated bid/bid ad=]
-  :: |winningAd|
+  :: |kAnonWinningAd|
   : [=generated bid/modified bid=]
   :: Null if |topLevelAuctionConfig| is null, otherwise |response|'s [=server auction response/bid=]
   : [=generated bid/bid duration=]
@@ -3294,7 +3309,7 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
   : [=generated bid/component seller=]
   :: Null
   : [=generated bid/number of mandatory ad components=]
-  :: [=list/Size=] of |winningAdComponents|
+  :: [=list/Size=] of |kAnonWinningAdComponents|
 1. Let |buyerReportingResult| be a new [=reporting result=] with the following [=struct/items=]:
    : [=reporting result/report url=]
    :: The value of |response|'s [=server auction response/buyer reporting=]'s [=server auction reporting info/reporting url=].
@@ -3312,21 +3327,28 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
    :: The value of |response|'s [=server auction response/component seller reporting=]'s [=server auction reporting info/reporting url=].
    : [=reporting result/reporting beacon map=]
    :: The value of |response|'s [=server auction response/component seller reporting=]'s [=server auction reporting info/beacon urls=].
-1. Let |topScore| be 0.0 if |response|'s [=server auction response/score=] is null,
+1. Let |kAnonWinningScore| be 0.0 if |response|'s [=server auction response/score=] is null,
    |response|'s [=server auction response/score=] otherwise.
+1. If |response|'s [=server auction response/ghost winner=] is not null:
+  1. Let |nonKAnonWinningBid| be the result of running
+     [=parse and validate a ghost winner=] on |auctionConfig|,
+     |reportingContextMap|, and |response|'s [=server auction response/ghost winner=].
+  1. If |nonKAnonWinningBid| is failure, set |nonKAnonWinningBid| to |kAnonWinningBid|.
+1. Otherwise:
+  1. Set |nonKAnonWinningBid| to |kAnonWinningBid|.
 1. Let |winningBidInfo| be a new [=leading bid info=] with the following [=struct/items=]:
    : [=leading bid info/top score=]
-   :: |topScore|
+   :: |kAnonWinningScore|
    : [=leading bid info/top non-k-anon-enforced score=]
-   :: |topScore|
+   :: 0
    : [=leading bid info/top bids count=]
    :: 1
    : [=leading bid info/top non-k-anon-enforced bids count=]
    :: 1
    : [=leading bid info/leading bid=]
-   :: |winningBid|
+   :: |kAnonWinningBid|
    : [=leading bid info/leading non-k-anon-enforced bid=]
-   :: |winningBid|
+   :: |nonKAnonWinningBid|
    : [=leading bid info/auction config=]
    :: |auctionConfig|
    : [=leading bid info/highest scoring other bid=]
@@ -3423,6 +3445,128 @@ To <dfn>commit server response private aggregation contributions</dfn> given a [
     1. Otherwise, [=list/append=] |entry| to |eventToContributionsMap|[|event|].
 1. [=Commit private aggregation contributions=] given |eventToContributionsMap|, |reportingId| and
   |reportingContext|.
+
+</div>
+
+<div algorithm>
+To <dfn>parse and validate a ghost winner</dfn> given an [=auction config=] |auctionConfig|,
+a [=reporting context map=] |reportingContextMap|, and a
+[=server auction ghost winner=] |ghost winner|, perform the following steps.
+They return either a [=generated bid=] or a failure.
+
+1. Let |nonKAnonWinningGroup| be the [=interest group=] in the [=user agent=]'s
+   [=interest group set=] whose [=interest group/owner=] is |ghost winner|'s
+   [=server auction ghost winner/interest group owner=] and
+   [=interest group/name=] is |ghost winner|'s
+   [=server auction ghost winner/interest group name=]. Return failure if none found.
+1. If |nonKAnonWinningGroup|'s [=interest group/ads=] is null, then return failure.
+1. Let |nonKAnonWinningAd| be null.
+1. [=list/For each=] |ad| of |nonKAnonWinningGroup|'s [=interest group/ads=]:
+  1. If |ghost winner|'s [=server auction ghost winner/candidates=]'s
+     [=server auction join candidates/ad render url hash=] is equal to the
+     result of running [=compute the key hash of ad=] on |nonKAnonWinningGroup|
+     and |ad|:
+    1. Set |nonKAnonWinningAd| to |ad|.
+    1. [=iteration/Break=].
+1. If |nonKAnonWinningAd| is null, return failure.
+1. Let |nonKAnonWinningAdDescriptor| be a new [=ad descriptor=] whose
+   [=ad descriptor/url=] is |nonKAnonWinningAd|'s [=interest group ad/render url=].
+1. Let |nonKAnonWinningAdComponents| be a new [=list=] of [=ad descriptors=].
+1. [=list/For each=] |componentAdHash| in |ghost winner|'s
+   [=server auction ghost winner/candidates=]'s
+   [server auction join candidates/ad component render url hashes=]:
+  1. Let |matchingAd| be null.
+  1. [=list/For each=] |componentAd| in |nonKAnonWinningGroup|'s
+    [=interest group/ad components=]:
+    1. If |componentAdHash| equals the result from
+       [=compute the key hash of component ad=] on |componentAd|:
+      1. Set |matchingAd| to |componentAd|.
+      1. [=iteration/Break=].
+  1. If |matchingAd| is null, return failure.
+  1. [=list/Append=] a new [=ad descriptor=] whose [=ad descriptor/url=] is
+     |matchingAd|'s [=interest group ad/render url=] to |nonKAnonWinningAdComponents|.
+1. Let |selected buyer and seller reporting id| be null.
+1. If |ghost winner|'s [=server auction ghost winner/candidates=]'s
+   [=server auction join candidates/reporting id hash=] is not equal to the
+   result of running [=compute the key hash of reporting ID=] on |nonKAnonWinningGroup|,
+   |nonKAnonWinningAd|, and null:
+  1. [=list/For each=] |selectedReportingId| in |nonKAnonWinningAd|'s
+     [=interest group ad/selectable buyer and seller reporting IDs=]:
+    1. If |ghost winner|'s [=server auction ghost winner/candidates=]'s
+       [=server auction join candidates/reporting id hash=] is equal to the
+       result of running [=compute the key hash of reporting ID=] on
+       |nonKAnonWinningGroup|, |nonKAnonWinningAd|, and |selectedReportingId|:
+      1. Set |selected buyer and seller reporting id| to |selectedReportingId|.
+      1. [=iteration/Break=].
+  1. If |selected buyer and seller reporting id| is null, return failure.
+1. Let |reportingId| be a [=reporting bid key=] with the following [=struct/items=]:
+  : [=reporting bid key/context=]
+  :: |reportingContextMap|[|auctionConfig|]
+  : [=reporting bid key/source=]
+  :: [=reporting bid source/bidding-and-auction-services=]
+  : [=reporting bid key/bidder origin=]
+  :: |ghost winner|'s [=server auction ghost winner/interest group owner=]
+  : [=reporting bid key/bid identifier=]
+  :: |ghost winner|'s [=server auction ghost winner/interest group name=]
+1. Set |reportingContextMap|[|auctionConfig|]'s
+   [=reporting context/debug reporting info=] to a new [=bid debug reporting info=].
+1. Set |bid| to 0.
+1. Set |adMetadata| to null.
+1. If |ghost winner|'s [=server auction ghost winner/ghost winner bid info=] is not null:
+  1. If |nonKAnonWinningAd|'s [=interest group ad/render url=] is not equal to
+     |ghost winner|'s [=server auction ghost winner/ghost winner bid info=]'s
+     [=server auction ghost winner bid info/ad render url=], return failure.
+  1. If the [=list/size=] of |nonKAnonWinningAdComponents| is not equal to
+     the [=list/size=] of |ghost winner|'s [=server auction ghost winner/ghost winner bid info=]'s
+     [=server auction ghost winner bid info/ad components=], return failure.
+  1. [=list/For each=] |idx| in [=list/get the indices=] of |nonKAnonWinningAdComponents|:
+    1. If |nonKAnonWinningAdComponents|[|idx|]'s [=interest group ad/render url=]
+       is not equal to |ghost winner|'s [=server auction ghost winner/ghost winner bid info=]'s
+       [=server auction ghost winner bid info/ad components=][|idx|], return failure.
+  1. Set |bid| to |ghost winner|'s [=server auction ghost winner/ghost winner bid info=]'s
+     [=server auction ghost winner bid info/modified_bid=].
+  1. Set |adMetadata| |ghost winner|'s [=server auction ghost winner/ghost winner bid info=]'s
+     [=server auction ghost winner bid info/ad metadata=].
+  1. If |nonKAnonWinningAd|'s [=interest group ad/buyer reporting id=] is not equal
+     to |ghost winner|'s [=server auction ghost winner/ghost winner bid info=]'s
+     [=server auction ghost winner bid info/buyer reporting id=], return failure.
+  1. If |nonKAnonWinningAd|'s [=interest group ad/buyer and seller reporting id=] is not equal
+     to |ghost winner|'s [=server auction ghost winner/ghost winner bid info=]'s
+     [=server auction ghost winner bid info/buyer and seller reporting id=], return failure.
+  1. If |nonKAnonWinningAd|'s [=interest group ad/buyer and seller reporting id=]
+     does not [=list/contain=] |ghost winner|'s [=server auction ghost winner/ghost winner bid info=]'s
+     [=server auction ghost winner bid info/selected buyer and seller reporting id=],
+     return failure.
+1. Let |nonKAnonWinningBid| be a new [=generated bid=] with the following [=struct/items=]:
+  : [=generated bid/reporting id=]
+  :: |reportingId|
+  : [=generated bid/bid=]
+  :: |bid|
+  : [=generated bid/bid in seller currency=]
+  :: Null
+  : [=generated bid/ad=]
+  :: |adMetadata|
+  : [=generated bid/ad descriptor=]
+  :: |nonKAnonWinningAdDescriptor|
+  : [=generated bid/ad component descriptors=]
+  :: |nonKAnonWinningAdComponents|
+  : [=generated bid/ad cost=]
+  :: Null
+  : [=generated bid/modeling signals=]
+  :: Null
+  : [=generated bid/interest group=]
+  :: |nonKAnonWinningGroup|
+  : [=generated bid/bid ad=]
+  :: |nonKAnonWinningAd|
+  : [=generated bid/modified bid=]
+  :: Null
+  : [=generated bid/bid duration=]
+  :: 0
+  : [=generated bid/component seller=]
+  :: Null
+  : [=generated bid/number of mandatory ad components=]
+  :: [=list/Size=] of |nonKAnonWinningAdComponents|
+1. Return |nonKAnonWinningBid|.
 
 </div>
 
