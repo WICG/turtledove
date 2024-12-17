@@ -8394,7 +8394,7 @@ an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin
     1. Increment |nextCompressionGroupId| by 1.
   1. Let |compressionGroupId| be |compressionIdMap|[|joiningOrigin|].
   1. If |compressionGroupMap| does not [=map/contain=] |compressionGroupId|:
-    1.[=map/Set=] |compressionGroupMap|[|compressionGroupId|] to an empty [=map=], whose [=map/keys=] are integers
+    1. [=map/Set=] |compressionGroupMap|[|compressionGroupId|] to an empty [=map=], whose [=map/keys=] are integers
       and [=map/values=] are [=maps=].
   1. If |group|'s [=interest group/execution mode=] is "`group-by-origin`", set |partitionId| to 0.
   1. Otherwise:
@@ -8404,17 +8404,16 @@ an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin
   1. [=map/Set=] |interestGroupIdMap|[|group|'s [=interest group/name=]] to [=tuple=] of
     (|compressionGroupId|, |partitionId|).
   1. If |compressionGroupMap|[|compressionGroupId|] does not [=map/contain=] |partitionId|, set
-    |compressionGroupMap|[|compressionGroupId|][|partitionId|] to a [=bidding partition=] with the following items:
+    |compressionGroupMap|[|compressionGroupId|][|partitionId|] to a [=bidding partition=] with the following [=struct/items=]:
     : [=bidding partition/id=]
     :: |partitionId|
 
     : [=bidding partition/namespace=]
-    :: "interest_group_names" → [|group|'s [=interest group/name=]]
-    :: "bidding_keys" → |group|'s [=interest group/trusted bidding signals keys=]
+    :: The [=ordered map=] «[ "interestGroupNames" → « [|group|'s [=interest group/name=]],
+      "biddingKeys" → |group|'s [=interest group/trusted bidding signals keys=] ]»
 
     : [=bidding partition/metadata=]
-    :: "experiment_group_id" → |experimentGroupId|
-    :: |slotSizeParams|[0] → |slotSizeParams|[1]
+    :: The [=ordered map=] «[ "experimentGroupId" → |experimentGroupId|, |slotSizeParams|[0] → |slotSizeParams|[1] ]»
   1. Otherwise:
     1. [=list/Append=] |group|'s [=interest group/name=] into |compressionGroupMap|[|compressionGroupId|]
       [|partitionId|]["interest_group_names"].
@@ -8668,7 +8667,7 @@ To <dfn>build trusted key value scoring signals request body</dfn> given a non-e
   of (interger, integer).
 1. Let |nextCompressionGroupId| be 0.
 1. [=map/For each=] |request| of |entriesToBatch|:
-  1. Let |mapKey| be a tuple of (|request|'s [=trusted scoring signals request/owner origin=],
+  1. Let |mapKey| be a [=tuple=] of (|request|'s [=trusted scoring signals request/owner origin=],
     |request|'s [=trusted scoring signals request/joining origin=]).
   1. If |compressionIdMap| does not [=map/contain=] |mapKey|:
     1. [=map/Set=] |compressionIdMap|[|mapKey|] to |nextCompressionGroupId|.
@@ -8685,16 +8684,16 @@ To <dfn>build trusted key value scoring signals request body</dfn> given a non-e
     :: |partitionId|
 
     : [=scoring partition/namespace=]
-    :: "render_urls" → [|request|'s [=trusted scoring signals request/render URL=]]
-    :: "ad_component_render_urls" → [=trusted scoring signals request/ad component URLs=]
+    :: The [=ordered map=] «[ "render_urls" → [|request|'s [=trusted scoring signals request/render URL=]],
+      "ad_component_render_urls" → |request|'s [=trusted scoring signals request/ad component URLs=] ]»
 
     : [=scoring partition/metadata=]
-    :: "experiment_group_id" → |firstRequest|'s [=trusted scoring signals request/seller experiment group id=]
+    :: The [=ordered map=] «[ "experiment_group_id" → |firstRequest|'s [=trusted scoring signals request/seller experiment group id=] ]»
 1. [=map/For each=] |id| → |group| in |compressionGroupMap|:
   1. Let |compressionGroup| be an [=scoring compression group=] whose [=scoring compression group/compression group id=]
     is |id| and [=scoring compression group/partition=] is an empty [=list=].
   1. [=list/For each=] |partition| in |group|'s [=map/values=]:
-    1. [=list/Append=] |partition| to |compressionGroup|'s [=scoring compression group/partition=].
+    1. [=list/Append=] |partition| to |compressionGroup|'s [=scoring compression group/partitions=].
   1. [=list/Append=] |compressionGroup| to |compressionGroups|.
 1. Let |metadata| be an empty [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
 1. Let |hostname| be the result of [=string/UTF-8 percent-encoding=] the
