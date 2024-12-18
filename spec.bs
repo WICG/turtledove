@@ -2738,17 +2738,17 @@ interger and an integer , and a [=boolean=] |isBiddingSignal|:
   [=fetch/processResponseConsumeBody=] set to the following steps given a [=response=] |response|
   and null, failure, or a [=byte sequence=] |responseBody|:
   1. If [=validate fetching response=] with |response|, |responseBody| and
-    "`message/ad-auction-trusted-signals-response`" returns false, return « null, null, null ».
+    "`message/ad-auction-trusted-signals-response`" returns false, return « failure, null, null ».
   1. Let |resultList| be the result of deserializing |responseBody| using |context|. The
     deserialization method may follow that described in
     [Section 2.3.6 of the Protected Audience Key Value Services](https://privacysandbox.github.io/draft-ietf-protected-audience-key-value-service/draft-ietf-protected-audience-key-value-services.html#name-parsing-a-response).
   1. [=list/For each=] |result| in |resultList|:
     1. If |result| [=map/contains=] "`dataVersion`":
       1. If |result|["dataVersion"] is not an integer, or is less than 0 or more than
-        2<sup>32</sup>&minus;1, return « null, null, null ».
+        2<sup>32</sup>&minus;1, return « failure, null, null ».
     1. If |isBiddingSignal| is true:
       1. [=map/For each=] |name| → |value| in |result|["interestGroupNames"]:
-        1. If |indexMap|[|name|] does not equal to |result|["index"], return « null, null, null ».
+        1. If |indexMap|[|name|] does not equal to |result|["index"], return « failure, null, null ».
         1. [=map/Set=] |perInterestGroupData|[|name|] to |value|.
         1. If |result| [=map/contains=] "`dataVersion`", [=map/set=] |dataVersion|[|name|] to |result|["dataVersion"].
       1. [=map/For each=] |key| → |value| in |result|["keys"]:
@@ -8820,21 +8820,21 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
           trusted scoring signals authorization from a fetcher=] given |scriptFetcher|.
         1. If |allowCrossOriginTrustedScoringSignalsFrom| does not [=list/contain=]
           |baseUrl|'s [=url/origin=], set |baseUrl| to null.
-      1. Let |result| be failure.
-      1. If |baseUrl| and |requestBody| are not null:
-        1. Let «|allTrustedScoringSignals|, <var ignore>ignored</var>, |scoringDataVersionMap|» be
-          the result of [=fetching trusted key value signals=] with |baseUrl|, |requestBody|,
-          |context|, |seller|, |entriesToBatch|[0]'s [=trusted scoring signals request/policy container=],
-          |renderUrlIdMap| and false.
-        1. If |allTrustedScoringSignals| is an [=ordered map=]:
-          1. Set |result| to a new [=trusted scoring signals reply=]
+      1. Let |allTrustedScoringSignals| be failure.
+      1. If |baseUrl| and |requestBody| are not null, let «|allTrustedScoringSignals|, <var ignore>ignored</var>,
+        |scoringDataVersionMap|» be the result of [=fetching trusted key value signals=] with |baseUrl|, |requestBody|,
+        |context|, |seller|, |entriesToBatch|[0]'s [=trusted scoring signals request/policy container=], |renderUrlIdMap|
+        and false.
+      1. If |allTrustedScoringSignals| is an [=ordered map=]:
+        1. [=list/For each=] |entry| in |entriesToBatch|:
+          1. Let |result| be a new [=trusted scoring signals reply=].
           1. Set |result|'s [=trusted scoring signals reply/all trusted scoring signals=] to
             |allTrustedScoringSignals|.
-          1. [=list/For each=] |entry| in |entriesToBatch|:
+          1. If |scoringDataVersionMap| is not null:
             1. Set |result|'s [=trusted scoring signals reply/data version=] to |scoringDataVersionMap|
               [|entry|'s [=URL serializer|serialized=] [=trusted scoring signals request/render URL=]].
-      1. [=list/For each=] |entry| in |entriesToBatch|:
-        1. Set |entry|'s [=trusted scoring signals request/reply=] to |result|.
+      1. Otherwise, [=list/for each=] |entry| in |entriesToBatch|:
+        1. Set |entry|'s [=trusted scoring signals request/reply=] to failure.
 
 </div>
 
