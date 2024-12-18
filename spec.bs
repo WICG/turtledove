@@ -1870,13 +1870,13 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
           [=get direct from seller signals for a seller=] given |topLevelDirectFromSellerSignals|.
         1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
       1. If |compWinnerInfo|'s [=leading bid info/leading bid=] is not null, then run
-        [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[auctionConfig],
+        [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[|auctionConfig|],
         |compWinnerInfo|'s [=leading bid info/leading bid=], |leadingBidInfo|,
         |decisionLogicFetcher|, |trustedScoringSignalsBatcher|, null, "top-level-auction", null,
         and |topLevelOrigin|.
       1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
         is not null, then run [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[
-        auctionConfig], |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
+        |auctionConfig|], |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
         |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
         |topLevelDirectFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|,
         and |realTimeContributionsMap|.
@@ -3137,17 +3137,20 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
       [=bid debug reporting info/bidder debug loss report url=] to |maybeDebugReportUrl|.
 1. Set |bidDebugReportingInfo|'s [=bid debug reporting info/server filtered debugging only reports=]
   to [=server auction response/server filtered debugging only reports=].
-1. Set |reportingContextMap|[|auctionConfig|]'s [=reporting context/debug reporting info=] to
+1. Let |reportingContext| be |reportingContextMap|[|auctionConfig|].
+1. Set |reportingContext|'s [=reporting context/debug reporting info=] to
   |bidDebugReportingInfo|.
 1. Let |reportingId| be a [=reporting bid key=] with the following [=struct/items=]:
   : [=reporting bid key/context=]
-  :: |reportingContextMap|[|auctionConfig|]
+  :: |reportingContext|
   : [=reporting bid key/source=]
   :: [=reporting bid source/bidding-and-auction-services=]
   : [=reporting bid key/bidder origin=]
   :: |response|'s [=server auction response/interest group owner=]
   : [=reporting bid key/bid identifier=]
   :: |response|'s [=server auction response/interest group name=]
+1. [=Handle server response private aggregation fields=] given |response|, |requestContext| and
+  |reportingId|.
 1. Let |winningBid| be a new [=generated bid=] with the following [=struct/items=]:
   : [=generated bid/reporting id=]
   :: |reportingId|
@@ -3244,6 +3247,67 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
      |updateIfOlderThan|, set |ig|'s [=interest group/next update after=] to the
      [=current coarsened wall time=] + |updateIfOlderThan|.
 1. Return |winningBidInfo|.
+
+</div>
+
+<div algorithm>
+To <dfn>handle server response private aggregation fields</dfn> given a [=server auction response=]
+|response|, a [=reporting context=] |reportingContext|, and a [=reporting bid key=] |reportingId|:
+
+1. [=Assert=] that these steps are running [=in parallel=].
+1. [=Commit server response private aggregation contributions=] given |response|'s
+  [=server auction response/component win private aggregation contributions=], |reportingContext|,
+  and |reportingId|.
+1. [=Commit server response private aggregation contributions=] given |response|'s
+  [=server auction response/server filtered private aggregation reserved contributions=],
+  |reportingContext|, and |reportingId|.
+1. [=Commit server response private aggregation contributions=] given |response|'s
+  [=server auction response/server filtered private aggregation non reserved contributions=],
+  |reportingContext|, and |reportingId|.
+
+</div>
+
+<div algorithm>
+To <dfn>commit server response private aggregation contributions</dfn> given a [=map=] from a
+[=server auction private aggregation contribution key=] to a [=list=] of [=on event contribution entries=]
+|contributionsMap|, a [=reporting context=] |reportingContext|, and a [=reporting bid key=]
+|reportingId|:
+
+1. [=map/For each=] |key| → |contributions| of |contributionsMap|:
+  1. Let |reportingOrigin| be |key|'s [=server auction private aggregation contribution key/reporting origin=].
+  1. Let |event| be |key|'s [=server auction private aggregation contribution key/event=].
+  1. Let |coordinator| be |key|'s [=server auction private aggregation contribution key/coordinator=].
+  1. If |coordinator| is null, set |coordinator| to the [=default aggregation coordinator=].
+  1. Let |eventToContributionsMap| be a new [=Private Aggregation contributions=].
+  1. Let |batchingScope| be null.
+  1. If |event| [=string/starts with=] "`reserved.`", set |batchingScope| to the
+    result of running [=get or create a batching scope=] given |reportingOrigin|, |coordinator| and
+    |reportingContext|.
+
+    Note: Each non-reserved |event| will have a different [=batching scope=] that is created later.
+  1. [=list/For each=] |contribution| of |contributions|:
+    1. [=Assert=] |contribution|["{{PAExtendedHistogramContribution/bucket}}"] is a {{bigint}} and
+      is [=set/contained=] in [=the exclusive range|the range=] 0 to 2<sup>128</sup>, exclusive.
+    1. [=Assert=] |contribution|["{{PAExtendedHistogramContribution/value}}"] is a {{long}}.
+
+      Note: All {{PAExtendedHistogramContribution/bucket}} and {{PAExtendedHistogramContribution/value}}
+        have been calculated on server side already.
+    1. Let |entry| be a new [=on event contribution entry=] with the items:
+        : [=on event contribution entry/contribution=]
+        :: |contribution|
+        : [=on event contribution entry/batching scope=]
+        :: |batchingScope|
+        : [=on event contribution entry/debug scope=]
+        :: A new [=debug scope=].
+        : [=on event contribution entry/worklet function=]
+        :: "`generate-bid`" (it does not matter for server returned contributions)
+        : [=on event contribution entry/origin=]
+        :: |reportingOrigin|
+    1. If |eventToContributionsMap|[|event|] does not [=map/exist=], set
+      |eventToContributionsMap|[|event|] to « |entry| ».
+    1. Otherwise, [=list/append=] |entry| to |eventToContributionsMap|[|event|].
+1. [=Commit private aggregation contributions=] given |eventToContributionsMap|, |reportingId| and
+  |reportingContext|.
 
 </div>
 
@@ -3484,6 +3548,21 @@ A <dfn>server auction response</dfn> is a [=struct=] that contains auction resul
   :: Null or [=server auction reporting info=].
   : <dfn>component seller reporting</dfn>
   :: Null or [=server auction reporting info=].
+  : <dfn>component win private aggregation contributions</dfn>
+  :: A [=map=] whose [=map/keys=] are [=server auction private aggregation contribution keys=], and
+    whose [=map/values=] are [=lists=] of [=on event contribution entries=]. Private aggregation
+    contributions from winners of component auctions run on trusted auction servers. These need to
+    be filtered by the client based on the top level auction's outcome.
+  : <dfn>server filtered private aggregation reserved contributions</dfn>
+  :: A [=map=] whose [=map/keys=] are [=server auction private aggregation contribution keys=], and
+    whose [=map/values=] are [=lists=] of [=on event contribution entries=]. Server filtered private
+    aggregation contributions with reserved event types (already set to "reserved.always"), which
+    are not dependent on the final auction result and should always be reported.
+  : <dfn>server filtered private aggregation non reserved contributions</dfn>
+  :: A [=map=] whose [=map/keys=] are [=server auction private aggregation contribution keys=], and
+    whose [=map/values=] are [=lists=] of [=on event contribution entries=]. Server filtered private
+    aggregation contributions with non reserved event types, which are not dependent on the final
+    auction result and should always be reported.
   : <dfn>component win debugging only reports</dfn>
   :: A [=map=] whose [=map/keys=] are [=server auction debug report keys=], and whose [=map/values=]
     are [=lists=] of [=urls=].
@@ -3506,6 +3585,17 @@ a <dfn>server auction debug report key</dfn> is a [=struct=] with the following 
   :: A [=boolean=].
   : <dfn>is debug win</dfn>
   :: A [=boolean=].
+</dl>
+
+a <dfn>server auction private aggregation contribution key</dfn> is a [=struct=] with the following
+[=struct/items=]:
+<dl dfn-for="server auction private aggregation contribution key">
+  : <dfn>reporting origin</dfn>
+  :: The [=origin=] of the script that contributed the contribution.
+  : <dfn>coordinator</dfn>
+  :: Null or an [=aggregation coordinator=].
+  : <dfn>event</dfn>
+  :: A [=string=].
 </dl>
 
 <div algorithm="getInterestGroupAdAuctionData()">
@@ -3537,10 +3627,13 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
   1. Set |config|'s [=auction data config/encryption key=] to |key|.
   1. Set |config|'s [=auction data config/encryption key id=] to |keyId|.
   1. Let |igMap| be a new [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are [=lists=].
+  1. Let |igPAggCoordinatorMap| be a new [=map=] whose [=map/keys=] are tuples of ([=origins=], [=strings=])
+    and [=map/values=] are [=origins=].
   1. Let |startTime| be a [=moment=] equal to the [=current coarsened wall time=].
   1. [=list/For each=] |ig| of the [=user agent=]'s [=interest group set=]:
     1. If |ig|'s [=interest group/ads=] is null or [=list/is empty=], [=iteration/continue=].
     1. Let |owner| be |ig|'s [=interest group/owner=].
+    1. Let |name| be |ig|'s [=interest group/name=].
     1. If |config|'s [=auction data config/per buyer config=] [=map/is not empty=] and
        |config|'s [=auction data config/per buyer config=][|owner|] does not
        [=map/exist=], then [=iteration/continue=].
@@ -3548,7 +3641,8 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
     1. Let |ads| be a new [=list=].
     1. [=list/For each=] |ad| in |ig|'s [=interest group/ads=], [=list/append=] |ad|'s [=interest group ad/ad render ID=] to |ads|.
     1. Let |components| be a new [=list=].
-    1. [=list/For each=] |component| in |ig|'s [=interest group/ad components=], [=list/append=] |component|'s [=interest group ad/ad render ID=] to |components|.
+    1. [=list/For each=] |component| in |ig|'s [=interest group/ad components=], [=list/append=]
+      |component|'s [=interest group ad/ad render ID=] to |components|.
     1. Let |prevWins| be a new <code>[=sequence=]<[=server auction previous win=]></code>.
     1. [=list/For each=] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
       the last 30 days:
@@ -3575,7 +3669,7 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
       :: |prevWins|
     1. Let |serverIg| be a new [=server auction interest group=] with the following [=struct/items=]:
       : [=server auction interest group/name=]
-      :: |ig|'s [=interest group/name=]
+      :: |name|
       : [=server auction interest group/bidding signals keys=]
       :: |ig|'s [=interest group/trusted bidding signals keys=]
       : [=server auction interest group/user bidding signals=]
@@ -3589,11 +3683,13 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
       : [=server auction interest group/priority=]
       :: |ig|'s [=interest group/priority=]
     1. [=list/Append=] |serverIg| to |igMap|[|owner|].
+    1. If |ig|'s [=interest group/Private Aggregation coordinator=] is not null, then [=map/set=]
+      |igPAggCoordinatorMap|[(|owner|, |name|)] to it.
   1. Let |result| be a new {{AdAuctionData}}.
   1. Let |requestId| be the [=string representation=] of a [=version 4 UUID=].
   1. [=map/Set=] |result|["{{AdAuctionData/requestId}}"] to |requestId|.
-  1. Let (|requestBlob|, |context|) be the result of serializing |igMap| using
-     |config|. The serialization method may follow that described in
+  1. Let (|requestBlob|, |context|) be the result of serializing |igMap| with |config| and
+     |igPAggCoordinatorMap|. The serialization method may follow that described in
      [Section 2.2.4 of Bidding and Auction Services](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-generating-a-request).
   1. Set |result|["{{AdAuctionData/request}}"] to |requestBlob|.
   1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
@@ -4214,8 +4310,7 @@ A signal base value is one of the following:
 : "<dfn><code>bid-reject-reason</code></dfn>"
 :: The numeric value is an integer representing the reason a bid was rejected.
 
-    Note: this mapping to an integer is defined in [=determine a signal's
-        numeric value=].
+    Note: this mapping to an integer is defined in [=determine a signal's numeric value=].
 
 : "<dfn><code>average-code-fetch-time</code></dfn>"
 :: The numeric value is the average time it took to fetch code resources (JavaScript or WebAssembly)
@@ -4431,7 +4526,7 @@ runs; this method exists as an abstraction to help add that.
 </div>
 
 <div algorithm>
-To <dfn>commit private aggregation contributions</dfn> given an [=Private Aggregation
+To <dfn>commit private aggregation contributions</dfn> given a [=Private Aggregation
 contributions=] |onEventMap|, a [=reporting bid key=] |bidKey|, and a [=reporting context=]
 |reportingContext|:
   1. [=map/For each=] |event| → |contributions| of |onEventMap|:
@@ -4473,6 +4568,7 @@ To <dfn>process the Private Aggregation contributions</dfn> given an [=auction c
 <div algorithm>
 To <dfn>process the Private Aggregation contributions for an auction</dfn> given
 an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingContext|:
+
 1. If |auctionConfig|'s [=auction config/aborted=] is true, return.
 1. Let |winnerId| be |reportingContext|'s [=reporting context/winner reporting id=]
 1. Let |leadingBidInfo| be |reportingContext|'s [=reporting context/local leader info=].
@@ -4482,12 +4578,13 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
 1. Let |sellerOnceRep| be null.
 1. If |reportingContext|'s [=reporting context/seller participants=] [=set/is not empty=],
   set |sellerOnceRep| to a random [=set/item=] of [=reporting context/seller participants=].
-1. [=map/For each=] (|bidId|, |event|) → |contributions| of
-  |reportingContext|'s [=reporting context/private aggregation on event contributions=]:
-  1. If |event| is "`reserved.win`" or does not [=string/start with=] "`reserved.`":
-    1. If |bidId| is not |winnerId|, [=iteration/continue=].
-  1. If |event| is "`reserved.loss`" and |bidId| is |winnerId|, [=iteration/continue=].
+1. [=map/For each=] (|bidId|, |event|) → |contributions| of |reportingContext|'s
+  [=reporting context/private aggregation on event contributions=]:
   1. [=list/For each=] |onEventEntry| of |contributions|:
+    1. [=iteration/Continue=] if any of the following conditions hold:
+      * |event| is "`reserved.win`" and |bidId| is not |winnerId|;
+      * |event| does not [=string/start with=] "`reserved.`" and |bidId| is not |winnerId|;
+      * |event| is "`reserved.loss`" and |bidId| is |winnerId|.
     1. If |event| is "`reserved.once`":
       1. If |onEventEntry|'s [=on event contribution entry/worklet function=] is [=worklet function/
         generate-bid=]:
@@ -6082,6 +6179,8 @@ event, PAExtendedHistogramContribution contribution)</dfn> method steps are:
 
     Note: It is not currently possible to set a non-default filtering ID max
         bytes for Protected Audience.
+1. If |event| does not [=string/start with=] "`reserved.`", and |function| is
+  [=worklet function/score-ad=] or [=worklet function/report-result=], return.
 1. Let |batchingScope| be null.
 1. If |event| [=string/starts with=] "`reserved.`", set |batchingScope| to the
     result of running |scopingDetails|' <a spec="private-aggregation-api" for="scoping details">
