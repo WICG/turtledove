@@ -2701,8 +2701,6 @@ To <dfn>fetch trusted key value signals</dfn> given a [=URL=] |url|, a [=byte se
 an [=map=]-or-null |indexMap| whose keys are [=strings=] and values are [=tuples=] consisting of an
 interger and an integer , and a [=boolean=] |isBiddingSignal|:
 
-1. If |body| is null, return « null, null, null ».
-
 1. Let |request| be a new [=request=] with the following properties:
   :   [=request/URL=]
   ::  |url|
@@ -8409,7 +8407,7 @@ an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin
     :: |partitionId|
 
     : [=bidding partition/namespace=]
-    :: The [=ordered map=] «[ "interestGroupNames" → [|group|'s [=interest group/name=]],
+    :: The [=ordered map=] «[ "interestGroupNames" → « |group|'s [=interest group/name=] »,
       "biddingKeys" → |group|'s [=interest group/trusted bidding signals keys=] ]»
 
     : [=bidding partition/metadata=]
@@ -8452,9 +8450,10 @@ an [=origin=] |scriptOrigin|, an {{unsigned short}}-or-null |experimentGroupId|,
     1. Let « |requestBody|, |interestGroupIdMap|, |context| » be the result of [=building trusted
       key value bidding signals request body=] with |interestGroups|, |experimentGroupId|,
       |topLevelOrigin|, |slotSizeQueryParam|, |joiningOrigin| and |owner|.
-    1. Let « |partialTrustedBiddingSignals|, |partialPerInterestGroupData|, |dataVersion| » be the
-      result of [=fetching trusted key value signals=] with |signalsUrl|, |requestBody|, |context|,
-      |scriptOrigin|, |policyContainer|, |interestGroupIdMap| and true.
+    1. If |requestBody| is not null:
+      1. Let « |partialTrustedBiddingSignals|, |partialPerInterestGroupData|, |dataVersion| » be the
+        result of [=fetching trusted key value signals=] with |signalsUrl|, |requestBody|, |context|,
+        |scriptOrigin|, |policyContainer|, |interestGroupIdMap| and true.
     1. If |partialTrustedBiddingSignals| is not null:
       1. [=map/For each=] |key| → |value| in |partialTrustedBiddingSignals|, [=map/set=]
         |trustedBiddingSignalsBatcher|'s [=trusted bidding signals batcher/all trusted bidding
@@ -8684,11 +8683,11 @@ To <dfn>build trusted key value scoring signals request body</dfn> given a non-e
     :: |partitionId|
 
     : [=scoring partition/namespace=]
-    :: The [=ordered map=] «[ "render_urls" → [|request|'s [=trusted scoring signals request/render URL=]],
-      "ad_component_render_urls" → |request|'s [=trusted scoring signals request/ad component URLs=] ]»
+    :: The [=ordered map=] «[ "renderUrls" → « |request|'s [=trusted scoring signals request/render URL=] »,
+      "adComponentRenderUrls" → |request|'s [=trusted scoring signals request/ad component URLs=] ]»
 
     : [=scoring partition/metadata=]
-    :: The [=ordered map=] «[ "experiment_group_id" → |firstRequest|'s [=trusted scoring signals request/seller experiment group id=] ]»
+    :: The [=ordered map=] «[ "experimentGroupId" → |firstRequest|'s [=trusted scoring signals request/seller experiment group id=] ]»
 1. [=map/For each=] |id| → |group| in |compressionGroupMap|:
   1. Let |compressionGroup| be an [=scoring compression group=] whose [=scoring compression group/compression group id=]
     is |id| and [=scoring compression group/partition=] is an empty [=list=].
@@ -8806,6 +8805,8 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
         1. [=list/For each=] |entry| in |entriesToBatch|:
           1. Set |entry|'s [=trusted scoring signals request/reply=] to |result|.
     1. Otherwise:
+      1. Select a non-[=list/is empty|empty=] [=set/subset=] of |batcher|'s [=trusted scoring
+        signals batcher/request map=][|key|], called |entriesToBatch|.
       1. Set |entriesToBatch| to |batcher|'s [=trusted scoring signals batcher/request map=][|key|].
       1. [=map/Remove=] |key| from |batcher|'s [=trusted scoring signals batcher/request map=].
       1. Let « |requestBody|, |renderUrlIdMap|, |context| » be the result of [=building batched
@@ -8820,8 +8821,8 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
         1. If |allowCrossOriginTrustedScoringSignalsFrom| does not [=list/contain=]
           |baseUrl|'s [=url/origin=], set |baseUrl| to null.
       1. Let |result| be failure.
-      1. If |baseUrl| is not null:
-        1. Let «|allTrustedScoringSignals|, <var ignore>ignored</var>, |scoringDataVersion|» be
+      1. If |baseUrl| and |requestBody| are not null:
+        1. Let «|allTrustedScoringSignals|, <var ignore>ignored</var>, |scoringDataVersionMap|» be
           the result of [=fetching trusted key value signals=] with |baseUrl|, |requestBody|,
           |context|, |seller|, |entriesToBatch|[0]'s [=trusted scoring signals request/policy container=],
           |renderUrlIdMap| and false.
@@ -8829,9 +8830,10 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
           1. Set |result| to a new [=trusted scoring signals reply=]
           1. Set |result|'s [=trusted scoring signals reply/all trusted scoring signals=] to
             |allTrustedScoringSignals|.
+          1. [=list/For each=] |entry| in |entriesToBatch|:
+            1. Set |result|'s [=trusted scoring signals reply/data version=] to |scoringDataVersionMap|
+              [|entry|'s [=URL serializer|serialized=] [=trusted scoring signals request/render URL=]].
       1. [=list/For each=] |entry| in |entriesToBatch|:
-        1. Set |result|'s [=trusted scoring signals reply/data version=] to |scoringDataVersion|
-          [|entry|'s [=URL serializer|serialized=] [=trusted scoring signals request/render URL=]].
         1. Set |entry|'s [=trusted scoring signals request/reply=] to |result|.
 
 </div>
