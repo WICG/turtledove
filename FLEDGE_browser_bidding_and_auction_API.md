@@ -478,8 +478,8 @@ Prior to compression and encryption, the AuctionResult is encoded as CBOR with t
     "winReportingUrls": { "$ref": "#/$defs/winReportingUrlsDef" },
     "error": { "$ref": "#/$defs/errorDef" },
     "nonce": {
-      "type": "byte string",
-      "description": "32 byte UUIDv4 nonce that was passed to SelectAdRequest. Browser enforces that this matches value passed via Ad-Auction-Result-Nonce header."
+      "type": "string",
+      "description": "UUIDv4 nonce that was passed to SelectAdRequest, in standard UUIDv4 string representation: 32 lower-case hexadecimal characters with blocks of 8, 4, 4, 4, and 12 separated by dashes as per RFC4122. Browser enforces that this matches exactly the string passed via the Ad-Auction-Result-Nonce header."
     }
   }
 }
