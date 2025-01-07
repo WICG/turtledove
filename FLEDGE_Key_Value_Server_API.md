@@ -65,6 +65,12 @@ HTTPS is used to transport data. The method is `POST`.
 
 The HTTP POST body is encrypted.
 
+#### Cleartext headers
+
+Requests contain a cleartext HTTP `Content-Type` header with value `message/ad-auction-trusted-signals-request`.
+
+Responses contain a cleartext HTTP `Content-Type` header with value `message/ad-auction-trusted-signals-response`.
+
 #### Encryption
 
 We will use [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-ohttp/) with the following configuration for encryption:
