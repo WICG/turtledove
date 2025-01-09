@@ -72,7 +72,7 @@ with an arbitrary `event_key` within `generateBid`, `scoreAd`, `reportWin`, and 
 We consider the scenario where a buyer wants to learn the click-through rate of ads when a user has
 been in an interest group for a given time.
 
-To generate the bucket that represent interest group age, the buyer may implement `getImpressionReportBucket()` and `getClickReportBucket()` functions which return buckets that map an interest group and the time the user has spent in that interest group to a 128-bit integer as `BigInt`. The `browserSignals.recency` value inside `generateBid()` specifies the duration in minutes since the user joined the interest group.
+To generate the bucket that represent interest group age, the buyer may implement `getImpressionReportBucket()` and `getClickReportBucket()` functions which return buckets that map an interest group and the time the user has spent in that interest group to a 128-bit integer as `BigInt`. The `browserSignals.recency` value inside `generateBid()` specifies the duration in milliseconds (rounded to the nearest 100 milliseconds) since the user joined the interest group.
 
 Once the buckets have been derived, the buyer can call Private Aggregation inside `generateBid()`:  
 
