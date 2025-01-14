@@ -107,6 +107,16 @@ spec: CSP; urlPrefix: https://w3c.github.io/webappsec-csp/
 spec: CSPEE; urlPrefix: https://w3c.github.io/webappsec-cspee/
   type: dfn
     text: required csp; url: browsing-context-required-csp
+spec: webdriver; urlPrefix: https://w3c.github.io/webdriver/
+  type: dfn
+    text: extension command; url: dfn-extension-commands
+    text: getting a property; url: dfn-getting-properties
+    text: invalid argument; url: dfn-invalid-argument
+    text: remote end steps; url: dfn-remote-end-steps
+    text: success; url: dfn-success
+    text: undefined; url: dfn-undefined
+    text: WebDriver error; url: dfn-error
+    text: WebDriver error code; url: dfn-error-code
 </pre>
 
 <pre class=link-defaults>
@@ -3025,7 +3035,7 @@ and a [=global object=] |global|:
       to |winner|'s [=generated bid/selected buyer and seller reporting ID=].
     1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, [=map/set=]
       |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to it.
-  1. Otherwise, if the result of running [=query reporting ID k-anonymity count=] with |winner|'s 
+  1. Otherwise, if the result of running [=query reporting ID k-anonymity count=] with |winner|'s
     [=generated bid/interest group=], |igAd|, and null is true:
     1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, [=map/set=]
       |browserSignals|["{{ReportingBrowserSignals/buyerAndSellerReportingId}}"] to it.
@@ -5127,7 +5137,7 @@ dictionary StorageInterestGroup : AuctionAdInterestGroup {
 is a one-time canonical [=string=] representation of a [=version 4 UUID=] that is uniquely
 associated with a single call to {{Window/navigator}}.{{Navigator/runAdAuction()}}. For multi-seller
 auctions, a distinct auction nonce can be uniquely associated with each of the
-{{AuctionAdConfig/componentAuctions}}. The auction nonce(s) will need to be passed back in via a 
+{{AuctionAdConfig/componentAuctions}}. The auction nonce(s) will need to be passed back in via a
 subsequent call to {{Window/navigator}}.{{Navigator/runAdAuction()}} via the {{AuctionAdConfig}}.
 This is currently only needed for [=auctions=] that use [=additional bids=], in which the auction
 nonce is combined with a [=signed additional bid with metadata/seller nonce=] to construct a bid
@@ -5604,25 +5614,25 @@ from querying the server during an auction.
       1. Set |kAnonRestrictedIG|'s [=interest group/ads=] to an empty [=list=] of [=interest group ad=].
       1. [=list/For each=] |igAd| of |ig|'s [=interest group/ads=]:
         1. Let |adHashCode| be the result of running [=compute the key hash of ad=] given |ig| and |igAd|.
-        1. If [=query k-anonymity cache=] for |adHashCode| returns true:
+        1. If [=query k-anonymity cache=] for |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and|adHashCode| returns true:
           1. If |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] is not null:
             1. Let |kAnonRestrictedSelectableReportingIds| be a new empty [=list=] of [=string=]s.
-            1. [=list/For each=] |selectableReportingId| in |igAd|'s 
+            1. [=list/For each=] |selectableReportingId| in |igAd|'s
               [=interest group ad/selectable buyer and seller reporting IDs=]:
               1. Let |reportingHashCode| be the result of [=query reporting ID k-anonymity count=]
-                given |ig|, |igAd|, and |selectableReportingId|. 
-              1. If [=query k-anonymity cache=] for |reportingHashCode| returns true, then
+                given |ig|, |igAd|, and |selectableReportingId|.
+              1. If [=query k-anonymity cache=] for |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and|reportingHashCode| returns true, then
                 [=list/append=] |selectableReportingId| to |kAnonRestrictedSelectableReportingIds|.
             1. Set |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] to
               |kAnonRestrictedSelectableReportingIds|.
           1. [=list/Append=] |igAd| to |kAnonRestrictedIG|'s [=interest group/ads=].
     1. If |ig|'s [=interest group/ad components=] is not null:
-      1. Set |kAnonRestrictedIG|'s [=interest group/ad components=] to an empty [=list=] of 
+      1. Set |kAnonRestrictedIG|'s [=interest group/ad components=] to an empty [=list=] of
         [=interest group ad=].
       1. [=list/For each=] |igAdComponent| of |ig|'s [=interest group/ad components=]:
         1. Let |adComponentHashCode| be the result of running [=compute the key hash of component ad=] given |ig| and
           |igAdComponent|.
-        1. If [=query k-anonymity cache=] for |adComponentHashCode| returns true:
+        1. If [=query k-anonymity cache=] for |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and |adComponentHashCode| returns true:
           1. [=list/Append=] |igAdComponent| to |kAnonRestrictedIG|'s [=interest group/ad components=].
     1. Return |kAnonRestrictedIG|.
 </div>
@@ -5636,12 +5646,22 @@ from querying the server during an auction.
 </div>
 
 <div algorithm>
-  To <dfn>query k-anonymity cache</dfn> given a [=SHA-256=] |hashCode|:
-    1. If the [=user agent=]'s [=k-anonymity cache=] does not [=map/contain=] |hashCode|, then return false.
-    1. Let |record| be the [=user agent=]'s [=k-anonymity cache=][|hashCode|].
+  To <dfn>check a k-anonymity record</dfn> given a [=k-anonymity record=] |record|:
     1. If the difference between [=current coarsened wall time=] and |record|'s [=k-anonymity
       record/timestamp=] is more than 7 days then return false.
     1. Return |record|'s [=k-anonymity record/is k-anonymous=].
+</div>
+
+<div algorithm>
+  To <dfn>query k-anonymity cache</dfn> given an [=origin=] |owner|, [=string=] |name|, and [=SHA-256=] |hashCode|:
+    1. If the [=user agent=]'s [=k-anonymity overrides=] [=map/contains=] the [=tuple=] (|owner|,|name|):
+      1. If the [=user agent=]'s [=k-anonymity overrides=][(|owner|,|name|)] does not [=map/contain=] |hashCode|, then return false.
+      1. Let |record| be the [=user agent=]'s [=k-anonymity overrides=][(|owner|,|name|)][|hashCode|].
+      1. Return the result of [=checking a k-anonymity record=] with |record|.
+    1. Otherwise:
+      1. If the [=user agent=]'s [=k-anonymity cache=] does not [=map/contain=] |hashCode|, then return false.
+      1. Let |record| be the [=user agent=]'s [=k-anonymity cache=][|hashCode|].
+      1. Return the result of [=checking a k-anonymity record=] with |record|.
 </div>
 
 <div algorithm>
@@ -5682,11 +5702,11 @@ from querying the server during an auction.
       * "SelectedBuyerAndSellerReportId"
       * |middle|
       * The result of [=compute the key part for one of multiple reporting ids=] given |selectedReportingId|
-      * The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s 
+      * The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s
         [=interest group ad/buyer and seller reporting ID=]
       * The result of [=compute the key part for one of multiple reporting ids=] given |igAd|'s
         [=interest group ad/buyer reporting ID=]
-    1. Otherwise: 
+    1. Otherwise:
       1. If |igAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, set |keyString|
         to be the [=string/concatenation=] of the following strings separated with U+000A (LF):
         * "BuyerAndSellerReportId"
@@ -5715,18 +5735,19 @@ from querying the server during an auction.
 
 <div algorithm>
   To <dfn>query generated bid k-anonymity count</dfn> given a [=generated bid=] |bid|:
-    1. Compute the |adHashCode| following [=compute the key hash of ad=] with the |bid|'s [=generated bid/interest group=]
+    1. Let |ig| be the |bid|'s [=generated bid/interest group=].
+    1. Compute the |adHashCode| following [=compute the key hash of ad=] with |ig|
       and |bid|'s [=generated bid/ad descriptor=].
-    1. If [=query k-anonymity cache=] for |adHashCode| returns false, return false.
+    1. If [=query k-anonymity cache=] for |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and |adHashCode| returns false, return false.
     1. If |bid|'s [=generated bid/ad component descriptors=] is not null:
       1. [=set/For each=] |adComponentDescriptor| in |bid|'s
         [=generated bid/ad component descriptors=]:
         1. Compute the |componentAdHashCode| by getting the result of [=compute the key hash of component ad=] with |adComponentDescriptor|'s
           [=ad descriptor/url=].
-        1. If [=query k-anonymity cache=] for |componentAdHashCode| returns false, return false.
+        1. If [=query k-anonymity cache=] for |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and |componentAdHashCode| returns false, return false.
     1. If |bid|'s [=generated bid/selected buyer and seller reporting ID=] is not null:
-      1. Let |isKAnon| the result of running [=query reporting ID k-anonymity count=] with |bid|'s
-        [=generated bid/interest group=], |bid|'s [=generated bid/ad=], and |bid|'s
+      1. Let |isKAnon| the result of running [=query reporting ID k-anonymity count=]
+        with |ig|, |bid|'s [=generated bid/ad=], and |bid|'s
         [=generated bid/selected buyer and seller reporting ID=].
       1. If |isKAnon| is false, return false.
     1. Return true.
@@ -5736,7 +5757,7 @@ from querying the server during an auction.
   To <dfn>query reporting ID k-anonymity count</dfn> given an [=interest group=]
   |ig|, an [=interest group ad=] |igAd|, and a [=string=]-or-null |selectedReportingId|:
     1. Let |keyHash| be the result of [=computing the key hash of reporting ID=] given |ig|, |igAd|, and |selectedReportingId|.
-    1. Return the result of [=query k-anonymity cache=] given |keyHash|.
+    1. Return the result of [=query k-anonymity cache=] given |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and |keyHash|.
 </div>
 
 <div algorithm>
@@ -7696,7 +7717,7 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
         1. Let |bidWithMetadata|'s [=signed additional bid with metadata/signed additional bid=] be
           |parts|[2].
         1. [=list/Append=] |bidWithMetadata| to |storedAdditionalBidsHeaders|[|auctionNonce|].
-      1. Otherwise, if |parts|'s [=list/size=] is 2: 
+      1. Otherwise, if |parts|'s [=list/size=] is 2:
         1. Let |auctionNonce| be |parts|[0].
         1. If |auctionNonce|'s [=string/length=] is not 36, then [=iteration/continue=].
         1. Let |bidWithMetadata|'s [=signed additional bid with metadata/signed additional bid=] be
@@ -7874,12 +7895,12 @@ dictionary ReportingBrowserSignals {
       and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
       interest group owner, bidding script URL, [=ad creative=] URL, and null.
     * Set if the wining bid had a [=generated bid/selected buyer and seller reporting ID=] and the
-      winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its listing in the 
+      winning ad had a [=interest group ad/buyer and seller reporting ID=] set in its listing in the
       interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=]
       combined with interest group owner, bidding script URL, [=ad creative=] URL, the and winning bid's
       [=generated bid/selected buyer and seller reporting ID=].
   <dt>{{ReportingBrowserSignals/selectedBuyerAndSellerReportingId}}
-  <dd>A selected reporting id returned by "`generateBid()`". 
+  <dd>A selected reporting id returned by "`generateBid()`".
     Set if the winning bid had a [=generated bid/selected buyer and seller reporting ID=] set,
     and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
     [=interest group ad/buyer and seller reporting ID=], interest group owner,
@@ -7948,7 +7969,7 @@ enum KAnonStatus { "passedAndEnforced", "passedNotEnforced", "belowThreshold", "
       and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=] combined with
       interest group owner, bidding script URL, [=ad creative=] URL, and null.
     * Set if the wining bid had a [=generated bid/selected buyer and seller reporting ID=] and the
-      winning ad had a [=interest group ad/buyer reporting ID=] set in its listing in the 
+      winning ad had a [=interest group ad/buyer reporting ID=] set in its listing in the
       interest group, and that value was [=query reporting ID k-anonymity count|jointly k-anonymous=]
       combined with interest group owner, bidding script URL, [=ad creative=] URL,
       [=interest group ad/buyer and seller reporting ID=], and
@@ -8137,9 +8158,9 @@ An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/item
   : <dfn>buyer and seller reporting ID</dfn>
   :: Null or a [=string=]. Will be passed in place of interest group name or
     [=interest group ad/buyer reporting ID=], or alongside the
-    [=generated bid/selected buyer and seller reporting ID=], to [=report win=] and 
-    [=report result=], subject to [=k-anonymity=] checks. Also passed alongside 
-    [=generated bid/selected buyer and seller reporting ID=] to `scoreAd()` if 
+    [=generated bid/selected buyer and seller reporting ID=], to [=report win=] and
+    [=report result=], subject to [=k-anonymity=] checks. Also passed alongside
+    [=generated bid/selected buyer and seller reporting ID=] to `scoreAd()` if
     [=generated bid/selected buyer and seller reporting ID=] is present. Only meaningful in
     [=interest group/ads=], but ignored in [=interest group/ad components=].
   : <dfn>selectable buyer and seller reporting IDs</dfn>
@@ -8693,7 +8714,7 @@ together in the signals response. It's a [=struct=] with the following [=struct/
     group.
 </dl>
 
-A <dfn>bidding partition</dfn> is a collection of [=trusted bidding signals batcher/keys=] and 
+A <dfn>bidding partition</dfn> is a collection of [=trusted bidding signals batcher/keys=] and
 [=trusted bidding signals batcher/ig names=] that can be processed together by the service without
 any potential privacy leakage. It's a [=struct=] with the following [=struct/items=]:
 
@@ -8926,7 +8947,7 @@ an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin
   |coordinator|.
 1. If |keyInfo| is failure, then return « null, null, null ».
 1. Let (|requestBlob|, |context|) be the result of generating request with |keyInfo|, |metadata| and
-  |compressionGroups|. The generation method may follow that described in 
+  |compressionGroups|. The generation method may follow that described in
   [Section 2.2.4 of the Protected Audience Key Value Services](https://privacysandbox.github.io/draft-ietf-protected-audience-key-value-service/draft-ietf-protected-audience-key-value-services.html#name-generating-a-request).
 1. Return « |requestBlob|, |interestGroupIdMap|, |context| ».
 
@@ -9036,7 +9057,7 @@ together in the signals response. It's a [=struct=] with the following [=struct/
     group.
 </dl>
 
-A <dfn>scoring partition</dfn> is a collection of [=trusted scoring signals request/render URLs=] and 
+A <dfn>scoring partition</dfn> is a collection of [=trusted scoring signals request/render URLs=] and
 [=trusted scoring signals request/ad component URLs=] that can be processed together by the service
 without any potential privacy leakage. It's a [=struct=] with the following [=struct/items=]:
 
@@ -9045,7 +9066,7 @@ without any potential privacy leakage. It's a [=struct=] with the following [=st
   :: An integer indicates the index of this partition.
   : <dfn>namespace</dfn>
   :: A [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=list=] of
-    [=strings=]. A namespace contains all [=trusted scoring signals request/render URLs=] and 
+    [=strings=]. A namespace contains all [=trusted scoring signals request/render URLs=] and
     [=trusted scoring signals request/ad component URLs=] in the partition.
   : <dfn>metadata</dfn>
   :: A [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
@@ -9366,11 +9387,11 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
     in the auction. Must be null if the interest group making this bid has a null
     [=interest group/ad components=] field.
   : <dfn>selected buyer and seller reporting ID</dfn>
-  :: Null or [=string=]. The selected reporting id from the 
+  :: Null or [=string=]. The selected reporting id from the
     [=interest group ad/selectable buyer and seller reporting IDs=] within the
     [=generated bid/interest group=]. If present, this will be:
       * Passed alongside [=interest group ad/buyer reporting ID=] and
-        [=interest group ad/buyer and seller reporting ID=] to [=report win=] 
+        [=interest group ad/buyer and seller reporting ID=] to [=report win=]
         subject to [=k-anonymity=] checks.
       * Passed alongside [=interest group ad/buyer and seller reporting ID=]
         to [=report result=] subject to [=k-anonymity=] checks.
@@ -9421,11 +9442,12 @@ To <dfn>apply any component ads target to a bid</dfn>, given a [=generated bid=]
 
 To <dfn>try to reach component ads target considering k-anonymity</dfn>, given a [=generated bid=] |generatedBid|:
 1. If |generatedBid|'s [=generated bid/target number of ad components=] is null, return false.
+1. Let |ig| be |generatedBid|'s [=generated bid/interest group=].
 1. Let |selectedComponents| be a new [=list=] of [=ad descriptors=].
 1. [=set/For each=] |i| of [=list/get the indices=] of |generatedBid|:
   1. Let |candidateComponent| be |generatedBid|'s [=generated bid/ad component descriptors=][|i|].
   1. Compute |componentAdHashCode| by getting the result of [=compute the key hash of component ad=] given |candidateComponent|'s [=interest group ad/render url=].
-  1. If [=query k-anonymity cache=] given |componentAdHashCode| returns true:
+  1. If [=query k-anonymity cache=] given |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and |componentAdHashCode| returns true:
     1. [=list/Append=] |candidateComponent| to |selectedComponents|.
   1. Otherwise:
     1. If |i| &lt; |generatedBid|'s [=generated bid/number of mandatory ad components=], return false.
@@ -9447,13 +9469,13 @@ To <dfn>adjust bid list based on k-anonymity</dfn> given a [=list=] of [=generat
   1. [=Apply any component ads target to a bid=] given |bidCopy|.
   1. [=list/Append=] |bidCopy| to |bidsToScore|
   1. Let |selectedReportingId| be a [=string=]-or-null that is set to null.
-  1. If |generatedBid|'s [=generated bid/selected buyer and seller reporting ID=] is not null, set 
+  1. If |generatedBid|'s [=generated bid/selected buyer and seller reporting ID=] is not null, set
     |selectedReportingId| to it.
   1. Let |igAd| be the [=interest group ad=] from |generatedBid|'s [=generated bid/interest group=]'s
     [=interest group/ads=] whose [=interest group ad/render url=] is |generatedBid|'s
     [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
   1. Let |isBidKAnon| be the result of [=query generated bid k-anonymity count=] given |generatedBid|.
-  1. If |isBidKAnon| is true and running [=query reporting ID k-anonymity count=] with |generatedBid|'s 
+  1. If |isBidKAnon| is true and running [=query reporting ID k-anonymity count=] with |generatedBid|'s
     [=generated bid/interest group=], |igAd|, |selectedReportingId| is true:
     1. [=list/Append=] |generatedBid| to |bidsToScore|.
 
@@ -9889,6 +9911,80 @@ The <dfn for="cumulative timeout tracker">is expired</dfn> of a [=cumulative tim
 1. True otherwise, that is, if |tracker|'s [=cumulative timeout tracker/remaining=] &leq; 0.
 
 </div>
+
+# User Agent Automation # {#sctn-automation}
+
+For the purposes of user agent automation and website testing, this document
+defines the below [[WebDriver2]] [=extension commands=].
+
+## <dfn>Set Protected Audience K-Anonymity</dfn> ## {#sctn-automation-set-protected-audience-k-anonymity}
+
+The [=Set Protected Audience K-Anonymity=] WebDriver [=extension command=] instructs the
+user agent to use the specified hashes as the only k-anonymous sets for the interest
+group with the given owner and name.
+
+The <dfn>k-anonymity overrides</dfn> is a [=map=] containing the currently
+active set of k-anonymity overrides, which is initially empty.
+The [=map/keys=] of [=k-anonymity overrides=] are [=tuples=] of (an [=origin=]
+for interest group owner, a [=string=] for interest group name).
+The [=map/values=] of [=k-anonymity overrides=] are [=maps=] whose [=map/keys=] are
+[=SHA-256=] hashes and whose [=map/values=] are [=k-anonymity records=].
+The [=k-anonymity overrides=] are checked before and take precedence over the
+[=k-anonymity cache=].
+
+<figure id="table-setProtectedAudienceKAnonymity" class="table">
+    <table class="data">
+        <thead>
+            <tr>
+                <th>HTTP Method</th>
+                <th>URI Template</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>POST</td>
+                <td>`session/{session id}/protected_audience/set_k_anonymity`</td>
+            </tr>
+        </tbody>
+    </table>
+</figure>
+
+The [=remote end steps=] are:
+1. If |parameters| is not a JSON [[ECMASCRIPT#sec-json-object|Object]], return a
+     [=WebDriver error=] with [=WebDriver error code=] [=invalid argument=].
+1. Let |owner| be the result of [=getting a property=] named `"owner"` from
+    |parameters|.
+1. If |owner| is [=undefined=] or is not a [=string=], return a
+   [=WebDriver error=] with [=WebDriver error code=] [=invalid argument=].
+1. Let |owner origin| be the result running [=parse an https origin=] on |owner|.
+1. If |owner origin| is failure, return a [=WebDriver error=] with
+   [=WebDriver error code=] [=invalid argument=].
+
+1. Let |name| be the result of [=getting a property=] named `"name"` from
+    |parameters|.
+1. If |name| is [=undefined=] or is not a [=string=], return a
+   [=WebDriver error=] with [=WebDriver error code=] [=invalid argument=].
+
+1. Let |hashes| be the result of [=getting a property=] named `"hashes"` from
+    |parameters|.
+1. If |hashes| is [=undefined=] or is not an [=list=], return a
+   [=WebDriver error=] with [=WebDriver error code=] [=invalid argument=].
+1. Let |override| be a [=map=] whose [=map/keys=] are [=SHA-256=] hashes and
+   whose [=map/values=] are [=k-anonymity records=].
+1. [=list/For each=] |hash string| of |hashes|:
+  1. If |hash string| is not a [=string=], return a
+     [=WebDriver error=] with [=WebDriver error code=] [=invalid argument=].
+  1. Let |hash| be the result of running [=forgiving-base64 decode=] with |hash string|.
+  1. If |hash| is failure, return a [=WebDriver error=] with
+     [=WebDriver error code=] [=invalid argument=].
+  1. If |hash|'s [=byte sequence/length=] is not 32, return a [=WebDriver error=]
+     with [=WebDriver error code=] [=invalid argument=].
+  1. Let |record| be a new [=k-anonymity record=].
+  1. Set |record|'s [=k-anonymity record/timestamp=] field to the [=current coarsened wall time=].
+  1. Set |record|'s [=k-anonymity record/is k-anonymous=] field to true.
+  1. [=map/Set=] |override|[|hash|] to |record|.
+1. Set [=k-anonymity overrides=][(|owner origin|,|name|)] to |override|.
+1. Return [=success=] with data `null`.
 
 # Privacy Considerations # {#privacy-considerations}
 
