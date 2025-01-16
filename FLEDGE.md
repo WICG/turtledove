@@ -1086,6 +1086,7 @@ The browser-generated `prioritySignals` object contains the following values:
 * `browserSignals.ageInMinutesMax60`: Same as `browserSignals.ageInMinutes`, but with a maximum value of 60. 60 is returned if the group is more than an hour old.
 * `browserSignals.ageInHoursMax24`: The interest group's age in hours, as an integer, with a maximum value of 24. Always non-negative.
 * `browserSignals.ageInDaysMax30`: The interest group's age in days, as an integer, with a maximum value of 30. Always non-negative.
+* `browserSignals.ageInDays`: The interest group's age in days, as an integer. Always non-negative.
 
 If the resulting sparse dot product is negative, the interest group is immediately removed from the auction (note that if there's no `priorityVector`, interest groups with negative `priority` values currently are not filtered from auctions). After calculating new priorities as needed, and filtering out interest groups with negative calculated priorities, the `perBuyerGroupLimits` value is applied to all interest groups of a given owner, unless the interest group's `enableBiddingSignalsPrioritization` field is present and true.
 
