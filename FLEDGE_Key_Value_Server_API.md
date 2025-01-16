@@ -34,7 +34,7 @@ keys needed from request query strings and prevent potential key collision, even
 though the keys may be unique across namespaces in today’s use cases.
 
 *   For a DSP, there are: `keys` and `interestGroupNames`.
-*   For an SSP, there are `renderUrls` and `adComponentRenderUrls`.
+*   For an SSP, there are `renderURLs` and `adComponentRenderURLs`.
 
 The
 [Protected Audience explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#31-fetching-real-time-data-from-a-trusted-server)
@@ -256,13 +256,13 @@ In the request, one major difference from V1/BYOS is that the keys are now group
    </td>
   </tr>
   <tr>
-   <td>renderUrls
+   <td>renderURLs
    </td>
    <td rowspan="2"><em>Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system. This works in much the same way, with the base URL coming from the trustedScoringSignalsUrl property of the seller's auction configuration object.</em>
    </td>
   </tr>
   <tr>
-   <td>adComponentRenderUrls
+   <td>adComponentRenderURLs
    </td>
   </tr>
 </table>
