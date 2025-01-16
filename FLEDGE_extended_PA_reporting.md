@@ -72,7 +72,7 @@ with an arbitrary `event_key` within `generateBid`, `scoreAd`, `reportWin`, and 
 We consider the scenario where a buyer wants to learn the click-through rate of ads when a user has
 been in an interest group for a given time.
 
-To generate the bucket that represent interest group age, the buyer may implement `getImpressionReportBucket()` and `getClickReportBucket()` functions which return buckets that map an interest group and the time the user has spent in that interest group to a 128-bit integer as `BigInt`. The `browserSignals.recency` value inside `generateBid()` specifies the duration in minutes since the user joined the interest group.
+To generate the bucket that represents interest group age, the buyer may implement `getImpressionReportBucket()` and `getClickReportBucket()` functions which return buckets that map an interest group and the time the user has spent in that interest group to a 128-bit integer as `BigInt`. The `browserSignals.recency` value inside `generateBid()` specifies the duration in milliseconds (rounded to the nearest 100 milliseconds) since the user joined the interest group.
 
 Once the buckets have been derived, the buyer can call Private Aggregation inside `generateBid()`:  
 
@@ -214,6 +214,7 @@ Where `signalBucket` and `signalValue` is a dictionary which consists of:
       * generateBid() hitting timeout
       * The auction was aborted (i.e. calling endAdAuction())
       * an auction that never rendered the ad
+  * Some additional values described [separately](#per-participant-base-values).
 * optional `offset` and `scale` that allow the reporter to manipulate the browser signal to customize the buckets and values they will receive in reports:
   * `scale` will be multiplied by the browser provided value. Scale is applied before `offset` is added. Default value is 1.0.
   * `offset` will be added to the browser provided value (allows you to shift buckets, etc). Default value is 0.
@@ -254,6 +255,100 @@ the `loss` contributions.
 The `reserved.always` event-type is a special value that indicates a report should be sent no
 matter whether a bid wins the auction or not. The browser will always trigger reporting for the
 `always` contributions.
+
+## Per-participant metrics
+
+More recent versions of Chrome offer some additional features, focused on measuring resource
+usage and whole-auction metrics rather than those specific to a particular function execution
+or the winning bid.
+
+First, the new `reserved.once` event-type is a special value that, for each (sub)auction, selects a
+random invocation of `generateBid()` and of `scoreAd()` independently, and reports private
+aggregation contributions with that event only from those invocations. (In case of an auction
+with component auctions, the top-level auction will have a single `scoreAd()` invocation selected as
+well).
+
+The event may not be used in `reportWin()` or `reportResult()`; since those already run at most
+once per auction level, `reserved.always` may be used instead.
+
+This feature is intended for reporting overall per-participant metrics only once rather than for
+every interest group participating. A number of new `baseValues` representing such values are
+available and described below, but it can also be useful with per-interest-group metrics which are
+not expected to vary much, like `signals-fetch-time`, to sample them once per (sub)auction.
+
+While usage of `reserved.once` will be ignored by older versions, newly added `baseValues` will not
+be, so the calls to `contributeToHistogramOnEvent()` should be individually wrapped in `try/catch`.
+That is also encouraged in general since `contributeToHistogramOnEvent()` is specified to throw
+on permission policy violations.
+
+Users using this are strongly encouraged to report their metrics during the beginning of their
+scripts, since if the script hits a per script timeout before asking to report them nothing will
+get sent, which can result in inaccuracy, especially for `percent-scripts-timeout`.
+
+### Per-participant base values.
+
+The newly added base values, that work best with `reserved.once`, are as following:
+* `participating-ig-count`: number of interest groups that got a chance to participate in this
+  (sub)auction, i.e. they had registered ads, did not have unsatisfied capabilities, and were not
+  filtered based on priority. Interest groups included in this might not actually get to bid if the
+  cumulative timeout expires, or the script fails to load, etc, but they would have otherwise.
+* `average-code-fetch-time`: average time of all code fetches (including JavaScript and WASM) used
+  for all invocations of particular function type for given (sub)auction.
+* `percent-scripts-timeout`: percentage of script executions of this kind that hit
+  `perBuyerTimeouts`, `sellerTimeout`, or `reportingTimeout`. For `generateBid()`, this is out of
+  of the interest groups that could have participated (see `participating-ig-count` above for
+  description of participation qualifications).
+* `percent-igs-cumulative-timeout`: percentage of interest groups from this buyer that did not get
+  to participate in this (sub)auction due to the per-buyer cumulative timeout, out of the interest
+  groups that could have participated (see `participating-ig-count` above for description of
+  participation qualifications).
+* `cumulative-buyer-time`: total time spent for buyer's bid generation (downloading resources,
+  parsing them, and all generate bid calls), in milliseconds; this is what
+  would normally be compared against the per-buyer cumulative timeout (which must be set for this
+  to be non-zero). If the timeout is not hit, the value will be how long the buyer actually took,
+  capped by the per-buyer cumulative timeout, if the timeout is hit, the reported value will be the
+  timeout + 1000 (to make it easier to assign it to a different bucket).
+* `percent-regular-ig-count-quota-used`,`percent-negative-ig-count-quota-used`,
+  `percent-ig-storage-quota-used`: percentage of the database quota used by the buyer for
+  regular interest group count, negative targeting interest group count, and overall byte usage
+  respectively. This is capped at 110 since the quotas may not be enforced immediately (and actual
+  usage in that case may be bigger than 110%).
+* `regular-igs-count`, `negative-igs-count`, `ig-storage-used`: the raw counts for the buyer's
+  number of regular interest group, negative targeting interest groups, and overall byte usage,
+  respectively.  This is also capped at 1.1x the current quota, but please do keep in mind that the
+  quota might increase in the future, so if you use these metrics rather than percentage-based ones,
+  you may wish to reserve some extra margin around the bucket space (perhaps something like 15x) to
+  avoid confusion in the future. If you use `ig-storage-used` base value for a contribution value
+  rather than for a bucket number, the local contribution budget cap may become an issue unless
+  it's scaled down considerably.
+
+Note that these metrics are measured only for some kinds of worklet executions &mdash; some are
+only relevant for bidders, and get 0 in the seller functions. In case of reporting functions,
+they sometimes repeat what was available in the corresponding `generateBid()` or `scoreAd()`,
+and sometimes get their own measurement. This is shown below:
+
+| `baseValue` name | In `generateBid() ` | In `reportWin()` | In `scoreAd()` | In `reportResult()` |
+| ---------------- | ------------------- | ---------------- | -------------- | ------------------- |
+| `average-code-fetch-time` | Measured | Measured | Measured | Measured |
+| `percent-scripts-timeout` | Measured | Measured | Measured | Measured |
+| `participating-ig-count`  | Measured | From `generateBid()`  | 0 | 0 |
+| `percent-igs-cumulative-timeout` | Measured | From `generateBid()` | 0 | 0 |
+| `cumulative-buyer-time` | Measured | From `generateBid()` | 0 | 0 |
+| `percent-regular-ig-count-quota-used` | Measured | From `generateBid()` | 0 | 0 |
+| `percent-negative-ig-count-quota-used` | Measured | From `generateBid()` | 0 | 0 |
+| `percent-ig-storage-quota-used` | Measured | From `generateBid()` | 0 | 0 |
+| `regular-igs-count` | Measured | From `generateBid()` | 0 | 0 |
+| `negative-igs-count` | Measured | From `generateBid()` | 0 | 0 |
+| `ig-storage-used` | Measured | From `generateBid()` | 0 | 0 |
+
+For example, `percent-scripts-timeout` in `generateBid()` is the portion of executions of
+`generateBid()` in that (sub)auction that timed out, while `percent-scripts-timeout` in
+`reportWin()` is either 0 or 100 dependent on whether the reporting function's execution timed out
+or not (assuming reporting is done early enough to happen if it did); while
+`percent-igs-cumulative-timeout` will be the same value in both.
+
+Similarly, `percent-scripts-timeout` makes sense for seller functions like `scoreAd()`, but
+`percent-igs-cumulative-timeout` doesn't, so it just evaluates to 0.
 
 ## Reporting Per-Buyer Latency and Statistics to the Seller
 

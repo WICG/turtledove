@@ -25,9 +25,11 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
     - [2.4 Scoring Bids in Component Auctions](#24-scoring-bids-in-component-auctions)
     - [2.5 Additional Trusted Signals (directFromSellerSignals)](#25-additional-trusted-signals-directfromsellersignals)
       - [2.5.1 Using Response Headers](#251-using-response-headers)
-  - [3. Buyers Provide Ads and Bidding Functions (BYOS for now)](#3-buyers-provide-ads-and-bidding-functions-byos-for-now)
+  - [3. Buyers Provide Ads and Bidding Functions](#3-buyers-provide-ads-and-bidding-functions)
     - [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server)
-      - [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals)
+      - [3.1.1 Trusted Signals Server with BYOS Model](#311-trusted-signals-server-with-byos-model)
+      - [3.1.2 Trusted Signals Server in TEE](#312-trusted-signals-server-in-tee)
+      - [3.1.3 Cross-Origin Trusted Server Signals](#313-cross-origin-trusted-server-signals)
     - [3.2 On-Device Bidding](#32-on-device-bidding)
     - [3.3 Metadata with the Ad Bid](#33-metadata-with-the-ad-bid)
     - [3.4 Ads Composed of Multiple Pieces](#34-ads-composed-of-multiple-pieces)
@@ -132,14 +134,16 @@ const myGroup = {
   'executionMode': ...,
   'trustedBiddingSignalsURL': ...,
   'trustedBiddingSignalsKeys': ['key1', 'key2'],
-  'trustedBiddingSignalsSlotSizeMode' : 'slot-size',
-  'maxTrustedBiddingSignalsURLLength' : 10000,
+  'trustedBiddingSignalsSlotSizeMode': 'slot-size',
+  'maxTrustedBiddingSignalsURLLength': 10000,
+  'trustedBiddingSignalsCoordinator': 'https://www.publickeyservice.com',
   'userBiddingSignals': {...},
   'ads': [{renderUrl: shoesAd1, sizeGroup: 'group1', ...},
           {renderUrl: shoesAd2, sizeGroup: 'group2',
            selectableBuyerAndSellerReportingIds: ['deal1', 'deal2', 'deal3'],
            buyerReportingId: 'buyerSpecificInfo1',
-           buyerAndSellerReportingId: 'seatId', ...}],
+           buyerAndSellerReportingId: 'seatId',
+           allowedReportingOrigins: ['https://example-reporter.com'], ...}],
   'adComponents': [{renderUrl: runningShoes1, sizeGroup: 'group2', ...},
                    {renderUrl: runningShoes2, sizeGroup: 'group2', ...},
                    {renderUrl: gymShoes, sizeGroup; 'group2', ...}],
@@ -235,6 +239,14 @@ The `executionMode` attribute is optional, and may contain one of the following 
    the context (roughly equal to the cost of context creation). This execution
    mode does not have the same limitations on what top-level sites can join or leave
    the interest group.
+
+`trustedBiddingSignalsSlotSizeMode`, `maxTrustedBiddingSignalsURLLength`, and `trustedBiddingSignalsCoordinator` are three optional fields related to fetching trusted bidding signals.
+
+* `trustedBiddingSignalsSlotSizeMode` has three modes: `none` (default), `slot-size`, and `all-slots-requested-sizes`. These modes are used to attach the size information of ad slots. See [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) for more information.
+
+* `maxTrustedBiddingSignalsURLLength` is used to set the maximum URL length when constructing the URL for the trusted signals server in the BYOS (Bring Your Own Server) model. If set to 0 or not specified, the URL length is considered unlimited. See [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) for more information.
+
+* `trustedBiddingSignalsCoordinator` is used to specify where to obtain the public key used for encryption and decryption in communication with a trusted bidding signal server running in a Trust Execution Environment (TEE). When this field is specified, the request will be sent to a trusted bidding signals server running in a TEE, and the value of `maxTrustedBiddingSignalsURLLength` is ignored.
 
 The `ads` list contains the various ads that the interest group might show.  Each entry is an object that must contain a `renderURL` property with the URL for the ad that would be shown. An ad may also have the following optional properties:
 
@@ -386,6 +398,7 @@ const myAuctionConfig = {
   'decisionLogicURL': ...,
   'trustedScoringSignalsURL': ...,
   'maxTrustedScoringSignalsURLLength': 10000,
+  'trustedScoringSignalsCoordinator': 'https://www.publickeyservice.com',
   'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
   'auctionSignals': {...},
   'requestedSize': {'width': '100sw', 'height': '200px'},
@@ -448,6 +461,8 @@ else
 
 
 This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auctionSignals`, `sellerSignals`, and `perBuyerSignals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auctionSignals` are made available to everyone, while the other signals are given only to one party.
+
+`maxTrustedScoringSignalsURLLength` and `trustedScoringSignalsCoordinator` have the same functionality as `maxTrustedBiddingSignalsURLLength` and `trustedBiddingSignalsCoordinator`, as described in [1.2 Interest Group Attributes](#12-interest-group-attributes), but affect the seller's trusted scoring signals fetch as opposed to the trusted bidding signals fetch.
 
 The optional `requestedSize` field recommends a frame size for the auction, which will be available to bidders in browser signals. This size should be specified in the same format as the sizes in the `adSizes` field of `joinAdInterestGroup`. For convenience, the returned fenced frame config will automatically populate a `<fencedframe>`'s `width` and `height` attributes with the `requestedSize` when loaded, though the element's size attributes can still be modified if you want to change the element's container size. Bidders inside the auction may pick a different content size for the ad, and that resulting size will be visually scaled to fit inside the element's container size.
 
@@ -591,7 +606,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   crossOriginTrustedSignals: like `trustedScoringSignals`, but used when the server is cross-origin
     to the seller script. The value is an object that has as a key the trusted server's origin, e.g.
     `"https://example.org"`, and as value an object in format `trustedScoringSignals` uses. See
-    [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals) for more
+    [3.1.3 Cross-Origin Trusted Server Signals](#313-cross-origin-trusted-server-signals) for more
     details.
 
 The output of `scoreAd()` is an object with the following fields:
@@ -695,7 +710,7 @@ Note that only the `Ad-Auction-Signals` response header from the server will onl
 
 The signals are only guaranteed to be available to `navigator.runAdAuction()` after the `fetch()` promise has resolved. Therefore, to avoid races, either `runAdAuction()` should be called after resolving the `fetch()` promise, or `directFromSellerSignalsHeaderAdSlot` should be passed a promise that only resolves after the `fetch()` promise resolves.
 
-### 3. Buyers Provide Ads and Bidding Functions (BYOS for now)
+### 3. Buyers Provide Ads and Bidding Functions
 
 
 Interest groups are used by their owners to bid in on-device auctions.  We refer to each party bidding in an auction as a _buyer_.  The buyer might be an advertiser who is also an interest group owner themselves, or a DSP that owns an interest group and acts on an advertiser's behalf.
@@ -714,7 +729,15 @@ Buyers have three basic jobs in the on-device ad auction:
 #### 3.1 Fetching Real-Time Data from a Trusted Server
 
 
-Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsURL`, `trustedBiddingSignalsKeys`, and, optionally, `trustedBiddingSignalsSlotSizeMode` and `maxTrustedBiddingSignalsURLLength` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a URL of the form:
+Buyers may want to make on-device decisions that take into account real-time data (for example, the remaining budget of an ad campaign).  This need can be met using the interest group's `trustedBiddingSignalsURL`, `trustedBiddingSignalsKeys`, and, optionally, `trustedBiddingSignalsSlotSizeMode`, `maxTrustedBiddingSignalsURLLength` and `trustedBiddingSignalsCoordinator` fields.  Once a seller initiates an on-device auction on a publisher page, the browser checks each participating interest group for these fields, and makes an uncredentialed (cookieless) HTTP fetch to a Key-Value server.
+
+_As a temporary mechanism_ during the First Experiment timeframe, the buyer and seller can fetch these bidding signals from any server, including one they operate themselves (a "Bring Your Own Server" model). However, in the final version after the removal of third-party cookies, the request will only be sent to a trusted key-value-type server. Because the server is trusted, there is no k-anonymity constraint on this request. The trusted key-value-type server follows this [trust model](https://github.com/privacysandbox/protected-auction-services-docs/blob/main/key_value_service_trust_model.md) and uses [this protocol](https://github.com/WICG/turtledove/blob/main/FLEDGE_Key_Value_Server_API.md).
+
+As [noted in the key value trust model](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md#:~:text=Note%20that%20the%20values%20being%20stored%20in%20the%20key/value%20service%20are%20loaded%20by%20adtechs%20and%20expected%20to%20be%20publicly%20visible%20to%20clients.%20These%20are%20therefore%20not%20confidential.), the key value service is publicly queryable, so to prevent potentially leaking user information, keys should be either: not individually identifying (e.g. applying to many people, perhaps to all people who visited an advertiser page and that an ad campaign might show to) or unguessable (e.g. using random identifiers that are assigned at interest group join time and known only to the caller of joinAdInterestGroup).  They should not be uniquely identifying and use guessable keys (e.g. hashed email address, name, or phone number).
+
+##### 3.1.1 Trusted Signals Server with BYOS Model
+
+If `trustedBiddingSignalsCoordinator` is not present in the interest group, the bidding signals will be fetched from a BYOS server. The fetched URL will be of the form:
 
     https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2&interestGroupNames=name1,name2&experimentGroupId=12345&slotSize=100,200
 
@@ -750,7 +773,7 @@ The `perInterestGroupData` dictionary contains optional data for interest groups
 
 The `updateIfOlderThanMs` optional field specifies that the interest group should be updated via the `updateURL` mechanism (see the [interest group attributes](#12-interest-group-attributes) section) if the interest group hasn't been joined or updated in a duration of time exceeding `updateIfOlderThanMs` milliseconds. Updates that ended in failure, either parse or network failure, are not considered to increment the last update or join time. An `updateIfOlderThanMs` that's less than 10 minutes will be clamped to 10 minutes.
 
-Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system.  This works in much the same way as [`trustedBiddingSignalsURL`](#31-fetching-real-time-data-from-a-trusted-server), with the base URL coming from the `trustedScoringSignalsURL` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderURLs bids offered in the auction. Note that the query params use "Urls" instead of "URLs". It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.
+Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system. This works in much the same way as [`trustedBiddingSignalsURL`](#311-trusted-signals-server-with-byos-model). If `trustedScoringSignalsCoordinator` is not present in the auction config, it will send the scoring signals fetch request to a BYOS server. The request base URL is set from the `trustedScoringSignalsURL` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderURLs bids offered in the auction. Note that the query params use "Urls" instead of "URLs". It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.
 
 Similarly to `trustedBiddingSignalsURL`, scoring signals requests may also be coalesced across a certain number of bids that share a `trustedScoringSignalsURL`. The number of bids in a single request is limited by the auction configuration's `maxTrustedScoringSignalsURLLength` field. For example, if an auction configuration has a `maxTrustedScoringSignalsURLLength` of 1000, it means that the length of each trusted scoring signals request URL for this auction cannot exceed 1000 characters. If an auction configuration wants an infinite length for the request URL, it can specify 0 for the `maxTrustedScoringSignalsURLLength`.
 
@@ -779,18 +802,20 @@ The value of `trustedScoringSignals` passed to the seller's `scoreAd()` function
 }
 ```
 
-_As a temporary mechanism_ during the First Experiment timeframe, the buyer and seller can fetch these bidding signals from any server, including one they operate  themselves (a "Bring Your Own Server" model).  However, in the final version after the removal of third-party cookies, the request will only be sent to a trusted key-value-type server.  Because the server is trusted, there is no k-anonymity constraint on this request.  The browser needs to trust that the server's return value for each key will be based only on that key and the hostname, and that the server does no event-level logging and has no other side effects based on these requests.
+Either trusted server may optionally include a numeric `Data-Version` header on the response to indicate the state of the data that generated this response, which will then be available in bid generation/scoring and reporting. This version number should not depend on any properties of the request, only the state of the server. Ideally, the number would only increment and at any time would be identical across all servers in a fleet. In practice a small amount of skew is permitted for operational reasons, including propagation delays, staged rollouts, and emergency rollbacks. The version number should be formatted with only the digits `[0-9]` with no leading `0`s and fit in a 32-bit unsigned integer.
 
-As [noted in the key value trust model](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md#:~:text=Note%20that%20the%20values%20being%20stored%20in%20the%20key/value%20service%20are%20loaded%20by%20adtechs%20and%20expected%20to%20be%20publicly%20visible%20to%20clients.%20These%20are%20therefore%20not%20confidential.), the key value service is publicly queryable, so to prevent potentially leaking user information, keys should be either: not individually identifying (e.g. applying to many people, perhaps to all people who visited an advertiser page and that an ad campaign might show to) or unguessable (e.g. using random identifiers that are assigned at interest group join time and known only to the caller of joinAdInterestGroup).  They should not be uniquely identifying and use guessable keys (e.g. hashed email address, name, or phone number).
-
-Either trusted server may optionally include a numeric `Data-Version` header on the response to indicate the state of the data that generated this response, which will then be available in bid generation/scoring and reporting.  This version number should not depend on any properties of the request, only the state of the server.  Ideally, the number would only increment and at any time would be identical across all servers in a fleet.  In practice a small amount of skew is permitted for operational reasons, including propagation delays, staged rollouts, and emergency rollbacks. The version number should be formatted with only the digits `[0-9]` with no leading `0`s and fit in a 32-bit unsigned integer.
 
 For detailed specification and explainers of the trusted key-value server, see also the following:
 
 - [FLEDGE Key/Value Server APIs Explainer](https://github.com/WICG/turtledove/blob/master/FLEDGE_Key_Value_Server_API.md)
 - [FLEDGE Key/Value Server Trust Model Explainer](https://github.com/privacysandbox/fledge-docs/blob/main/key_value_service_trust_model.md)
+##### 3.1.2 Trusted Signals Server in TEE
 
-##### 3.1.1 Cross-Origin Trusted Server Signals
+If `trustedBiddingSignalsCoordinator` or `trustedScoringSignalsCoordinator` is specified, the bidding or scoring signals request will be sent to a trusted key-value-type server running in a TEE using [the version 2 protocol](https://github.com/WICG/turtledove/blob/main/FLEDGE_Key_Value_Server_API.md#query-api-version-2).
+
+Once an on-device auction is initiated, the browser will make an HTTP POST request to a base URL such as `https://www.kv-server.example/getvalues`, which comes from the interest group's `trustedBiddingSignalsURL` or auction config's `trustedScoringSignalsURL`. The other information for the trusted signals request will be put into the request body, with CBOR encoding and HPKE encryption as described in [FLEDGE Key/Value Server APIs Explainer](https://github.com/WICG/turtledove/blob/master/FLEDGE_Key_Value_Server_API.md).
+
+##### 3.1.3 Cross-Origin Trusted Server Signals
 
 If the key-value server is on a different origin than the corresponding script, additional steps are
 needed to ensure that sensitive information is not inappropriately leaked to, or is manipulated by,
@@ -924,7 +949,7 @@ The arguments to `generateBid()` are:
     cross-origin to the buyer's script. The value is an object that has as a key the trusted
     server's origin, e.g. `"https://www.kv-server.example"`, and as value an object in format
     `trustedBiddingSignals` uses. See
-    [3.1.1 Cross-Origin Trusted Server Signals](#311-cross-origin-trusted-server-signals) for more
+    [3.1.3 Cross-Origin Trusted Server Signals](#313-cross-origin-trusted-server-signals) for more
     details.
 
 In the case of component auctions, an interest group's `generateBid()` function will be invoked in all component auctions for which it qualifies, though the `bidCount` value passed to future auctions will only be incremented by one for participation in that auction as a whole.
@@ -1127,7 +1152,7 @@ _As a temporary mechanism, we will still allow network access,_ rendering the wi
 
 The TURTLEDOVE privacy goals mean that this cannot be the long-term solution.  Rendering ads from previously-downloaded Web Bundles, as originally proposed, is one way to mitigate this leakage.  Another possibility is ad rendering in which all network-loaded resources come from a trusted CDN that does not keep logs of the resources it serves.  As with servers involved in providing the trusted bidding signals, the privacy model and browser trust mechanism for such a CDN would require further work.
 
-Reports are only sent and most interest group state changes (e.g. updating `prevWins` and `bidCount`, updating k-anonymity information) are only applied if and when the winning `renderURL` is loaded in a fenced frame, in the case there is a winner, or when there is no winner. Priorities and `priorityOverrides` are updated immediately upon completion of the `generateBid()` call that invoked their respective update functions, since how the information from those are used is not expected to depend on whether the current auction was completed or not.
+Reports are only sent and most interest group state changes (e.g. updating `prevWinsMs` and `bidCount`, updating k-anonymity information) are only applied if and when the winning `renderURL` is loaded in a fenced frame, in the case there is a winner, or when there is no winner. Priorities and `priorityOverrides` are updated immediately upon completion of the `generateBid()` call that invoked their respective update functions, since how the information from those are used is not expected to depend on whether the current auction was completed or not.
 
 
 ### 5. Event-Level Reporting (for now)
