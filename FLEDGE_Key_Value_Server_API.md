@@ -61,7 +61,7 @@ For more information on the design, please refer to [the trust model explainer](
 
 ![V2 API diagram](assets/fledge_kv_server_v2_api.png)
 
-The request contains an outer HTTP layer with an inner HTTP body that uses a repurposed [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-ohttp/) encapsulation mechanism.
+The request contains an outer HTTP layer with an inner [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-ohttp/) layer.
 
 
 ### Outer HTTP layer
