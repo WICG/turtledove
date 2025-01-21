@@ -67,7 +67,7 @@ The request contains an outer HTTP layer with an inner [Oblivious HTTP](https://
 ### Outer HTTP layer
 For the outer HTTP layer:
 * HTTPS is used to transport data.
-* The method is `POST`.
+* The HTTP method is `POST`.
 * Requests specify Content types via these headers:
    ```
    Content-Type: message/ad-auction-trusted-signals-request
