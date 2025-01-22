@@ -2305,10 +2305,10 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
       :: |auctionConfig|'s [=auction config/trusted scoring signals coordinator=]
 
       : [=trusted scoring signals request/owner origin=]
-      :: |generatedBid|'s [=generated bid=/interest group=]'s [=interest group/owner=]
+      :: |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=]
 
       : [=trusted scoring signals request/joining origin=]
-      :: |generatedBid|'s [=generated bid=/interest group=]'s [=interest group/joining origin=]
+      :: |generatedBid|'s [=generated bid/interest group=]'s [=interest group/joining origin=]
 
   1. If |auctionConfig|'s [=auction config/trusted scoring signals url=]'s [=url/origin=] is not
     [=same origin=] with |auctionConfig|'s [=auction config/seller=], then set |isCrossOrigin| to
@@ -3567,7 +3567,7 @@ A <dfn>server auction browser signals</dfn> is a [=struct=] with the following [
     NOTE: Since bid counts are kept by UTC day, interest groups that live long enough will have
     early bid history expire before the interest group expires.
   : <dfn>join count</dfn>
-  :: A count of the number of joins for this interest group in the last 30 days, inclusive.
+  :: A count of the number of joins for this interest group in the last 30 UTC days, inclusive.
     Calculated by summing the [=interest group/join counts=].
 
     NOTE: Since bid counts are kept by UTC day, interest groups that live long enough will have
@@ -3766,11 +3766,11 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
       1. [=list/Append=] |serverPrevWin| to |prevWins|.
     1. Let |browserSignals| be a new [=server auction browser signals=] with the following [=struct/items=]:
       : [=server auction browser signals/bid count=]
-      :: the sum of |ig|'s [=interest group/bid counts=] with a bid day within the last 30 days,
+      :: the sum of |ig|'s [=interest group/bid counts=] with a bid day within the last 30 UTC days,
         inclusive.
       : [=server auction browser signals/join count=]
-      :: the sum of |ig|'s [=interest group/join counts=] with a join day within the last 30 days,
-        inclusive.
+      :: the sum of |ig|'s [=interest group/join counts=] with a join day within the last 30 UTC
+        days, inclusive.
       : [=server auction browser signals/recency ms=]
       :: the [=current coarsened wall time=] minus |ig|'s [=interest group/join time=] in
          millseconds
@@ -5096,9 +5096,9 @@ dictionary StorageInterestGroup : AuctionAdInterestGroup {
       1. If |encoded| is failure, then return failure.
       1. [=map/Set=] |resultIg|["{{AuctionAdInterestGroup/additionalBidKey}}"] to the result of running [=forgiving-base64 encode=] with |ig|'s [=interest group/additional bid key=].
     1. [=map/Set=] |resultIg|["{{StorageInterestGroup/joinCount}}"] to the sum of |ig|'s [=interest
-      group/join counts=] for all days within the last 30 days, inclusive.
+      group/join counts=] for all days within the last 30 UTC days, inclusive.
     1. [=map/Set=] |resultIg|["{{StorageInterestGroup/bidCount}}"] to the sum of |ig|'s [=interest
-      group/bid counts=] for all days within the last 30 days, inclusive.
+      group/bid counts=] for all days within the last 30 UTC days, inclusive.
     1. Let |resultPrevWins| be a new <code>[=sequence=]<{{PreviousWin}}></code>.
     1. [=list/For each=] |prevWin| of |ig|'s [=interest group/previous wins=] for all days within the
       the last 30 days:
@@ -8532,7 +8532,7 @@ headers. It's a [=struct=] with the following [=struct/items=]:
   :: A [=byte sequence=], null, or failure. Initially null. The body of the script.
   : <dfn>origins authorized for cross origin trusted signals</dfn>
   :: A [=list=] of [=origins=] or null. Initially null. Parsed value of
-     [:Ad-Auction-Allow-Trusted-Scoring-Signals-From:].</dfn>
+     [:Ad-Auction-Allow-Trusted-Scoring-Signals-From:].
   : <dfn>fetch duration</dfn>
   :: A [=duration=] in milliseconds, denoting how long it took the fetch to complete.
 </dl>
@@ -8986,7 +8986,7 @@ requests into smaller number of fetches. It's a [=struct=] with the following [=
   : <dfn>request map</dfn>
   :: A [=map=] from a tuple of [=script fetcher=], a [=URL=] representating the trusted signals
     base [=URL=], {{unsigned short}} or null for experiment ID, [=origin=] or null for coordinator,
-    and [=origin=], representing the top frame's [=origin], to a [=list=] of [=trusted scoring
+    and [=origin=], representing the top frame's [=origin=], to a [=list=] of [=trusted scoring
     signals requests=]. This organizes fetches that can possibly be merged together.
   : <dfn>url length limit</dfn>
   :: A {{long}} denoting a user-configured limit which should not be exceeded due to combining of
