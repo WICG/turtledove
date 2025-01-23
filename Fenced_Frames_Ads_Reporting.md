@@ -328,6 +328,10 @@ window.fence.setReportEventDataForAutomaticBeacons({
 
 Note that a cross-origin document calling `setReportEventDataForAutomaticBeacons` with `crossOriginExposed` will count as the document itself opting in to automatic beacons, negating the need for the document to be served with the `Allow-Fenced-Frame-Automatic-Beacons: true` header.
 
+This allows for the following use cases:
+- A root frame is served with `Allow-Cross-Origin-Event-Reporting: true`, and a cross-origin subframe sets automatic beacon data with `crossOriginExposed=true`. Automatic beacons triggered from the subframe will send with the data that was set in the subframe.
+- A root ad frame is served with `Allow-Cross-Origin-Event-Reporting: true` and sets automatic beacon data with `crossOriginExposed=true`. A cross-origin subframe is served with `Allow-Fenced-Frame-Automatic-Beacons: true`. Automatic beacons triggered from the subframe will send with the data that was set in the root frame.
+
 #### Credentials in Beacons
 
 When 3rd party cookies are enabled, automatic beacon requests only (not beacons sent manually through `reportEvent`) allow credentials (cookies) to be set in headers. This was requested by https://github.com/WICG/turtledove/issues/866 in order to help with migration and ARA debugging. These requests are subject to CORS and only occur after opt-in by virtue of calling the `setReportEventDataForAutomaticBeacons` API or using the `Allow-Fenced-Frame-Automatic-Beacons: true` response header in cross-origin iframes/component ad frames.
