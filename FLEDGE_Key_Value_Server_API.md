@@ -61,9 +61,20 @@ For more information on the design, please refer to [the trust model explainer](
 
 ![V2 API diagram](assets/fledge_kv_server_v2_api.png)
 
-HTTPS is used to transport data. The method is `POST`.
+The request contains an outer HTTP layer with an inner [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-ohttp/) layer.
 
-The HTTP POST body is encrypted.
+
+### Outer HTTP layer
+For the outer HTTP layer:
+* HTTPS is used to transport data.
+* The HTTP method is `POST`.
+* Requests specify Content types via these headers:
+   ```
+   Content-Type: message/ad-auction-trusted-signals-request
+   Accept: message/ad-auction-trusted-signals-response
+   ```
+
+### Inner HTTP layer
 
 #### Encryption
 
