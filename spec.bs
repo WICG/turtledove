@@ -3521,7 +3521,9 @@ dictionary AdAuctionDataConfig {
   <dt>{{AdAuctionDataConfig/seller}}
   <dd>The seller that will be used as the {{AuctionAdConfig/seller}} in the
     following {{AuctionAdConfig}} passed to {{Window/navigator}}.{{Navigator/runAdAuction()}}.
-    Can not be specified with the {{AdAuctionDataConfig/sellers}} field.
+    Can not be specified with the {{AdAuctionDataConfig/sellers}} field. Exactly
+    one of {{AdAuctionDataConfig/seller}} and {{AdAuctionDataConfig/sellers}}
+    must be specified.
   <dt>{{AdAuctionDataConfig/coordinatorOrigin}}
   <dd>The origin of the coordinator hosting public encryption keys for the server
     running the ad auction. The [=origin/scheme=] must be "`https`". An implementation
@@ -3533,7 +3535,9 @@ dictionary AdAuctionDataConfig {
     by {{Navigator/getInterestGroupAdAuctionData}} resolves contains the
     {{AdAuctionData/requests}} field instead of the {{AdAuctionData/request}} field.
     Can not be specified with the {{AdAuctionDataConfig/seller}} or
-    {{AdAuctionDataConfig/coordinatorOrigin}} fields.
+    {{AdAuctionDataConfig/coordinatorOrigin}} fields. Exactly
+    one of {{AdAuctionDataConfig/seller}} and {{AdAuctionDataConfig/sellers}}
+    must be specified.
   <dt>{{AdAuctionDataConfig/requestSize}}
   <dd>The desired size for the returned {{AdAuctionData/request}}. If any buyers are specified in
     {{AdAuctionDataConfig/perBuyerConfig}}, this will be the exact size of the returned {{AdAuctionData/request}}.
@@ -3791,25 +3795,26 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
     1. [=list/Append=] |serverIg| to |igMap|[|owner|].
     1. If |ig|'s [=interest group/Private Aggregation coordinator=] is not null, then [=map/set=]
       |igPAggCoordinatorMap|[(|owner|, |name|)] to it.
-  1. Let |results| be a new [=list=].
+  1. Let |results| be a new [=list=] of [=auction data per seller results=].
   1. Let |requestId| be the [=string representation=] of a [=version 4 UUID=].
-  1. [=list/For each=] |config| in |configs|:
+  1. [=list/For each=] |config| of |configs|:
+    1. Let |seller| be |config|'s [=auction data config/seller=].
     1. If |config|'s [=auction data config/coordinator=] is not one of the [=implementation-defined=]
        coordinators supported by this [=user agent=]:
-      1. Let |result| be a new [=auction data seller result=] with the following [=struct/items=]:
-        : [=auction data seller result/seller=]
+      1. Let |result| be a new [=auction data per seller result=] with the following [=struct/items=]:
+        : [=auction data per seller result/seller=]
         :: |seller|
-        : [=auction data seller result/error=]
+        : [=auction data per seller result/error=]
         :: "invalid coordinator"
       1. [=list/Append=] |result| to |results|.
       1. [=iteration/Continue=].
     1. Let |keyInfo| be the result of [=looking up the server encryption key=]
        with |config|'s [=auction data config/seller=] and |seller|'s [=auction data config/coordinator=].
     1. If |keyInfo| is failure:
-          1. Let |result| be a new [=auction data seller result=] with the following [=struct/items=]:
-            : [=auction data seller result/seller=]
+          1. Let |result| be a new [=auction data per seller result=] with the following [=struct/items=]:
+            : [=auction data per seller result/seller=]
             :: |seller|
-            : [=auction data seller result/error=]
+            : [=auction data per seller result/error=]
             :: "key lookup failed"
         1. [=list/Append=] |result| to |results|.
         1. [=iteration/Continue=].
@@ -3819,10 +3824,10 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
     1. Let (|requestBlob|, |context|) be the result of serializing |igMap| with |config| and
       |igPAggCoordinatorMap|. The serialization method may follow that described in
       [Section 2.2.4 of Bidding and Auction Services](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-generating-a-request).
-    1. Let |result| be a new [=auction data seller result=] with the following [=struct/items=]:
-        : [=auction data seller result/seller=]
+    1. Let |result| be a new [=auction data per seller result=] with the following [=struct/items=]:
+        : [=auction data per seller result/seller=]
         :: |seller|
-        : [=auction data seller result/request=]
+        : [=auction data per seller result/request=]
         :: |requestBlob|
     1. [=list/Append=] |result| to |results|.
     1. Let |requestContext| be a new [=server auction request context=].
@@ -3830,33 +3835,26 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
     1. Set |requestContext|'s [=server auction request context/request context=] field to |context|.
     1. [=map/Set=] |global|'s [=associated Document's=] [=node navigable's=]
       [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=][|requestId|] to |requestContext|.
-  1. Let |result| be a new {{AdAuctionData}}.
-  1. [=map/Set=] |result|["{{AdAuctionData/requestId}}"] to |requestId|.
+  1. Let |IDLresults| be a new {{AdAuctionData}}.
+  1. [=map/Set=] |IDLresults|["{{AdAuctionData/requestId}}"] to |requestId|.
   1. If |configIDL|[{{AdAuctionDataConfig/seller}}] [=map/exists=]:
     1. Let |seller result| be |results|[0].
-    1. If |seller result|'s [=auction data seller result/error=] is not null:
+    1. If |seller result|'s [=auction data per seller result/error=] is not null:
       1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
          [=reject=] |p| with a {{TypeError}}.
       1. Abort these steps.
-    1. Set |result|["{{AdAuctionData/request}}"] to |requestBlob|.
+    1. Set |IDLresults|["{{AdAuctionData/request}}"] to |requestBlob|.
   1. Otherwise:
     1. [=list/For each=] |seller result| in |results|:
-      1. If |seller result|'s [=auction data seller result/error=] is not null:
-        1. Let |IDLresult| be a new {{AdAuctionPerSellerData}} with the following [=struct/items=]:
-          :  {{AdAuctionPerSellerData/seller}}
-          :: |seller result|'s [=auction data seller result/seller=]
-          :  {{AdAuctionPerSellerData/error}}
-          :: |seller result|'s [=auction data seller result/error=]
-        1. [=list/Append=] |IDLresult| to |result|["{{AdAuctionData/requests}}"].
+      1. Let |IDLresult| be a new {{AdAuctionPerSellerData}} whose {{AdAuctionPerSellerData/seller}} |seller result|'s [=auction data per seller result/seller=].
+      1. If |seller result|'s [=auction data per seller result/error=] is not null:
+        1. Set |IDLresult|["{{AdAuctionPerSellerData/error}}"] to |seller result|'s [=auction data per seller result/error=].
+        1. [=list/Append=] |IDLresult| to |IDLresults|["{{AdAuctionData/requests}}"].
       1. Otherwise:
-        1. Let |IDLresult| be a new {{AdAuctionPerSellerData}} with the following [=struct/items=]:
-          :  {{AdAuctionPerSellerData/seller}}
-          :: |seller result|'s [=auction data seller result/seller=]
-          :  {{AdAuctionPerSellerData/request}}
-          :: |seller result|'s [=auction data seller result/request=]
-        1. [=list/Append=] |IDLresult| to |result|["{{AdAuctionData/requests}}"].
+        1. Set |IDLresult|["{{AdAuctionPerSellerData/request}}"] to |seller result|'s [=auction data per seller result/request=].
+        1. [=list/Append=] |IDLresult| to |IDLresults|["{{AdAuctionData/requests}}"].
   1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
-    resolve |p| with |result|.
+    resolve |p| with |IDLresults|.
 1. Return p.
 
 </div>
@@ -3865,7 +3863,7 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
   To <dfn>parse and verify ad auction data config</dfn> given an
   {{AdAuctionDataConfig}} |configIDL| and [=origin=] |top_level_origin|:
 
-  1. Let |configs| be a new empty [=list=].
+  1. Let |configs| be a new empty [=list=] of [=auction data configs=].
   1. Let |per buyer configs| be the result of running [=parse per buyer auction data configs=] on
       |configIDL|["{{AdAuctionDataConfig/perBuyerConfig}}"].
   1. Let |requestSize| be |configIDL|["{{AdAuctionDataConfig/requestSize}}"] if it [=map/exists=], null otherwise.
@@ -3878,8 +3876,11 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
   1. If |configIDL|["{{AdAuctionDataConfig/seller}}"] [=map/exists=]:
     1. Let |seller| be the result of running [=parse an https origin=] on
        |configIDL|["{{AdAuctionDataConfig/seller}}"].
-    1. Let |coordinator| be the result of running [=parse an https origin=] on
-       |configIDL|["{{AdAuctionDataConfig/coordinatorOrigin}}"].
+    1. If |configIDL|["{{AdAuctionDataConfig/coordinatorOrigin}}"] [=map/exists=]:
+      1. Let |coordinator| be the result of running [=parse an https origin=] on
+        |configIDL|["{{AdAuctionDataConfig/coordinatorOrigin}}"].
+    1. Otherwise
+      1. Let |coordinator| be the [=user agent=]'s default coordinator.
     1. If |seller| or |coordinator| are failure, then [=exception/throw=] a {{TypeError}}.
     1. Let |config| be a new [=auction data config=] with the following [=struct/items=]:
       : [=auction data config/publisher=]
@@ -3899,11 +3900,14 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
     1. [=list/For each=] |seller config| in |configIDL|["{{AdAuctionDataConfig/sellers}}"]:
       1. Let |seller| be the result of running [=parse an https origin=] on
         |seller config|["{{AdAuctionOneSeller/seller}}"].
-      1. If |configs| already [=list/contains=] a [=auction data config=] whose
+      1. If |configs| [=list/contains=] an [=auction data config=] whose
          [=auction data config/seller=] is equal to |seller|, then
          [=exception/throw=] a {{TypeError}}.
-      1. Let |coordinator| be the result of running [=parse an https origin=] on
-        |seller config|["{{AdAuctionOneSeller/coordinatorOrigin}}"].
+      1. If |seller config|["{{AdAuctionOneSeller/coordinatorOrigin}}"] [=map/exists=]:
+        1. Let |coordinator| be the result of running [=parse an https origin=] on
+          |seller config|["{{AdAuctionOneSeller/coordinatorOrigin}}"].
+      1. Otherwise:
+        1. Let |coordinator| be the [=user agent=]'s default coordinator.
       1. If |seller| or |coordinator| are failure, then [=exception/throw=] a {{TypeError}}.
       1. Let |config| be a new [=auction data config=] with the following [=struct/items=]:
         : [=auction data config/publisher=]
@@ -9912,15 +9916,15 @@ An <dfn>auction data config</dfn> is a [=struct=] with the following [=struct/it
   :: A [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are [=auction data buyer config=].
 </dl>
 
-An <dfn>auction data seller result</dfn> is a [=struct=] with the following [=struct/items=]:
-<dl dfn-for="auction data seller result">
+An <dfn>auction data per seller result</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="auction data per seller result">
   :  <dfn>seller</dfn>
   :: The origin of the seller that this result corresponds to. Will match one of
      the sellers in the [=auction data config=].
   :  <dfn>request</dfn>
   :: Null or a [=byte sequence=]. The encrypted request generated for this
-     [=auction data seller result/seller=]. Null indicates an error occured and
-     the [=auction data seller result/error=] field will contain additional information.
+     [=auction data per seller result/seller=]. Null indicates an error occured and
+     the [=auction data per seller result/error=] field will contain additional information.
   :  <dfn>error</dfn>
   :: Null or a [=string=]. Null when the request succeeds. Otherwise contains
      additional information about the failure.
