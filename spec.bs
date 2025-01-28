@@ -3846,7 +3846,8 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
     1. Set |IDLresults|["{{AdAuctionData/request}}"] to |requestBlob|.
   1. Otherwise:
     1. [=list/For each=] |seller result| in |results|:
-      1. Let |IDLresult| be a new {{AdAuctionPerSellerData}} whose {{AdAuctionPerSellerData/seller}} |seller result|'s [=auction data per seller result/seller=].
+      1. Let |IDLresult| be a new {{AdAuctionPerSellerData}} whose {{AdAuctionPerSellerData/seller}}
+         is |seller result|'s [=auction data per seller result/seller=].
       1. If |seller result|'s [=auction data per seller result/error=] is not null:
         1. Set |IDLresult|["{{AdAuctionPerSellerData/error}}"] to |seller result|'s [=auction data per seller result/error=].
         1. [=list/Append=] |IDLresult| to |IDLresults|["{{AdAuctionData/requests}}"].
@@ -3863,13 +3864,13 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
   To <dfn>parse and verify ad auction data config</dfn> given an
   {{AdAuctionDataConfig}} |configIDL| and [=origin=] |top_level_origin|:
 
-  1. Let |configs| be a new empty [=list=] of [=auction data configs=].
-  1. Let |per buyer configs| be the result of running [=parse per buyer auction data configs=] on
+  1. Let |configs| be a new [=list=] of [=auction data configs=].
+  1. Let |perBuyerConfigs| be the result of running [=parse per buyer auction data configs=] on
       |configIDL|["{{AdAuctionDataConfig/perBuyerConfig}}"].
   1. Let |requestSize| be |configIDL|["{{AdAuctionDataConfig/requestSize}}"] if it [=map/exists=], null otherwise.
-  1. If |per buyer configs| [=map/is not empty=] and |requestSize| is null:
+  1. If |perBuyerConfigs| [=map/is not empty=] and |requestSize| is null:
      1. Set |requestSize| to 0.
-     1. [=list/For each=] |buyerConfig| of |per buyer configs|'s [=map/values=]:
+     1. [=list/For each=] |buyerConfig| of |perBuyerConfigs|'s [=map/values=]:
         1. If |buyerConfig|'s [=auction data buyer config/size=] is null,
            then [=exception/throw=] a {{TypeError}}.
         1. Set |requestSize| to |requestSize| + |buyerConfig|'s [=auction data buyer config/size=].
@@ -3880,7 +3881,7 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
       1. Let |coordinator| be the result of running [=parse an https origin=] on
         |configIDL|["{{AdAuctionDataConfig/coordinatorOrigin}}"].
     1. Otherwise
-      1. Let |coordinator| be the [=user agent=]'s default coordinator.
+      1. Let |coordinator| be the [=user agent=]'s default Bidding and Auction Services coordinator.
     1. If |seller| or |coordinator| are failure, then [=exception/throw=] a {{TypeError}}.
     1. Let |config| be a new [=auction data config=] with the following [=struct/items=]:
       : [=auction data config/publisher=]
@@ -3892,22 +3893,22 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
       : [=auction data config/request size=]
       :: |requestSize|
       : [=auction data config/per buyer config=]
-      :: |per buyer configs|
+      :: |perBuyerConfigs|
     1. [=list/Append=] |config| to |configs|.
   1. Otherwise:
     1. If |configIDL|["{{AdAuctionDataConfig/sellers}}"] does not [=map/exist=], then [=exception/throw=] a {{TypeError}}.
     1. If |configIDL|["{{AdAuctionDataConfig/coordinatorOrigin}}"] [=map/exists=], then [=exception/throw=] a {{TypeError}}.
-    1. [=list/For each=] |seller config| in |configIDL|["{{AdAuctionDataConfig/sellers}}"]:
+    1. [=list/For each=] |sellerConfig| in |configIDL|["{{AdAuctionDataConfig/sellers}}"]:
       1. Let |seller| be the result of running [=parse an https origin=] on
-        |seller config|["{{AdAuctionOneSeller/seller}}"].
+        |sellerConfig|["{{AdAuctionOneSeller/seller}}"].
       1. If |configs| [=list/contains=] an [=auction data config=] whose
          [=auction data config/seller=] is equal to |seller|, then
          [=exception/throw=] a {{TypeError}}.
-      1. If |seller config|["{{AdAuctionOneSeller/coordinatorOrigin}}"] [=map/exists=]:
+      1. If |sellerConfig|["{{AdAuctionOneSeller/coordinatorOrigin}}"] [=map/exists=]:
         1. Let |coordinator| be the result of running [=parse an https origin=] on
-          |seller config|["{{AdAuctionOneSeller/coordinatorOrigin}}"].
+          |sellerConfig|["{{AdAuctionOneSeller/coordinatorOrigin}}"].
       1. Otherwise:
-        1. Let |coordinator| be the [=user agent=]'s default coordinator.
+        1. Let |coordinator| be the [=user agent=]'s default Bidding and Auction Services coordinator.
       1. If |seller| or |coordinator| are failure, then [=exception/throw=] a {{TypeError}}.
       1. Let |config| be a new [=auction data config=] with the following [=struct/items=]:
         : [=auction data config/publisher=]
@@ -3919,7 +3920,7 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
         : [=auction data config/request size=]
         :: |requestSize|
         : [=auction data config/per buyer config=]
-        :: |per buyer configs|
+        :: |perBuyerConfigs|
       1. [=list/Append=] |config| to |configs|.
   1. Return |configs|.
 </div>
