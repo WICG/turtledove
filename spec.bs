@@ -3188,7 +3188,7 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
 1. Let |requestId| be the value of |auctionConfig|'s [=auction config/server response id=].
 1. Let |requestContexts| be the value of |global|'s [=associated Document's=] [=node navigable's=]
   [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=].
-1. If |requestContexts|[|requestId|] does not [=map/exist=], return null.
+1. If |requestContexts|[(|seller|,|requestId|)] does not [=map/exist=], return null.
 1. Let |requestContext| be |requestContexts|[|requestId|].
 1. Let |response| be the [=server auction response=] which is the result of
    deserializing |auctionConfig|'s [=auction config/server response=]
@@ -3800,7 +3800,7 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
   1. [=list/For each=] |config| of |configs|:
     1. Let |seller| be |config|'s [=auction data config/seller=].
     1. If |config|'s [=auction data config/coordinator=] is not one of the [=implementation-defined=]
-       coordinators supported by this [=user agent=]:
+       Bidding and Auction Services coordinators supported by this [=user agent=]:
       1. Let |result| be a new [=auction data per seller result=] with the following [=struct/items=]:
         : [=auction data per seller result/seller=]
         :: |seller|
@@ -3811,13 +3811,13 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
     1. Let |keyInfo| be the result of [=looking up the server encryption key=]
        with |config|'s [=auction data config/seller=] and |seller|'s [=auction data config/coordinator=].
     1. If |keyInfo| is failure:
-          1. Let |result| be a new [=auction data per seller result=] with the following [=struct/items=]:
-            : [=auction data per seller result/seller=]
-            :: |seller|
-            : [=auction data per seller result/error=]
-            :: "key lookup failed"
-        1. [=list/Append=] |result| to |results|.
-        1. [=iteration/Continue=].
+      1. Let |result| be a new [=auction data per seller result=] with the following [=struct/items=]:
+        : [=auction data per seller result/seller=]
+        :: |seller|
+        : [=auction data per seller result/error=]
+        :: "key lookup failed"
+      1. [=list/Append=] |result| to |results|.
+      1. [=iteration/Continue=].
     1. Let (|key|, |keyId|) be |keyInfo|.
     1. Set |config|'s [=auction data config/encryption key=] to |key|.
     1. Set |config|'s [=auction data config/encryption key id=] to |keyId|.
@@ -3834,25 +3834,25 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
     1. Set |requestContext|'s [=server auction request context/request ID=] field to |requestId|.
     1. Set |requestContext|'s [=server auction request context/request context=] field to |context|.
     1. [=map/Set=] |global|'s [=associated Document's=] [=node navigable's=]
-      [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=][|requestId|] to |requestContext|.
+      [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=][(|seller|,|requestId|)] to |requestContext|.
   1. Let |IDLresults| be a new {{AdAuctionData}}.
   1. [=map/Set=] |IDLresults|["{{AdAuctionData/requestId}}"] to |requestId|.
   1. If |configIDL|[{{AdAuctionDataConfig/seller}}] [=map/exists=]:
-    1. Let |seller result| be |results|[0].
-    1. If |seller result|'s [=auction data per seller result/error=] is not null:
+    1. Let |sellerResult| be |results|[0].
+    1. If |sellerResult|'s [=auction data per seller result/error=] is not null:
       1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
          [=reject=] |p| with a {{TypeError}}.
       1. Abort these steps.
     1. Set |IDLresults|["{{AdAuctionData/request}}"] to |requestBlob|.
   1. Otherwise:
-    1. [=list/For each=] |seller result| in |results|:
+    1. [=list/For each=] |sellerResult| in |results|:
       1. Let |IDLresult| be a new {{AdAuctionPerSellerData}} whose {{AdAuctionPerSellerData/seller}}
-         is |seller result|'s [=auction data per seller result/seller=].
-      1. If |seller result|'s [=auction data per seller result/error=] is not null:
-        1. Set |IDLresult|["{{AdAuctionPerSellerData/error}}"] to |seller result|'s [=auction data per seller result/error=].
+         is the [=serialization of an origin|serialization=] of |sellerResult|'s [=auction data per seller result/seller=].
+      1. If |sellerResult|'s [=auction data per seller result/error=] is not null:
+        1. Set |IDLresult|["{{AdAuctionPerSellerData/error}}"] to |sellerResult|'s [=auction data per seller result/error=].
         1. [=list/Append=] |IDLresult| to |IDLresults|["{{AdAuctionData/requests}}"].
       1. Otherwise:
-        1. Set |IDLresult|["{{AdAuctionPerSellerData/request}}"] to |seller result|'s [=auction data per seller result/request=].
+        1. Set |IDLresult|["{{AdAuctionPerSellerData/request}}"] to |sellerResult|'s [=auction data per seller result/request=].
         1. [=list/Append=] |IDLresult| to |IDLresults|["{{AdAuctionData/requests}}"].
   1. [=Queue a global task=] on the [=DOM manipulation task source=], given |global|, to
     resolve |p| with |IDLresults|.
@@ -7593,8 +7593,9 @@ request with the <{iframe/adauctionheaders}> <a spec=html>content attribute</a>
 set to `true`, as described in the [:Ad-Auction-Additional-Bid:] header description.
 
 Each [=traversable navigable=] has a <dfn for="traversable navigable">saved Bidding
-and Auction request context</dfn>, which is a [=map=] whose [=map/keys=] are
-the [=string representation=] of a [=version 4 UUID=] and whose [=map/values=]
+and Auction request context</dfn>, which is a [=map=]. The [=map=]'s [=map/keys=] are
+[=tuples=] consisting of the seller ([=origin=]) and the request ID
+([=string representation=] of a [=version 4 UUID=]). The [=map=]'s [=map/values=]
 are [=server auction request contexts=].
 
 Each [=traversable navigable=] has a <dfn for="traversable navigable">captured ad auction result
@@ -9920,7 +9921,7 @@ An <dfn>auction data config</dfn> is a [=struct=] with the following [=struct/it
 An <dfn>auction data per seller result</dfn> is a [=struct=] with the following [=struct/items=]:
 <dl dfn-for="auction data per seller result">
   :  <dfn>seller</dfn>
-  :: The origin of the seller that this result corresponds to. Will match one of
+  :: The [=origin=] of the seller that this result corresponds to. Will match one of
      the sellers in the [=auction data config=].
   :  <dfn>request</dfn>
   :: Null or a [=byte sequence=]. The encrypted request generated for this
