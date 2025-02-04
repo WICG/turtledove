@@ -1846,6 +1846,7 @@ To <dfn>generate and score bids</dfn> given an [=auction config=] |auctionConfig
 and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. [=Assert=] that these steps are running [=in parallel=].
 1. Let |settings| be |global|'s [=relevant settings object=].
+1. Let |policyContainer| be |settings|'s [=environment settings object/policy container=].
 1. Let |topLevelOrigin| be |settings|'s [=environment/top-level origin=].
 1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
 1. Let |auctionStartTime| be the [=current coarsened wall time=].
@@ -1887,13 +1888,13 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
         [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[|auctionConfig|],
         |compWinnerInfo|'s [=leading bid info/leading bid=], |leadingBidInfo|,
         |decisionLogicFetcher|, |trustedScoringSignalsBatcher|, null, "top-level-auction", null,
-        and |topLevelOrigin|.
+        |topLevelOrigin|, |realTimeContributionsMap|, and |policyContainer|.
       1. If |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=]
         is not null, then run [=score and rank a bid=] with |auctionConfig|, |reportingContextMap|[
         |auctionConfig|], |compWinnerInfo|'s [=leading bid info/leading non-k-anon-enforced bid=],
         |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
         |topLevelDirectFromSellerSignalsForSeller|, null, "top-level-auction", null, |topLevelOrigin|,
-        and |realTimeContributionsMap|.
+        |realTimeContributionsMap|, and |policyContainer|.
     1. Decrement |pendingComponentAuctions| by 1.
   1. Wait until |pendingComponentAuctions| is 0.
   1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
@@ -1971,7 +1972,8 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
   1. [=Score and rank a bid=] with |auctionConfig|, |reportingContext|
     |additionalBid|'s [=decoded additional bid/bid=], |leadingBidInfo|, |decisionLogicFetcher|,
     |trustedScoringSignalsBatcher|, |directFromSellerSignalsForSeller|, null, |auctionLevel|,
-    |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
+    |componentAuctionExpectedCurrency|, |topLevelOrigin|, |realTimeContributionsMap|, and
+    |policyContainer|.
   1. Decrement |pendingAdditionalBids| by 1.
 1. [=map/For each=] |buyer| → |perBuyerGenerator| of |bidGenerators|,
   [=parallel queue/enqueue steps|enqueue the following steps=] to |queue|:
@@ -2035,7 +2037,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
         1. [=list/For each=] |ig| of |groups|:
           1. [=Batch or fetch trusted bidding signals=] given |trustedBiddingSignalsBatcher|,
             |ig|, |signalsUrl|, |buyerExperimentGroupId|, |topLevelOrigin|, |slotSizeQueryParam|,
-            and |settings|'s [=environment settings object/policy container=].
+            and |policyContainer|.
         1. [=Fetch the current outstanding trusted signals batch=] given |trustedBiddingSignalsBatcher|,
             |signalsUrl|, |buyer|, |buyerExperimentGroupId|, |topLevelOrigin|, and |slotSizeQueryParam|.
         1. [=Fetch the trusted key value signals batch=] given |trustedBiddingSignalsBatcher|,
@@ -2150,7 +2152,8 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
             1. [=Score and rank a bid=] with |auctionConfig|, |reportingContext|, |bidToScore|,
               |leadingBidInfo|, |decisionLogicFetcher|, |trustedScoringSignalsBatcher|,
               |directFromSellerSignalsForSeller|, |dataVersion|, |auctionLevel|,
-              |componentAuctionExpectedCurrency|, |topLevelOrigin|, and |realTimeContributionsMap|.
+              |componentAuctionExpectedCurrency|, |topLevelOrigin|, |realTimeContributionsMap|,
+              and |policyContainer|.
   1. [=Update cumulative buyer time metrics=] given |metrics| and |cumulativeTimeoutTracker|.
   1. Decrement |pendingBuyers| by 1.
 1. Wait until both |pendingBuyers| and |pendingAdditionalBids| are 0.
@@ -2357,12 +2360,14 @@ a [=trusted scoring signals batcher=] |trustedScoringSignalsBatcher|
 a {{DirectFromSellerSignalsForSeller}} |directFromSellerSignalsForSeller|, an {{unsigned long}}-or-null
 |biddingDataVersion|, an enum |auctionLevel|, which is "single-level-auction", "top-level-auction",
 or "component-auction", a [=currency tag=] |componentAuctionExpectedCurrency|, an [=origin=]
-|topLevelOrigin|, and a [=real time reporting contributions map=] |realTimeContributionsMap|:
+|topLevelOrigin|, a [=real time reporting contributions map=] |realTimeContributionsMap|, and
+a [=policy container=] |policyContainer|:
 
 1. Let «|trustedScoringSignalsAreCrossOrigin|, |sameOriginTrustedScoringSignals|,
   |crossOriginTrustedScoringSignals|, |scoringDataVersion|» be the result of [=fetch and
   decode trusted scoring signals=] given |trustedScoringSignalsBatcher|, |auctionConfig|,
-  |generatedBid|, |decisionLogicFetcher|, |topLevelOrigin|, and |realTimeContributionsMap|.
+  |generatedBid|, |decisionLogicFetcher|, |topLevelOrigin|, |realTimeContributionsMap|,
+  and |policyContainer|.
 1. Let |adMetadata| be |generatedBid|'s [=generated bid/ad=].
 1. Let |bidValue| be |generatedBid|'s [=generated bid/bid=].
 1. If |generatedBid|'s [=generated bid/modified bid=] is not null, then set |bidValue| to
@@ -2663,7 +2668,8 @@ is a [=structured header=] whose value must be an [=structured header/integer=].
 
 <div algorithm>
 To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |scriptOrigin|, a
-[=policy container=] |policyContainer|, and a [=boolean=] |isBiddingSignal|:
+[=policy container=] |policyContainer|, and a [=boolean=] |isBiddingSignal|. They return a
+[=tuple=] consisting of ([=ordered map=] or null, [=ordered map=] or null, integer or null):
 
   1. Let |request| be a new [=request=] with the following properties:
     :   [=request/URL=]
@@ -2709,19 +2715,19 @@ To <dfn>fetch trusted signals</dfn> given a [=URL=] |url|, an [=origin=] |script
       [:X-fledge-bidding-signals-format-version:] and "`item`" from |headers|.
     1. Set |signals| to the result of [=parsing JSON bytes to an Infra value=] |responseBody|.
   1. Wait for |signals| to be set.
-  1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return « null,
-    null, null ».
+  1. If |signals| is a parsing exception, or if |signals| is not an [=ordered map=], return a
+    [=tuple=] (null, null, null).
   1. If |formatVersion| is 2:
-    1. If |signals|["`keys`"] does not [=map/exist=], return « null, null ».
+    1. If |signals|["`keys`"] does not [=map/exist=], [=tuple=] (null, null, null ).
     1. Set |signals| to |signals|["`keys`"].
-    1. If |signals| is not an [=ordered map=], return « null, null ».
+    1. If |signals| is not an [=ordered map=], return a [=tuple=] (null, null, null).
     1. If |signals|["`perInterestGroupData`"] [=map/exists=] and is an [=ordered map=]:
       1. [=Assert=] |isBiddingSignal| is true.
       1. Let |perInterestGroupData| be |signals|["`perInterestGroupData`"].
   1. [=map/For each=] |key| → |value| of |signals|:
     1. [=map/Set=] |signals|[|key|] to the result of [=serializing an Infra value to a JSON string=]
       given |value|.
-  1. Return « |signals|, |perInterestGroupData|, |dataVersion| ».
+  1. Return a [=tuple=] (|signals|, |perInterestGroupData|, |dataVersion|).
 </div>
 
 <div algorithm>
