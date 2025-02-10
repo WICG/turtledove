@@ -216,6 +216,7 @@ dictionary AuctionAd {
   sequence<USVString> selectableBuyerAndSellerReportingIds;
   sequence<USVString> allowedReportingOrigins;
   DOMString adRenderId;
+  USVString creativeScanningMetadata;
 };
 
 dictionary AuctionAdInterestGroupSize {
@@ -450,6 +451,8 @@ This is detectable because it can change the set of fields that are read from th
         1. If |ad|["{{AuctionAd/adRenderId}}"]'s [=string/length=] &gt; 12, [=exception/throw=] a {{TypeError}}.
         1. If any [=code point=] in |ad|["{{AuctionAd/adRenderId}}"] is not an [=ASCII code point=], [=exception/throw=] a {{TypeError}}.
         1. Set |igAd|'s [=interest group ad/ad render id=] to |ad|["{{AuctionAd/adRenderId}}"].
+      1. If |ad|["{{AuctionAd/creativeScanningMetadata}}"] [=map/exists=], then set
+        |igAd|'s [=interest group ad/creative scanning metadata=] to it.
       1. If |groupMember| is "{{GenerateBidInterestGroup/ads}}":
         1. If |ad|["{{AuctionAd/buyerReportingId}}"] [=map/exists=], then set
           |igAd|'s [=interest group ad/buyer reporting ID=] to it.
@@ -750,6 +753,7 @@ dictionary AuctionAdConfig {
   USVString trustedScoringSignalsURL;
   long maxTrustedScoringSignalsURLLength;
   USVString trustedScoringSignalsCoordinator;
+  boolean sendCreativeScanningMetadata;
   sequence<USVString> interestGroupBuyers;
   Promise<any> auctionSignals;
   Promise<any> sellerSignals;
@@ -1269,6 +1273,9 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     1. If |parsedCoordinator| is failure, then [=exception/throw=] a {{TypeError}}.
     1. Set |auctionConfig|'s [=auction config/trusted scoring signals coordinator=] to
       |parsedCoordinator|.
+1. If |config|["{{AuctionAdConfig/sendCreativeScanningMetadata}}"] [=map/exists=]:
+  1. Set |auctionConfig|'s [=auction config/send creative scanning metadata=] to
+    |config|["{{AuctionAdConfig/sendCreativeScanningMetadata}}"].
 1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=]:
   1. Let |buyers| be a new empty [=list=].
   1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
@@ -2256,6 +2263,8 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
     1. If |ad|'s [=interest group ad/metadata=] is not null, then [=map/set=]
       |adIDL|["{{AuctionAd/metadata}}"] to the result of
       [=parsing a JSON string to a JavaScript value=] given |ad|'s [=interest group ad/metadata=].
+    1. If |ad|'s [=interest group ad/creative scanning metadata=] is not null, then [=map/set=]
+      |adIDL|["{{AuctionAd/creativeScanningMetadata}}"] to it.
     1. [=list/Append=] |adIDL| to |adsIDL|.
   1. Return |adsIDL|.
 </div>
@@ -7194,6 +7203,8 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
               [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
               If this [=exception/throws=], jump to the step
               labeled <i><a href=#abort-update>Abort update</a></i>.
+            1. If |ad|["{{AuctionAd/creativeScanningMetadata}}"] [=map/exists=], then
+              set |igAd|'s [=interest group ad/creative scanning metadata=] to it.
             1. If |groupMember| is "`ads`":
               1. If |ad|["{{AuctionAd/buyerReportingId}}"] [=map/exists=] then set
                   |igAd|'s [=interest group ad/buyer reporting ID=] to it.
@@ -7358,11 +7369,15 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   1. If |ad|'s [=interest group ad/allowed reporting origins=] is not null, [=list/for each=]
     |origin| of it:
     1. The [=string/length=] of the [=serialization of an origin|serialization=] of |origin|.
+  1. The [=string/length=] of |ad|'s [=interest group ad/creative scanning metadata=] if the field
+    is not null.
 1. If |ig|'s [=interest group/ad components=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
     [=interest group ad/render url=].
   1. The [=string/length=] of |ad|'s [=interest group ad/size group=] if the field is not null.
   1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
+  1. The [=string/length=] of |ad|'s [=interest group ad/creative scanning metadata=] if the field
+    is not null.
 1. If |ig|'s [=interest group/ad sizes=] is not null, [=map/for each=] |sizeName| → |size| of it:
   1. The sum of the [=string/length=] of |sizeName| and 18 (representing the fixed length of |size|).
 
@@ -8245,6 +8260,9 @@ An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/item
   : <dfn>ad render ID</dfn>
   :: A [=string=] containing up to 12 [=ASCII bytes=] uniquely identifying this ad. Sent instead
     of the full [=interest group ad=] for auctions executed on a server.
+  : <dfn>creative scanning metadata</dfn>
+  :: Null or a [=string=], initially null. Sent with V1 trusted scoring signals requests if
+    [=auction config/send creative scanning metadata=] is true.
 </dl>
 
 A <dfn>previous win</dfn> is the [=interest group=]'s auction win history, to allow on-device
@@ -8323,6 +8341,9 @@ An <dfn export>auction config</dfn> is a [=struct=] with the following [=struct/
     in a Trust Execution Environment (TEE). When this field is specified, the request will be sent to
     a trusted scoring signals server running in a TEE, and the value of
     [=auction config/max trusted scoring signals url length=] is ignored.
+  : <dfn>send creative scanning metadata</dfn>
+  :: A [=boolean=], initially false. This controls whether additional fields used for creative
+    scanning are passed with V1 trusted scoring signals requests as query parameters.
   : <dfn>interest group buyers</dfn>
   :: Null or a [=list=] of [=origins=].
     Owners of interest groups allowed to participate in the auction. Each [=origin's=]
