@@ -2409,6 +2409,13 @@ a [=policy container=] |policyContainer|:
     <dd>|generatedBid|'s [=generated bid/ad component descriptors=] [=converted to a string sequence=]
     <dt>{{ScoringBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}
     <dd>The result of running [=is debugging only in cooldown or lockout=] with |seller|
+    <dt>{{ScoringBrowserSignals/creativeScanningMetadata}}
+    <dd>|generatedBid|'s [=generated bid/bid ad=]'s [=interest group ad/creative scanning metadata=]
+      if non-null, unset otherwise.
+    <dt>{{ScoringBrowserSignals/adComponentsCreativeScanningMetadata}}
+    <dd>Unset if |generatedBid|'s [=generated bid/bid ad components=] [=list/is empty=];
+      the result of [=extracting component ad creative scanning metadata=] given |generatedBid|'s
+      [=generated bid/bid ad components=] otherwise.
   </dl>
 
 1. Let |decisionLogicScript| be the result of [=wait for script body from a fetcher=] given
@@ -2549,6 +2556,16 @@ To <dfn>convert to a string sequence</dfn> given a [=list=]-or-null |adComponent
   1. Let |result| be a new <code>[=sequence=]<{{USVString}}></code>.
   1. [=list/For each=] |component| of |adComponents|:
     1. [=list/Append=] [=URL serializer|serialized=] |component|'s [=ad descriptor/url=] to |result|.
+  1. Return |result|.
+</div>
+
+<div algorithm>
+To <dfn>extract component ad creative scanning metadata</dfn> given a [=list=] of
+[=interest group ad=] |bidAdComponents|:
+
+  1. Let |result| be a new <code>[=sequence=]<{{USVString}}></code>.
+  1. [=list/For each=] |componentAd| of |bidAdComponents|:
+    1. [=list/Append=] |componentAd|'s [=interest group ad/creative scanning metadata=] to |result|.
   1. Return |result|.
 </div>
 
@@ -6663,7 +6680,10 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
       1. Otherwise:
         1. Set |componentDescriptor| to the result of [=converting an ad render=] given |component|.
         1. If |componentDescriptor| is failure, return failure.
-      1. If [=finding matching ad=] given |componentUrl|, |ig|, and true returns null, return failure.
+      1. Let |bidComponentAd| be result of [=finding matching ad=] given |componentUrl|, |ig|, and
+        true.
+      1. If |bidComponentAd| is null, return failure.
+      1. [=list/Append=] |bidComponentAd| to |bid|'s [=generated bid/bid ad components=].
       1. [=list/Append=] |componentDescriptor| to |adComponentDescriptors|.
     1. Set |bid|'s [=generated bid/ad component descriptors=] to |adComponentDescriptors|.
   1. If |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] [=map/exists=]:
@@ -7911,6 +7931,8 @@ dictionary ScoringBrowserSignals {
   unsigned long crossOriginDataVersion;
   sequence<USVString> adComponents;
   boolean forDebuggingOnlyInCooldownOrLockout = false;
+  USVString creativeScanningMetadata;
+  sequence<USVString?> adComponentsCreativeScanningMetadata;
 };
 </xmp>
 
@@ -9499,6 +9521,9 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
     additional bid.
   : <dfn>bid ad</dfn>
   :: The [=interest group ad=] within [=generated bid/interest group=] to display.
+  : <dfn>bid ad components</dfn>
+  :: A [=list=] of [=interest group ad=] ad components within [=generated bid/interest group=] to
+    display.
   : <dfn>modified bid</dfn>
   :: Null or a [=bid with currency=]. Being null for top level auction.
     The bid value a component auction's `scoreAd()` script returns.
