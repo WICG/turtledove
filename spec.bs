@@ -2279,18 +2279,22 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
 1. Let |sameOriginTrustedScoringSignals| be null.
 1. Let |crossOriginTrustedScoringSignals| be null.
 1. Let |scoringDataVersion| be null.
-1. Let |renderURL| be [=URL serializer|serialized=] |generatedBid|'s
-  [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-1. Let |adComponentRenderURLs| be a new empty [=list=].
-1. If |generatedBid|'s [=generated bid/ad component descriptors=] is not null:
-  1. [=list/For each=] |adComponentDescriptor| in |generatedBid|'s [=generated bid/ad component
-    descriptors=]:
-    1. [=list/Append=] [=URL serializer|serialized=] |adComponentDescriptor|'s [=ad descriptor/url=]
-      to |adComponentRenderURLs|.
+1. Let |sendCreativeScanningMetadata| be |auctionConfig|'s [=auction config/send creative scanning
+  metadata=].
+  Let |owner| be |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=].
+1. Let |mainAd| be the result of [=filling in creative info=] given |sendCreativeScanningMetadata|,
+  |generatedBid|'s [=generated bid/ad descriptor=], |owner|, [=generated bid/bid ad=].
+1. Let |adComponents| be a new empty [=set=].
+1. For |i| between 0 and |generatedBid|'s [=generated bid/bid ad components=]'s [=list/size=] - 1,
+  inclusive:
+    1. Let |adComponentCreativeInfo| be the result of [=filling in creative info=] given
+      |sendCreativeScanningMetadata|, |generatedBid|'s [=generated bid/ad component descriptors=][|i|],
+      |owner|, |generatedBid|'s [=generated bid/bid ad components=][|i|].
+    1. [=set/Append=] |adComponentCreativeInfo| to |adComponents|.
 1. If |auctionConfig|'s [=auction config/trusted scoring signals url=] is not null:
   1. Let |request| be a new [=trusted scoring signals request=] with the following [=struct/items=]:
       : [=trusted scoring signals request/send creative scanning metadata=]
-      :: |auctionConfig|'s [=auction config/send creative scanning metadata=]
+      :: |sendCreativeScanningMetadata|.
 
       : [=trusted scoring signals request/seller=]
       :: |auctionConfig|'s [=auction config/seller=]
@@ -2307,11 +2311,11 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
       : [=trusted scoring signals request/top level origin=]
       :: |topLevelOrigin|
 
-      : [=trusted scoring signals request/render URL=]
-      :: |renderURL|
+      : [=trusted scoring signals request/ad=]
+      :: |mainAd|
 
-      : [=trusted scoring signals request/ad component URLs=]
-      :: |adComponentRenderURLs|
+      : [=trusted scoring signals request/ad components=]
+      :: |adComponents|
 
       : [=trusted scoring signals request/policy container=]
       :: |policyContainer|
@@ -2320,7 +2324,7 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
       :: |auctionConfig|'s [=auction config/trusted scoring signals coordinator=]
 
       : [=trusted scoring signals request/owner origin=]
-      :: |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=]
+      :: |owner|
 
       : [=trusted scoring signals request/joining origin=]
       :: |generatedBid|'s [=generated bid/interest group=]'s [=interest group/joining origin=]
@@ -9149,6 +9153,7 @@ To <dfn>fill in creative info</dfn> given a [=boolean=] |sendCreativeScanningMet
     1. Set |result|'s [=creative info/ad descriptor=] to a new [=ad descriptor=].
     1. Set |result|'s [=creative info/ad descriptor=]'s [=ad descriptor/url=] to |adDescriptor|'s
       [=ad descriptor/url=].
+  1. Return |result|.
 </div>
 
 A <dfn>trusted scoring signals request</dfn> is a [=struct=] with the following [=struct/items=],
@@ -9169,11 +9174,10 @@ invocation:
   : <dfn>top level origin</dfn>
   :: An [=origin=]. The origin of top-level frame in the hierarchy containing the document running
     the auction.
-  : <dfn>render URL</dfn>
-  :: A [=string=], the serialized main URL of the creative to pass in the fetch.
-  : <dfn>ad component URLs</dfn>
-  :: A [=set=] of [=strings=], list of serialized component URLs of the creative to pass in the
-    fetch.
+  : <dfn>ad</dfn>
+  :: The [=creative info=] for main ad to pass with the fetch.
+  : <dfn>ad components</dfn>
+  :: A [=set=] of [=creative info=], information about component ads to pass with the fetch.
   : <dfn>policy container</dfn>
   :: A [=policy container=] to use for the network fetch.
   : <dfn>signal coordinator</dfn>
