@@ -2289,6 +2289,9 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
       to |adComponentRenderURLs|.
 1. If |auctionConfig|'s [=auction config/trusted scoring signals url=] is not null:
   1. Let |request| be a new [=trusted scoring signals request=] with the following [=struct/items=]:
+      : [=trusted scoring signals request/send creative scanning metadata=]
+      :: |auctionConfig|'s [=auction config/send creative scanning metadata=]
+
       : [=trusted scoring signals request/seller=]
       :: |auctionConfig|'s [=auction config/seller=]
 
@@ -9117,11 +9120,44 @@ requests into smaller number of fetches. It's a [=struct=] with the following [=
     fetches. 0 denotes no limit, and is the initial value.
 </dl>
 
+A <dfn>creative info</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="creative info">
+  : <dfn>ad descriptor</dfn>
+  :: An [=ad descriptor=].
+  : <dfn>creative scanning metadata</dfn>
+  :: A [=string=], initially empty.
+  : <dfn>interest group owner</dfn>
+  :: [=origin=], or null.
+  : <dfn>buyer or seller reporting id</dfn>
+  :: A [=string=], initially empty.
+</dl>
+
+<div algorithm>
+To <dfn>fill in creative info</dfn> given a [=boolean=] |sendCreativeScanningMetadata|,
+[=ad descriptor=] |adDescriptor|, an [=origin=] |ownerOrigin|, and a [=interest group ad=] |bidAd|:
+
+  1. Let |result| be a new [=creative info=].
+  1. If |sendCreativeScanningMetadata| is true:
+    1. Set |result|'s [=creative info/ad descriptor=] to |adDescriptor|.
+    1. If |bidAd|'s [=interest group ad/creative scanning metadata=] is not null, set |result|'s
+      [=creative info/creative scanning metadata=] to it.
+    1. Set |result|'s [=creative info/interest group owner=] to |ownerOrigin|.
+    1. If |bidAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, set |result|'s
+      [=creative info/buyer or seller reporting id=] to it.
+  1. Otherwise:
+    1. Set |result|'s [=creative info/ad descriptor=] to a new [=ad descriptor=].
+    1. Set |result|'s [=creative info/ad descriptor=]'s [=ad descriptor/url=] to |adDescriptor|'s
+      [=ad descriptor/url=].
+</div>
+
 A <dfn>trusted scoring signals request</dfn> is a [=struct=] with the following [=struct/items=],
 representing all information needed to produce a trusted scoring signals fetch for a single scoring
 invocation:
 
 <dl dfn-for="trusted scoring signals request">
+  : <dfn>send creative scanning metadata</dfn>
+  :: A [=boolean=], to determine whether creative scanning metadata should be added to V1 requests.
   : <dfn>seller</dfn>
   :: An [=origin=] of the seller the fetch is on behalf of.
   : <dfn>seller script fetcher</dfn>.
