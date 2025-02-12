@@ -2281,7 +2281,9 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
 1. Let |scoringDataVersion| be null.
 1. Let |sendCreativeScanningMetadata| be |auctionConfig|'s [=auction config/send creative scanning
   metadata=].
-  Let |owner| be |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=].
+1. If |auctionConfig|'s [=auction config/trusted scoring signals coordinator=] is not null,
+  set |sendCreativeScanningMetadata| to false.
+1. Let |owner| be |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=].
 1. Let |mainAd| be the result of [=filling in creative info=] given |sendCreativeScanningMetadata|,
   |generatedBid|'s [=generated bid/ad descriptor=], |owner|, [=generated bid/bid ad=].
 1. Let |adComponents| be a new empty [=set=].
@@ -9115,9 +9117,10 @@ requests into smaller number of fetches. It's a [=struct=] with the following [=
   :: A [=list=] of [=trusted scoring signals requests=] that hasn't yet been organized to aid
     batching.
   : <dfn>request map</dfn>
-  :: A [=map=] from a tuple of [=script fetcher=], a [=URL=] representating the trusted signals
+  :: A [=map=] from a tuple of [=script fetcher=], a [=URL=] representing the trusted signals
     base [=URL=], {{unsigned short}} or null for experiment ID, [=origin=] or null for coordinator,
-    and [=origin=], representing the top frame's [=origin=], to a [=list=] of [=trusted scoring
+    and [=origin=], representing the top frame's [=origin=], and a [=boolean=] representing whether
+    to send creative scanning info, to a [=list=] of [=trusted scoring
     signals requests=]. This organizes fetches that can possibly be merged together.
   : <dfn>url length limit</dfn>
   :: A {{long}} denoting a user-configured limit which should not be exceeded due to combining of
@@ -9427,7 +9430,8 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
     1. Let |key| be (|request|'s [=trusted scoring signals request/seller script fetcher=],
       |request|'s [=trusted scoring signals request/base url=], |request|'s [=trusted scoring
       signals request/seller experiment group id=], |request|'s [=trusted scoring signals request/
-      top level origin=], |request|'s [=trusted scoring signals request/signal coordinator=]).
+      top level origin=], |request|'s [=trusted scoring signals request/signal coordinator=],
+      |request|'s [=trusted scoring signals request/send creative scanning metadata=]).
     1. If |batcher|'s [=trusted scoring signals batcher/request map=][|key|] does not [=map/exist=],
       then [=map/set=] |batcher|'s [=trusted scoring signals batcher/request map=][|key|] to an
       [=list/is empty|empty=] [=list=].
