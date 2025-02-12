@@ -2844,7 +2844,7 @@ Add "<code>message/ad-auction-trusted-signals-request</code>" to <var ignore>mim
 
 <div algorithm>
 
-To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=] |keys|:
+To <dfn>encode trusted signals keys</dfn> given a [=list=] of [=strings=] |keys|:
 1. Let |list| be a new empty [=list=].
 1. Let |keysStr| be the result of [=string/concatenating=] |keys| with separator set to ",".
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keysStr| using
@@ -9213,17 +9213,16 @@ together in the signals response. It's a [=struct=] with the following [=struct/
     group.
 </dl>
 
-A <dfn>scoring partition</dfn> is a collection of [=trusted scoring signals request/render URLs=] and
-[=trusted scoring signals request/ad component URLs=] that can be processed together by the service
-without any potential privacy leakage. It's a [=struct=] with the following [=struct/items=]:
+A <dfn>scoring partition</dfn> is a collection of ad and ad component render URLs that can be
+processed together by the service without any potential privacy leakage. It's a [=struct=] with the
+following [=struct/items=]:
 
 <dl dfn-for="scoring partition">
   : <dfn>id</dfn>
   :: An integer indicates the index of this partition.
   : <dfn>namespace</dfn>
   :: A [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=list=] of
-    [=strings=]. A namespace contains all [=trusted scoring signals request/render URLs=] and
-    [=trusted scoring signals request/ad component URLs=] in the partition.
+    [=strings=]. A namespace contains all URLs of ads and component ads in the partition.
   : <dfn>metadata</dfn>
   :: A [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
 </dl>
@@ -9252,28 +9251,44 @@ batcher=] |batcher| and a [=trusted scoring signals request=] |request|:
 </div>
 
 <div algorithm>
+To <dfn>extract URLs from creative info</dfn> given an [=ordered set=] |creativeInfoSet|:
 
-To <dfn>build trusted scoring signals url</dfn> given a [=URL=] |signalsUrl|, a [=list=] of
-[=strings=] |renderURLs|, an [=ordered set=] of [=strings=] |adComponentRenderURLs|, an
-{{unsigned short}} |experimentGroupId|, and an [=origin=] |topLevelOrigin|:
+1. Let |result| be a new empty [=list=] of [=strings=].
+1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
+  1. [=list/Append=] [=URL serializer|Serialized=] |creativeInfo|'s [=creative info/ad
+    descriptor=]'s [=ad descriptor/url=] to |result|.
+1. Return |result|.
 
-Note: When trusted scoring signals fetches are not batched, |renderURLs|'s [=list/size=] is 1.
+</div>
+
+<div algorithm>
+To <dfn>build trusted scoring signals url</dfn> given a [=boolean=] |sendCreativeScanningMetadata|,
+a [=URL=] |signalsUrl|, an [=ordered set=] of [=creative info=] |ads|, an [=ordered set=] of
+[=creative info=] |componentAds|, an {{unsigned short}} |experimentGroupId|, and an [=origin=]
+|topLevelOrigin|:
+
+Note: When trusted scoring signals fetches are not batched, |ads|'s [=list/size=] is 1.
 
 1. Let |queryParamsList| be a new empty [=list=].
+1. Let |renderURLs| be the result of [=extracting URLs from creative info=] given |ads|.
+1. Let |adComponentRenderURLs| be the result of [=extracting URLs from creative info=] given
+  |componentAds|.
 1. [=list/Append=] "hostname=" to |queryParamsList|.
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
   [=component percent-encode set=] to |queryParamsList|.
-1. If |renderURLs| is not [=set/is empty|empty=]:
+1. If |renderURLs| is not [=list/is empty|empty=]:
   1. [=list/Append=] "`&renderURLs=`" to |queryParamsList|.
   1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
     |renderURLs|.
-1. If |adComponentRenderURLs| is not [=set/is empty|empty=]:
+1. If |adComponentRenderURLs| is not [=list/is empty|empty=]:
   1. [=list/Append=] "`&adComponentRenderURLs=`" to |queryParamsList|.
   1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
     |adComponentRenderURLs|.
 1. If |experimentGroupId| is not null:
   1. [=list/Append=] "`&experimentGroupId=`" to |queryParamsList|.
   1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
+1. If |sendCreativeScanningMetadata| is true:
+  1. Foo
 1. Set |signalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
 1. Return |signalsUrl|.
 
@@ -9348,16 +9363,19 @@ To <dfn>build trusted key value scoring signals request body</dfn> given a non-e
   1. If |compressionGroupMap| does not [=map/contain=] |compressionGroupId|, then set
     |compressionGroupMap|[|compressionGroupId|] to an empty [=map=], whose [=map/keys=] are integers.
   1. Let |partitionId| be [=map/size=] of |compressionGroupMap|[|compressionGroupId|].
-  1. [=map/Set=] |renderUrlIdMap|[|request|'s [=trusted scoring signals request/render URL=]] to [=tuple=]
-    of (|compressionGroupId|, |partitionId|).
+  1. Let |renderURL| be |request|'s [=trusted scoring signals request/ad=]'s
+    [=creative info/ad descriptor=]'s [=ad descriptor/url=].
+  1. Let |adComponentRenderURLs| be the result of [=extracting URLs from creative info=] given
+    |request|'s [=trusted scoring signals request/ad components=].
+  1. [=map/Set=] |renderUrlIdMap|[|renderURL|] to [=tuple=] of (|compressionGroupId|, |partitionId|).
   1. [=map/Set=] |compressionGroupMap|[|compressionGroupId|][|partitionId|] to a [=scoring partition=] with the
     following [=struct/items=]:
     : [=scoring partition/id=]
     :: |partitionId|
 
     : [=scoring partition/namespace=]
-    :: The [=ordered map=] «[ "renderUrls" → « |request|'s [=trusted scoring signals request/render URL=] »,
-      "adComponentRenderUrls" → |request|'s [=trusted scoring signals request/ad component URLs=] ]»
+    :: The [=ordered map=] «[ "renderUrls" → « |renderURL| »,
+      "adComponentRenderUrls" → |adComponentRenderURLs| ]»
 
     : [=scoring partition/metadata=]
     :: The [=ordered map=] «[ "experimentGroupId" → |firstRequest|'s [=trusted scoring signals request/seller experiment group id=] ]»
@@ -9504,8 +9522,10 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
           1. Set |result|'s [=trusted scoring signals reply/all trusted scoring signals=] to
             |allTrustedScoringSignals|.
           1. If |scoringDataVersionMap| is not null:
+            1. Let |renderURL| be |entry|'s [=trusted scoring signals request/ad=]'s
+              [=creative info/ad descriptor=]'s [=ad descriptor/url=].
             1. Set |result|'s [=trusted scoring signals reply/data version=] to |scoringDataVersionMap|
-              [|entry|'s [=URL serializer|serialized=] [=trusted scoring signals request/render URL=]].
+              [[=URL serializer|serialized=] |renderURL|].
           1. Set |entry|'s [=trusted scoring signals request/reply=] to |result|.
       1. Otherwise, [=list/for each=] |entry| in |entriesToBatch|:
         1. Set |entry|'s [=trusted scoring signals request/reply=] to failure.
