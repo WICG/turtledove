@@ -3674,6 +3674,13 @@ A <dfn>server auction response</dfn> is a [=struct=] that contains auction resul
   : <dfn>selected buyer and seller reporting id</dfn>
   :: Null or a [=string=], initially null. When not null, this will be verified with the winning bid's
     [=generated bid/ad=]'s [=interest group ad/selectable buyer and seller reporting IDs=].
+  : <dfn>winner join candidate</dfn>
+  :: Null or [=server auction join candidate=]. When not null, contains the
+     k-anonymity hashes corresponding to the winning bid and indicates which
+     k-anonymity hashes were used for k-anonymity enforcement on the server.
+  : <dfn>ghost winner</dfn>
+  :: Null or [=server auction ghost winner=]. When not null, contains information
+     about the non-k-anonymous winner of a server auction.
   : error
   :: Null or [=string=]. When not null, contains an error message from the
      auction executed on the trusted auction server. May be used to provide
@@ -3704,6 +3711,58 @@ A <dfn>server auction response</dfn> is a [=struct=] that contains auction resul
     are [=urls=].
   : <dfn>server filtered debugging only reports</dfn>
   :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=lists=] of [=urls=].
+</dl>
+
+<dfn>server auction join candidate</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction join candidate">
+  : <dfn>ad render url hash</dfn>
+  :: A [=SHA-256=] hash of the [=k-anonymity key=] for the ad in the winning bid,
+     as calculated using [=compute the key hash of ad=].
+  : <dfn>ad component render url hashes</dfn>
+  :: A [=list=] of [=SHA-256=] hashes of [=k-anonymity keys=] for each of the ad
+     components in the winning bid, as calculated using
+     [=compute the key hash of component ad=].
+  : <dfn>reporting id hash</dfn>
+  :: A [=SHA-256=] hash of the [=k-anonymity key=] for the reporting ID in the
+     winning bid, as calculated using [=compute the key hash of reporting ID=].
+</dl>
+
+<dfn>server auction ghost winner</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction ghost winner">
+  : <dfn>candidate</dfn>
+  :: [=server auction join candidate=] associated with this winner.
+  : <dfn>interest group owner</dfn>
+  :: An [=origin=]. The [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/interest group=]'s [=interest group/owner=].
+  : <dfn>interest group name</dfn>
+  :: A [=string=]. The [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/interest group=]'s [=interest group/name=].
+  : <dfn>ghost winner bid info</dfn>
+  :: Null or a [=server auction ghost winner bid info=], initially null. Contains information needed for
+     ghost winners in component auctions.
+</dl>
+
+A <dfn>server auction ghost winner bid info</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction ghost winner bid info">
+  : <dfn>ad render url</dfn>
+  :: A [=URL=]. The [=leading bid info/leading non-k-anon-enforced bid=]'s
+     [=generated bid/ad descriptor=]'s [=ad descriptor/url=] from the auction.
+  : <dfn>ad components</dfn>
+  :: A [=list=] of [=URLs=]. A list of the [=leading bid info/leading non-k-anon-enforced bid=]'s
+     [=generated bid/ad component descriptors=]'s [=ad descriptor/urls=] from the
+     server auction.
+  : <dfn>modified bid</dfn>
+  :: [=bid with currency=]. Contains the [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/modified bid=]
+     when not null, otherwise the [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/bid=].
+  : <dfn>ad metadata</dfn>
+  :: Null or a JSON [=string=],  initially null. Contains the component auction's [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/ad=].
+  : <dfn>buyer reporting id</dfn>
+  :: Null or a [=string=], initially null. When not null, this will be verified with the [=leading bid info/leading non-k-anon-enforced bid=]'s
+    [=generated bid/ad=]'s [=interest group ad/buyer reporting ID=].
+  : <dfn>buyer and seller reporting id</dfn>
+  :: Null or a [=string=], initially null. When not null, this will be verified with the [=leading bid info/leading non-k-anon-enforced bid=]'s
+    [=generated bid/ad=]'s [=interest group ad/buyer and seller reporting ID=].
+  : <dfn>selected buyer and seller reporting id</dfn>
+  :: Null or a [=string=], initially null. When not null, this will be verified with the [=leading bid info/leading non-k-anon-enforced bid=]'s
+    [=generated bid/ad=]'s [=interest group ad/selectable buyer and seller reporting IDs=].
 </dl>
 
 A <dfn>server auction reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
