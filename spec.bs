@@ -2845,14 +2845,14 @@ Add "<code>message/ad-auction-trusted-signals-request</code>" to <var ignore>mim
 <div algorithm>
 
 To <dfn>encode trusted signals keys</dfn> given a [=list=] of [=strings=] |keys|:
-1. Let |list| be a new empty [=list=].
-1. Let |keysStr| be the result of [=string/concatenating=] |keys| with separator set to ",".
-1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keysStr| using
-  [=component percent-encode set=] to |list|.
+1. Let |escapedKeys| be a new empty [=list=].
+1. [=list/For each=] |keyStr| in |keys|:
+  1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keyStr| using
+    [=component percent-encode set=] to |escapedKeys|.
 
   Issue: The Chrome implementation encodes 0x20 (SP) to U+002B (+), while [=string/UTF-8 percent-encoding=]
     encodes it to "%20".
-1. Return |list|.
+1. Return the result of [=string/concatenating=] |escapedKeys| with separator set to ",".
 
 </div>
 
@@ -8894,11 +8894,11 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
   to |queryParamsList|.
 1. If |keys| is not [=set/is empty|empty=]:
   1. [=list/Append=] "`&keys=`" to |queryParamsList|.
-  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
+  1. [=list/Append=] to |queryParamsList| the result of [=encode trusted signals keys=] with
     |keys|.
 1. If |igNames| is not [=set/is empty|empty=]:
   1. [=list/Append=] "`&interestGroupNames=`" to |queryParamsList|.
-  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
+  1. [=list/Append=] to |queryParamsList| the result of [=encode trusted signals keys=] with
     |igNames|.
 1. If |experimentGroupId| is not null:
   1. [=list/Append=] "`&experimentGroupId=`" to |queryParamsList|.
@@ -9262,6 +9262,65 @@ To <dfn>extract URLs from creative info</dfn> given an [=ordered set=] |creative
 </div>
 
 <div algorithm>
+To <dfn>extract creative scanning metadata</dfn> given an [=ordered set=] |creativeInfoSet|:
+
+1. Let |result| be a new empty [=list=] of [=strings=].
+1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
+  1. [=list/Append=] |creativeInfo|'s [=creative info/creative scanning metadata=] to |result|.
+1. Return |result|.
+
+</div>
+
+<div algorithm>
+To <dfn>extract buyer</dfn> given an [=ordered set=] |creativeInfoSet|:
+
+1. Let |result| be a new empty [=list=] of [=strings=].
+1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
+  1. [=list/Append=] |creativeInfo|'s [=creative info/buyer or seller reporting id=] to |result|.
+1. Return |result|.
+
+</div>
+
+<div algorithm>
+To <dfn>extract buyer and seller reporting id</dfn> given an [=ordered set=] |creativeInfoSet|:
+
+1. Let |result| be a new empty [=list=] of [=strings=].
+1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
+  1. [=list/Append=] the [=serialization of an origin|serialization=] of |creativeInfo|'s
+    [=creative info/interest group owner=] to |result|.
+1. Return |result|.
+
+</div>
+
+<div algorithm>
+To <dfn>add trusted signals param if needed</dfn> given a [=string=] |param|, a [=list=] of
+[=strings=] |input| and a [=list=] of [=strings=] |queryParamsList|:
+
+1. If |input| [=list/is not empty=]:
+  1. [=list/Append=] |param| to |queryParamsList|.
+  1. [=list/Append=] the result of [=encode trusted signals keys=] of |input| to |queryParamsList|.
+
+</div>
+
+
+<div algorithm>
+To <dfn>add trusted signals size param if needed</dfn> given a [=string=] |param|, a [=list=] of
+[=creative info=] |input| and a [=list=] of [=strings=] |queryParamsList|:
+
+1. If |input| [=list/is not empty=]:
+  1. [=list/Append=] |param| to |queryParamsList|.
+  1. Let |sizes| be an empty [=list=] of [=strings=].
+  1. [=list/For each=] |creative| of |input|:
+    1. If |creative|'s [=creative info/ad descriptor=]'s [=ad descriptor/size=] is null,
+      [=list/append=] "`,`" to |sizes|.
+    1. Otherwise, [=list/append=] the result of [=converting an ad size to a string=] given
+      |creative|'s [=creative info/ad descriptor=]'s [=ad descriptor/size=] to |sizes|.
+  1. [=list/Append=] the result of [=string/concatenating=] |sizes| with separator set to "," to
+    |queryParamsList|.
+
+</div>
+
+<div algorithm>
 To <dfn>build trusted scoring signals url</dfn> given a [=boolean=] |sendCreativeScanningMetadata|,
 a [=URL=] |signalsUrl|, an [=ordered set=] of [=creative info=] |ads|, an [=ordered set=] of
 [=creative info=] |componentAds|, an {{unsigned short}} |experimentGroupId|, and an [=origin=]
@@ -9270,25 +9329,35 @@ a [=URL=] |signalsUrl|, an [=ordered set=] of [=creative info=] |ads|, an [=orde
 Note: When trusted scoring signals fetches are not batched, |ads|'s [=list/size=] is 1.
 
 1. Let |queryParamsList| be a new empty [=list=].
-1. Let |renderURLs| be the result of [=extracting URLs from creative info=] given |ads|.
-1. Let |adComponentRenderURLs| be the result of [=extracting URLs from creative info=] given
-  |componentAds|.
+
 1. [=list/Append=] "hostname=" to |queryParamsList|.
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
   [=component percent-encode set=] to |queryParamsList|.
-1. If |renderURLs| is not [=list/is empty|empty=]:
-  1. [=list/Append=] "`&renderURLs=`" to |queryParamsList|.
-  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
-    |renderURLs|.
+1. Let |renderURLs| be the result of [=extracting URLs from creative info=] given |ads|.
+1. [=Add trusted signals param if needed=] given "`&renderURLs=`", |renderURLs|,
+  |queryParamsList|.
+1. Let |adComponentRenderURLs| be the result of [=extracting URLs from creative info=] given
+  |componentAds|.
 1. If |adComponentRenderURLs| is not [=list/is empty|empty=]:
-  1. [=list/Append=] "`&adComponentRenderURLs=`" to |queryParamsList|.
-  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
-    |adComponentRenderURLs|.
+1. [=Add trusted signals param if needed=] given "`&adComponentRenderURLs=`",
+  |adComponentRenderURLs|, |queryParamsList|.
 1. If |experimentGroupId| is not null:
   1. [=list/Append=] "`&experimentGroupId=`" to |queryParamsList|.
   1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
 1. If |sendCreativeScanningMetadata| is true:
-  1. Foo
+  1. [=Add trusted signals param if needed=] given "`&adCreativeScanningMetadata=`",
+    the result of [=extracting creative scanning metadata=] given |ads|, |queryParamsList|.
+  1. [=Add trusted signals param if needed=] given "`&adComponentCreativeScanningMetadata=`",
+    the result of [=extracting creative scanning metadata=] given |componentAds|, |queryParamsList|.
+  1. [=Add trusted signals size param if needed=] given "`&adSizes=`", |ads|, |queryParamsList|.
+  1. [=Add trusted signals size  param if needed=] given "`&adComponentSizes=`", |componentAds|,
+    |queryParamsList|.
+  1. [=Add trusted signals param if needed=] given "`&adBuyer=`",
+    the result of [=extracting buyer=] given |ads|, |queryParamsList|.
+  1. [=Add trusted signals param if needed=] given "`&adComponentBuyer=`",
+    the result of [=extracting buyer=] given |componentAds|, |queryParamsList|.
+  1. [=Add trusted signals param if needed=] given "`&adBuyerAndSellerReportingIds=`",
+    the result of [=extracting buyer and seller reporting id=] given |ads|, |queryParamsList|.
 1. Set |signalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
 1. Return |signalsUrl|.
 
