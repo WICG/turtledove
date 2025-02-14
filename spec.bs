@@ -9272,22 +9272,22 @@ To <dfn>extract creative scanning metadata</dfn> given an [=ordered set=] |creat
 </div>
 
 <div algorithm>
-To <dfn>extract buyer</dfn> given an [=ordered set=] |creativeInfoSet|:
-
-1. Let |result| be a new empty [=list=] of [=strings=].
-1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
-  1. [=list/Append=] |creativeInfo|'s [=creative info/buyer or seller reporting id=] to |result|.
-1. Return |result|.
-
-</div>
-
-<div algorithm>
-To <dfn>extract buyer and seller reporting id</dfn> given an [=ordered set=] |creativeInfoSet|:
+To <dfn>extract buyers</dfn> given an [=ordered set=] |creativeInfoSet|:
 
 1. Let |result| be a new empty [=list=] of [=strings=].
 1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
   1. [=list/Append=] the [=serialization of an origin|serialization=] of |creativeInfo|'s
     [=creative info/interest group owner=] to |result|.
+1. Return |result|.
+
+</div>
+
+<div algorithm>
+To <dfn>extract buyer and seller reporting ids</dfn> given an [=ordered set=] |creativeInfoSet|:
+
+1. Let |result| be a new empty [=list=] of [=strings=].
+1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
+  1. [=list/Append=] |creativeInfo|'s [=creative info/buyer or seller reporting id=] to |result|.
 1. Return |result|.
 
 </div>
@@ -9317,6 +9317,9 @@ To <dfn>add trusted signals size param if needed</dfn> given a [=string=] |param
       |creative|'s [=creative info/ad descriptor=]'s [=ad descriptor/size=] to |sizes|.
   1. [=list/Append=] the result of [=string/concatenating=] |sizes| with separator set to "," to
     |queryParamsList|.
+
+  Note: this works differently from other query parameters since it has a comma that we do not
+  want to escape, and other characters are known not to require it.
 
 </div>
 
@@ -9353,11 +9356,11 @@ Note: When trusted scoring signals fetches are not batched, |ads|'s [=list/size=
   1. [=Add trusted signals size  param if needed=] given "`&adComponentSizes=`", |componentAds|,
     |queryParamsList|.
   1. [=Add trusted signals param if needed=] given "`&adBuyer=`",
-    the result of [=extracting buyer=] given |ads|, |queryParamsList|.
+    the result of [=extracting buyers=] given |ads|, |queryParamsList|.
   1. [=Add trusted signals param if needed=] given "`&adComponentBuyer=`",
-    the result of [=extracting buyer=] given |componentAds|, |queryParamsList|.
+    the result of [=extracting buyers=] given |componentAds|, |queryParamsList|.
   1. [=Add trusted signals param if needed=] given "`&adBuyerAndSellerReportingIds=`",
-    the result of [=extracting buyer and seller reporting id=] given |ads|, |queryParamsList|.
+    the result of [=extracting buyer and seller reporting ids=] given |ads|, |queryParamsList|.
 1. Set |signalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
 1. Return |signalsUrl|.
 
@@ -9593,8 +9596,8 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
           1. If |scoringDataVersionMap| is not null:
             1. Let |renderURL| be |entry|'s [=trusted scoring signals request/ad=]'s
               [=creative info/ad descriptor=]'s [=ad descriptor/url=].
-            1. Set |result|'s [=trusted scoring signals reply/data version=] to |scoringDataVersionMap|
-              [[=URL serializer|serialized=] |renderURL|].
+            1. Set |result|'s [=trusted scoring signals reply/data version=] to
+              |scoringDataVersionMap|[[=URL serializer|serialized=] |renderURL|].
           1. Set |entry|'s [=trusted scoring signals request/reply=] to |result|.
       1. Otherwise, [=list/for each=] |entry| in |entriesToBatch|:
         1. Set |entry|'s [=trusted scoring signals request/reply=] to failure.
