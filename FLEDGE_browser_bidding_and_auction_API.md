@@ -140,7 +140,7 @@ const result = await navigator.getInterestGroupAdAuctionData({
       'coordinatorOrigin': 'https://publickeyservice.pa.gcp.privacysandboxservices.com/',
     },
     {
-      'seller': 'https://www.component-ssp1.example.com',
+      'seller': 'https://www.component-ssp2.example.com',
       'coordinatorOrigin': 'https://publickeyservice.pa.gcp.privacysandboxservices.com/',
   }],
   // 'requestSize' the affects the size of the returned request (optional).
