@@ -132,8 +132,7 @@ For efficiency, a top-level seller can construct encrypted requests for multiple
 component sellers in a single call to `navigator.getInterestGroupAdAuctionData()`:
 
 ```javascript
-const result = await navigator.getInterestGroupAdAuctionData({
-  // ‘seller’ works the same as for runAdAuction.
+const results = await navigator.getInterestGroupAdAuctionData({
   'sellers': [
     {
       'seller': 'https://www.component-ssp1.example.com',
@@ -163,7 +162,7 @@ const requests = {results.requests[0].seller: results.requests[0].request,
 ```
 
 In this case, `navigator.getInterestGroupAdAuctionData()` returns a Promise that
-will resolve to an `AdAuctionData` object - `result` in this example. This object
+will resolve to an `AdAuctionData` object - `results` in this example. This object
 will only have the `requestId` and `requests` fields set. The `requests` field
 is a list of `AdAuctionPerSellerData` objects, identified by their `seller` field.
 For each component seller, the `AdAuctionPerSellerData` object will also contain
