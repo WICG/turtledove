@@ -1228,9 +1228,10 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
 
   Note: The JavaScript code calling {{Navigator/runAdAuction()}} is responsible for *not*
     resolving |config|["{{AuctionAdConfig/serverResponse}}"] until server responses have been
-    retrieved from one or more [:Ad-Auction-Result:] headers, as resolving this Promise early
-    would cause a race condition in which the [=script runners=] might run without the server
-    responses that it needs. There are two ways that server responses can be retrieved.<br />
+    retrieved from one or more [:Ad-Auction-Result:] and [:Ad-Auction-Result-Nonce:] headers,
+    as resolving this Promise early would cause a race condition in which the
+    [=script runners=] might run without the server responses that it needs. There
+    are two ways that server responses can be retrieved.<br />
     (1) The JavaScript code issues a [=request=] whose [=request/initiator type=]
     is `"fetch"` and whose {{RequestInit/adAuctionHeaders}} option is set to `true`. The
     JavaScript code has to resolve |config|["{{AuctionAdConfig/serverResponse}}"] after the
@@ -1866,7 +1867,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. If |auctionConfig|'s [=auction config/aborted=] is true, return failure.
 1. Let |leadingBidInfo| be a new [=leading bid info=].
 1. Let |queue| be the result of [=starting a new parallel queue=].
-1. Let |capturedAuctionHeaders| be |global|'s [=associated Document's=] [=node navigable's=]
+1. Let |capturedAuctionSignalsHeaders| be |global|'s [=associated Document's=] [=node navigable's=]
   [=traversable navigable's=] [=traversable navigable/captured ad auction signals headers=].
 1. If |auctionConfig|'s [=auction config/component auctions=] are not [=list/is empty|empty=]:
   1. [=Assert=] |topLevelAuctionConfig| is null.
@@ -1887,7 +1888,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
       1. If |topLevelDirectFromSellerSignalsRetrieved| is false:
         1. Let |topLevelDirectFromSellerSignals| be the result of running
           [=get direct from seller signals=] given |seller|, |auctionConfig|'s
-          [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
+          [=auction config/direct from seller signals header ad slot=], and |capturedAuctionSignalsHeaders|.
         1. Set |topLevelDirectFromSellerSignalsForSeller| to the result of running
           [=get direct from seller signals for a seller=] given |topLevelDirectFromSellerSignals|.
         1. Set |topLevelDirectFromSellerSignalsRetrieved| to true.
@@ -1922,7 +1923,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
     |topLevelSellerSignals|.
   1. Let |directFromSellerSignals| be the result of running [=get direct from seller signals=] given
     |winningComponentConfig|'s [=auction config/seller=], |winningComponentConfig|'s
-    [=auction config/direct from seller signals header ad slot=], and |capturedAuctionHeaders|.
+    [=auction config/direct from seller signals header ad slot=], and |capturedAuctionSignalsHeaders|.
   1. Let |directFromSellerSignalsForSeller| be the result of running
     [=get direct from seller signals for a seller=] given |directFromSellerSignals|.
   1. Let |directFromSellerSignalsForBuyer| be the result of running
@@ -1949,7 +1950,7 @@ and a [=real time reporting contributions map=] |realTimeContributionsMap|:
 1. Let |auctionSignals| be |auctionConfig|'s [=auction config/auction signals=].
 1. Let |directFromSellerSignals| be the result of running [=get direct from seller signals=] given
   |seller|, |auctionConfig|'s [=auction config/direct from seller signals header ad slot=], and
-  |capturedAuctionHeaders|.
+  |capturedAuctionSignalsHeaders|.
 1. Let |directFromSellerSignalsForSeller| be the result of running
   [=get direct from seller signals for a seller=] given |directFromSellerSignals|.
 1. Let |browserSignals| be a {{BiddingBrowserSignals}}.
@@ -2938,15 +2939,15 @@ To <dfn>send report</dfn> given a [=URL=] |url|, and an [=environment settings o
 
 <div algorithm>
 To <dfn>get direct from seller signals</dfn> given an [=origin=] |seller|, a [=string=]-or-null
-|adSlot|, and a [=map=] |capturedAuctionHeaders|:
+|adSlot|, and a [=map=] |capturedAuctionSignalsHeaders|:
 
   1. If |adSlot| is not a [=string=], then return null.
   1. Let |directFromSellerSignals| be null.
   1. Let |directFromSellerSignalsKey| be a new [=direct from seller signals key=] with its
     [=direct from seller signals key/seller=] set to |seller|, and
     [=direct from seller signals key/ad slot=] set to |adSlot|.
-  1. If |capturedAuctionHeaders|[|directFromSellerSignalsKey|] [=map/exists=]:
-    1. Set |directFromSellerSignals| to |capturedAuctionHeaders|[|directFromSellerSignalsKey|].
+  1. If |capturedAuctionSignalsHeaders|[|directFromSellerSignalsKey|] [=map/exists=]:
+    1. Set |directFromSellerSignals| to |capturedAuctionSignalsHeaders|[|directFromSellerSignalsKey|].
   1. Return |directFromSellerSignals|.
 </div>
 
@@ -3220,12 +3221,6 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
 1. [=Assert=] that these steps are running [=in parallel=].
 1. If [=waiting until server response promise resolves=] given |auctionConfig| returns failure, then
   return failure.
-1. Let |hash| be the [=SHA-256=] of |auctionConfig|'s [=auction config/server response=].
-1. Let |capturedAuctionHeaders| be |global|'s [=associated Document's=] [=node navigable's=]
-  [=traversable navigable's=] [=traversable navigable/captured ad auction result headers=].
-1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
-1. If |capturedAuctionHeaders|[|seller|] does not [=map/exist=] or does not [=list/contain=] |hash|,
-  then return failure.
 1. Let |requestId| be the value of |auctionConfig|'s [=auction config/server response id=].
 1. Let |requestContexts| be the value of |global|'s [=associated Document's=] [=node navigable's=]
   [=traversable navigable's=] [=traversable navigable/saved Bidding and Auction request context=].
@@ -3234,6 +3229,20 @@ a [=list=] of [=interest groups=] |bidIgs|, and a [=reporting context map=]
 1. Let |response| be the [=server auction response=] which is the result of
    deserializing |auctionConfig|'s [=auction config/server response=]
    with |requestContext| according to [Section 2.3.5 of the Bidding and Auction Services IETF standard](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-parsing-a-response).
+1. If |response|'s [=server auction response/nonce=] [=map/exists=]:
+  1. Let |capturedAuctionNonceHeaders| be |global|'s [=associated Document's=] [=node navigable's=]
+    [=traversable navigable's=] [=traversable navigable/captured ad auction result nonce headers=].
+  1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
+  1. If |capturedAuctionNonceHeaders|[|seller|] does not [=map/exist=] or does not
+    [=list/contain=] the [=ASCII lowercase=] [=string representation=] of |response|'s
+    [=server auction response/nonce=], then return failure.
+1. Otherwise:
+  1. Let |hash| be the [=SHA-256=] of |auctionConfig|'s [=auction config/server response=].
+  1. Let |capturedAuctionResultHeaders| be |global|'s [=associated Document's=] [=node navigable's=]
+    [=traversable navigable's=] [=traversable navigable/captured ad auction result headers=].
+  1. Let |seller| be |auctionConfig|'s [=auction config/seller=].
+  1. If |capturedAuctionResultHeaders|[|seller|] does not [=map/exist=] or does not [=list/contain=] |hash|,
+    then return failure.
 1. If |response| is failure, then return failure.
 1. If |response|'s [=server auction response/top level seller=] is not null:
   1. If |topLevelAuctionConfig| is null return failure.
@@ -3666,6 +3675,9 @@ A <dfn>server auction response</dfn> is a [=struct=] that contains auction resul
 [=server auction=]. It has the following [=struct/items=]:
 
 <dl dfn-for="server auction response">
+  : <dfn>nonce</dfn>
+  :: [=version 4 UUID=]. A nonce to match against the [:Ad-Auction-Result-Nonce:]
+     header in a fetch response from the seller. Used as a method of authorizing the response.
   : <dfn>ad render url</dfn>
   :: [=URL=]. The [=leading bid info/leading bid=]'s [=generated bid/ad descriptor=]'s [=ad descriptor/url=] from the
      auction.
@@ -3709,6 +3721,13 @@ A <dfn>server auction response</dfn> is a [=struct=] that contains auction resul
   : <dfn>selected buyer and seller reporting id</dfn>
   :: Null or a [=string=], initially null. When not null, this will be verified with the winning bid's
     [=generated bid/ad=]'s [=interest group ad/selectable buyer and seller reporting IDs=].
+  : <dfn>winner join candidate</dfn>
+  :: Null or [=server auction join candidate=]. When not null, contains the
+     k-anonymity hashes corresponding to the winning bid and indicates which
+     k-anonymity hashes were used for k-anonymity enforcement on the server.
+  : <dfn>ghost winner</dfn>
+  :: Null or [=server auction ghost winner=]. When not null, contains information
+     about the non-k-anonymous winner of a server auction.
   : error
   :: Null or [=string=]. When not null, contains an error message from the
      auction executed on the trusted auction server. May be used to provide
@@ -3739,6 +3758,58 @@ A <dfn>server auction response</dfn> is a [=struct=] that contains auction resul
     are [=urls=].
   : <dfn>server filtered debugging only reports</dfn>
   :: A [=map=] whose [=map/keys=] are [=origins=] and whose [=map/values=] are [=lists=] of [=urls=].
+</dl>
+
+<dfn>server auction join candidate</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction join candidate">
+  : <dfn>ad render url hash</dfn>
+  :: A [=SHA-256=] hash of the [=k-anonymity key=] for the ad in the winning bid,
+     as calculated using [=compute the key hash of ad=].
+  : <dfn>ad component render url hashes</dfn>
+  :: A [=list=] of [=SHA-256=] hashes of [=k-anonymity keys=] for each of the ad
+     components in the winning bid, as calculated using
+     [=compute the key hash of component ad=].
+  : <dfn>reporting id hash</dfn>
+  :: A [=SHA-256=] hash of the [=k-anonymity key=] for the reporting ID in the
+     winning bid, as calculated using [=compute the key hash of reporting ID=].
+</dl>
+
+<dfn>server auction ghost winner</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction ghost winner">
+  : <dfn>candidate</dfn>
+  :: [=server auction join candidate=] associated with this winner.
+  : <dfn>interest group owner</dfn>
+  :: An [=origin=]. The [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/interest group=]'s [=interest group/owner=].
+  : <dfn>interest group name</dfn>
+  :: A [=string=]. The [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/interest group=]'s [=interest group/name=].
+  : <dfn>ghost winner bid info</dfn>
+  :: Null or a [=server auction ghost winner bid info=], initially null. Contains information needed for
+     ghost winners in component auctions.
+</dl>
+
+A <dfn>server auction ghost winner bid info</dfn> is a [=struct=] with the following [=struct/items=]:
+<dl dfn-for="server auction ghost winner bid info">
+  : <dfn>ad render url</dfn>
+  :: A [=URL=]. The [=leading bid info/leading non-k-anon-enforced bid=]'s
+     [=generated bid/ad descriptor=]'s [=ad descriptor/url=] from the auction.
+  : <dfn>ad components</dfn>
+  :: A [=list=] of [=URLs=]. A list of the [=leading bid info/leading non-k-anon-enforced bid=]'s
+     [=generated bid/ad component descriptors=]'s [=ad descriptor/urls=] from the
+     server auction.
+  : <dfn>modified bid</dfn>
+  :: [=bid with currency=]. Contains the [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/modified bid=]
+     when not null, otherwise the [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/bid=].
+  : <dfn>ad metadata</dfn>
+  :: Null or a JSON [=string=],  initially null. Contains the component auction's [=leading bid info/leading non-k-anon-enforced bid=]'s [=generated bid/ad=].
+  : <dfn>buyer reporting id</dfn>
+  :: Null or a [=string=], initially null. When not null, this will be verified with the [=leading bid info/leading non-k-anon-enforced bid=]'s
+    [=generated bid/ad=]'s [=interest group ad/buyer reporting ID=].
+  : <dfn>buyer and seller reporting id</dfn>
+  :: Null or a [=string=], initially null. When not null, this will be verified with the [=leading bid info/leading non-k-anon-enforced bid=]'s
+    [=generated bid/ad=]'s [=interest group ad/buyer and seller reporting ID=].
+  : <dfn>selected buyer and seller reporting id</dfn>
+  :: Null or a [=string=], initially null. When not null, this will be verified with the [=leading bid info/leading non-k-anon-enforced bid=]'s
+    [=generated bid/ad=]'s [=interest group ad/selectable buyer and seller reporting IDs=].
 </dl>
 
 A <dfn>server auction reporting info</dfn> is a [=struct=] with the following [=struct/items=]:
@@ -7646,6 +7717,10 @@ are [=server auction request contexts=].
 Each [=traversable navigable=] has a <dfn for="traversable navigable">captured ad auction result
 headers</dfn>, which is a [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are
 [=strings=].
+
+Each [=traversable navigable=] has a <dfn for="traversable navigable">captured ad auction result nonce
+headers</dfn>, which is a [=map=] whose [=map/keys=] are [=origins=] and [=map/values=] are
+[=strings=].
 </div>
 
 <div algorithm="fetch capture adAuctionHeaders boolean patch">
@@ -7763,6 +7838,25 @@ response by either repeating the header or by specifying multiple hashes separat
   </pre>
 </div>
 
+<h3 id=ad-auction-result-nonce-header>The \`<a http-header><code>Ad-Auction-Result-Nonce</code></a>\`
+HTTP response header.</h3>
+
+The \`<dfn http-header><code>Ad-Auction-Result-Nonce</code></dfn>\` response header provides the
+canonical [=string=] representation of a [=version 4 UUID=] serving as a nonce. Multiple nonces
+can be included in a response by either repeating the header or by specifying multiple
+nonces separated by a "`,`" character.
+
+<div id="ad-auction-result-nonce-example" class=example>
+  <pre highlight="js">
+    Ad-Auction-Result-Nonce: 7d444840-9dc0-11d1-b245-5ffdce74fad2,e902893a-9d22-3c7e-a7b8-d6e313b71d9f
+  </pre>
+  is equivalent to
+  <pre highlight="js">
+    Ad-Auction-Result-Nonce: 7d444840-9dc0-11d1-b245-5ffdce74fad2
+    Ad-Auction-Result-Nonce: e902893a-9d22-3c7e-a7b8-d6e313b71d9f
+  </pre>
+</div>
+
 <div algorithm="ad auction fetch redirect patch">
 The following steps will be added to the [=HTTP fetch=] algorithm, immediately under the step "If
 <var ignore>internalResponse</var>'s [=status=] is a [=redirect status=]:"
@@ -7786,7 +7880,9 @@ The following step will be added to the [=HTTP fetch=] algorithm, before step
   1. Run [=update captured headers=] with |navigable|'s
     [=traversable navigable/captured ad auction signals headers=], |navigable|'s
     [=traversable navigable/captured ad auction additional bids headers=], |navigable|'s
-    [=traversable navigable/captured ad auction result headers=], |response|'s
+    [=traversable navigable/captured ad auction result headers=],
+    |navigable|'s
+    [=traversable navigable/captured ad auction result nonce headers=], |response|'s
     [=response/header list=], and |request|'s [=request/URL=]'s [=url/origin=].
 
 </div>
@@ -7798,6 +7894,7 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
   navigable/captured ad auction signals headers=] |storedSignalsHeaders|,
   [=traversable navigable/captured ad auction additional bids headers=] |storedAdditionalBidsHeaders|,
   [=traversable navigable/captured ad auction result headers=] |storedAuctionResultHeaders|,
+  [=traversable navigable/captured ad auction result nonce headers=] |storedAuctionResultNonceHeaders|,
   [=header list=] |responseHeaders|, and [=origin=] |requestOrigin|:
   1. Let |adAuctionSignals| be the result of [=header list/getting=] [:Ad-Auction-Signals:] from
     |responseHeaders|.
@@ -7851,6 +7948,21 @@ The following algorithm will be added to the [[FETCH#fetching]] section:
       1. If |storedAuctionResultHeaders|[|requestOrigin|] [=map/exists=], then [=list/append=] |hash|
         to |storedAuctionResultHeaders|.
       1. Otherwise, [=map/set=] |storedAuctionResultHeaders|[|requestOrigin|] to « |hash| ».
+  1. Let |adAuctionResultNonces| be the result of [=header list/getting, decoding, and splitting=]
+    [:Ad-Auction-Result-Nonce:] from |responseHeaders|.
+  1. [=header list/Delete=] "[:Ad-Auction-Result-Nonce:]" from |responseHeaders|.
+
+      NOTE: This step prevents the header value from being used outside the intended auctions --
+      that is, scripts making the {{WindowOrWorkerGlobalScope/fetch()}} request aren't able to load
+      the header value.
+  1. If |adAuctionResultNonces| is not null, [=list/for each=] |result| of |adAuctionResultNonces|:
+    1. [=Strip leading and trailing ASCII whitespace=] from |result|.
+    1. Let |nonce| be the result of [=getting uuid from string=] on |result|.
+    1. If |nonce| is "", then [=iteration/continue=].
+    1. Let |nonceString| be the [=string representation=] of |nonce|.
+    1. If |storedAuctionResultNonceHeaders|[|requestOrigin|] [=map/exists=],
+       then [=list/append=] |nonceString| to |storedAuctionResultNonceHeaders|.
+    1. Otherwise, [=map/set=] |storedAuctionResultNonceHeaders|[|requestOrigin|] to « |nonceString| ».
 
 </div>
 
