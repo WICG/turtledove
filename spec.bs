@@ -8404,8 +8404,9 @@ An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/item
   :: A [=string=] containing up to 12 [=ASCII bytes=] uniquely identifying this ad. Sent instead
     of the full [=interest group ad=] for auctions executed on a server.
   : <dfn>creative scanning metadata</dfn>
-  :: Null or a [=string=], initially null. Sent with V1 trusted scoring signals requests if
-    [=auction config/send creative scanning metadata=] is true.
+  :: Null or a [=string=], initially null. Sent with trusted scoring signals requests if
+    [=auction config/send creative scanning metadata=] is true, and the basic HTTP GET
+    based protocol, rather than encrypted one for TEE, is used.
 </dl>
 
 A <dfn>previous win</dfn> is the [=interest group=]'s auction win history, to allow on-device
@@ -8486,7 +8487,8 @@ An <dfn export>auction config</dfn> is a [=struct=] with the following [=struct/
     [=auction config/max trusted scoring signals url length=] is ignored.
   : <dfn>send creative scanning metadata</dfn>
   :: A [=boolean=], initially false. This controls whether additional fields used for creative
-    scanning are passed with V1 trusted scoring signals requests as query parameters.
+    scanning are passed with trusted scoring signals requests as query parameters (when the basic
+    HTTP GET based protocol, rather than encrypted one for TEE, is used)
   : <dfn>interest group buyers</dfn>
   :: Null or a [=list=] of [=origins=].
     Owners of interest groups allowed to participate in the auction. Each [=origin's=]
@@ -9254,7 +9256,8 @@ A <dfn>creative info</dfn> is a [=struct=] with the following [=struct/items=]:
 
 <div algorithm>
 To <dfn>fill in creative info</dfn> given a [=boolean=] |sendCreativeScanningMetadata|,
-[=ad descriptor=] |adDescriptor|, an [=origin=] |ownerOrigin|, and a [=interest group ad=] |bidAd|:
+an [=ad descriptor=] |adDescriptor|, an [=origin=] |ownerOrigin|, and
+an [=interest group ad=] |bidAd|:
 
   1. Let |result| be a new [=creative info=].
   1. If |sendCreativeScanningMetadata| is true:
@@ -9362,20 +9365,22 @@ batcher=] |batcher| and a [=trusted scoring signals request=] |request|:
 </div>
 
 <div algorithm>
-To <dfn>extract URLs from creative info</dfn> given an [=ordered set=] |creativeInfoSet|:
+To <dfn>extract URLs from creative info</dfn> given an [=ordered set=] of [=creative info=]
+|creativeInfoSet|:
 
-1. Let |result| be a new empty [=list=] of [=strings=].
+1. Let |result| be a new [=list=] of [=strings=].
 1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
-  1. [=list/Append=] [=URL serializer|Serialized=] |creativeInfo|'s [=creative info/ad
+  1. [=list/Append=] [=URL serializer|serialized=] |creativeInfo|'s [=creative info/ad
     descriptor=]'s [=ad descriptor/url=] to |result|.
 1. Return |result|.
 
 </div>
 
 <div algorithm>
-To <dfn>extract creative scanning metadata</dfn> given an [=ordered set=] |creativeInfoSet|:
+To <dfn>extract creative scanning metadata</dfn> given an [=ordered set=] of [=creative info=]
+|creativeInfoSet|:
 
-1. Let |result| be a new empty [=list=] of [=strings=].
+1. Let |result| be a new [=list=] of [=strings=].
 1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
   1. [=list/Append=] |creativeInfo|'s [=creative info/creative scanning metadata=] to |result|.
 1. Return |result|.
@@ -9383,9 +9388,9 @@ To <dfn>extract creative scanning metadata</dfn> given an [=ordered set=] |creat
 </div>
 
 <div algorithm>
-To <dfn>extract buyers</dfn> given an [=ordered set=] |creativeInfoSet|:
+To <dfn>extract buyers</dfn> given an [=ordered set=] of [=creative info=] |creativeInfoSet|:
 
-1. Let |result| be a new empty [=list=] of [=strings=].
+1. Let |result| be a new [=list=] of [=strings=].
 1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
   1. [=list/Append=] the [=serialization of an origin|serialization=] of |creativeInfo|'s
     [=creative info/interest group owner=] to |result|.
@@ -9394,9 +9399,10 @@ To <dfn>extract buyers</dfn> given an [=ordered set=] |creativeInfoSet|:
 </div>
 
 <div algorithm>
-To <dfn>extract buyer and seller reporting ids</dfn> given an [=ordered set=] |creativeInfoSet|:
+To <dfn>extract buyer and seller reporting ids</dfn> given an [=ordered set=] of [=creative info=]
+|creativeInfoSet|:
 
-1. Let |result| be a new empty [=list=] of [=strings=].
+1. Let |result| be a new [=list=] of [=strings=].
 1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
   1. [=list/Append=] |creativeInfo|'s [=creative info/buyer or seller reporting id=] to |result|.
 1. Return |result|.
