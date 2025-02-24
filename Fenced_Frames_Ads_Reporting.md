@@ -350,8 +350,8 @@ This allows for the following use cases:
 - A root ad frame is served with `Allow-Cross-Origin-Event-Reporting: true` and
   sets automatic beacon data with `crossOriginExposed=true`. A cross-origin
   subframe is served with `Allow-Fenced-Frame-Automatic-Beacons: true`.
-  Automatic beacons triggered from the subframe will send with the data that was
-  set in the root frame.
+  Automatic beacons triggered from the subframe will send with the `eventData`
+  that was set in the root frame.
 
 #### Credentials in Beacons
 
