@@ -310,8 +310,8 @@ window.fence.setReportEventDataForAutomaticBeacons({
 #### Cross-Origin Support
 
 Documents inside a fenced frame tree that are cross-origin to the mapped URL of
-the fenced frame config of the main ad frame can send automatic beacons if
-**both** it and the top-level frame inside the fenced frame tree are opted in.
+the fenced frame config of the root frame can send automatic beacons if **both**
+it and the top-level frame inside the fenced frame tree are opted in.
 
 The top-level frame opts in by being served with the response header
 `Allow-Cross-Origin-Event-Reporting: true`.
@@ -343,15 +343,17 @@ document to be served with the `Allow-Fenced-Frame-Automatic-Beacons: true`
 header.
 
 This allows for the following use cases:
-- A root frame is served with `Allow-Cross-Origin-Event-Reporting: true`, and a
-  cross-origin subframe sets automatic beacon data with
-  `crossOriginExposed=true`. Automatic beacons triggered from the subframe will
-  send with the `eventData` that was set in the subframe.
-- A root ad frame is served with `Allow-Cross-Origin-Event-Reporting: true` and
-  sets automatic beacon data with `crossOriginExposed=true`. A cross-origin
-  subframe is served with `Allow-Fenced-Frame-Automatic-Beacons: true`.
+- A root frame inside a fenced frame tree is served with
+  `Allow-Cross-Origin-Event-Reporting: true`, and a cross-origin subframe calls
+  `setReportEventDataForAutomaticBeacons` with `crossOriginExposed=true`.
   Automatic beacons triggered from the subframe will send with the `eventData`
-  that was set in the root frame.
+  that was set in the subframe.
+- A root frame inside a fenced frame tree is served with
+  `Allow-Cross-Origin-Event-Reporting: true` and calls
+  `setReportEventDataForAutomaticBeacons` with `crossOriginExposed=true`. A
+  cross-origin subframe is served with `Allow-Fenced-Frame-Automatic-Beacons:
+  true`. Automatic beacons triggered from the subframe will send with the
+  `eventData` that was set in the root frame.
 
 #### Credentials in Beacons
 
