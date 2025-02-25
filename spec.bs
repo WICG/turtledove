@@ -2288,8 +2288,8 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
 1. Let |mainAd| be the result of [=filling in creative info=] given |sendCreativeScanningMetadata|,
   |generatedBid|'s [=generated bid/ad descriptor=], |owner|, [=generated bid/bid ad=].
 1. Let |adComponents| be a new empty [=set=].
-1. For |i| between 0 and |generatedBid|'s [=generated bid/bid ad components=]'s [=list/size=] - 1,
-  inclusive:
+1. [=list/for each=] |i| in [=the range=] from 0 to [=generated bid/bid ad components=]'s
+  [=list/size=] - 1, inclusive:
     1. Let |adComponentCreativeInfo| be the result of [=filling in creative info=] given
       |sendCreativeScanningMetadata|, |generatedBid|'s [=generated bid/ad component descriptors=][|i|],
       |owner|, |generatedBid|'s [=generated bid/bid ad components=][|i|].
@@ -2573,7 +2573,7 @@ To <dfn>convert to a string sequence</dfn> given a [=list=]-or-null |adComponent
 To <dfn>extract component ad creative scanning metadata</dfn> given a [=list=] of
 [=interest group ad=] |bidAdComponents|:
 
-  1. Let |result| be a new <code>[=sequence=]<{{USVString}}></code>.
+  1. Let |result| be a new <code>[=sequence=]<{{USVString}}?></code>.
   1. [=list/For each=] |componentAd| of |bidAdComponents|:
     1. [=list/Append=] |componentAd|'s [=interest group ad/creative scanning metadata=] to |result|.
   1. Return |result|.
@@ -9279,7 +9279,8 @@ invocation:
 
 <dl dfn-for="trusted scoring signals request">
   : <dfn>send creative scanning metadata</dfn>
-  :: A [=boolean=], to determine whether creative scanning metadata should be added to V1 requests.
+  :: A [=boolean=], to determine whether creative scanning metadata should be added to requests
+    using the basic HTTP GET based protocol (rather than encrypted one for TEE).
   : <dfn>seller</dfn>
   :: An [=origin=] of the seller the fetch is on behalf of.
   : <dfn>seller script fetcher</dfn>.
@@ -9447,10 +9448,9 @@ a [=URL=] |signalsUrl|, an [=ordered set=] of [=creative info=] |ads|, an [=orde
 [=creative info=] |componentAds|, an {{unsigned short}} |experimentGroupId|, and an [=origin=]
 |topLevelOrigin|:
 
-Note: When trusted scoring signals fetches are not batched, |ads|'s [=list/size=] is 1.
+Note: When trusted scoring signals fetches are not batched, |ads|'s [=set/size=] is 1.
 
 1. Let |queryParamsList| be a new empty [=list=].
-
 1. [=list/Append=] "hostname=" to |queryParamsList|.
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
   [=component percent-encode set=] to |queryParamsList|.
@@ -9459,7 +9459,7 @@ Note: When trusted scoring signals fetches are not batched, |ads|'s [=list/size=
   |queryParamsList|.
 1. Let |adComponentRenderURLs| be the result of [=extracting URLs from creative info=] given
   |componentAds|.
-1. If |adComponentRenderURLs| is not [=list/is empty|empty=]:
+1. If |adComponentRenderURLs| [=list/is not empty=]:
 1. [=Add trusted signals param if needed=] given "`&adComponentRenderURLs=`",
   |adComponentRenderURLs|, |queryParamsList|.
 1. If |experimentGroupId| is not null:
