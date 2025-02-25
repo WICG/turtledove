@@ -309,11 +309,23 @@ window.fence.setReportEventDataForAutomaticBeacons({
 
 #### Cross-Origin Support
 
-Data for automatic beacons can only be set by documents that are same-origin to the mapped URL of the fenced frame config. However, cross-origin documents in child iframes of the main ad frame can still send automatic beacons, if the document and the data are **both** opted in.
+Documents inside a fenced frame tree that are cross-origin to the mapped URL of
+the fenced frame config of the root frame can send automatic beacons if **both**
+it and the top-level frame inside the fenced frame tree are opted in.
 
-A cross-origin document will be considered opted into sending automatic beacons if it is served with the response header `Allow-Fenced-Frame-Automatic-Beacons: true`.
+The top-level frame opts in by being served with the response header
+`Allow-Cross-Origin-Event-Reporting: true`.
 
-To opt in the data, the dictionary passed into `setReportEventDataForAutomaticBeacons` takes an optional `crossOriginExposed` boolean that defaults to false. If set to true, the automatic beacon data can be used if a cross-origin document wants to send an automatic beacon and is opted in. A document will use the data of the first ancestor frame that has automatic beacon data registered for the event type being sent.
+A cross-origin document opts in by being served with the response header
+`Allow-Fenced-Frame-Automatic-Beacons: true`.
+
+To use data for cross-origin automatic beacons, the dictionary passed into
+`setReportEventDataForAutomaticBeacons` takes an optional `crossOriginExposed`
+boolean that defaults to `false`. If set to `true`, the automatic beacon data
+can be used if a cross-origin document wants to send an automatic beacon and is
+opted in. A document will use the `eventData` parameter passed to
+`setReportEventDataForAutomaticBeacons()` of the first ancestor frame that has
+automatic beacon data registered for the event type being sent. 
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
@@ -323,6 +335,25 @@ window.fence.setReportEventDataForAutomaticBeacons({
   'crossOriginExposed': true,
 });
 ```
+
+Note that a cross-origin document calling
+`setReportEventDataForAutomaticBeacons` with `crossOriginExposed` will count as
+the document itself opting in to automatic beacons, negating the need for the
+document to be served with the `Allow-Fenced-Frame-Automatic-Beacons: true`
+header.
+
+This allows for the following use cases:
+- A root frame inside a fenced frame tree is served with
+  `Allow-Cross-Origin-Event-Reporting: true`, and a cross-origin subframe calls
+  `setReportEventDataForAutomaticBeacons` with `crossOriginExposed=true`.
+  Automatic beacons triggered from the subframe will send with the `eventData`
+  that was set in the subframe.
+- A root frame inside a fenced frame tree is served with
+  `Allow-Cross-Origin-Event-Reporting: true` and calls
+  `setReportEventDataForAutomaticBeacons` with `crossOriginExposed=true`. A
+  cross-origin subframe is served with `Allow-Fenced-Frame-Automatic-Beacons:
+  true`. Automatic beacons triggered from the subframe will send with the
+  `eventData` that was set in the root frame.
 
 #### Credentials in Beacons
 
