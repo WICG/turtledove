@@ -156,9 +156,10 @@ const results = await navigator.getInterestGroupAdAuctionData({
   }
 });
 
-const requestId = result.requestId;
-const requests = {results.requests[0].seller: results.requests[0].request,
-                  results.requests[1].seller: results.requests[1].request};
+const requestId = results.requestId;
+let requests = {}
+requests[results.requests[0].seller] = results.requests[0].request;
+requests[results.requests[1].seller] = results.requests[1].request;
 ```
 
 In this case, `navigator.getInterestGroupAdAuctionData()` returns a Promise that
