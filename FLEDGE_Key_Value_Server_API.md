@@ -34,7 +34,7 @@ keys needed from request query strings and prevent potential key collision, even
 though the keys may be unique across namespaces in today’s use cases.
 
 *   For a DSP, there are: `keys` and `interestGroupNames`.
-*   For an SSP, there are `renderUrls` and `adComponentRenderUrls`.
+*   For an SSP, there are `renderURLs` and `adComponentRenderURLs`.
 
 The
 [Protected Audience explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#31-fetching-real-time-data-from-a-trusted-server)
@@ -61,9 +61,20 @@ For more information on the design, please refer to [the trust model explainer](
 
 ![V2 API diagram](assets/fledge_kv_server_v2_api.png)
 
-HTTPS is used to transport data. The method is `POST`.
+The request contains an outer HTTP layer with an inner [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-ohttp/) layer.
 
-The HTTP POST body is encrypted.
+
+### Outer HTTP layer
+For the outer HTTP layer:
+* HTTPS is used to transport data.
+* The HTTP method is `POST`.
+* Requests specify Content types via these headers:
+   ```
+   Content-Type: message/ad-auction-trusted-signals-request
+   Accept: message/ad-auction-trusted-signals-response
+   ```
+
+### Inner HTTP layer
 
 #### Encryption
 
@@ -256,13 +267,13 @@ In the request, one major difference from V1/BYOS is that the keys are now group
    </td>
   </tr>
   <tr>
-   <td>renderUrls
+   <td>renderURLs
    </td>
    <td rowspan="2"><em>Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system. This works in much the same way, with the base URL coming from the trustedScoringSignalsUrl property of the seller's auction configuration object.</em>
    </td>
   </tr>
   <tr>
-   <td>adComponentRenderUrls
+   <td>adComponentRenderURLs
    </td>
   </tr>
 </table>

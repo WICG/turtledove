@@ -224,7 +224,7 @@ registerAdBeacon({
 });
 ```
 
-The new events, if registered, implies that an automatic beacon will be sent by the browser to the registered URL when a top-level navigation is invoked from within the fenced frame and the navigation was preceded by a call to [window.fence.setReportEventDataForAutomaticBeacons](#api-to-populate-event-data-for-reservedtop_navigation). These events are not triggered by the fenced frame's initial navigation and commit (e.g. when rendering the original ad), only subsequent ones (e.g. when triggered by a user clicking on the ad). More specifically, a `reserved.top_navigation_start` beacon will be sent when a top-level navigation [begins](https://html.spec.whatwg.org/multipage/browsing-the-web.html#beginning-navigation) and a `reserved.top_navigation_commit` beacon will be sent when the navigation successfully [completes](https://html.spec.whatwg.org/multipage/browsing-the-web.html#ending-navigation). This will impact top-level navigation initiated from the fenced frame in the same tab (via [unfencedTop target](https://github.com/WICG/fenced-frame/blob/master/explainer/integration_with_web_platform.md#top-level-navigation)) or in a different tab. Note that this beacon is gated on a transient user activation (e.g. a click). More details about the beacon are below.
+The new events, if registered, implies that an automatic beacon will be sent by the browser to the registered URL when a top-level navigation is invoked from within the fenced frame and the navigation was preceded by a call to [window.fence.setReportEventDataForAutomaticBeacons](#api-to-populate-event-data-for-automatic-beacons). These events are not triggered by the fenced frame's initial navigation and commit (e.g. when rendering the original ad), only subsequent ones (e.g. when triggered by a user clicking on the ad). More specifically, a `reserved.top_navigation_start` beacon will be sent when a top-level navigation [begins](https://html.spec.whatwg.org/multipage/browsing-the-web.html#beginning-navigation) and a `reserved.top_navigation_commit` beacon will be sent when the navigation successfully [completes](https://html.spec.whatwg.org/multipage/browsing-the-web.html#ending-navigation). This will impact top-level navigation initiated from the fenced frame in the same tab (via [unfencedTop target](https://github.com/WICG/fenced-frame/blob/master/explainer/integration_with_web_platform.md#top-level-navigation)) or in a different tab. Note that this beacon is gated on a transient user activation (e.g. a click). More details about the beacon are below.
 
 ### reportEvent
 
@@ -309,11 +309,23 @@ window.fence.setReportEventDataForAutomaticBeacons({
 
 #### Cross-Origin Support
 
-Data for automatic beacons can only be set by documents that are same-origin to the mapped URL of the fenced frame config. However, cross-origin documents in child iframes of the main ad frame can still send automatic beacons, if the document and the data are **both** opted in.
+Documents inside a fenced frame tree that are cross-origin to the mapped URL of
+the fenced frame config of the root frame can send automatic beacons if **both**
+it and the top-level frame inside the fenced frame tree are opted in.
 
-A cross-origin document will be considered opted into sending automatic beacons if it is served with the response header `Allow-Fenced-Frame-Automatic-Beacons: true`.
+The top-level frame opts in by being served with the response header
+`Allow-Cross-Origin-Event-Reporting: true`.
 
-To opt in the data, the dictionary passed into `setReportEventDataForAutomaticBeacons` takes an optional `crossOriginExposed` boolean that defaults to false. If set to true, the automatic beacon data can be used if a cross-origin document wants to send an automatic beacon and is opted in. A document will use the data of the first ancestor frame that has automatic beacon data registered for the event type being sent.
+A cross-origin document opts in by being served with the response header
+`Allow-Fenced-Frame-Automatic-Beacons: true`.
+
+To use data for cross-origin automatic beacons, the dictionary passed into
+`setReportEventDataForAutomaticBeacons` takes an optional `crossOriginExposed`
+boolean that defaults to `false`. If set to `true`, the automatic beacon data
+can be used if a cross-origin document wants to send an automatic beacon and is
+opted in. A document will use the `eventData` parameter passed to
+`setReportEventDataForAutomaticBeacons()` of the first ancestor frame that has
+automatic beacon data registered for the event type being sent. 
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
@@ -323,6 +335,25 @@ window.fence.setReportEventDataForAutomaticBeacons({
   'crossOriginExposed': true,
 });
 ```
+
+Note that a cross-origin document calling
+`setReportEventDataForAutomaticBeacons` with `crossOriginExposed` will count as
+the document itself opting in to automatic beacons, negating the need for the
+document to be served with the `Allow-Fenced-Frame-Automatic-Beacons: true`
+header.
+
+This allows for the following use cases:
+- A root frame inside a fenced frame tree is served with
+  `Allow-Cross-Origin-Event-Reporting: true`, and a cross-origin subframe calls
+  `setReportEventDataForAutomaticBeacons` with `crossOriginExposed=true`.
+  Automatic beacons triggered from the subframe will send with the `eventData`
+  that was set in the subframe.
+- A root frame inside a fenced frame tree is served with
+  `Allow-Cross-Origin-Event-Reporting: true` and calls
+  `setReportEventDataForAutomaticBeacons` with `crossOriginExposed=true`. A
+  cross-origin subframe is served with `Allow-Fenced-Frame-Automatic-Beacons:
+  true`. Automatic beacons triggered from the subframe will send with the
+  `eventData` that was set in the root frame.
 
 #### Credentials in Beacons
 
