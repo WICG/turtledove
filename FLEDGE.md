@@ -1699,7 +1699,7 @@ Both `generateBid()` and `scoreAd()`’s `browserSignals` have a new boolean fie
 To help with ease of adoption, [until at least 2026](https://github.com/WICG/turtledove/issues/286#issuecomment-1682842636) Protected Audience will support the `navigator.deprecatedReplaceInURN()` API.
 It takes two parameters:
 *   The return value from `runAdAuction()`, which is either a `urn:uuid` string, or a [`FencedFrameConfig`](https://github.com/WICG/fenced-frame/blob/master/explainer/fenced_frame_config.md) object.
-*   A mapping from strings to strings. The keys are strings to be replaced, which must start and end with either "${" and "}" or "%%" and "%%". The values are strings to substitute the keys.
+*   A mapping from strings to strings. The keys are strings to be replaced, which must start and end with either `${` and `}` or `%%` and `%%`. The values are strings to substitute the keys. Note that when making replacements within the URL host, be sure to use `${...}`, as `%` symbols are not permitted directly in the host.
 
 It modifies the true URL from a URN returned from `runAdAuction()` by replacing substrings specified as pairs in the replacements list. The true URLs for any component ads associated with this URN will also have substrings substituted.
 
