@@ -1702,6 +1702,7 @@ It takes two parameters:
 *   A mapping from strings to strings. The keys are strings to be replaced, which must start and end with either "${" and "}" or "%%" and "%%". The values are strings to substitute the keys.
 
 It modifies the true URL from a URN returned from `runAdAuction()` by replacing substrings specified as pairs in the replacements list. The true URLs for any component ads associated with this URN will also have substrings substituted.
+Note that when making replacements within the URL host, be sure to use `${...}`, as `%` symbols are not permitted directly in the host.
 
 
 ```
