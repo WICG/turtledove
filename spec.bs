@@ -216,6 +216,7 @@ dictionary AuctionAd {
   sequence<USVString> selectableBuyerAndSellerReportingIds;
   sequence<USVString> allowedReportingOrigins;
   DOMString adRenderId;
+  USVString creativeScanningMetadata;
 };
 
 dictionary AuctionAdInterestGroupSize {
@@ -450,6 +451,8 @@ This is detectable because it can change the set of fields that are read from th
         1. If |ad|["{{AuctionAd/adRenderId}}"]'s [=string/length=] &gt; 12, [=exception/throw=] a {{TypeError}}.
         1. If any [=code point=] in |ad|["{{AuctionAd/adRenderId}}"] is not an [=ASCII code point=], [=exception/throw=] a {{TypeError}}.
         1. Set |igAd|'s [=interest group ad/ad render id=] to |ad|["{{AuctionAd/adRenderId}}"].
+      1. If |ad|["{{AuctionAd/creativeScanningMetadata}}"] [=map/exists=], then set
+        |igAd|'s [=interest group ad/creative scanning metadata=] to it.
       1. If |groupMember| is "{{GenerateBidInterestGroup/ads}}":
         1. If |ad|["{{AuctionAd/buyerReportingId}}"] [=map/exists=], then set
           |igAd|'s [=interest group ad/buyer reporting ID=] to it.
@@ -750,6 +753,7 @@ dictionary AuctionAdConfig {
   USVString trustedScoringSignalsURL;
   long maxTrustedScoringSignalsURLLength;
   USVString trustedScoringSignalsCoordinator;
+  boolean sendCreativeScanningMetadata;
   sequence<USVString> interestGroupBuyers;
   Promise<any> auctionSignals;
   Promise<any> sellerSignals;
@@ -1270,6 +1274,9 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
     1. If |parsedCoordinator| is failure, then [=exception/throw=] a {{TypeError}}.
     1. Set |auctionConfig|'s [=auction config/trusted scoring signals coordinator=] to
       |parsedCoordinator|.
+1. If |config|["{{AuctionAdConfig/sendCreativeScanningMetadata}}"] [=map/exists=]:
+  1. Set |auctionConfig|'s [=auction config/send creative scanning metadata=] to
+    |config|["{{AuctionAdConfig/sendCreativeScanningMetadata}}"].
 1. If |config|["{{AuctionAdConfig/interestGroupBuyers}}"] [=map/exists=]:
   1. Let |buyers| be a new empty [=list=].
   1. [=list/For each=] |buyerString| in |config|["{{AuctionAdConfig/interestGroupBuyers}}"]:
@@ -2257,6 +2264,8 @@ To <dfn>convert to an AuctionAd sequence</dfn> given a [=list=]-or-null |ads|:
     1. If |ad|'s [=interest group ad/metadata=] is not null, then [=map/set=]
       |adIDL|["{{AuctionAd/metadata}}"] to the result of
       [=parsing a JSON string to a JavaScript value=] given |ad|'s [=interest group ad/metadata=].
+    1. If |ad|'s [=interest group ad/creative scanning metadata=] is not null, then [=map/set=]
+      |adIDL|["{{AuctionAd/creativeScanningMetadata}}"] to it.
     1. [=list/Append=] |adIDL| to |adsIDL|.
   1. Return |adsIDL|.
 </div>
@@ -2271,16 +2280,25 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
 1. Let |sameOriginTrustedScoringSignals| be null.
 1. Let |crossOriginTrustedScoringSignals| be null.
 1. Let |scoringDataVersion| be null.
-1. Let |renderURL| be [=URL serializer|serialized=] |generatedBid|'s
-  [=generated bid/ad descriptor=]'s [=ad descriptor/url=].
-1. Let |adComponentRenderURLs| be a new empty [=list=].
-1. If |generatedBid|'s [=generated bid/ad component descriptors=] is not null:
-  1. [=list/For each=] |adComponentDescriptor| in |generatedBid|'s [=generated bid/ad component
-    descriptors=]:
-    1. [=list/Append=] [=URL serializer|serialized=] |adComponentDescriptor|'s [=ad descriptor/url=]
-      to |adComponentRenderURLs|.
+1. Let |sendCreativeScanningMetadata| be |auctionConfig|'s [=auction config/send creative scanning
+  metadata=].
+1. If |auctionConfig|'s [=auction config/trusted scoring signals coordinator=] is not null,
+  set |sendCreativeScanningMetadata| to false.
+1. Let |owner| be |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=].
+1. Let |mainAd| be the result of [=filling in creative info=] given |sendCreativeScanningMetadata|,
+  |generatedBid|'s [=generated bid/ad descriptor=], |owner|, [=generated bid/bid ad=].
+1. Let |adComponents| be a new empty [=set=].
+1. [=list/for each=] |i| in [=the range=] from 0 to [=generated bid/bid ad components=]'s
+  [=list/size=] - 1, inclusive:
+    1. Let |adComponentCreativeInfo| be the result of [=filling in creative info=] given
+      |sendCreativeScanningMetadata|, |generatedBid|'s [=generated bid/ad component descriptors=][|i|],
+      |owner|, |generatedBid|'s [=generated bid/bid ad components=][|i|].
+    1. [=set/Append=] |adComponentCreativeInfo| to |adComponents|.
 1. If |auctionConfig|'s [=auction config/trusted scoring signals url=] is not null:
   1. Let |request| be a new [=trusted scoring signals request=] with the following [=struct/items=]:
+      : [=trusted scoring signals request/send creative scanning metadata=]
+      :: |sendCreativeScanningMetadata|.
+
       : [=trusted scoring signals request/seller=]
       :: |auctionConfig|'s [=auction config/seller=]
 
@@ -2296,11 +2314,11 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
       : [=trusted scoring signals request/top level origin=]
       :: |topLevelOrigin|
 
-      : [=trusted scoring signals request/render URL=]
-      :: |renderURL|
+      : [=trusted scoring signals request/ad=]
+      :: |mainAd|
 
-      : [=trusted scoring signals request/ad component URLs=]
-      :: |adComponentRenderURLs|
+      : [=trusted scoring signals request/ad components=]
+      :: |adComponents|
 
       : [=trusted scoring signals request/policy container=]
       :: |policyContainer|
@@ -2309,7 +2327,7 @@ contributions map=] |realTimeContributionsMap|, and a [=policy container=] |poli
       :: |auctionConfig|'s [=auction config/trusted scoring signals coordinator=]
 
       : [=trusted scoring signals request/owner origin=]
-      :: |generatedBid|'s [=generated bid/interest group=]'s [=interest group/owner=]
+      :: |owner|
 
       : [=trusted scoring signals request/joining origin=]
       :: |generatedBid|'s [=generated bid/interest group=]'s [=interest group/joining origin=]
@@ -2401,6 +2419,13 @@ a [=policy container=] |policyContainer|:
     <dd>|generatedBid|'s [=generated bid/ad component descriptors=] [=converted to a string sequence=]
     <dt>{{ScoringBrowserSignals/forDebuggingOnlyInCooldownOrLockout}}
     <dd>The result of running [=is debugging only in cooldown or lockout=] with |seller|
+    <dt>{{ScoringBrowserSignals/creativeScanningMetadata}}
+    <dd>|generatedBid|'s [=generated bid/bid ad=]'s [=interest group ad/creative scanning metadata=]
+      if non-null, unset otherwise.
+    <dt>{{ScoringBrowserSignals/adComponentsCreativeScanningMetadata}}
+    <dd>Unset if |generatedBid|'s [=generated bid/bid ad components=] [=list/is empty=];
+      the result of [=extracting component ad creative scanning metadata=] given |generatedBid|'s
+      [=generated bid/bid ad components=] otherwise.
   </dl>
 
 1. Let |decisionLogicScript| be the result of [=wait for script body from a fetcher=] given
@@ -2541,6 +2566,16 @@ To <dfn>convert to a string sequence</dfn> given a [=list=]-or-null |adComponent
   1. Let |result| be a new <code>[=sequence=]<{{USVString}}></code>.
   1. [=list/For each=] |component| of |adComponents|:
     1. [=list/Append=] [=URL serializer|serialized=] |component|'s [=ad descriptor/url=] to |result|.
+  1. Return |result|.
+</div>
+
+<div algorithm>
+To <dfn>extract component ad creative scanning metadata</dfn> given a [=list=] of
+[=interest group ad=] |bidAdComponents|:
+
+  1. Let |result| be a new <code>[=sequence=]<{{USVString}}?></code>.
+  1. [=list/For each=] |componentAd| of |bidAdComponents|:
+    1. [=list/Append=] |componentAd|'s [=interest group ad/creative scanning metadata=] to |result|.
   1. Return |result|.
 </div>
 
@@ -2810,15 +2845,15 @@ Add "<code>message/ad-auction-trusted-signals-request</code>" to <var ignore>mim
 
 <div algorithm>
 
-To <dfn>encode trusted signals keys</dfn> given an [=ordered set=] of [=strings=] |keys|:
-1. Let |list| be a new empty [=list=].
-1. Let |keysStr| be the result of [=string/concatenating=] |keys| with separator set to ",".
-1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keysStr| using
-  [=component percent-encode set=] to |list|.
+To <dfn>encode trusted signals keys</dfn> given a [=list=] of [=strings=] |keys|:
+1. Let |escapedKeys| be a new [=list=] of [=strings=].
+1. [=list/For each=] |keyStr| in |keys|:
+  1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |keyStr| using
+    [=component percent-encode set=] to |escapedKeys|.
 
   Issue: The Chrome implementation encodes 0x20 (SP) to U+002B (+), while [=string/UTF-8 percent-encoding=]
     encodes it to "%20".
-1. Return |list|.
+1. Return the result of [=string/concatenating=] |escapedKeys| with separator set to ",".
 
 </div>
 
@@ -6735,7 +6770,10 @@ To <dfn>convert GenerateBidOutput to generated bid</dfn> given a {{GenerateBidOu
       1. Otherwise:
         1. Set |componentDescriptor| to the result of [=converting an ad render=] given |component|.
         1. If |componentDescriptor| is failure, return failure.
-      1. If [=finding matching ad=] given |componentUrl|, |ig|, and true returns null, return failure.
+      1. Let |bidComponentAd| be result of [=finding matching ad=] given |componentUrl|, |ig|, and
+        true.
+      1. If |bidComponentAd| is null, return failure.
+      1. [=list/Append=] |bidComponentAd| to |bid|'s [=generated bid/bid ad components=].
       1. [=list/Append=] |componentDescriptor| to |adComponentDescriptors|.
     1. Set |bid|'s [=generated bid/ad component descriptors=] to |adComponentDescriptors|.
   1. If |generateBidOutput|["{{GenerateBidOutput/targetNumAdComponents}}"] [=map/exists=]:
@@ -7015,7 +7053,6 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
     Note: Implementations can consider loading only a portion of these interest groups
     at a time to avoid issuing too many requests at once.
     1. Let |ig| be a deep copy of |originalInterestGroup|.
-    1. Run [=update k-anonymity cache for interest group=] for |ig|.
     1. Let |request| be a new [=request=] with the following properties:
       :   [=request/URL=]
       ::  |ig|'s [=interest group/update url=]
@@ -7275,6 +7312,8 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
               [=serializing a JavaScript value to a JSON string=], given |ad|["{{AuctionAd/metadata}}"].
               If this [=exception/throws=], jump to the step
               labeled <i><a href=#abort-update>Abort update</a></i>.
+            1. If |ad|["{{AuctionAd/creativeScanningMetadata}}"] [=map/exists=], then
+              set |igAd|'s [=interest group ad/creative scanning metadata=] to it.
             1. If |groupMember| is "`ads`":
               1. If |ad|["{{AuctionAd/buyerReportingId}}"] [=map/exists=] then set
                   |igAd|'s [=interest group ad/buyer reporting ID=] to it.
@@ -7306,6 +7345,7 @@ navigating to another page. Some implementations, such as Chromium, have chosen 
     1. Set |ig|'s [=interest group/last updated=] to the [=current coarsened wall time=].
     1. [=list/Replace=] the [=interest group=] that has |ig|'s [=interest group/owner=] and
       [=interest group/name=] in the [=user agent=]'s [=interest group set=] with |ig|.
+    1. Run [=update k-anonymity cache for interest group=] for |ig|.
     1. <i id=abort-update>Abort update</i>: We jump here if some part of the
       [=interest group=] update failed. [=iteration/Continue=] to the next [=interest group=] update.
 
@@ -7439,11 +7479,15 @@ The <dfn for="interest group">estimated size</dfn> of an [=interest group=] |ig|
   1. If |ad|'s [=interest group ad/allowed reporting origins=] is not null, [=list/for each=]
     |origin| of it:
     1. The [=string/length=] of the [=serialization of an origin|serialization=] of |origin|.
+  1. The [=string/length=] of |ad|'s [=interest group ad/creative scanning metadata=] if the field
+    is not null.
 1. If |ig|'s [=interest group/ad components=] is not null, [=list/for each=] |ad| of it:
   1. The [=string/length=] of the [=URL serializer|serialization=] of |ad|'s
     [=interest group ad/render url=].
   1. The [=string/length=] of |ad|'s [=interest group ad/size group=] if the field is not null.
   1. The [=string/length=] of |ad|'s [=interest group ad/metadata=] if the field is not null.
+  1. The [=string/length=] of |ad|'s [=interest group ad/creative scanning metadata=] if the field
+    is not null.
 1. If |ig|'s [=interest group/ad sizes=] is not null, [=map/for each=] |sizeName| → |size| of it:
   1. The sum of the [=string/length=] of |sizeName| and 18 (representing the fixed length of |size|).
 
@@ -8018,6 +8062,8 @@ dictionary ScoringBrowserSignals {
   unsigned long crossOriginDataVersion;
   sequence<USVString> adComponents;
   boolean forDebuggingOnlyInCooldownOrLockout = false;
+  USVString creativeScanningMetadata;
+  sequence<USVString?> adComponentsCreativeScanningMetadata;
 };
 </xmp>
 
@@ -8367,6 +8413,10 @@ An <dfn>interest group ad</dfn> is a [=struct=] with the following [=struct/item
   : <dfn>ad render ID</dfn>
   :: A [=string=] containing up to 12 [=ASCII bytes=] uniquely identifying this ad. Sent instead
     of the full [=interest group ad=] for auctions executed on a server.
+  : <dfn>creative scanning metadata</dfn>
+  :: Null or a [=string=], initially null. Sent with trusted scoring signals requests if
+    [=auction config/send creative scanning metadata=] is true, and the basic HTTP GET
+    based protocol, rather than encrypted one for TEE, is used.
 </dl>
 
 A <dfn>previous win</dfn> is the [=interest group=]'s auction win history, to allow on-device
@@ -8445,6 +8495,10 @@ An <dfn export>auction config</dfn> is a [=struct=] with the following [=struct/
     in a Trust Execution Environment (TEE). When this field is specified, the request will be sent to
     a trusted scoring signals server running in a TEE, and the value of
     [=auction config/max trusted scoring signals url length=] is ignored.
+  : <dfn>send creative scanning metadata</dfn>
+  :: A [=boolean=], initially false. This controls whether additional fields used for creative
+    scanning are passed with trusted scoring signals requests as query parameters (when the basic
+    HTTP GET based protocol, rather than encrypted one for TEE, is used)
   : <dfn>interest group buyers</dfn>
   :: Null or a [=list=] of [=origins=].
     Owners of interest groups allowed to participate in the auction. Each [=origin's=]
@@ -8964,11 +9018,11 @@ To <dfn>build trusted bidding signals url</dfn> given a [=URL=] |signalsUrl|, an
   to |queryParamsList|.
 1. If |keys| is not [=set/is empty|empty=]:
   1. [=list/Append=] "`&keys=`" to |queryParamsList|.
-  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
+  1. [=list/Append=] to |queryParamsList| the result of [=encode trusted signals keys=] with
     |keys|.
 1. If |igNames| is not [=set/is empty|empty=]:
   1. [=list/Append=] "`&interestGroupNames=`" to |queryParamsList|.
-  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
+  1. [=list/Append=] to |queryParamsList| the result of [=encode trusted signals keys=] with
     |igNames|.
 1. If |experimentGroupId| is not null:
   1. [=list/Append=] "`&experimentGroupId=`" to |queryParamsList|.
@@ -9187,20 +9241,56 @@ requests into smaller number of fetches. It's a [=struct=] with the following [=
   :: A [=list=] of [=trusted scoring signals requests=] that hasn't yet been organized to aid
     batching.
   : <dfn>request map</dfn>
-  :: A [=map=] from a tuple of [=script fetcher=], a [=URL=] representating the trusted signals
+  :: A [=map=] from a tuple of [=script fetcher=], a [=URL=] representing the trusted signals
     base [=URL=], {{unsigned short}} or null for experiment ID, [=origin=] or null for coordinator,
-    and [=origin=], representing the top frame's [=origin=], to a [=list=] of [=trusted scoring
+    and [=origin=], representing the top frame's [=origin=], and a [=boolean=] representing whether
+    to send creative scanning info, to a [=list=] of [=trusted scoring
     signals requests=]. This organizes fetches that can possibly be merged together.
   : <dfn>url length limit</dfn>
   :: A {{long}} denoting a user-configured limit which should not be exceeded due to combining of
     fetches. 0 denotes no limit, and is the initial value.
 </dl>
 
+A <dfn>creative info</dfn> is a [=struct=] with the following [=struct/items=]:
+
+<dl dfn-for="creative info">
+  : <dfn>ad descriptor</dfn>
+  :: An [=ad descriptor=].
+  : <dfn>creative scanning metadata</dfn>
+  :: A [=string=], initially empty.
+  : <dfn>interest group owner</dfn>
+  :: [=origin=], or null.
+  : <dfn>buyer or seller reporting id</dfn>
+  :: A [=string=], initially empty.
+</dl>
+
+<div algorithm>
+To <dfn>fill in creative info</dfn> given a [=boolean=] |sendCreativeScanningMetadata|,
+an [=ad descriptor=] |adDescriptor|, an [=origin=] |ownerOrigin|, and
+an [=interest group ad=] |bidAd|:
+
+  1. Let |result| be a new [=creative info=].
+  1. If |sendCreativeScanningMetadata| is true:
+    1. Set |result|'s [=creative info/ad descriptor=] to |adDescriptor|.
+    1. If |bidAd|'s [=interest group ad/creative scanning metadata=] is not null, set |result|'s
+      [=creative info/creative scanning metadata=] to it.
+    1. Set |result|'s [=creative info/interest group owner=] to |ownerOrigin|.
+    1. If |bidAd|'s [=interest group ad/buyer and seller reporting ID=] is not null, set |result|'s
+      [=creative info/buyer or seller reporting id=] to it.
+  1. Otherwise:
+    1. Set |result|'s [=creative info/ad descriptor=] to a new [=ad descriptor=] whose
+      [=ad descriptor/url=] to |adDescriptor|'s [=ad descriptor/url=].
+  1. Return |result|.
+</div>
+
 A <dfn>trusted scoring signals request</dfn> is a [=struct=] with the following [=struct/items=],
 representing all information needed to produce a trusted scoring signals fetch for a single scoring
 invocation:
 
 <dl dfn-for="trusted scoring signals request">
+  : <dfn>send creative scanning metadata</dfn>
+  :: A [=boolean=], to determine whether creative scanning metadata should be added to requests
+    using the basic HTTP GET based protocol (rather than encrypted one for TEE).
   : <dfn>seller</dfn>
   :: An [=origin=] of the seller the fetch is on behalf of.
   : <dfn>seller script fetcher</dfn>.
@@ -9212,11 +9302,10 @@ invocation:
   : <dfn>top level origin</dfn>
   :: An [=origin=]. The origin of top-level frame in the hierarchy containing the document running
     the auction.
-  : <dfn>render URL</dfn>
-  :: A [=string=], the serialized main URL of the creative to pass in the fetch.
-  : <dfn>ad component URLs</dfn>
-  :: A [=set=] of [=strings=], list of serialized component URLs of the creative to pass in the
-    fetch.
+  : <dfn>ad</dfn>
+  :: The [=creative info=] for main ad to pass with the fetch.
+  : <dfn>ad components</dfn>
+  :: A [=set=] of [=creative info=], information about component ads to pass with the fetch.
   : <dfn>policy container</dfn>
   :: A [=policy container=] to use for the network fetch.
   : <dfn>signal coordinator</dfn>
@@ -9249,17 +9338,16 @@ together in the signals response. It's a [=struct=] with the following [=struct/
     group.
 </dl>
 
-A <dfn>scoring partition</dfn> is a collection of [=trusted scoring signals request/render URLs=] and
-[=trusted scoring signals request/ad component URLs=] that can be processed together by the service
-without any potential privacy leakage. It's a [=struct=] with the following [=struct/items=]:
+A <dfn>scoring partition</dfn> is a collection of ad and ad component render URLs that can be
+processed together by the service without any potential privacy leakage. It's a [=struct=] with the
+following [=struct/items=]:
 
 <dl dfn-for="scoring partition">
   : <dfn>id</dfn>
   :: An integer indicates the index of this partition.
   : <dfn>namespace</dfn>
   :: A [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=list=] of
-    [=strings=]. A namespace contains all [=trusted scoring signals request/render URLs=] and
-    [=trusted scoring signals request/ad component URLs=] in the partition.
+    [=strings=]. A namespace contains all URLs of ads and component ads in the partition.
   : <dfn>metadata</dfn>
   :: A [=map=], whose [=map/keys=] and [=map/values=] are [=strings=].
 </dl>
@@ -9288,28 +9376,119 @@ batcher=] |batcher| and a [=trusted scoring signals request=] |request|:
 </div>
 
 <div algorithm>
+To <dfn>extract URLs from creative info</dfn> given an [=ordered set=] of [=creative info=]
+|creativeInfoSet|:
 
-To <dfn>build trusted scoring signals url</dfn> given a [=URL=] |signalsUrl|, a [=list=] of
-[=strings=] |renderURLs|, an [=ordered set=] of [=strings=] |adComponentRenderURLs|, an
-{{unsigned short}} |experimentGroupId|, and an [=origin=] |topLevelOrigin|:
+1. Let |result| be a new [=list=] of [=strings=].
+1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
+  1. [=list/Append=] [=URL serializer|serialized=] |creativeInfo|'s [=creative info/ad
+    descriptor=]'s [=ad descriptor/url=] to |result|.
+1. Return |result|.
 
-Note: When trusted scoring signals fetches are not batched, |renderURLs|'s [=list/size=] is 1.
+</div>
+
+<div algorithm>
+To <dfn>extract creative scanning metadata</dfn> given an [=ordered set=] of [=creative info=]
+|creativeInfoSet|:
+
+1. Let |result| be a new [=list=] of [=strings=].
+1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
+  1. [=list/Append=] |creativeInfo|'s [=creative info/creative scanning metadata=] to |result|.
+1. Return |result|.
+
+</div>
+
+<div algorithm>
+To <dfn>extract buyers</dfn> given an [=ordered set=] of [=creative info=] |creativeInfoSet|:
+
+1. Let |result| be a new [=list=] of [=strings=].
+1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
+  1. [=list/Append=] the [=serialization of an origin|serialization=] of |creativeInfo|'s
+    [=creative info/interest group owner=] to |result|.
+1. Return |result|.
+
+</div>
+
+<div algorithm>
+To <dfn>extract buyer and seller reporting ids</dfn> given an [=ordered set=] of [=creative info=]
+|creativeInfoSet|:
+
+1. Let |result| be a new [=list=] of [=strings=].
+1. [=set/For each=] |creativeInfo| in |creativeInfoSet|:
+  1. [=list/Append=] |creativeInfo|'s [=creative info/buyer or seller reporting id=] to |result|.
+1. Return |result|.
+
+</div>
+
+<div algorithm>
+To <dfn>add trusted signals param if needed</dfn> given a [=string=] |param|, a [=list=] of
+[=strings=] |input| and a [=list=] of [=strings=] |queryParamsList|:
+
+1. If |input| [=list/is not empty=]:
+  1. [=list/Append=] |param| to |queryParamsList|.
+  1. [=list/Append=] the result of [=encode trusted signals keys=] of |input| to |queryParamsList|.
+
+</div>
+
+
+<div algorithm>
+To <dfn>add trusted signals size param if needed</dfn> given a [=string=] |param|, a [=list=] of
+[=creative info=] |input| and a [=list=] of [=strings=] |queryParamsList|:
+
+1. If |input| [=list/is not empty=]:
+  1. [=list/Append=] |param| to |queryParamsList|.
+  1. Let |sizes| be an empty [=list=] of [=strings=].
+  1. [=list/For each=] |creative| of |input|:
+    1. If |creative|'s [=creative info/ad descriptor=]'s [=ad descriptor/size=] is null,
+      [=list/append=] "`,`" to |sizes|.
+    1. Otherwise, [=list/append=] the result of [=converting an ad size to a string=] given
+      |creative|'s [=creative info/ad descriptor=]'s [=ad descriptor/size=] to |sizes|.
+  1. [=list/Append=] the result of [=string/concatenating=] |sizes| with separator set to "," to
+    |queryParamsList|.
+
+  Note: this works differently from other query parameters since it has a comma that we do not
+  want to escape, and none of the other characters used to represent the width and height of each ad
+  need to be escaped either.
+
+</div>
+
+<div algorithm>
+To <dfn>build trusted scoring signals url</dfn> given a [=boolean=] |sendCreativeScanningMetadata|,
+a [=URL=] |signalsUrl|, an [=ordered set=] of [=creative info=] |ads|, an [=ordered set=] of
+[=creative info=] |componentAds|, an {{unsigned short}} |experimentGroupId|, and an [=origin=]
+|topLevelOrigin|:
+
+Note: When trusted scoring signals fetches are not batched, |ads|'s [=set/size=] is 1.
 
 1. Let |queryParamsList| be a new empty [=list=].
 1. [=list/Append=] "hostname=" to |queryParamsList|.
 1. [=list/Append=] the result of [=string/UTF-8 percent-encoding=] |topLevelOrigin| using
   [=component percent-encode set=] to |queryParamsList|.
-1. If |renderURLs| is not [=set/is empty|empty=]:
-  1. [=list/Append=] "`&renderURLs=`" to |queryParamsList|.
-  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
-    |renderURLs|.
-1. If |adComponentRenderURLs| is not [=set/is empty|empty=]:
-  1. [=list/Append=] "`&adComponentRenderURLs=`" to |queryParamsList|.
-  1. [=list/Extend=] |queryParamsList| with the result of [=encode trusted signals keys=] with
-    |adComponentRenderURLs|.
+1. Let |renderURLs| be the result of [=extracting URLs from creative info=] given |ads|.
+1. [=Add trusted signals param if needed=] given "`&renderURLs=`", |renderURLs|,
+  |queryParamsList|.
+1. Let |adComponentRenderURLs| be the result of [=extracting URLs from creative info=] given
+  |componentAds|.
+1. If |adComponentRenderURLs| [=list/is not empty=]:
+1. [=Add trusted signals param if needed=] given "`&adComponentRenderURLs=`",
+  |adComponentRenderURLs|, |queryParamsList|.
 1. If |experimentGroupId| is not null:
   1. [=list/Append=] "`&experimentGroupId=`" to |queryParamsList|.
   1. [=list/Append=] [=serialize an integer|serialized=] |experimentGroupId| to |queryParamsList|.
+1. If |sendCreativeScanningMetadata| is true:
+  1. [=Add trusted signals param if needed=] given "`&adCreativeScanningMetadata=`",
+    the result of [=extracting creative scanning metadata=] given |ads|, |queryParamsList|.
+  1. [=Add trusted signals param if needed=] given "`&adComponentCreativeScanningMetadata=`",
+    the result of [=extracting creative scanning metadata=] given |componentAds|, |queryParamsList|.
+  1. [=Add trusted signals size param if needed=] given "`&adSizes=`", |ads|, |queryParamsList|.
+  1. [=Add trusted signals size  param if needed=] given "`&adComponentSizes=`", |componentAds|,
+    |queryParamsList|.
+  1. [=Add trusted signals param if needed=] given "`&adBuyer=`",
+    the result of [=extracting buyers=] given |ads|, |queryParamsList|.
+  1. [=Add trusted signals param if needed=] given "`&adComponentBuyer=`",
+    the result of [=extracting buyers=] given |componentAds|, |queryParamsList|.
+  1. [=Add trusted signals param if needed=] given "`&adBuyerAndSellerReportingIds=`",
+    the result of [=extracting buyer and seller reporting ids=] given |ads|, |queryParamsList|.
 1. Set |signalsUrl|'s [=url/query=] to the result of [=string/concatenating=] |queryParamsList|.
 1. Return |signalsUrl|.
 
@@ -9320,9 +9499,8 @@ To <dfn>build batched trusted scoring signals url</dfn> given a non-empty [=list
 scoring signals requests=] |entriesToBatch|:
 
 1. Let |firstEntry| be |entriesToBatch|[0].
-1. Let |renderURLs| be an empty [=ordered set=] of [=strings=].
-1. Let |adComponentRenderURLs| be an empty [=ordered set=] of [=strings=]
-  |adComponentRenderURLs|
+1. Let |ads| be an empty [=ordered set=] of [=creative info=].
+1. Let |componentAds| be an empty [=ordered set=] of [=creative info=].
 1. [=list/For each=] |entry| of |entriesToBatch|:
   1. [=Assert=] that |entry|'s [=trusted scoring signals request/base URL=] is equal to
     |firstEntry|'s [=trusted scoring signals request/base URL=].
@@ -9334,11 +9512,14 @@ scoring signals requests=] |entriesToBatch|:
     |firstEntry|'s [=trusted scoring signals request/seller script fetcher=].
   1. [=Assert=] that |entry|'s [=trusted scoring signals request/policy container=] is equal to
     |firstEntry|'s [=trusted scoring signals request/policy container=].
-  1. [=set/Append=] |entry|'s [=trusted scoring signals request/render URL=] to |renderURLs|.
-  1. [=list/Extend=] |adComponentRenderURLs| with |entry|'s [=trusted scoring signals request/
-    ad component URLs=].
+  1. [=Assert=] that |entry|'s [=trusted scoring signals request/send creative scanning metadata=]
+    is equal to |firstEntry|'s [=trusted scoring signals request/send creative scanning metadata=].
+  1. [=set/Append=] |entry|'s [=trusted scoring signals request/ad=] to |ads|.
+  1. [=list/Extend=] |componentAds| with |entry|'s [=trusted scoring signals request/
+    ad components=].
 1. Return the result of [=building trusted scoring signals url=] with |firstEntry|'s [=trusted
-  scoring signals request/base URL=], |renderURLs|, |adComponentRenderURLs|, |firstEntry|'s
+  scoring signals request/send creative scanning metadata=], |firstEntry|'s [=trusted
+  scoring signals request/base URL=], |ads|, |componentAds|, |firstEntry|'s
   [=trusted scoring signals request/seller experiment group id=],
   |firstEntry|'s [=trusted scoring signals request/top level origin=].
 
@@ -9382,16 +9563,19 @@ To <dfn>build trusted key value scoring signals request body</dfn> given a non-e
   1. If |compressionGroupMap| does not [=map/contain=] |compressionGroupId|, then set
     |compressionGroupMap|[|compressionGroupId|] to an empty [=map=], whose [=map/keys=] are integers.
   1. Let |partitionId| be [=map/size=] of |compressionGroupMap|[|compressionGroupId|].
-  1. [=map/Set=] |renderUrlIdMap|[|request|'s [=trusted scoring signals request/render URL=]] to [=tuple=]
-    of (|compressionGroupId|, |partitionId|).
+  1. Let |renderURL| be |request|'s [=trusted scoring signals request/ad=]'s
+    [=creative info/ad descriptor=]'s [=ad descriptor/url=].
+  1. Let |adComponentRenderURLs| be the result of [=extracting URLs from creative info=] given
+    |request|'s [=trusted scoring signals request/ad components=].
+  1. [=map/Set=] |renderUrlIdMap|[|renderURL|] to [=tuple=] of (|compressionGroupId|, |partitionId|).
   1. [=map/Set=] |compressionGroupMap|[|compressionGroupId|][|partitionId|] to a [=scoring partition=] with the
     following [=struct/items=]:
     : [=scoring partition/id=]
     :: |partitionId|
 
     : [=scoring partition/namespace=]
-    :: The [=ordered map=] «[ "renderUrls" → « |request|'s [=trusted scoring signals request/render URL=] »,
-      "adComponentRenderUrls" → |request|'s [=trusted scoring signals request/ad component URLs=] ]»
+    :: The [=ordered map=] «[ "renderUrls" → « |renderURL| »,
+      "adComponentRenderUrls" → |adComponentRenderURLs| ]»
 
     : [=scoring partition/metadata=]
     :: The [=ordered map=] «[ "experimentGroupId" → |firstRequest|'s [=trusted scoring signals request/seller experiment group id=] ]»
@@ -9466,7 +9650,8 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
     1. Let |key| be (|request|'s [=trusted scoring signals request/seller script fetcher=],
       |request|'s [=trusted scoring signals request/base url=], |request|'s [=trusted scoring
       signals request/seller experiment group id=], |request|'s [=trusted scoring signals request/
-      top level origin=], |request|'s [=trusted scoring signals request/signal coordinator=]).
+      top level origin=], |request|'s [=trusted scoring signals request/signal coordinator=],
+      |request|'s [=trusted scoring signals request/send creative scanning metadata=]).
     1. If |batcher|'s [=trusted scoring signals batcher/request map=][|key|] does not [=map/exist=],
       then [=map/set=] |batcher|'s [=trusted scoring signals batcher/request map=][|key|] to an
       [=list/is empty|empty=] [=list=].
@@ -9537,8 +9722,10 @@ To <dfn>batch and fetch trusted scoring signals</dfn> given a [=trusted scoring 
           1. Set |result|'s [=trusted scoring signals reply/all trusted scoring signals=] to
             |allTrustedScoringSignals|.
           1. If |scoringDataVersionMap| is not null:
-            1. Set |result|'s [=trusted scoring signals reply/data version=] to |scoringDataVersionMap|
-              [|entry|'s [=URL serializer|serialized=] [=trusted scoring signals request/render URL=]].
+            1. Let |renderURL| be |entry|'s [=trusted scoring signals request/ad=]'s
+              [=creative info/ad descriptor=]'s [=ad descriptor/url=].
+            1. Set |result|'s [=trusted scoring signals reply/data version=] to
+              |scoringDataVersionMap|[[=URL serializer|serialized=] |renderURL|].
           1. Set |entry|'s [=trusted scoring signals request/reply=] to |result|.
       1. Otherwise, [=list/for each=] |entry| in |entriesToBatch|:
         1. Set |entry|'s [=trusted scoring signals request/reply=] to failure.
@@ -9600,6 +9787,9 @@ result of [=evaluating a bidding script=], or an [=additional bid=] provided by 
     additional bid.
   : <dfn>bid ad</dfn>
   :: The [=interest group ad=] within [=generated bid/interest group=] to display.
+  : <dfn>bid ad components</dfn>
+  :: A [=list=] of [=interest group ad=] ad components within [=generated bid/interest group=] to
+    display.
   : <dfn>modified bid</dfn>
   :: Null or a [=bid with currency=]. Being null for top level auction.
     The bid value a component auction's `scoreAd()` script returns.
