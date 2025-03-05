@@ -28,6 +28,8 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
   - [3. Buyers Provide Ads and Bidding Functions](#3-buyers-provide-ads-and-bidding-functions)
     - [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server)
       - [3.1.1 Trusted Signals Server with BYOS Model](#311-trusted-signals-server-with-byos-model)
+        - [3.1.1.1 Trusted Bidding Signals](#3111-trusted-bidding-signals)
+        - [3.1.1.2 Trusted Scoring Signals](#3112-trusted-scoring-signals)
       - [3.1.2 Trusted Signals Server in TEE](#312-trusted-signals-server-in-tee)
       - [3.1.3 Cross-Origin Trusted Server Signals](#313-cross-origin-trusted-server-signals)
     - [3.2 On-Device Bidding](#32-on-device-bidding)
@@ -140,12 +142,15 @@ const myGroup = {
   'userBiddingSignals': {...},
   'ads': [{renderUrl: shoesAd1, sizeGroup: 'group1', ...},
           {renderUrl: shoesAd2, sizeGroup: 'group2',
+           creativeScanningMetadata: 'shoemanufacturer.com',
            selectableBuyerAndSellerReportingIds: ['deal1', 'deal2', 'deal3'],
            buyerReportingId: 'buyerSpecificInfo1',
            buyerAndSellerReportingId: 'seatId',
            allowedReportingOrigins: ['https://example-reporter.com'], ...}],
-  'adComponents': [{renderUrl: runningShoes1, sizeGroup: 'group2', ...},
-                   {renderUrl: runningShoes2, sizeGroup: 'group2', ...},
+  'adComponents': [{renderUrl: runningShoes1, sizeGroup: 'group2',
+                    creativeScanningMetadata: 'shoemanufacturer.com', ...},
+                   {renderUrl: runningShoes2, sizeGroup: 'group2',
+                    creativeScanningMetadata: 'sportsretailer.com', ...},
                    {renderUrl: gymShoes, sizeGroup; 'group2', ...}],
   'adSizes': {'size1': {width: '100', height: '100'},
               'size2': {width: '100', height: '200'},
@@ -297,9 +302,11 @@ The `ads` list contains the various ads that the interest group might show.  Eac
 
  * `metadata`: Arbitrary metadata that can be used at bidding time.
 
+ * `creativeScanningMetadata`: A USVString, no character limit. If `sendCreativeScanningMetadata` is set to true in the auction config, then this string -- along with other metadata as described in [2.1 Initiating an On-Device Auction](#21-initiating-an-on-device-auction) -- is sent as part of the scoring signals fetch request. This provides a way for buyers to convey additional information that sellers need in order to scan an advertisement, such as the associated advertiser domain, which isn't captured in the `renderURL` and other fields sent on the scoring signals fetch request.
+
  * `allowedReportingOrigins`: A list of up to 10 destination origins allowed to receive [registered macro values in reporting](https://github.com/WICG/turtledove/blob/main/Fenced_Frames_Ads_Reporting.md#registeradmacro). All origins must be HTTPS and [attested for Protected Audience API](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). Entries are [USVString](https://webidl.spec.whatwg.org/#idl-USVString), no character limit. Invalid URL, non HTTPS, or list size greater than 10, will result in failure to join the interest group.
 
-The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similar to the `ads` field, each entry is an object that includes a `renderURL` and optional `adRenderId`, and `metadata` fields. Thanks to `ads` and `adComponents` being separate fields, the buyer is able to update the `ads` field via the `updateURL` without losing `adComponents` stored in the interest group.
+The `adComponents` field contains the various ad components (or "products") that can be used to construct ["Ads Composed of Multiple Pieces"](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#34-ads-composed-of-multiple-pieces)). Similar to the `ads` field, each entry is an object that includes a `renderURL` and optional `adRenderId`, `sizeGroup`, `metadata`, and `creativeScanningMetadata` fields. Thanks to `ads` and `adComponents` being separate fields, the buyer is able to update the `ads` field via the `updateURL` without losing `adComponents` stored in the interest group.
 
 The `adSizes` field (optionally) contains a dictionary of named ad sizes. Each size has the format `{width: widthVal, height: heightVal}`, where the values can have either pixel units (e.g. `100` or `'100px'`) or screen dimension coordinates (e.g. `100sw` or `100sh`). For example, the size `{width: '100sw', height: 50}` describes an ad that is the width of the screen and 50 pixels tall. The size `{width: '100sw', height: '200sw'}` describes an ad that is the width of the screen and has a 1:2 aspect ratio. Sizes with screen dimension coordinates are primarily intended for screen-width ads on mobile devices, and may be restricted in certain contexts (to be determined) for privacy reasons.
 
@@ -318,7 +325,7 @@ anywhere in the request where a plain `adRenderId` would have been sent (such as
 and `adComponents` fields as well as `prevWins`). Note that `include-full-ads` is not compatible
 with the auction server, so this mode is only for debugging.
 
-All fields that accept arbitrary metadata (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable values (i.e. supported by JSON.stringify()). See [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify).
+All fields that accept arbitrary metadata (`userBiddingSignals` and `metadata` field of ads) must be JSON-serializable values (i.e. supported by JSON.stringify()). See [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify). Note that `creativeScanningMetadata` -- unlike `metadata` -- is strictly string-valued, and need not be JSON-serializable.
 
 All fields that specify URLs for loading scripts or JSON (`biddingLogicURL`,
 `biddingWasmHelperURL`, `trustedBiddingSignalsURL`, and `updateURL`) must: be valid HTTPS URLs, contain no credentials, have no [fragment](https://url.spec.whatwg.org/#concept-url-fragment), and be
@@ -399,6 +406,7 @@ const myAuctionConfig = {
   'trustedScoringSignalsURL': ...,
   'maxTrustedScoringSignalsURLLength': 10000,
   'trustedScoringSignalsCoordinator': 'https://www.publickeyservice.com',
+  'sendCreativeScanningMetadata': true,
   'interestGroupBuyers': ['https://www.example-dsp.com', 'https://buyer2.com', ...],
   'auctionSignals': {...},
   'requestedSize': {'width': '100sw', 'height': '200px'},
@@ -463,6 +471,8 @@ else
 This will cause the browser to execute the appropriate bidding and auction logic inside a collection of dedicated worklets associated with the buyer and seller domains.  The `auctionSignals`, `sellerSignals`, and `perBuyerSignals` values will be passed as arguments to the appropriate functions that run inside those worklets — the `auctionSignals` are made available to everyone, while the other signals are given only to one party.
 
 `maxTrustedScoringSignalsURLLength` and `trustedScoringSignalsCoordinator` have the same functionality as `maxTrustedBiddingSignalsURLLength` and `trustedBiddingSignalsCoordinator`, as described in [1.2 Interest Group Attributes](#12-interest-group-attributes), but affect the seller's trusted scoring signals fetch as opposed to the trusted bidding signals fetch.
+
+When set to true, `sendCreativeScanningMetadata` instructs the browser to send a collection of metadata associated with each ad and component ad as part of the scoring signals fetch request, as described in [3.1.1.2 Trusted Scoring Signals](#3112-trusted-scoring-signals).
 
 The optional `requestedSize` field recommends a frame size for the auction, which will be available to bidders in browser signals. This size should be specified in the same format as the sizes in the `adSizes` field of `joinAdInterestGroup`. For convenience, the returned fenced frame config will automatically populate a `<fencedframe>`'s `width` and `height` attributes with the `requestedSize` when loaded, though the element's size attributes can still be modified if you want to change the element's container size. Bidders inside the auction may pick a different content size for the ad, and that resulting size will be visually scaled to fit inside the element's container size.
 
@@ -584,7 +594,7 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   bid: A numerical bid value.
 *   auctionConfig: The auction configuration object passed to `navigator.runAdAuction()`.
 *   trustedScoringSignals: A value retrieved from a real-time trusted server chosen by the seller and reflecting the seller's opinion of this particular creative, as further described in [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) below. This is used when the server is same-origin to the seller; crossOriginTrustedSignals is used otherwise.
-*   browserSignals: An object constructed by the browser, containing information that the browser knows and which the seller's auction script might want to verify:
+*   browserSignals: An object constructed by the browser, containing information that the browser knows and which the seller's auction script might want to verify. Note that each element in `adComponentsCreativeScanningMetadata` might be either the string value of that component ad's `creativeScanningMetadata`, or null if that component ad didn't provide one.
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
       'interestGroupOwner': 'https://www.example-dsp.com',
@@ -597,7 +607,9 @@ The function gets called once for each candidate ad in the auction.  The argumen
       'bidCurrency': 'USD', /* bidCurrency returned by generateBid, or '???' if none */
       'dataVersion': 1, /* Data-Version value from the trusted scoring signals server's response */
       'selectedBuyerAndSellerReportingId': 'deal2', /* Value returned by generateBid. */
-      'buyerAndSellerReportingId': 'seatId'
+      'buyerAndSellerReportingId': 'seatId',
+      'creativeScanningMetadata': 'advertiser1.com',
+      'adComponentsCreativeScanningMetadata': ['advertiser1.com', null, 'advertiser2.com']
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
@@ -737,6 +749,8 @@ As [noted in the key value trust model](https://github.com/privacysandbox/fledge
 
 ##### 3.1.1 Trusted Signals Server with BYOS Model
 
+###### 3.1.1.1 Trusted Bidding Signals
+
 If `trustedBiddingSignalsCoordinator` is not present in the interest group, the bidding signals will be fetched from a BYOS server. The fetched URL will be of the form:
 
     https://www.kv-server.example/getvalues?hostname=publisher.com&keys=key1,key2&interestGroupNames=name1,name2&experimentGroupId=12345&slotSize=100,200
@@ -773,7 +787,23 @@ The `perInterestGroupData` dictionary contains optional data for interest groups
 
 The `updateIfOlderThanMs` optional field specifies that the interest group should be updated via the `updateURL` mechanism (see the [interest group attributes](#12-interest-group-attributes) section) if the interest group hasn't been joined or updated in a duration of time exceeding `updateIfOlderThanMs` milliseconds. Updates that ended in failure, either parse or network failure, are not considered to increment the last update or join time. An `updateIfOlderThanMs` that's less than 10 minutes will be clamped to 10 minutes.
 
-Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system. This works in much the same way as [`trustedBiddingSignalsURL`](#311-trusted-signals-server-with-byos-model). If `trustedScoringSignalsCoordinator` is not present in the auction config, it will send the scoring signals fetch request to a BYOS server. The request base URL is set from the `trustedScoringSignalsURL` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. However, the URL has two sets of keys: "renderUrls=url1,url2,..." and "adComponentRenderUrls=url1,url2,..." for the main and adComponent renderURLs bids offered in the auction. Note that the query params use "Urls" instead of "URLs". It is up to the client how and whether to aggregate the fetches with the URLs of multiple bidders.
+###### 3.1.1.2 Trusted Scoring Signals
+
+Similarly, sellers may want to fetch information about a specific creative, e.g. the results of some out-of-band ad scanning system. This works in much the same way as [`trustedBiddingSignalsURL`](#311-trusted-signals-server-with-byos-model). If `trustedScoringSignalsCoordinator` is not present in the auction config, it will send the scoring signals fetch request to a BYOS server. The request base URL is set from the `trustedScoringSignalsURL` property of the seller's auction configuration object. The parameter `experimentGroupId` comes from `sellerExperimentGroupId` in the auction configuration if provided. For bids offered in the auction, the `renderURL` and metadata from both the main ad and component ads of those bids will be appended to the URL using several query parameters.
+
+Note that each parameter is a comma-separated list, as the request may include ads and component ads from multiple bids. All elements in ad-related query parameters are parallel to each other, and all elements in component ad-related query parameters are parallel to each other (for example, the first entry in the `renderURL` list corresponds to the first entry in the `adBuyer` list, and the first entry in the `adCreativeScanningMetadata` list, and the first width and height in the `adSizes` list).
+
+* `renderUrls=url1,url2,...` and `adComponentRenderUrls=url1,url2,...`: the renderURL provided in the interest group for each ad and component ad included in this request, respectively. Each `renderURL` is URL-encoded before being added to the list. Note that these query params use "Urls" instead of "URLs".
+
+* `adBuyer=https://www.example-dsp.com,https://www.example-dsp.com,...` and `adComponentBuyer=https://www.example-dsp.com,https://www.example-dsp.com,...`: the interest group owner for each ad and component ad included in this request, respectively. Each interest group owner is URL-encoded before being added to the list.
+
+* `adCreativeScanningMetadata=metadata1,metadata2,...` and  `adComponentCreativeScanningMetadata=metadata1,metadata2,...`: the `creativeScanningMetadata` provided in the interest group for each ad and component ad included in this request, respectively. If an ad or component ad provides no `creativeScanningMetadata`, its value will be an empty string in this list. Each `creativeScanningMetadata` is URL-encoded before being added to the list.
+
+* `adSizes=width1,height1,width2,height2,...`, and `adComponentSizes=width1,height1,width2,height2,...`: the `width` and `height` returned from `generateBid()` for each ad and component ad included in this request, respectively, as described in [3.2 On-Device Bidding](#32-on-device-bidding). Note that width and height are comma-separated, as are the width/height pairs corresponding to each ad or component ad. If an ad or component ad returns no width or height, the width and height will each be conveyed as an empty string still separated from each other by a comma, e.g. `adSizes=width1,height1,,,width3,height3`. Widths and heights already don't contain any characters that need to be URL-encoded, and neither the commas between each width and height nor the commas between each width/height pair are URL-encoded.
+
+* `buyerAndSellerReportingId=seatId1,seatId2,...`: the `buyerAndSellerReportingId` provided in the interest group for each ad included in this request, respectively. Note that component ads do not have a `buyerAndSellerReportingId`, so there is no corresponding query parameter for component ads.  Each `buyerAndSellerReportingId` is URL-encoded before being added to the list. Note that the use of "seatId" as a sample value for this parameter is intended as an example; `buyerAndSellerReportingId` may be used to support a wide range of use cases.
+
+All of these query parameters are URL-encoded before being included in the scoring signals fetch request URL. It is up to the client how and whether to aggregate the fetches with the ads and component ads of multiple bidders.
 
 Similarly to `trustedBiddingSignalsURL`, scoring signals requests may also be coalesced across a certain number of bids that share a `trustedScoringSignalsURL`. The number of bids in a single request is limited by the auction configuration's `maxTrustedScoringSignalsURLLength` field. For example, if an auction configuration has a `maxTrustedScoringSignalsURLLength` of 1000, it means that the length of each trusted scoring signals request URL for this auction cannot exceed 1000 characters. If an auction configuration wants an infinite length for the request URL, it can specify 0 for the `maxTrustedScoringSignalsURLLength`.
 
