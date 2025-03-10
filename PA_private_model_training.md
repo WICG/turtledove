@@ -50,7 +50,9 @@ function reportWin(...) {
       modelingSignalsConfig: {
         destination: "https://ad-tech.example/id=123",
         aggregationCoordinatorOrigin: "...",
-        payloadLength: 256, // payload will be padded with null bytes
+        // payload will be padded with null bytes. 
+        // Maximum payloadLength allowed is 10000
+        payloadLength: 256,
       }, // Extensible for future configs (e.g. for Private Aggregation API)
     });
   } else {
@@ -65,28 +67,39 @@ function reportAggregateWin(aggregateWinSignals, modelingSignalsConfig, <reportW
   let processedModelingSignals = process(aggregateWinSignals);
 
   // Will POST the encypted modeling signals to the specified destination in modelingSignalsConfig.
-  // The format of this input is still TBD.
-  sendEncryptedModelingSignals(processedModelingSignals)
+  // The format of this input is an ArrayBuffer.
+  sendEncryptedTo(processedModelingSignals)
 
-  // The Private Aggregation API may be used here.
+  // The Private Aggregation API may be used here in the future.
 }
 ```
 
 ## Payload format
 
-The POST payload format is still up in the air and is subject to change with feedback. Currently we are considering encoding it in [CBOR](https://cbor.io/) with the following format:
+The POST request payload will be encoded using the [CBOR](https://cbor.io/) with the following format:
 
 ```javascript
 {
-  // shared_info is used for privacy budgeting purposes, used as authenticated data in
-  // the encrypted payload. Similar to aggregatable reports in Private Aggregation API.
-  "shared_info": "<bytes>", // format unspecified for now, but likely nested CBOR
+  "shared_info": "<bytes>", //nested CBOR, more info below
   "aggregation_coordinator_origin": "...",
   "aggregation_service_payload": {
     "payload": "<raw encrypted bytes>",
     "key_id": "[string identifying public key used to encrypt payload]",
   }
 }
+```
+
+### Shared info
+`shared_info` is used for privacy budgeting purposes, used as authenticated data in the encrypted payload. Similar to aggregatable reports in Private Aggregation API.
+
+```javascript
+  "shared_info": {
+    "report_id": "...", // random UUID
+    "reporting_origin": "...", // URL that called reportWin()
+    "scheduled_report_time": 1741633200011 // Milliseconds since Unix epoch
+    "version": "1.0" 
+    "api": "private-model-training"
+  }
 ```
 
 # Training private models with `encryptedModelingSignals`
