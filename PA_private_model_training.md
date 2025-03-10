@@ -76,7 +76,7 @@ function reportAggregateWin(aggregateWinSignals, modelingSignalsConfig, <reportW
 
 ## Payload format
 
-The POST request payload will be encoded using the [CBOR](https://cbor.io/) with the following format:
+The POST request payload will be encoded using [CBOR](https://cbor.io/) with the following format:
 
 ```javascript
 {
