@@ -90,7 +90,7 @@ The POST request payload will be encoded using [CBOR](https://cbor.io/) with the
 ```
 
 ### Shared info
-`shared_info` is used for privacy budgeting purposes, used as authenticated data in the encrypted payload. Similar to aggregatable reports in Private Aggregation API.
+`shared_info` is used for privacy budgeting purposes, used as authenticated data in the encrypted payload. Similar to aggregatable reports in Private Aggregation API. `shared_info` will have the following format:
 
 ```javascript
   "shared_info": {
