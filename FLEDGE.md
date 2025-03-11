@@ -57,6 +57,8 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
       - [7.1.1 Post Auction Signals](#711-post-auction-signals)
       - [7.1.2 Downsampling](#712-downsampling)
     - [7.2 deprecatedReplaceInURN()](#72-navigatordeprecatedreplaceinurn)
+  - [8. Common Utilities](#8-common-utilities)
+    - [8.1 String and Uint8Array conversion]
 
 
 ## Summary
@@ -1712,3 +1714,9 @@ await navigator.deprecatedReplaceInURN(
 
 
 ```
+
+### 8. Common Utilities
+
+#### 8.1 String and Uint8Array conversion
+
+Decode, encode, etc.
