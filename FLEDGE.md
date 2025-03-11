@@ -58,7 +58,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
       - [7.1.2 Downsampling](#712-downsampling)
     - [7.2 deprecatedReplaceInURN()](#72-navigatordeprecatedreplaceinurn)
   - [8. Common Utilities](#8-common-utilities)
-    - [8.1 String and Uint8Array conversion]
+    - [8.1 String and Uint8Array conversion](#81-string-and-uint8array-conversion)
 
 
 ## Summary
@@ -1719,4 +1719,11 @@ await navigator.deprecatedReplaceInURN(
 
 #### 8.1 String and Uint8Array conversion
 
-Decode, encode, etc.
+Any worklet script can convert from a String to a Uint8Array by calling
+`protectedAudience.encodeUtf8(someString)`, which will return a UInt8Array containing the contents
+of the string encoded as UTF-8.
+
+Similarly, a Uint8Array containing UTF-8 data can be converted to a String by calling
+`protectedAudience.decodeUtf8(someArray)`. Note that this is specifically for Uint8Arrays, and
+will not handle other, similar, types.
+
