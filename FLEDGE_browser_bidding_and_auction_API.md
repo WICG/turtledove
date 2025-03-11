@@ -30,7 +30,7 @@ const auctionBlob = await navigator.getInterestGroupAdAuctionData({
     'https://buyer1.origin.example.com': {
       // 'targetSize' specifies the size of the blob to devote to this buyer
       // (optional).
-      "targetSize": 8192,
+      'targetSize': 8192,
     },
     'https://buyer2.origin.example.com': {}
   }
@@ -124,6 +124,54 @@ The browser verifies it witnessed a Fetch request to the `seller`’s origin wit
 
 ## Device Orchestrated Multi-Seller Auctions
 
+Bidding and Auction Services auctions can also be used as component auctions. It
+is possible for multiple Bidding and Auction Services auctions to be used as
+component auctions for an on-device top-level auction.
+
+When multiple component sellers desire encrypted requests, they can create them
+efficiently in a single call to `navigator.getInterestGroupAdAuctionData()`:
+
+```javascript
+const results = await navigator.getInterestGroupAdAuctionData({
+  'sellers': [
+    {
+      'seller': 'https://www.component-ssp1.example.com',
+      'coordinatorOrigin': 'https://publickeyservice.pa.gcp.privacysandboxservices.com/',
+    },
+    {
+      'seller': 'https://www.component-ssp2.example.com',
+      'coordinatorOrigin': 'https://publickeyservice.pa.gcp.privacysandboxservices.com/',
+  }],
+  // 'requestSize' the affects the size of the returned request (optional).
+  'requestSize': 51200,
+  // 'perBuyerConfig' specifies per-buyer options for size optimizations when
+  // constructing the blob (optional).
+  'perBuyerConfig': {
+    'https://buyer1.origin.example.com': {
+      // 'targetSize' specifies the size of the blob to devote to this buyer
+      // (optional).
+      'targetSize': 8192,
+    },
+    'https://buyer2.origin.example.com': {}
+  }
+});
+
+const requestId = results.requestId;
+let requests = {}
+requests[results.requests[0].seller] = results.requests[0].request;
+requests[results.requests[1].seller] = results.requests[1].request;
+```
+
+In this case, `navigator.getInterestGroupAdAuctionData()` returns a Promise that
+will resolve to an `AdAuctionData` object - `results` in this example. This object
+will only have the `requestId` and `requests` fields set. The `requests` field
+is a list of `AdAuctionPerSellerData` objects, identified by their `seller` field.
+For each component seller, the `AdAuctionPerSellerData` object will also contain
+a `request` field if the request was completed successfully. `request` is a
+`Uint8Array` containing the information needed for the [ProtectedAudienceInput](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#protectedaudienceinput) in a `SelectAd` B&A call. In the event that the request for a particular seller failed,
+the `AdAuctionPerSellerData` will contain an `error` field describing the nature
+of the failure instead of a `request` field.
+
 Auctions run using the Bidding and Auction servers can be mixed with on-device
 auctions using [component auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#24-scoring-bids-in-component-auctions:~:text=In%20some%20cases,seller%27s%20%22component%20auction%22). The top-level scoring script will decide
 between the top scoring bidders from the component auctions.
@@ -140,10 +188,16 @@ const myAuctionConfig = {
            'interestGroupBuyers': ...,
       ...},
         { // B&A auction
-          'seller': 'https://www.example-ssp.com',
-          'interestGroupBuyers': ['https://www.example-dsp.com'],
+          'seller': 'https://www.component-ssp1.example.com',
+          'interestGroupBuyers': ['https://buyer1.origin.example.com', 'https://buyer2.origin.example.com'],
           'requestId': requestId,
-          'serverResponse': response_blob
+          'serverResponse': response_blob1
+        },
+        { // B&A auction
+          'seller': 'https://www.component-ssp2.example.com',
+          'interestGroupBuyers': ['https://buyer1.origin.example.com', 'https://buyer2.origin.example.com'],
+          'requestId': requestId,
+          'serverResponse': response_blob2
         },
     ...
   }
