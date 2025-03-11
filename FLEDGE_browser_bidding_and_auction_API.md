@@ -128,8 +128,8 @@ Bidding and Auction Services auctions can also be used as component auctions. It
 is possible for multiple Bidding and Auction Services auctions to be used as
 component auctions for an on-device top-level auction.
 
-For efficiency, a top-level seller can construct encrypted requests for multiple
-component sellers in a single call to `navigator.getInterestGroupAdAuctionData()`:
+When multiple component sellers desire encrypted requests, they can create them
+efficiently in a single call to `navigator.getInterestGroupAdAuctionData()`:
 
 ```javascript
 const results = await navigator.getInterestGroupAdAuctionData({
