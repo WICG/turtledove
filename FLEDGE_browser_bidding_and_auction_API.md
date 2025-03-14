@@ -114,7 +114,7 @@ Behind the scenes, the Bidding and Auction servers will include the nonce inside
 the response blob so it's passed back to the browser which verifies that it
 matches the nonce from the `Ad-Auction-Result-Nonce` header.
 
-For information about this flow can be found
+More information about this flow can be found
 [here](https://github.com/privacysandbox/protected-auction-services-docs/blob/main/protected_audience_auctions_mixed_mode.md#server-side-auctions).
 
 ### Step 4: Complete auction in browser
