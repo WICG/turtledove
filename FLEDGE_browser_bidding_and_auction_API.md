@@ -101,7 +101,7 @@ by omitting the `Ad-Auction-Result` HTTP header and instead:
 
 1. Generate a [version 4 UUID](https://www.ietf.org/rfc/rfc4122.html) nonce on
    their server.
-1. Instead of returning the `Ad-Auction-Result` header, return a
+1. Instead of returning the `Ad-Auction-Result` header, return an
    `Ad-Auction-Result-Nonce` header passing the nonce, e.g.
    `Ad-Auction-Result-Nonce: 5b3e87f7-d48c-4376-908f-623f92f13740`.  Like
    `Ad-Auction-Result`, `Ad-Auction-Result-Nonce` can accept a comma-separated
@@ -112,7 +112,7 @@ by omitting the `Ad-Auction-Result` HTTP header and instead:
 
 Behind the scenes, the Bidding and Auction servers will include the nonce inside
 the response blob so it's passed back to the browser which verifies that it
-matches nonce from the `Ad-Auction-Result-Nonce` header.
+matches the nonce from the `Ad-Auction-Result-Nonce` header.
 
 For information about this flow can be found
 [here](https://github.com/privacysandbox/protected-auction-services-docs/blob/main/protected_audience_auctions_mixed_mode.md#server-side-auctions).
