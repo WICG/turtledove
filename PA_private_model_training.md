@@ -96,9 +96,9 @@ The POST request payload will be encoded using [CBOR](https://cbor.io/) with the
   "shared_info": {
     "report_id": "...", // random UUID
     "reporting_origin": "...", // URL that called reportWin()
-    "scheduled_report_time": 1741633200011 // Milliseconds since Unix epoch
-    "version": "1.0" 
-    "api": "private-model-training"
+    "scheduled_report_time": 1741633200011, // Milliseconds since Unix epoch
+    "version": "1.0", 
+    "api": "private-model-training",
   }
 ```
 
