@@ -197,7 +197,7 @@ An example return value would be:
 ## Text conversion helpers
 Intent to Ship: TBD
 
-Inside a worklet script:
+Inside a bidding, scoring or reporting script:
 
 ```
 globalThis.protectedAudience && protectedAudience.encodeUtf8
