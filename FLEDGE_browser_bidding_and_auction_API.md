@@ -106,7 +106,8 @@ by omitting the `Ad-Auction-Result` HTTP header and instead:
    `Ad-Auction-Result-Nonce: 5b3e87f7-d48c-4376-908f-623f92f13740`.  Like
    `Ad-Auction-Result`, `Ad-Auction-Result-Nonce` can accept a comma-separated
    list instead of a single value if desired.
-1. Pass the nonce in a TBD field of the
+1. Pass the nonce in the [`ad_auction_result_nonce`](https://github.com/privacysandbox/bidding-auction-servers/blob/v4.8.0/api/bidding_auction_servers.proto#L946C12-L946C35)
+   field of the
    [SelectAdRequest](https://github.com/privacysandbox/bidding-auction-servers/blob/4a7accd09a7dabf891b5953e5cdbb35d038c83c6/api/bidding_auction_servers.proto#L282)
    to the [SellerFrontEnd service](https://github.com/privacysandbox/bidding-auction-servers/blob/4a7accd09a7dabf891b5953e5cdbb35d038c83c6/api/bidding_auction_servers.proto#L267).
 
