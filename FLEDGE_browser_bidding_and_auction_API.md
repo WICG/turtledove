@@ -107,6 +107,40 @@ and both versions should be accepted.
 
 It should be noted that the `fetch()` request using `adAuctionHeaders` can also be used to send `request` (e.g. in the request body) and receive the response blob (e.g. in the response body).
 
+#### Alternate header to facilitate delaying response blobs to response body
+
+The aforementioned Step 3 includes the hash of the response blob in an
+`Ad-Auction-Result` HTTP response header, which requires that the response blob
+be available *before* the HTTP response headers are sent back to the device.
+The server operator may want to instead delay inclusion of the response blob
+until the HTTP response body is sent back to the device.  If the response is 
+[streamed](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API) back
+to the device, the response blob could even come *after* other data that is
+available earlier.  One example of when this might be useful is if this other
+data [fullfills Promises for on-device auction signals](FLEDGE.md#211-providing-signals-asynchronously)
+to unblock on-device auctions so they proceed concurrently to auctions running
+on B&A servers. This delaying inclusion of the response blob can be accomplished
+by omitting the `Ad-Auction-Result` HTTP header and instead:
+
+1. Generate a [version 4 UUID](https://www.ietf.org/rfc/rfc4122.html) nonce on
+   their server.
+1. Instead of returning the `Ad-Auction-Result` header, return an
+   `Ad-Auction-Result-Nonce` header passing the nonce, e.g.
+   `Ad-Auction-Result-Nonce: 5b3e87f7-d48c-4376-908f-623f92f13740`.  Like
+   `Ad-Auction-Result`, `Ad-Auction-Result-Nonce` can accept a comma-separated
+   list instead of a single value if desired.
+1. Pass the nonce in the [`ad_auction_result_nonce`](https://github.com/privacysandbox/bidding-auction-servers/blob/v4.8.0/api/bidding_auction_servers.proto#L946C12-L946C35)
+   field of the
+   [SelectAdRequest](https://github.com/privacysandbox/bidding-auction-servers/blob/4a7accd09a7dabf891b5953e5cdbb35d038c83c6/api/bidding_auction_servers.proto#L282)
+   to the [SellerFrontEnd service](https://github.com/privacysandbox/bidding-auction-servers/blob/4a7accd09a7dabf891b5953e5cdbb35d038c83c6/api/bidding_auction_servers.proto#L267).
+
+Behind the scenes, the Bidding and Auction servers will include the nonce inside
+the response blob so it's passed back to the browser which verifies that it
+matches the nonce from the `Ad-Auction-Result-Nonce` header.
+
+More information about this flow can be found
+[here](https://github.com/privacysandbox/protected-auction-services-docs/blob/main/protected_audience_auctions_mixed_mode.md#server-side-auctions).
+
 ### Step 4: Complete auction in browser
 
 Now the auction can be completed by passing the response blob to `runAdAuction()` as part of a specially configured auction configuration:
@@ -584,7 +618,11 @@ Prior to compression and encryption, the AuctionResult is encoded as CBOR with t
       "description": "Boolean to indicate that there is no remarketing winner from the auction. AuctionResult may be ignored by the client (after decryption) if this is set to true."
     },
     "winReportingUrls": { "$ref": "#/$defs/winReportingUrlsDef" },
-    "error": { "$ref": "#/$defs/errorDef" }
+    "error": { "$ref": "#/$defs/errorDef" },
+    "nonce": {
+      "type": "string",
+      "description": "UUIDv4 nonce that was passed to SelectAdRequest, in standard UUIDv4 string representation: 32 lower-case hexadecimal characters with blocks of 8, 4, 4, 4, and 12 separated by dashes as per RFC4122. Browser enforces that this matches exactly the string passed via the Ad-Auction-Result-Nonce header."
+    }
   }
 }
 ```
