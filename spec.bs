@@ -4878,8 +4878,12 @@ keys) |contribution|, perform the following steps. They return a [=boolean=] (on
 1. Let |scopingDetails| be |this|'s <a spec="private-aggregation-api" for="PrivateAggregation">
   scoping details</a>
 1. If |event| [=string/starts with=] "`reserved.`" and « "`reserved.always`",
-    "`reserved.loss`", "`reserved.win`", "`reserved.once`" » does not [=list/contain=] |event|,
-    return false.
+    "`reserved.loss`", "`reserved.win`", "`reserved.once`",
+    "`reserved.report-success`", "`reserved.too-many-contributions`",
+    "`reserved.empty-report-dropped`", "`reserved.pending-report-limit-reached`",
+    "`reserved.insufficient-budget`", "`reserved.contribution-timeout-reached`",
+    "`reserved.uncaught-exception`" » does not [=list/contain=] |event|, return
+    false.
 
     Note: No error is thrown to allow forward compatibility if additional
         reserved event types are added later.
@@ -4974,8 +4978,29 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
 1. Let |sellerOnceRep| be null.
 1. If |reportingContext|'s [=reporting context/seller participants=] [=set/is not empty=],
   set |sellerOnceRep| to a random [=set/item=] of [=reporting context/seller participants=].
+1. Let |bidderErrorReps| be a new [=map=].
+1. Let |sellerErrorReps| be a new [=map=].
+1. [=list/For each=] |interestGroupBuyer| of |auctionConfig|'s [=auction config/
+    interest group buyer=]:
+    1. [=map/Set=] |bidderErrorReps|[|interestGroupBuyer|] to null.
+    1. Let |bidderParticipants| be a [=set/clone=] of |reportingContext|'s
+        [=reporting context/bidder participants=].
+    1. [=set/Remove=] all items with a [=reporting bid key/bidder origin=] that
+        is not |interestGroupBuyer| from |bidderParticipants|.
+    1. If |bidderParticipants| [=set/is not empty=], [=map/set=]
+        |bidderErrorReps|[|interestGroupBuyer|] to a random [=set/item=] of
+        |bidderParticipants|.
+    1. [=map/Set=] |sellerErrorReps|[|interestGroupBuyer|] to null.
+    1. Let |sellerParticipants| be a [=set/clone=] of |reportingContext|'s
+        [=reporting context/seller participants=].
+    1. [=set/Remove=] all items with a [=reporting bid key/bidder origin=] that
+        is not |interestGroupBuyer| from |sellerParticipants|.
+    1. If |sellerParticipants| [=set/is not empty=], [=map/set=]
+        |sellerErrorReps|[|interestGroupBuyer|] to a random [=set/item=] of
+        |sellerParticipants|.
 1. [=map/For each=] (|bidId|, |event|) → |contributions| of |reportingContext|'s
   [=reporting context/private aggregation on event contributions=]:
+  1. Let |bidderOrigin| be |bidId|'s [=reporting bid key/bidder origin=].
   1. [=list/For each=] |onEventEntry| of |contributions|:
     1. [=iteration/Continue=] if any of the following conditions hold:
       * |event| is "`reserved.win`" and |bidId| is not |winnerId|;
@@ -4987,6 +5012,30 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
         1. If |bidId| &ne; |bidderOnceRep|, [=iteration/continue=].
       1. Otherwise:
         1. If |bidId| &ne; |sellerOnceRep|, [=iteration/continue=].
+    1. Let |unprefixedEvent| be null.
+    1. If |event| [=string/starts with=] "`reserved.`":
+        1. Set |unprefixedEvent| to the [=code unit substring=] from
+            "<code>reserved.</code>"'s [=string/length=] to |event|'s [=string/
+            length=] within |event|.
+    1. If |unprefixedEvent| [=string/is=] any of the [=internal error events=],
+        switch on |onEventEntry|'s [=on event contribution entry/worklet
+        function=]:
+      1. If |onEventEntry|'s [=on event contribution entry/worklet function=] is
+          [=worklet function/generate-bid=]:
+        1. If |bidId| &ne; |bidderErrorReps|[|bidderOrigin|], [=iteration/continue=].
+      1. If |onEventEntry|'s [=on event contribution entry/worklet function=] is
+          [=worklet function/score-ad=]:
+        1. If |bidId| &ne; |sellerErrorReps|[|bidderOrigin|], [=iteration/continue=].
+
+      Issue: Consider aligning reserved.once and error event selection logic.
+    1. Let |errorEvent| be null.
+    1. If |unprefixedEvent| [=string/is=] any of the [=internal error events=],
+        set |errorEvent| to |unprefixedEvent|.
+    1. If |unprefixedEvent| is "`uncaught-exception`", set |errorEvent| to
+        [=already triggered external error=].
+
+        Note: If this error was not triggered, the conditional contributions will
+            have been already dropped.
     1. Let |filledInContribution| be the result of [=filling in the contribution=] given
       |reportingContext|, |onEventEntry| and |leadingBidInfo|.
 
@@ -5006,6 +5055,8 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
       1. Let |entry| be a new [=contribution cache entry=] with the items:
           : <a spec="private-aggregation-api" for="contribution cache entry">contribution</a>
           :: |filledInContribution|
+          : <a spec="private-aggregation-api" for="contribution cache entry">error event</a>
+          :: |errorEvent|
           : <a spec="private-aggregation-api" for="contribution cache entry">batching scope</a>
           :: |onEventEntry|'s [=on event contribution entry/batching scope=]
           : <a spec="private-aggregation-api" for="contribution cache entry">debug scope</a>
@@ -6318,6 +6369,8 @@ of the following global objects:
     1. [=Finalize private aggregation debug info=] given |global|.
     1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
       |global|.
+    1. If |result| is a [=ECMAScript/normal completion=], [=map/remove=]
+        |paContributions|["`reserved.uncaught-exception`"].
     1. Return a [=tuple=] (|generatedBids|, |bidDebugReportInfo|, |realTimeContributions|,
                            |paContributions|, |executionMetrics|).
 </div>
@@ -6370,6 +6423,8 @@ of the following global objects:
     1. [=Finalize private aggregation debug info=] given |global|.
     1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
       |global|.
+    1. If |scoreAdResult| is an a [=ECMAScript/normal completion=], [=map/remove=]
+        |paContributions|["`reserved.uncaught-exception`"].
     1. Return « |scoreAdResult|, |debugWinReportUrl|, |debugLossReportUrl|, |realTimeContributions|,
         |paContributions|, |executionMetrics| ».
 </div>
@@ -6396,6 +6451,9 @@ of the following global objects:
       result of [=evaluating a script=] with |realm|, |script|, |functionName|, |argumentsJS|,
       and |timeout|.
     1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null, null ».
+
+        Issue: Verify whether Private Aggregation contributions are dropped here. Handle the
+            uncaught-exception better.
     1. Let |resultJSON| be "null".
     1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
       [=serializing a JavaScript value to a JSON string=] given |result|.
