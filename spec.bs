@@ -83,19 +83,15 @@ spec: Fenced Frame; urlPrefix: https://wicg.github.io/fenced-frame/
       text: fenced frame config instance; url: #browsing-context-fenced-frame-config-instance
 spec: private-aggregation-api; urlPrefix: https://patcg-individual-drafts.github.io/private-aggregation-api
   type: dfn
-    text: private-aggregation; url: #private-aggregation
     text: debug details; url: #debug-details
-    text: debug-details-enabled; url: #debug-details-enabled
-    text: debug-details-key; url: #debug-details-key
+    for: debug details
+      text: enabled; url: #debug-details-enabled
+      text: key; url: #debug-details-key
     text: aggregation coordinator; url: #aggregation-coordinator
     text: default aggregation coordinator; url: #default-aggregation-coordinator
     text: privateaggregation; url: #privateaggregation
     text: batching scope; url: #batching-scope
     text: debug scope; url: #debug-scope
-    text: scoping details; url: #scoping-details
-    text: contribution cache entry; url: #contribution-cache-entry
-    text: contribution cache; url: #contribution-cache
-    text: default filtering id max bytes; url: #default-filtering-id-max-bytes
 spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
   type: dfn
     text: shared-storage; url: #permissionspolicy-shared-storage
@@ -1566,9 +1562,9 @@ To <dfn>validate and convert auction ad config</dfn> given an {{AuctionAdConfig}
       1. If |enabled| is false, [=exception/throw=] a {{TypeError}}.
   1. Set |auctionConfig|'s [=auction config/auction report buyer debug
       details=] to a new [=debug details=] with the items:
-      : [=debug-details-enabled|enabled=]
+      : [=debug details/enabled=]
       :: |enabled|
-      : [=debug-details-key|key=]
+      : [=debug details/key=]
       :: |debugKey|
 1. If |config|["{{AuctionAdConfig/requiredSellerCapabilities}}"] [=map/exists=]:
   1. Let |sellerCapabilities| be a new [=set=] of [=seller capabilities=].
@@ -4803,6 +4799,10 @@ a [=reporting context=] |reportingContext|, and [=origins=] |origin| and |aggreg
               |origin|, |aggregationCoordinator| and |reportingContext|.
       : <a spec="private-aggregation-api" for="scoping details">get debug scope steps</a>
       :: An algorithm that returns |debugScope|.
+    : <a spec="private-aggregation-api" for="PrivateAggregation">should perform default
+        contributeToHistogramOnEvent() processing</a>
+    :: The algorithm [=determine whether to perform default contributeToHistogramOnEvent()
+        processing=].
 
 </div>
 
@@ -4856,6 +4856,92 @@ perform the following steps. They return a [=batching scope=].
     1. If |aggregationCoordinator| is not null, [=set the aggregation coordinator for a batching
       scope=] given |aggregationCoordinator| and |batchingScopeMap|[|tuple|].
 1. Return |batchingScopeMap|[|tuple|].
+
+</div>
+
+<div algorithm>
+To <dfn>determine whether to perform default contributeToHistogramOnEvent() processing</dfn>
+given a {{PrivateAggregation}} |this|, a {{DOMString}} |event| and a [=map=] (with {{DOMString}}
+keys) |contribution|, perform the following steps. They return a [=boolean=] or an [=exception=].
+1. Let |global| be |this|'s [=relevant global object=].
+1. Let |function| be |global|'s [=InterestGroupScriptRunnerGlobalScope/worklet function=].
+1. Let |origin| be |global|'s [=InterestGroupScriptRunnerGlobalScope/origin=].
+1. If |this|'s <a spec="private-aggregation-api" for="PrivateAggregation">
+  allowed to use</a> is false, return a {{TypeError}}.
+1. Set |contribution| to the result of [=converted to an IDL value|converting=]
+    |contribution|'s [=converted to a JavaScript value|JavaScript value=] to the
+    IDL type {{PAExtendedHistogramContribution}}, catching any [=exception=]
+    that is [=exception/thrown=]. If an exception is caught, return it.
+
+    Note: This returns a {{TypeError}} if |contribution| is not compatible.
+1. Let |scopingDetails| be |this|'s <a spec="private-aggregation-api" for="PrivateAggregation">
+  scoping details</a>
+1. If |event| [=string/starts with=] "`reserved.`" and « "`reserved.always`",
+    "`reserved.loss`", "`reserved.win`", "`reserved.once`" » does not [=list/contain=] |event|,
+    return false.
+
+    Note: No error is thrown to allow forward compatibility if additional
+        reserved event types are added later.
+1. If |event| is "`reserved.once`" and |function| is [=worklet function/report-result=] or
+  [=worklet function/report-win=], return a {{TypeError}}.
+1. Let |bucket| be |contribution|["{{PAExtendedHistogramContribution/bucket}}"].
+1. If |bucket| is a {{PASignalValue}}:
+    1. If |bucket|["{{PASignalValue/baseValue}}"] is not a valid [=signal base
+        value=], return a {{TypeError}}.
+    1. If |bucket|["{{PASignalValue/offset}}"] is not a {{bigint}}, return a
+        {{TypeError}}.
+1. Otherwise, if |contribution|["{{PAExtendedHistogramContribution/bucket}}"] is
+    not [=set/contained=] in [=the exclusive range|the range=] 0 to
+    2<sup>128</sup>, exclusive, return a {{TypeError}}.
+
+    Issue: Make the error type consistent with
+        {{PrivateAggregation/contributeToHistogram(contribution)}}.
+1. Let |value| be |contribution|["{{PAExtendedHistogramContribution/value}}"].
+1. If |value| is a {{PASignalValue}}:
+    1. If |value|["{{PASignalValue/baseValue}}"] is not a valid [=signal base
+        value=], return a {{TypeError}}.
+    1. If |value|["{{PASignalValue/offset}}"] is a {{bigint}}, return a
+        {{TypeError}}.
+1. Otherwise, if |contribution|["{{PAExtendedHistogramContribution/value}}"] is
+    negative, return a {{TypeError}}.
+1. If |contribution|["{{PAExtendedHistogramContribution/filteringId}}"] is
+    not [=set/contained=] in [=the exclusive range|the range=] 0 to
+    256<sup>[=default filtering ID max bytes=]</sup>, exclusive, return a
+    {{TypeError}}.
+
+    Issue: Make the error types on validation issues here and above consistent
+        with {{PrivateAggregation/contributeToHistogram(contribution)}}.
+
+    Note: It is not currently possible to set a non-default filtering ID max
+        bytes for Protected Audience.
+1. If |event| does not [=string/start with=] "`reserved.`", and |function| is
+    [=worklet function/score-ad=] or [=worklet function/report-result=], return
+    false.
+1. Let |batchingScope| be null.
+1. If |event| [=string/starts with=] "`reserved.`", set |batchingScope| to the
+    result of running |scopingDetails|' <a spec="private-aggregation-api" for="scoping details">
+    get batching scope steps</a>.
+
+    Note: Each non-reserved |event| will have a different [=batching scope=]
+        that is created later.
+1. Let |entry| be a new [=on event contribution entry=] with the items:
+    : [=on event contribution entry/contribution=]
+    :: |contribution|
+    : [=on event contribution entry/batching scope=]
+    :: |batchingScope|
+    : [=on event contribution entry/debug scope=]
+    :: The result of running |scopingDetails|' <a spec="private-aggregation-api"
+      for="scoping details">get debug scope steps</a>.
+    : [=on event contribution entry/worklet function=]
+    :: |function|
+    : [=on event contribution entry/origin=]
+    :: |origin|
+1. Let |onEventContributionMap| be |global|'s
+    [=InterestGroupScriptRunnerGlobalScope/on event contribution map=].
+1. If |onEventContributionMap|[|event|] does not [=map/exist=], set
+    |onEventContributionMap|[|event|] to a new [=list=].
+1. [=list/Append=] |entry| to |onEventContributionMap|[|event|].
+1. Return false.
 
 </div>
 
@@ -4923,7 +5009,7 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
           :: |onEventEntry|'s [=on event contribution entry/debug scope=]
           : <a spec="private-aggregation-api" for="contribution cache entry">debug details</a>
           :: |onEventEntry|'s [=on event contribution entry/debug details=]
-      1. [=Append an entry to the contribution cache|Append=] |entry| to the [=contribution cache=].
+      1. [=Append an entry to the contribution cache|Append=] |entry| to the contribution cache.
 1. Let |sellerBatchingScope| be the result of [=get or create a batching
     scope|getting or creating a batching scope=] given |auctionConfig|'s [=auction config/seller=],
     |auctionConfig|'s [=auction config/seller Private Aggregation coordinator=], and
@@ -4994,7 +5080,7 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
           : <a spec="private-aggregation-api" for="contribution cache entry">debug scope</a>
           :: |auctionReportBuyersDebugScope|
       1. [=Append an entry to the contribution cache|Append=] |entry| to
-          the [=contribution cache=].
+          the contribution cache.
 1. [=Mark a debug scope complete=] given |auctionReportBuyersDebugScope| and
     |auctionConfig|'s [=auction config/auction report buyer debug details=].
 1. [=map/For each=] (|origin|, <var ignore>aggregationCoordinator</var>) →
@@ -6412,12 +6498,6 @@ dictionary PAExtendedHistogramContribution {
   bigint filteringId = 0;
 };
 
-[Exposed=InterestGroupScriptRunnerGlobalScope]
-partial interface PrivateAggregation {
-  undefined contributeToHistogramOnEvent(
-      DOMString event, PAExtendedHistogramContribution contribution);
-};
-
 </pre>
 
 Each {{InterestGroupScriptRunnerGlobalScope}} has a
@@ -6440,83 +6520,6 @@ The <dfn attribute for=InterestGroupScriptRunnerGlobalScope>privateAggregation</
 
   1. Return [=this=]'s [=relevant global object=]'s
     [=InterestGroupScriptRunnerGlobalScope/private aggregation=].
-</div>
-
-<div algorithm>
-The <dfn method for="PrivateAggregation">contributeToHistogramOnEvent(DOMString
-event, PAExtendedHistogramContribution contribution)</dfn> method steps are:
-1. Let |global| be [=this=]'s [=relevant global object=].
-1. Let |function| be |global|'s [=InterestGroupScriptRunnerGlobalScope/worklet function=].
-1. Let |origin| be |global|'s [=InterestGroupScriptRunnerGlobalScope/origin=].
-1. If [=this=]'s <a spec="private-aggregation-api" for="PrivateAggregation">
-  allowed to use</a> is false, [=exception/throw=] a {{TypeError}}.
-1. Let |scopingDetails| be [=this=]'s <a spec="private-aggregation-api" for="PrivateAggregation">
-  scoping details</a>
-1. If |event| [=string/starts with=] "`reserved.`" and « "`reserved.always`",
-    "`reserved.loss`", "`reserved.win`", "`reserved.once`" » does not [=list/contain=] |event|,
-    return.
-
-    Note: No error is thrown to allow forward compatibility if additional
-        reserved event types are added later.
-1. If |event| is "`reserved.once`" and |function| is [=worklet function/report-result=] or
-  [=worklet function/report-win=], [=exception/throw=] a {{TypeError}}.
-1. Let |bucket| be |contribution|["{{PAExtendedHistogramContribution/bucket}}"].
-1. If |bucket| is a {{PASignalValue}}:
-    1. If |bucket|["{{PASignalValue/baseValue}}"] is not a valid [=signal base
-        value=], [=exception/throw=] a {{TypeError}}.
-    1. If |bucket|["{{PASignalValue/offset}}"] is not a {{bigint}}, [=exception/
-        throw=] a {{TypeError}}.
-1. Otherwise, if |contribution|["{{PAExtendedHistogramContribution/bucket}}"] is
-    not [=set/contained=] in [=the exclusive range|the range=] 0 to
-    2<sup>128</sup>, exclusive, [=exception/throw=] a {{TypeError}}.
-
-    Issue: Make the error type consistent with
-        {{PrivateAggregation/contributeToHistogram(contribution)}}.
-1. Let |value| be |contribution|["{{PAExtendedHistogramContribution/value}}"].
-1. If |value| is a {{PASignalValue}}:
-    1. If |value|["{{PASignalValue/baseValue}}"] is not a valid [=signal base
-        value=], [=exception/throw=] a {{TypeError}}.
-    1. If |value|["{{PASignalValue/offset}}"] is a {{bigint}}, [=exception/
-        throw=] a {{TypeError}}.
-1. Otherwise, if |contribution|["{{PAExtendedHistogramContribution/value}}"] is
-    negative, [=exception/throw=] a {{TypeError}}.
-1. If |contribution|["{{PAExtendedHistogramContribution/filteringId}}"] is
-    not [=set/contained=] in [=the exclusive range|the range=] 0 to
-    256<sup>[=default filtering ID max bytes=]</sup>, exclusive, [=exception/
-    throw=] a {{TypeError}}.
-
-    Issue: Make the error types on validation issues here and above consistent
-        with {{PrivateAggregation/contributeToHistogram(contribution)}}.
-
-    Note: It is not currently possible to set a non-default filtering ID max
-        bytes for Protected Audience.
-1. If |event| does not [=string/start with=] "`reserved.`", and |function| is
-  [=worklet function/score-ad=] or [=worklet function/report-result=], return.
-1. Let |batchingScope| be null.
-1. If |event| [=string/starts with=] "`reserved.`", set |batchingScope| to the
-    result of running |scopingDetails|' <a spec="private-aggregation-api" for="scoping details">
-    get batching scope steps</a>.
-
-    Note: Each non-reserved |event| will have a different [=batching scope=]
-        that is created later.
-1. Let |entry| be a new [=on event contribution entry=] with the items:
-    : [=on event contribution entry/contribution=]
-    :: |contribution|
-    : [=on event contribution entry/batching scope=]
-    :: |batchingScope|
-    : [=on event contribution entry/debug scope=]
-    :: The result of running |scopingDetails|' <a spec="private-aggregation-api"
-      for="scoping details">get debug scope steps</a>.
-    : [=on event contribution entry/worklet function=]
-    :: |function|
-    : [=on event contribution entry/origin=]
-    :: |origin|
-1. Let |onEventContributionMap| be |global|'s
-    [=InterestGroupScriptRunnerGlobalScope/on event contribution map=].
-1. If |onEventContributionMap|[|event|] does not [=map/exist=], set
-    |onEventContributionMap|[|event|] to a new [=list=].
-1. [=list/Append=] |entry| to |onEventContributionMap|[|event|].
-
 </div>
 
 <pre class="idl">
