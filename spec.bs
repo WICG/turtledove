@@ -66,7 +66,7 @@ spec: RFC8941; urlPrefix: https://httpwg.org/specs/rfc8941.html
 spec: WebAssembly; urlPrefix: https://webassembly.github.io/spec/core/
   type: dfn
     urlPrefix: appendix/embedding.html
-      text: error; url: embed-error
+      text: embed error; url: embed-error
 spec: WebAssembly-js-api; urlPrefix: https://webassembly.github.io/spec/js-api/
   type: dfn
     text: compiling a WebAssembly module; url: #compile-a-webassembly-module
@@ -107,11 +107,16 @@ spec: CSP; urlPrefix: https://w3c.github.io/webappsec-csp/
 spec: CSPEE; urlPrefix: https://w3c.github.io/webappsec-cspee/
   type: dfn
     text: required csp; url: browsing-context-required-csp
+spec: webdriver; urlPrefix: https://w3c.github.io/webdriver/
+  type: dfn
+    text: getting a property; url: dfn-getting-properties
+    text: undefined; url: dfn-undefined
 </pre>
 
 <pre class=link-defaults>
 spec:encoding; type:dfn; text:utf-8
 spec:infra; type:dfn; text:user agent
+spec:webdriver2; type:dfn; text:remote end steps
 </pre>
 
 <style>
@@ -2691,7 +2696,7 @@ To <dfn>fetch WebAssembly</dfn> given a [=URL=] |url| and an [=environment setti
     1. If [=validate fetching response=] with |response|, |responseBody| and "`application/wasm`"
         returns false, set |moduleObject| to failure and return.
     1. Let |module| be the result of [=compiling a WebAssembly module=] |response|.
-    1. If |module| is [=error=], set |moduleObject| to failure.
+    1. If |module| is [=embed error|error=], set |moduleObject| to failure.
     1. Otherwise, set |moduleObject| to |module|.
   1. Wait for |moduleObject| to be set.
   1. Return |moduleObject|.
@@ -5810,14 +5815,14 @@ from querying the server during an auction.
       1. Set |kAnonRestrictedIG|'s [=interest group/ads=] to an empty [=list=] of [=interest group ad=].
       1. [=list/For each=] |igAd| of |ig|'s [=interest group/ads=]:
         1. Let |adHashCode| be the result of running [=compute the key hash of ad=] given |ig| and |igAd|.
-        1. If [=query k-anonymity cache=] for |adHashCode| returns true:
+        1. If [=query k-anonymity cache=] for |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and|adHashCode| returns true:
           1. If |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] is not null:
             1. Let |kAnonRestrictedSelectableReportingIds| be a new empty [=list=] of [=string=]s.
             1. [=list/For each=] |selectableReportingId| in |igAd|'s
               [=interest group ad/selectable buyer and seller reporting IDs=]:
               1. Let |reportingHashCode| be the result of [=query reporting ID k-anonymity count=]
                 given |ig|, |igAd|, and |selectableReportingId|.
-              1. If [=query k-anonymity cache=] for |reportingHashCode| returns true, then
+              1. If [=query k-anonymity cache=] for |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and|reportingHashCode| returns true, then
                 [=list/append=] |selectableReportingId| to |kAnonRestrictedSelectableReportingIds|.
             1. Set |igAd|'s [=interest group ad/selectable buyer and seller reporting IDs=] to
               |kAnonRestrictedSelectableReportingIds|.
@@ -5828,7 +5833,7 @@ from querying the server during an auction.
       1. [=list/For each=] |igAdComponent| of |ig|'s [=interest group/ad components=]:
         1. Let |adComponentHashCode| be the result of running [=compute the key hash of component ad=] given |ig| and
           |igAdComponent|.
-        1. If [=query k-anonymity cache=] for |adComponentHashCode| returns true:
+        1. If [=query k-anonymity cache=] for |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and |adComponentHashCode| returns true:
           1. [=list/Append=] |igAdComponent| to |kAnonRestrictedIG|'s [=interest group/ad components=].
     1. Return |kAnonRestrictedIG|.
 </div>
@@ -5842,12 +5847,22 @@ from querying the server during an auction.
 </div>
 
 <div algorithm>
-  To <dfn>query k-anonymity cache</dfn> given a [=SHA-256=] |hashCode|:
-    1. If the [=user agent=]'s [=k-anonymity cache=] does not [=map/contain=] |hashCode|, then return false.
-    1. Let |record| be the [=user agent=]'s [=k-anonymity cache=][|hashCode|].
+  To <dfn>check a k-anonymity record</dfn> given a [=k-anonymity record=] |record|:
     1. If the difference between [=current coarsened wall time=] and |record|'s [=k-anonymity
       record/timestamp=] is more than 7 days then return false.
     1. Return |record|'s [=k-anonymity record/is k-anonymous=].
+</div>
+
+<div algorithm>
+  To <dfn>query k-anonymity cache</dfn> given an [=origin=] |owner|, [=string=] |name|, and [=SHA-256=] |hashCode|:
+    1. If the [=user agent=]'s [=k-anonymity overrides=] [=map/contains=] the [=tuple=] (|owner|,|name|):
+      1. If the [=user agent=]'s [=k-anonymity overrides=][(|owner|,|name|)] does not [=map/contain=] |hashCode|, then return false.
+      1. Let |record| be the [=user agent=]'s [=k-anonymity overrides=][(|owner|,|name|)][|hashCode|].
+      1. Return the result of [=checking a k-anonymity record=] with |record|.
+    1. Otherwise:
+      1. If the [=user agent=]'s [=k-anonymity cache=] does not [=map/contain=] |hashCode|, then return false.
+      1. Let |record| be the [=user agent=]'s [=k-anonymity cache=][|hashCode|].
+      1. Return the result of [=checking a k-anonymity record=] with |record|.
 </div>
 
 <div algorithm>
@@ -5921,18 +5936,19 @@ from querying the server during an auction.
 
 <div algorithm>
   To <dfn>query generated bid k-anonymity count</dfn> given a [=generated bid=] |bid|:
-    1. Compute the |adHashCode| following [=compute the key hash of ad=] with the |bid|'s [=generated bid/interest group=]
+    1. Let |ig| be the |bid|'s [=generated bid/interest group=].
+    1. Compute the |adHashCode| following [=compute the key hash of ad=] with |ig|
       and |bid|'s [=generated bid/ad descriptor=].
-    1. If [=query k-anonymity cache=] for |adHashCode| returns false, return false.
+    1. If [=query k-anonymity cache=] for |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and |adHashCode| returns false, return false.
     1. If |bid|'s [=generated bid/ad component descriptors=] is not null:
       1. [=set/For each=] |adComponentDescriptor| in |bid|'s
         [=generated bid/ad component descriptors=]:
         1. Compute the |componentAdHashCode| by getting the result of [=compute the key hash of component ad=] with |adComponentDescriptor|'s
           [=ad descriptor/url=].
-        1. If [=query k-anonymity cache=] for |componentAdHashCode| returns false, return false.
+        1. If [=query k-anonymity cache=] for |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and |componentAdHashCode| returns false, return false.
     1. If |bid|'s [=generated bid/selected buyer and seller reporting ID=] is not null:
-      1. Let |isKAnon| the result of running [=query reporting ID k-anonymity count=] with |bid|'s
-        [=generated bid/interest group=], |bid|'s [=generated bid/ad=], and |bid|'s
+      1. Let |isKAnon| the result of running [=query reporting ID k-anonymity count=]
+        with |ig|, |bid|'s [=generated bid/ad=], and |bid|'s
         [=generated bid/selected buyer and seller reporting ID=].
       1. If |isKAnon| is false, return false.
     1. Return true.
@@ -5942,7 +5958,7 @@ from querying the server during an auction.
   To <dfn>query reporting ID k-anonymity count</dfn> given an [=interest group=]
   |ig|, an [=interest group ad=] |igAd|, and a [=string=]-or-null |selectedReportingId|:
     1. Let |keyHash| be the result of [=computing the key hash of reporting ID=] given |ig|, |igAd|, and |selectedReportingId|.
-    1. Return the result of [=query k-anonymity cache=] given |keyHash|.
+    1. Return the result of [=query k-anonymity cache=] given |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and |keyHash|.
 </div>
 
 <div algorithm>
@@ -9143,7 +9159,7 @@ an {{unsigned short}}-or-null |experimentGroupId|, an [=origin=] |topLevelOrigin
   for [=bidding partition/id=], and [=bidding partitions=] as their [=map/values=].
 1. Let |compressionIdMap| be an empty [=map=], whose [=map/keys=] are [=origins=] and [=map/values=] are integers.
 1. Let |interestGroupIdMap| be an empty [=map=], whose [=map/keys=] are [=strings=] and [=map/values=] are [=tuples=]
-  of (interger, integer).
+  of (integer, integer).
 1. Let |slotSizeParams| be the result of [=strictly splitting=] |slotSizeQueryParam| on U+003D (=).
 1. Let |nextCompressionGroupId| be 0.
 1. [=list/For each=] |group| of |interestGroups|:
@@ -9824,11 +9840,12 @@ To <dfn>apply any component ads target to a bid</dfn>, given a [=generated bid=]
 
 To <dfn>try to reach component ads target considering k-anonymity</dfn>, given a [=generated bid=] |generatedBid|:
 1. If |generatedBid|'s [=generated bid/target number of ad components=] is null, return false.
+1. Let |ig| be |generatedBid|'s [=generated bid/interest group=].
 1. Let |selectedComponents| be a new [=list=] of [=ad descriptors=].
 1. [=set/For each=] |i| of [=list/get the indices=] of |generatedBid|:
   1. Let |candidateComponent| be |generatedBid|'s [=generated bid/ad component descriptors=][|i|].
   1. Compute |componentAdHashCode| by getting the result of [=compute the key hash of component ad=] given |candidateComponent|'s [=interest group ad/render url=].
-  1. If [=query k-anonymity cache=] given |componentAdHashCode| returns true:
+  1. If [=query k-anonymity cache=] given |ig|'s [=interest group/owner=], |ig|'s [=interest group/name=], and |componentAdHashCode| returns true:
     1. [=list/Append=] |candidateComponent| to |selectedComponents|.
   1. Otherwise:
     1. If |i| &lt; |generatedBid|'s [=generated bid/number of mandatory ad components=], return false.
@@ -10304,6 +10321,81 @@ The <dfn for="cumulative timeout tracker">is expired</dfn> of a [=cumulative tim
 |tracker| is:
 1. False if |tracker|'s [=cumulative timeout tracker/remaining=] is null or positive.
 1. True otherwise, that is, if |tracker|'s [=cumulative timeout tracker/remaining=] &leq; 0.
+
+</div>
+
+# User Agent Automation # {#sctn-automation}
+
+For the purposes of user agent automation and website testing, this document
+defines the below [[WebDriver2]] [=extension commands=].
+
+## <dfn>Set Protected Audience K-Anonymity</dfn> ## {#sctn-automation-set-protected-audience-k-anonymity}
+
+The [=Set Protected Audience K-Anonymity=] WebDriver [=extension command=] instructs the
+user agent to use the specified hashes as the only k-anonymous sets for the
+[=interest group=] with the given [=interest group/owner=] and [=interest group/name=].
+
+The <dfn>k-anonymity overrides</dfn> is a [=map=] [=map/containing=] the currently
+active set of k-anonymity overrides, which is initially empty.
+The [=map/keys=] of [=k-anonymity overrides=] are [=tuples=] of (an [=origin=]
+for interest group owner, a [=string=] for interest group name).
+The [=map/values=] of [=k-anonymity overrides=] are [=maps=] whose [=map/keys=] are
+[=SHA-256=] hashes and whose [=map/values=] are [=k-anonymity records=].
+The [=k-anonymity overrides=] are checked before and take precedence over the
+[=k-anonymity cache=].
+
+<figure id="table-setProtectedAudienceKAnonymity" class="table">
+    <table class="data">
+        <thead>
+            <tr>
+                <th>HTTP Method</th>
+                <th>URI Template</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>POST</td>
+                <td>`session/{session id}/protected_audience/set_k_anonymity`</td>
+            </tr>
+        </tbody>
+    </table>
+</figure>
+
+<div algorithm="remote end steps">
+The [=remote end steps=], given <var ignore>session</var>,
+<var ignore>URL variables</var> and |parameters| are:
+
+1. If |parameters| is not a JSON [[ECMASCRIPT#sec-json-object|Object]], return a
+     [=error|WebDriver error=] with [=error code=] [=invalid argument=].
+1. Let |owner| be the result of [=getting a property=] named `"owner"` from
+    |parameters|.
+1. If |owner| is [=undefined=] or is not a [=string=], return a
+   [=error|WebDriver error=] with [=error code=] [=invalid argument=].
+1. Let |ownerOrigin| be the result running [=parse an https origin=] on |owner|.
+1. If |ownerOrigin| is failure, return a [=error|WebDriver error=] with
+   [=error code=] [=invalid argument=].
+1. Let |name| be the result of [=getting a property=] named `"name"` from
+    |parameters|.
+1. If |name| is not a [=string=], return a [=error|WebDriver error=] with
+    [=error code=] [=invalid argument=].
+1. Let |hashes| be the result of [=getting a property=] named `"hashes"` from
+    |parameters|.
+1. If |hashes| is not a [=list=], return a [=error|WebDriver error=] with
+    [=error code=] [=invalid argument=].
+1. Let |override| be a [=map=] whose [=map/keys=] are [=SHA-256=] hashes and
+   whose [=map/values=] are [=k-anonymity records=].
+1. [=list/For each=] |hashString| of |hashes|:
+  1. If |hashString| is not a [=string=], return a
+     [=error|WebDriver error=] with [=error code=] [=invalid argument=].
+  1. Let |hash| be the result of running [=forgiving-base64 decode=] with |hashString|.
+  1. If |hash| is failure or |hash|'s [=byte sequence/length=] is not 32, return
+     a [=error|WebDriver error=] with [=error code=] [=invalid argument=].
+  1. Let |record| be a new [=k-anonymity record=].
+  1. Set |record|'s [=k-anonymity record/timestamp=] field to the [=current coarsened wall time=].
+  1. Set |record|'s [=k-anonymity record/is k-anonymous=] field to true.
+  1. [=map/Set=] |override|[|hash|] to |record|.
+1. [=map/Set=] the [=user agent=]'s [=k-anonymity overrides=][(|ownerOrigin|,|name|)] to |override|.
+1. Return [=success=] with data `null`.
 
 </div>
 
