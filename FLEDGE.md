@@ -604,14 +604,13 @@ The function gets called once for each candidate ad in the auction.  The argumen
 *   bid: A numerical bid value.
 *   auctionConfig: The auction configuration object passed to `navigator.runAdAuction()`.
 *   trustedScoringSignals: A value retrieved from a real-time trusted server chosen by the seller and reflecting the seller's opinion of this particular creative, as further described in [3.1 Fetching Real-Time Data from a Trusted Server](#31-fetching-real-time-data-from-a-trusted-server) below. This is used when the server is same-origin to the seller; crossOriginTrustedSignals is used otherwise.
-*   browserSignals: An object constructed by the browser, containing information that the browser
-    knows and which the seller's auction script might want to verify.
-    adComponentsCreativeScanningMetadata` is a list where each element corresponds to the
-    respective element in the `adComponents` list.  Each element might be either the string value
-    of that component ad's `creativeScanningMetadata`, or `null` if that component ad didn't provide one.
-
-
-*   browserSignals: An object constructed by the browser, containing information that the browser knows and which the seller's auction script might want to verify. Note that each element in `adComponentsCreativeScanningMetadata` might be either the string value of that component ad's `creativeScanningMetadata`, or null if that component ad didn't provide one.
+*   browserSignals: An object constructed by the browser, containing information
+    that the browser knows and which the seller's auction script might want to
+    verify. `adComponentsCreativeScanningMetadata` is a list where each element
+    corresponds to the respective element in the `adComponents` list.  Each
+    element might be either the string value of that component ad's
+    `creativeScanningMetadata`, or `null` if that component ad didn't provide
+    one.
     ```
     { 'topWindowHostname': 'www.example-publisher.com',
       'interestGroupOwner': 'https://www.example-dsp.com',
