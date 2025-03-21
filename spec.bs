@@ -6450,10 +6450,13 @@ of the following global objects:
     1. Let (|result|, |executionMetrics|'s [=execution metrics/script timed out=]) be the
       result of [=evaluating a script=] with |realm|, |script|, |functionName|, |argumentsJS|,
       and |timeout|.
-    1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, null, null ».
+    1. [=Finalize private aggregation debug info=] given |global|.
+    1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
+      |global|.
+    1. If |result| is an [=ECMAScript/abrupt completion=], return « "null", null, |paContributions|, null ».
 
-        Issue: Verify whether Private Aggregation contributions are dropped here. Handle the
-            uncaught-exception better.
+        Issue: Callers don't seem to expect nulls in the return value.
+    1. [=map/Remove=] |paContributions|["`reserved.uncaught-exception`"].
     1. Let |resultJSON| be "null".
     1. If |functionName| is "`reportResult`", then set |resultJSON| to the result of
       [=serializing a JavaScript value to a JSON string=] given |result|.
@@ -6464,9 +6467,6 @@ of the following global objects:
     1. If |reportURL| is failure, set |reportURL| to null.
     1. Let |macroMap| be |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting macro map=]
       if |functionName| is "`reportWin`" or "`reportAdditionalBidWin`", null otherwise.
-    1. [=Finalize private aggregation debug info=] given |global|.
-    1. Let |paContributions| be the result of [=extracting private aggregation contributions=] given
-      |global|.
     1. Return « |resultJSON|, |reportURL|,
       |global|'s [=InterestGroupReportingScriptRunnerGlobalScope/reporting beacon map=], |macroMap|,
       |paContributions|, |executionMetrics| ».
