@@ -97,7 +97,6 @@ function generateBid(...) { // or scoreAd
   
   if (bidOut.bid > MAX_REASONABLE_BID) {
     realTimeReporting.contributeToHistogram(
-      BID_TOO_HIGH_BUCKET,
       { bucket: BID_TOO_HIGH_BUCKET,
         priorityWeight: BID_TOO_HIGH_WEIGHT });
     return;
