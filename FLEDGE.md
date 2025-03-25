@@ -1428,7 +1428,7 @@ const additionalBid = {
   },
 
   "interestGroup": {
-    "owner": "https://www.example-dsp.com"
+    "owner": "https://www.example-dsp.com",
     "name": "campaign123",
     "biddingLogicURL": "https://www.example-dsp.com/bid_logic.js"
   },
