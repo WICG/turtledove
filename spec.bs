@@ -111,6 +111,18 @@ spec: webdriver; urlPrefix: https://w3c.github.io/webdriver/
   type: dfn
     text: getting a property; url: dfn-getting-properties
     text: undefined; url: dfn-undefined
+spec: encoding; urlPrefix: https://encoding.spec.whatwg.org/
+  type: dfn
+    text: UTF-8; url: utf-8
+    text: decoder; url: decoder
+    text: I/O queue; url: concept-stream
+    text: encoding-error; url: error
+    text: encoding-finished; url: finished
+    text: process an item; url: concept-encoding-process
+    text: serialize I/O queue; url: concept-td-serialize
+    text: TextDecoderCommon-encoding; url: textdecoder-encoding
+    text: TextDecoderCommon-ignore BOM; url: textdecoder-ignore-bom-flag
+    text: TextDecoderCommon-BOM seen; url: textdecoder-bom-seen-flag
 </pre>
 
 <pre class=link-defaults>
@@ -6421,7 +6433,7 @@ partial interface PrivateAggregation {
 
 [Exposed=InterestGroupScriptRunnerGlobalScope]
 interface ProtectedAudienceUtilities {
-  Uint8Array encodeUtf8(USVString string);
+  Uint8Array encodeUtf8(USVString input);
   USVString decodeUtf8(Uint8Array bytes);
 };
 
@@ -6535,14 +6547,37 @@ event, PAExtendedHistogramContribution contribution)</dfn> method steps are:
 </div>
 
 <div algorithm>
-The <dfn method for="ProtectedAudienceUtilities">encodeUtf8(USVString string)</dfn> method steps are:
-1. Stuff
+The <dfn method for="ProtectedAudienceUtilities">encodeUtf8(USVString input)</dfn> method steps are:
+1. Follow the steps of {{TextEncoder/encode(input)|TextEncoder.encode(input)}}.
 
 </div>
 
 <div algorithm>
 The <dfn method for="ProtectedAudienceUtilities">decodeUtf8(Uint8Array bytes)</dfn> method steps are:
-1. Stuff
+1. Let |decoder| be a new instance of [=UTF-8=]'s [=decoder=].
+1. Let |ioQueue| be an <a for=/>I/O queue</a> of bytes « [=end-of-queue=] ».
+1. [=I/O queue/Push=] <var ignore>bytes</var> to |ioQueue|.
+1. Let |output| be an <a for=/>I/O queue</a> of bytes « [=end-of-queue=] ».
+1. While true:
+  1. Let |item| be the result of [=I/O queue/reading=] from |ioQueue|.
+  1. Let |result| be the result of [=processing an item=] with |item|, |decoder|, |ioQueue|,
+    |output|, and "<code>replacement</code>".
+  1. [=Assert=] that |result| is not an [=encoding-error|error=].
+  1. If |result| is [=encoding-finished|finished=], [=iteration/break=].
+1. Let |serializationSettings| be a new {{TextDecoderCommon}} with following fields:
+    <dl>
+      <dt>[=TextDecoderCommon-encoding|encoding=]
+      <dd>[=UTF-8=]
+      <dt>[=TextDecoderCommon-ignore BOM|ignore BOM=]
+      <dd>true
+      <dt>[=TextDecoderCommon-BOM seen|BOM seen=]
+      <dd>false
+    </dl>
+1. Return the result of running <a for=/>serialize I/O queue</a> with |serializationSettings|
+  and |output|.
+
+Note: This is a simplified version of {{TextDecoder/decode(input, options)|TextDecoder.decode(bytes)}},
+with a UTF-8 decoder and {{TextDecoderOptions/ignoreBOM}} set to true.
 
 </div>
 
