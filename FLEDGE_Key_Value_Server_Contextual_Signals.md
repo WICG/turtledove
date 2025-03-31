@@ -4,6 +4,7 @@ Authors:
 
 -   Peiwen Hu
 -   Matt Menke
+-   Lusa Zhan
 
 ## **Introduction**
 
