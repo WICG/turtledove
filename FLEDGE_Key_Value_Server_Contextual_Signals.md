@@ -23,10 +23,10 @@ The list is not exhaustive.
 
 Trusted Key Value servers (TKVs) offer additional isolation and protection of data processing that allow us to safely pass them additional contextual signals. To address the above shortcomings and enable improved ad selection within TKV by leveraging contextual data, we introduce two new string fields in the auction configuration:
 
-1. perBuyerTKVSignals. This field could convey contextual signals to the buyer’s TKV, which could use them as inputs to the buyer’s user defined function (UDF).
-2. sellerTKVSignals. This field could convey contextual signals to the seller’s TKV, which could use them as inputs to the seller’s UDF.
+1. `perBuyerTKVSignals`. This field could convey contextual signals to the buyer’s TKV, which could use them as inputs to the buyer’s user defined function (UDF).
+2. `sellerTKVSignals`. This field could convey contextual signals to the seller’s TKV, which could use them as inputs to the seller’s UDF.
 
-## **On-device auction sellerTKVSignals design**
+## **On-device auction `sellerTKVSignals` design**
 
 ![Example flow related to the seller’s KV server](assets/fledge_kv_server_sellertkvsignals_example_flow.png)
 
@@ -38,7 +38,7 @@ The seller sets the `sellerTKVSignals` field when constructing the auction confi
 
 The rest of the flow stays as it is today.
 
-## **On-device auction perBuyerTKVSignals design**
+## **On-device auction `perBuyerTKVSignals` design**
 
 ![Example flow related to the buyer’s KV server](assets/fledge_kv_server_buyertkvsignals_example_flow.png)
 
@@ -70,9 +70,9 @@ Trusted bidding signals may be reused by a given interest group across multiple 
 
 Adding `perBuyerTKVSignals` to key value fetches will add yet another field that must match in order to reuse TKV response data between auctions. If it varies between ad slots, or multiple sellers in the same auction, that means a reduced cache hit rate and/or larger network requests, resulting in more latency and bandwidth usage.
 
-When deciding what, if anything, to provide in perBuyerTKVSignals, SSPs will need to consider the tradeoff between lower cache hit rates and providing bidders with slot-specific and page-specific information.
+When deciding what, if anything, to provide in `perBuyerTKVSignals`, SSPs will need to consider the tradeoff between lower cache hit rates and providing bidders with slot-specific and page-specific information.
 
-perSellerTKVSignals have similar considerations.
+`sellerTKVSignals` have similar considerations.
 
 ## **Bidding & Auction service auctions contextual TKV signals design**
 
@@ -80,8 +80,8 @@ Currently, the Bidding & Auction services can receive `perBuyerSignals` from the
 
 In the future, should Bidding & Auction services support a flow in which these two auctions run in parallel, these `perBuyerSignals` will not be available at the time B&A calls TKV. In that case, `perBuyerTKVSignals` and `sellerTKVSignals` can be added to [SelectAdRequest.AuctionConfig](https://github.com/privacysandbox/bidding-auction-servers/blob/68c22a0c61d8320b655328dcfe0b28c59fd69475/api/bidding_auction_servers.proto#L758).
 
-- [SelectAdRequest.AuctionConfig.PerBuyerConfig](https://github.com/privacysandbox/bidding-auction-servers/blob/68c22a0c61d8320b655328dcfe0b28c59fd69475/api/bidding_auction_servers.proto#L789) will have a string field `buyer_tkv_signals` for perBuyerTKVSignals.
-- SelectAdRequest.AuctionConfig will have a string field `seller_tkv_signals`.
+- [SelectAdRequest.AuctionConfig.PerBuyerConfig](https://github.com/privacysandbox/bidding-auction-servers/blob/68c22a0c61d8320b655328dcfe0b28c59fd69475/api/bidding_auction_servers.proto#L789) will have a string field `buyer_tkv_signals` for `perBuyerTKVSignals`.
+- `SelectAdRequest.AuctionConfig` will have a string field `seller_tkv_signals`.
 
 Similar to the on-device auction, the signals will then be set in the request to the TKV.
 
