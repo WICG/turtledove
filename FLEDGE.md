@@ -945,7 +945,7 @@ The arguments to `generateBid()` are:
           /* Aggregated view counts as described in section 3.7: View and Click Data */
       'clickCounts': { 'pastHour': 0, 'pastDay': 0, 'pastWeek': 1, 'past30Days': 1, 'past90Days': 1 },
           /* Aggregated click counts as described in section 3.7: View and Click Data */
-   }
+    }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
     *   perBuyerSignals: Like auctionConfig.perBuyerSignals, but passed via the [directFromSellerSignals](#25-additional-trusted-signals-directfromsellersignals) mechanism.
