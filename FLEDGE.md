@@ -1261,16 +1261,16 @@ Ad-Auction-Record-Event: type=["view"|"click"], eligible-origins=("https://dsp1.
   using a corresponding string value of either `"view"` or `"click"`. The browser will discard
   events for which this value does not match the type conveyed via the `view` or `click` entry in
   the `Sec-Ad-Auction-Event-Recording-Eligible` request header.
-* `eligible-origins`: Optional. Conveys one or more origins for which this event should be included
-  in the aggregated view and click counts that will be provided to `generateBid()` invocations in
-  Protected Audience auctions. `eligible-origins` is expressed as an [inner
-  list](https://httpwg.org/specs/rfc9651.html#rfc.section.3.1.1) of strings, each an origin
-  representing a party that can include this event in their aggregated view and click counts. If
-  `eligible-origins` is omitted or empty (an inner list with no elements), then this event will be
-  included only in the aggregated view and click counts available to the origin that returned this
-  `Ad-Auction-Record-Event`. If `eligible-origins` is present and non-empty, then it must include
-  the origin that returned that `Ad-Auction-Record-Event` if that party would like to include this
-  event in its own aggregated view and click counts.
+* `eligible-origins`: Optional. Conveys one or more interest group owner origins for which this
+  event should be included in the aggregated view and click counts that will be provided to
+  their `generateBid()` invocations in Protected Audience auctions. `eligible-origins` is expressed
+  as an [inner list](https://httpwg.org/specs/rfc9651.html#rfc.section.3.1.1) of strings, each an
+  origin representing a party that can include this event in their aggregated view and click
+  counts. If `eligible-origins` is omitted or empty (an inner list with no elements), then this
+  event will be included only in the aggregated view and click counts available to the origin that
+  returned this `Ad-Auction-Record-Event`. If `eligible-origins` is present and non-empty, then it
+  must include the origin that returned that `Ad-Auction-Record-Event` if that party would like to
+  include this event in its own aggregated view and click counts.
 
 The "providing origin" is the origin from which the `Ad-Auction-Record-Event` header was received.
 The browser will only record view and click events for the providing origin if its
