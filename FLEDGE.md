@@ -36,6 +36,7 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
       - [3.4.1 Flexible Component Ad Selection Considering k-Anonymity](#341-flexible-component-ad-selection-considering-k-anonymity)
     - [3.5 Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups)
     - [3.6 Currency Checking](#36-currency-checking)
+    - [3.7 View and Click Data](#37-view-and-click-data)
   - [4. Browsers Render the Winning Ad](#4-browsers-render-the-winning-ad)
   - [5. Event-Level Reporting (for now)](#5-event-level-reporting-for-now)
     - [5.1 Seller Reporting on Render](#51-seller-reporting-on-render)
@@ -940,6 +941,10 @@ The arguments to `generateBid()` are:
       'adComponentsLimit': 40, /* Maximum number of ad components generateBid() may return */
       'multiBidLimit': 5, /* If set, maximum number of bids that can be returned at once;
                              see perBuyerMultiBidLimits */
+      'viewCounts': { 'pastHour': 1, 'pastDay': 2, 'pastWeek': 3, 'past30Days': 3, 'past90Days': 3 },
+          /* Aggregated view counts as described in section 3.7: View and Click Data */
+      'clickCounts': { 'pastHour': 0, 'pastDay': 0, 'pastWeek': 1, 'past30Days': 1, 'past90Days': 1 },
+          /* Aggregated click counts as described in section 3.7: View and Click Data */
     }
     ```
 *   directFromSellerSignals is an object that may contain the following fields:
@@ -1141,6 +1146,217 @@ If the `generateBid()` method returns a `bidCurrency`, and the `perBuyerCurrenci
 Currency checking after `scoreAd()` happens only inside component auctions.  If the component seller's `scoreAd()` modifies the bid value, the modified bid's currency will be checked; if not, the passed-through bid from the original buyer's currency will be. In either case, the currency will be checked both against the component auction's `sellerCurrency` and top-level auction's `perBuyerCurrencies` as applied to the component auction's seller.  As before, both the bid currency and the configured currency in question must be specified for the checking to take place; if one or both are missing that particular currency check does not take place. If there is a mismatch, the bid will not take part in the top-level auction.
 
 `sellerCurrency` also has an extensive effect on how reporting behaves.  Please see the section on [Currencies in Reporting](#53-currencies-in-reporting) for more details.
+
+### 3.7 View and Click Data
+User clickiness, the propensity of a user to interact with ads, is an important feature in existing
+bidding models, which could indicate a user’s general ad interaction behavior. In Protected
+Audience, buyers can get access to limited cross-site clickiness signals. To do this, adtechs can
+record views and clicks with the browser. At bidding time, the browser counts the recorded views and
+clicks on that device for pre-defined time intervals, so that bidding logic can take them into
+account.
+
+#### 3.7.1 Recording View and Click Events
+
+[attributionsrc](https://wicg.github.io/attribution-reporting-api/#dom-htmlattributionsrcelementutils-attributionsrc)
+is an attribute on select HTML elements (`<a>`, `<img>`, `<script>`) and an argument to select
+JavaScript methods (`window.open`) that can be used to direct the browser to send background
+requests to one or more specified URLs and to process the returned HTTP structured response headers.
+These headers may instruct the browser to record eligible view and click events. The value of
+`attributionsrc` is typically an advertiser or ad-tech provider endpoint. This attribute name is the
+same as what’s already used for Attribution Reporting API (ARA), so adtechs do not need to retag
+their HTML or JavaScript, or use additional requests to record view and click events. As such,
+`attributionsrc` can continue to be used in the same way that [the Attribution Reporting API
+integration
+guide](https://developers.google.com/privacy-sandbox/private-advertising/attribution-reporting/enable-conversion-measurement)
+describes its use for conversion measurement, specifically in the sections titled ["How the
+attributionsrc attribute
+works"](https://developers.google.com/privacy-sandbox/private-advertising/attribution-reporting/enable-conversion-measurement#how_the_attributionsrc_attribute_works)
+and ["Add `attributionsrc` for click and impression
+events"](https://developers.google.com/privacy-sandbox/private-advertising/attribution-reporting/enable-conversion-measurement#add_attributionsrc_for_click_and_impression_events).
+To summarize:
+
+**Views** don’t require any user interaction and can be recorded via `<img>` or `<script>` tags
+using the `attributionsrc` attribute:
+
+```html
+<img src="https://advertiser.example/pixel"
+     attributionsrc="https://adtech.example/record-view?metadata=...">
+
+<script src="https://advertiser.example/record-view"
+        attributionsrc="https://adtech.example/record-view?metadata=...">
+```
+
+**Clicks** can be recorded on HTML anchor tags:
+
+```html
+<a href="https://advertiser.example/landing"
+   attributionsrc="https://adtech.example/record-click?metadata=...">
+  click me
+</a>
+```
+
+**Clicks** can also be recorded via calls to `window.open` that occur with [transient
+activation](https://html.spec.whatwg.org/multipage/interaction.html#transient-activation):
+
+```js
+// Encode the attributionsrc URL in case it contains special characters,
+// such as '=', that will cause the parameter to be improperly parsed.
+window.open(
+    "https://advertiser.example/landing", "_blank",
+    `attributionsrc=${encodeURIComponent(
+        "https://adtech.example/record-click?metadata=...")}`);
+```
+
+When `attributionsrc` is used:
+ * The browser will always look for view and click data on the response to the request that goes to
+   a clickthrough URL ("href" on an `<a>` tag) or impression URL ("src" on an `<img>` or `<script>`
+   tag).
+ * When `attributionsrc` is non-empty, the browser will also send a background request to the URL
+   specified in the value of `attributionsrc`, and then look for view and click data on the
+   response.
+ * The `attributionsrc` HTML attribute may include multiple space-delimited URLs, in which case the
+   browser will issue a background request for each.
+
+
+When the browser sends an eligible clickiness signals request, it will include a new
+`Sec-Ad-Auction-Event-Recording-Eligible` request header. `Sec-Ad-Auction-Event-Recording-Eligible`
+is a [Dictionary Structured Header](https://httpwg.org/specs/rfc9651.html#rfc.section.3.2) of the
+form:
+
+```http
+Sec-Ad-Auction-Event-Recording-Eligible: view
+(or)
+Sec-Ad-Auction-Event-Recording-Eligible: click
+```
+
+* `view` or `click`. One of these is required. Indicates whether this request is eligible to record
+  either a view or click event. The value for the `view` or `click` entry \-- whichever is sent \--
+  will always be `?1`, which is how `true` is expressed in [Structured
+  Fields](https://httpwg.org/specs/rfc9651.html#boolean). However, as boolean true values are always
+  omitted for serialized [Dictionary Structured
+  Headers](https://httpwg.org/specs/rfc9651.html#rfc.section.3.2), `view` and `click` will always
+  appear without a value.
+
+The `Sec-Ad-Auction-Event-Recording-Eligible` request header will be "greased" in the same way that
+the `Attribution-Reporting-Eligible` header is greased in the [Attribution Reporting
+API](https://wicg.github.io/attribution-reporting-api/#example-1c153954).
+
+1. `<a>` and `window.open` will send `click`.
+1. Other APIs that automatically set `Sec-Ad-Auction-Event-Recording-Eligible` (i.e. `<img>` and
+   `<script>`) will send `view`.
+1. Requests from JavaScript using `window.fetch` may send `view` when issued using the fetch option,
+   `{ eventSourceEligible: true }`.
+1. All other requests will not have the `Sec-Ad-Auction-Event-Recording-Eligible` header.
+
+A server receiving the `Sec-Ad-Auction-Event-Recording-Eligible` header may respond in such a way
+that indicates to the browser that this request should be counted among the events used to calculate
+that user's view and click counts. To do so, the server's response should include an
+`Ad-Auction-Record-Event` response header. `Ad-Auction-Record-Event` is a [Dictionary Structured
+Header](https://httpwg.org/specs/rfc9651.html#rfc.section.3.2) of the form:
+
+```http
+Ad-Auction-Record-Event: type=["view"|"click"], eligible-origins=("https://dsp1.example" "https://dsp2.example")
+```
+
+* `type`: Required. Indicates whether this event should be counted as either a view or click event
+  using a corresponding string value of either `"view"` or `"click"`. The browser will discard
+  events for which this value does not match the type conveyed via the `view` or `click` entry in
+  the `Sec-Ad-Auction-Event-Recording-Eligible` request header.
+* `eligible-origins`: Optional. Conveys one or more interest group owner origins for which this
+  event should be included in the aggregated view and click counts that will be provided to
+  their `generateBid()` invocations in Protected Audience auctions. `eligible-origins` is expressed
+  as an [inner list](https://httpwg.org/specs/rfc9651.html#rfc.section.3.1.1) of strings, each an
+  origin representing a party that can include this event in their aggregated view and click
+  counts. If `eligible-origins` is omitted or empty (an inner list with no elements), then this
+  event will be included only in the aggregated view and click counts available to the origin that
+  returned this `Ad-Auction-Record-Event`. If `eligible-origins` is present and non-empty, then it
+  must include the origin that returned that `Ad-Auction-Record-Event` if that party would like to
+  include this event in its own aggregated view and click counts.
+
+The "providing origin" is the origin from which the `Ad-Auction-Record-Event` header was received.
+The browser will only record view and click events for the providing origin if its
+[site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) is
+attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation
+model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model).
+Similarly, the browser will only retain eligible origins whose site (scheme, eTLD+1) is attested for
+Protected Audience API.
+
+If a redirect response is received for an `Sec-Ad-Auction-Event-Recording-Eligible` request, both
+the redirect response, i.e. the response that returns a 301/302/etc, and the target response, i.e.
+the target of the redirect, may validly include an `Ad-Auction-Record-Event` response header,
+including for multiple redirects. For all of the redirect and target responses, the providing origin
+is the origin from which the `Ad-Auction-Record-Event` response header is received, and it remains
+the case that only events from a providing origin whose site is attested for Protected Audience API
+will be recorded.
+
+#### 3.7.2 Using View and Click Counts in Bid Generation
+
+Buyers can specify the set of providing origins from which view and click events should be included
+using a new `viewAndClickCountsProviders` field in their interest group:
+
+```js
+const myGroup = {
+  'owner': 'https://dsp1.example',
+  'name': 'womens-running-shoes',
+  'viewAndClickCountsProviders': ['https://dsp1.example', 'https://adtech.example'],
+  // ...
+};
+const joinPromise = navigator.joinAdInterestGroup(myGroup);
+```
+
+If specified, view/click counts will be computed by summing all counts for which the providing
+origin is included in `viewAndClickCountsProviders`, and for which the eligible origins include the
+interest group owner. If not specified, the browser will by default include only those view and
+click events that the interest group owner provided to itself.
+
+When the buyer-defined `generateBid()` is called, two new fields -- `viewCounts` and `clickCounts`
+-- will be provided in the `browserSignals` argument, each of which will be an object that contains
+a field for each of the five fixed time windows.
+
+```js
+viewCounts: { pastHour: 1, pastDay: 2, pastWeek: 3, past30Days: 3, past90Days: 3 }
+clickCounts: { pastHour: 0, pastDay: 0, pastWeek: 1, past30Days: 1, past90Days: 1 }
+```
+
+These fields will only be present if the browser has recorded views or clicks from the interest
+group's `viewAndClickCountsProviders`. The browser may place limits on view and click counts to
+conserve device resources (e.g. using coarser time resolution for older data).
+
+
+#### 3.7.3 Lifespan and Limits of View and Click Data
+
+View and click data will automatically be deleted after the maximum interest group lifetime.
+Protected Audience user controls also apply to view and click data. If a user clears any site data
+or clears browsing history, all view/click data will be deleted.
+
+To protect user privacy and prevent abuse, the browser enforces a rolling rate limit of 10 view
+events and 10 click events over the past 20 seconds for each origin that records views or clicks.
+
+#### 3.7.4 Access Controls
+
+**For sites**:
+ * Recording of view and click events will be allowed only if the [publisher's
+   Permissions-Policy](https://developers.google.com/privacy-sandbox/private-advertising/setup/web/permissions-policy)
+   permits the providing origin to record ad auction events using the `record-ad-auction-events`
+   directive. If not specified, `record-ad-auction-events` defaults to "\*". Interest group and ARA
+   permission policy are not required.
+ * If a site wants to use ARA but not to record Protected Audience view and click events, they can
+   use the Permissions-Policy to generally allow ARA but disallow Protected Audience interest group
+   additions. Similarly, a site can use fine-grained control to configure which third-parties can
+   record views and clicks for Protected Audience.
+
+**For ad tech companies**:
+ * To record views and clicks, a providing origin is required to have its site (scheme, eTLD+1)
+   attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation
+   model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model).
+   Attestation for ARA is not required.
+ * If an adtech wants to use ARA but not record Protected Audience views and clicks, they can simply
+   exclude the Protected Audience view and click events header and/or not have its site (scheme,
+   eTLD+1) attested for Protected Audience API.
+
+**For end users**:
+ * View and click events are only recorded when the user control for Protected Audience is enabled.
+   The user control for ARA is not considered.
 
 ### 4. Browsers Render the Winning Ad
 
