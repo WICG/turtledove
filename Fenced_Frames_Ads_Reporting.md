@@ -126,9 +126,28 @@ window.fence.reportEvent({
 
 In the second `reportEvent` variant, fenced frames can invoke the `reportEvent` API to tell the browser to send a beacon to a specified destination URL, where macros in the URL are substituted to values registered by the buyer's worklet in `registerAdMacro` (see below). This specified URL must be a valid HTTPS URL.
 
-This API is available in the same contexts as `reportEvent` to a preregistered destination, i.e., all documents in a fenced frame tree, with opt-in requirements for documents that are cross-origin to the mapped URL. However, there are additional restrictions on the origin of the destination URL. The interest group declaration includes an allowlist of origins that may receive reports using this mode of `reportEvent` (custom destination URL with macro substitution). If at any point a report is attempted to a disallowed origin, access to this mode of `reportEvent` will be shut off for any ad loaded from this fenced frame config, for privacy reasons (to prevent reidentification by using the allowlist to encode cross-site data about a user in binary with its choices of allowed/disallowed origins). Note that this only applies to this mode of `reportEvent`: `reportEvent` to a preregistered destination will still work.
-
 Unlike `reportEvent` to a preregistered destination, here the browser processes the beacon by sending an HTTP GET request, as per feedback here: https://github.com/WICG/turtledove/issues/477#issuecomment-1524158476.
+
+This API is available in the same contexts as `reportEvent` to a preregistered destination, i.e., all documents in a fenced frame tree, with opt-in requirements for documents that are cross-origin to the mapped URL. However, there are additional restrictions on the origin of the destination URL. The [interest group declaration](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#12-interest-group-attributes) includes an allowlist of origins that may receive reports using this mode of `reportEvent` (custom destination URL with macro substitution). If at any point a report is attempted to a disallowed origin, access to this mode of `reportEvent` will be shut off for any ad loaded from this fenced frame config, for privacy reasons (to prevent reidentification by using the allowlist to encode cross-site data about a user in binary with its choices of allowed/disallowed origins). Note that this only applies to this mode of `reportEvent`: `reportEvent` to a preregistered destination will still work.
+
+### Example
+
+Here is an example that makes the interest group include an allowlist of origins (e.g. `https://adtech.example`) to receive report events.
+```
+const myGroup = {
+  ...
+  'ads': [
+    {
+      renderUrl: '...',
+      allowedReportingOrigins: [
+        'https://adtech.example'
+      ]
+    }
+  ],
+  ...
+};
+const joinPromise = navigator.joinAdInterestGroup(myGroup);
+```
 
 ### Enrollment Requirement
 The reporting destination URL specified in `reportEvent`'s `destinationURL` field is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API, otherwise the beacon is not allowed to be sent to this reporting destination. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model). 
@@ -142,7 +161,8 @@ The reporting destination URL specified in `reportEvent`'s `destinationURL` fiel
 Here is an example that will substitute `${PUBLISHER_ID}` and `${SOURCE_URL_ENC}` macros based on values specified in the buyer worklet.
 ```
 window.fence.reportEvent({
-  'destinationURL': 'https://adtech.example/impression?cid=555&pub_id=${PUBLISHER_ID}&site=${SOURCE_URL_ENC}&t=123'});
+  'destinationURL': 'https://adtech.example/impression?cid=555&pub_id=${PUBLISHER_ID}&site=${SOURCE_URL_ENC}&t=123'
+});
 ```
 
 In this example, the reporting destination eTLD+1 is "adtech.example". [The Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model) requires its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) `"https://adtech.example"` to be enrolled as defined in [site-based enrollment](https://developer.chrome.com/blog/announce-enrollment-privacy-sandbox/#site-based-enrollment). Otherwise the beacon will not be sent.
@@ -195,7 +215,7 @@ registerAdMacro(‘SOURCE_URL_ENC’, ‘http%3A%2F%2Fpub%2Eexample%2Fpage’);
 
 ### registerAdBeacon
 
-The `reportResult` and `reportWin` worklet code will be able to register two new events, called `reserved.top_navigation_start` and `reserved.top_navigation_commit`, via `registerAdBeacon`. 
+The `reportResult` and `reportWin` worklet code will be able to register two new events, called `'reserved.top_navigation_start'` and `'reserved.top_navigation_commit'`, via `registerAdBeacon()`: 
 
 ```
 registerAdBeacon({
@@ -204,7 +224,7 @@ registerAdBeacon({
 });
 ```
 
-The new events, if registered, implies that an automatic beacon will be sent by the browser to the registered URL when a top-level navigation is invoked from within the fenced frame and the navigation was preceded by a call to [window.fence.setReportEventDataForAutomaticBeacons](#api-to-populate-event-data-for-reservedtop_navigation). More specifically, a `reserved.top_navigation_start` beacon will be sent when a top-level navigation [begins](https://html.spec.whatwg.org/multipage/browsing-the-web.html#beginning-navigation) and a `reserved.top_navigation_commit` beacon will be sent when the navigation successfully [completes](https://html.spec.whatwg.org/multipage/browsing-the-web.html#ending-navigation). This will impact top-level navigation initiated from the fenced frame in the same tab (via [unfencedTop target](https://github.com/WICG/fenced-frame/blob/master/explainer/integration_with_web_platform.md#top-level-navigation)) or in a different tab. Note that this beacon is gated on a transient user activation. More details about the beacon are below.
+The new events, if registered, implies that an automatic beacon will be sent by the browser to the registered URL when a top-level navigation is invoked from within the fenced frame and the navigation was preceded by a call to [window.fence.setReportEventDataForAutomaticBeacons](#api-to-populate-event-data-for-automatic-beacons). These events are not triggered by the fenced frame's initial navigation and commit (e.g. when rendering the original ad), only subsequent ones (e.g. when triggered by a user clicking on the ad). More specifically, a `reserved.top_navigation_start` beacon will be sent when a top-level navigation [begins](https://html.spec.whatwg.org/multipage/browsing-the-web.html#beginning-navigation) and a `reserved.top_navigation_commit` beacon will be sent when the navigation successfully [completes](https://html.spec.whatwg.org/multipage/browsing-the-web.html#ending-navigation). This will impact top-level navigation initiated from the fenced frame in the same tab (via [unfencedTop target](https://github.com/WICG/fenced-frame/blob/master/explainer/integration_with_web_platform.md#top-level-navigation)) or in a different tab. Note that this beacon is gated on a transient user activation (e.g. a click). More details about the beacon are below.
 
 ### reportEvent
 
@@ -289,11 +309,23 @@ window.fence.setReportEventDataForAutomaticBeacons({
 
 #### Cross-Origin Support
 
-Data for automatic beacons can only be set by documents that are same-origin to the mapped URL of the fenced frame config. However, cross-origin documents in child iframes of the main ad frame can still send automatic beacons, if the document and the data are **both** opted in.
+Documents inside a fenced frame tree that are cross-origin to the mapped URL of
+the fenced frame config of the root frame can send automatic beacons if **both**
+it and the top-level frame inside the fenced frame tree are opted in.
 
-A cross-origin document will be considered opted into sending automatic beacons if it is served with the response header `Allow-Fenced-Frame-Automatic-Beacons: true`.
+The top-level frame opts in by being served with the response header
+`Allow-Cross-Origin-Event-Reporting: true`.
 
-To opt in the data, the dictionary passed into `setReportEventDataForAutomaticBeacons` takes an optional `crossOriginExposed` boolean that defaults to false. If set to true, the automatic beacon data can be used if a cross-origin document wants to send an automatic beacon and is opted in. A document will use the data of the first ancestor frame that has automatic beacon data registered for the event type being sent.
+A cross-origin document opts in by being served with the response header
+`Allow-Fenced-Frame-Automatic-Beacons: true`.
+
+To use data for cross-origin automatic beacons, the dictionary passed into
+`setReportEventDataForAutomaticBeacons` takes an optional `crossOriginExposed`
+boolean that defaults to `false`. If set to `true`, the automatic beacon data
+can be used if a cross-origin document wants to send an automatic beacon and is
+opted in. A document will use the `eventData` parameter passed to
+`setReportEventDataForAutomaticBeacons()` of the first ancestor frame that has
+automatic beacon data registered for the event type being sent. 
 
 ```
 window.fence.setReportEventDataForAutomaticBeacons({
@@ -303,6 +335,25 @@ window.fence.setReportEventDataForAutomaticBeacons({
   'crossOriginExposed': true,
 });
 ```
+
+Note that a cross-origin document calling
+`setReportEventDataForAutomaticBeacons` with `crossOriginExposed` will count as
+the document itself opting in to automatic beacons, negating the need for the
+document to be served with the `Allow-Fenced-Frame-Automatic-Beacons: true`
+header.
+
+This allows for the following use cases:
+- A root frame inside a fenced frame tree is served with
+  `Allow-Cross-Origin-Event-Reporting: true`, and a cross-origin subframe calls
+  `setReportEventDataForAutomaticBeacons` with `crossOriginExposed=true`.
+  Automatic beacons triggered from the subframe will send with the `eventData`
+  that was set in the subframe.
+- A root frame inside a fenced frame tree is served with
+  `Allow-Cross-Origin-Event-Reporting: true` and calls
+  `setReportEventDataForAutomaticBeacons` with `crossOriginExposed=true`. A
+  cross-origin subframe is served with `Allow-Fenced-Frame-Automatic-Beacons:
+  true`. Automatic beacons triggered from the subframe will send with the
+  `eventData` that was set in the root frame.
 
 #### Credentials in Beacons
 

@@ -13,7 +13,7 @@ This document seeks to propose an API for web pages to perform Protected Audienc
 To execute an on-server Protected Audience auction, sellers begin by calling `navigator.getInterestGroupAdAuctionData()` with returns a `Promise<AdAuctionData>`:
 
 ```javascript
-const auctionBlob = navigator.getInterestGroupAdAuctionData({
+const auctionBlob = await navigator.getInterestGroupAdAuctionData({
   // ‘seller’ works the same as for runAdAuction.
   'seller': 'https://www.example-ssp.com',
   // 'coordinatorOrigin' of the TEE coordinator, defaults to
@@ -30,21 +30,24 @@ const auctionBlob = navigator.getInterestGroupAdAuctionData({
     'https://buyer1.origin.example.com': {
       // 'targetSize' specifies the size of the blob to devote to this buyer
       // (optional).
-      "targetSize": 8192,
+      'targetSize': 8192,
     },
     'https://buyer2.origin.example.com': {}
   }
 });
+const request = auctionBlob.request;
+const requestId = auctionBlob.requestId;
 ```
 
 The `seller` field will be checked to ensure it matches the `seller` specified
 in the auction configuration passed to `runAdAuction()` with the response. The
 `coordinatorOrigin` selects which set of TEE keys should be used to encrypt this
-request. The `coordinatorOrigin` must be a coordinator that is known to Chrome.
+request. The `coordinatorOrigin` must be a coordinator that is known to Chrome
+(see [the appendix](#coordinator-keys) for details).
 The `requestSize` and `perBuyerConfig` fields are described in more detail in
 the [Request Size and Configuration](#request-size-and-configuration) section below.
 
-The returned `auctionBlob` is a Promise that will resolve to an `AdAuctionData` object. This object contains `requestId` and `request` fields.
+The `navigator.getInterestGroupAdAuctionData()` returns a Promise that will resolve to an `AdAuctionData` object, in this case `auctionBlob`. This object contains `requestId` and `request` fields.
 The `requestId` contains a UUID that needs to be presented to `runAdAuction()` along with the response.
 The `request` field is a `Uint8Array` containing the information needed for the [ProtectedAudienceInput](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#protectedaudienceinput) in a `SelectAd` B&A call,
 encrypted using HPKE with an encryption header like that used in [OHTTP](https://www.ietf.org/archive/id/draft-thomson-http-oblivious-01.html).
@@ -59,12 +62,12 @@ The `seller` is required to have its [site](https://html.spec.whatwg.org/multipa
 
 ### Step 2: Send auction blob to servers
 
-A seller’s JavaScript then sends auctionBlob to their server, perhaps by initiating a [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) using a PUT or POST method with auctionBlob attached as the request body:
+A seller’s JavaScript then sends `request` to their server, perhaps by initiating a [Fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) using a PUT or POST method with `request` attached as the request body:
 
 <pre>
 fetch('https://www.example-ssp.com/auction', {
   method: "PUT",
-  <b>body: auctionBlob</b>,
+  <b>body: request</b>,
   …
 })
 </pre>
@@ -87,22 +90,56 @@ Response blobs can also be retrieved using an `iframe` navigation by specifying 
 For each response blob sent back to the browser, the seller’s server attaches a response header containing the base64url encoded (RFC 4648 section 5) SHA-256 hash of the response blob:
 
 ```
-Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0=
+Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0
 ```
 
 Multiple hashes can be included in a response by either repeating the
 header or by specifying multiple hashes separated by a `,` character. So
 ```
-Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0=,9UTB-u-WshX66Xqz5DNCpEK9z-x5oCS5SXvgyeoRB1k=
+Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0,9UTB-u-WshX66Xqz5DNCpEK9z-x5oCS5SXvgyeoRB1k
 ```
 is equivalent to
 ```
-Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0=
-Ad-Auction-Result: 9UTB-u-WshX66Xqz5DNCpEK9z-x5oCS5SXvgyeoRB1k=
+Ad-Auction-Result: ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0
+Ad-Auction-Result: 9UTB-u-WshX66Xqz5DNCpEK9z-x5oCS5SXvgyeoRB1k
 ```
 and both versions should be accepted.
 
-It should be noted that the `fetch()` request using `adAuctionHeaders` can also be used to send `auctionBlob` (e.g. in the request body) and receive the response blob (e.g. in the response body).
+It should be noted that the `fetch()` request using `adAuctionHeaders` can also be used to send `request` (e.g. in the request body) and receive the response blob (e.g. in the response body).
+
+#### Alternate header to facilitate delaying response blobs to response body
+
+The aforementioned Step 3 includes the hash of the response blob in an
+`Ad-Auction-Result` HTTP response header, which requires that the response blob
+be available *before* the HTTP response headers are sent back to the device.
+The server operator may want to instead delay inclusion of the response blob
+until the HTTP response body is sent back to the device.  If the response is 
+[streamed](https://developer.mozilla.org/en-US/docs/Web/API/Streams_API) back
+to the device, the response blob could even come *after* other data that is
+available earlier.  One example of when this might be useful is if this other
+data [fullfills Promises for on-device auction signals](FLEDGE.md#211-providing-signals-asynchronously)
+to unblock on-device auctions so they proceed concurrently to auctions running
+on B&A servers. This delaying inclusion of the response blob can be accomplished
+by omitting the `Ad-Auction-Result` HTTP header and instead:
+
+1. Generate a [version 4 UUID](https://www.ietf.org/rfc/rfc4122.html) nonce on
+   their server.
+1. Instead of returning the `Ad-Auction-Result` header, return an
+   `Ad-Auction-Result-Nonce` header passing the nonce, e.g.
+   `Ad-Auction-Result-Nonce: 5b3e87f7-d48c-4376-908f-623f92f13740`.  Like
+   `Ad-Auction-Result`, `Ad-Auction-Result-Nonce` can accept a comma-separated
+   list instead of a single value if desired.
+1. Pass the nonce in the [`ad_auction_result_nonce`](https://github.com/privacysandbox/bidding-auction-servers/blob/v4.8.0/api/bidding_auction_servers.proto#L946C12-L946C35)
+   field of the
+   [SelectAdRequest](https://github.com/privacysandbox/bidding-auction-servers/blob/4a7accd09a7dabf891b5953e5cdbb35d038c83c6/api/bidding_auction_servers.proto#L282)
+   to the [SellerFrontEnd service](https://github.com/privacysandbox/bidding-auction-servers/blob/4a7accd09a7dabf891b5953e5cdbb35d038c83c6/api/bidding_auction_servers.proto#L267).
+
+Behind the scenes, the Bidding and Auction servers will include the nonce inside
+the response blob so it's passed back to the browser which verifies that it
+matches the nonce from the `Ad-Auction-Result-Nonce` header.
+
+More information about this flow can be found
+[here](https://github.com/privacysandbox/protected-auction-services-docs/blob/main/protected_audience_auctions_mixed_mode.md#server-side-auctions).
 
 ### Step 4: Complete auction in browser
 
@@ -121,6 +158,54 @@ The browser verifies it witnessed a Fetch request to the `seller`’s origin wit
 
 ## Device Orchestrated Multi-Seller Auctions
 
+Bidding and Auction Services auctions can also be used as component auctions. It
+is possible for multiple Bidding and Auction Services auctions to be used as
+component auctions for an on-device top-level auction.
+
+When multiple component sellers desire encrypted requests, they can create them
+efficiently in a single call to `navigator.getInterestGroupAdAuctionData()`:
+
+```javascript
+const results = await navigator.getInterestGroupAdAuctionData({
+  'sellers': [
+    {
+      'seller': 'https://www.component-ssp1.example.com',
+      'coordinatorOrigin': 'https://publickeyservice.pa.gcp.privacysandboxservices.com/',
+    },
+    {
+      'seller': 'https://www.component-ssp2.example.com',
+      'coordinatorOrigin': 'https://publickeyservice.pa.gcp.privacysandboxservices.com/',
+  }],
+  // 'requestSize' the affects the size of the returned request (optional).
+  'requestSize': 51200,
+  // 'perBuyerConfig' specifies per-buyer options for size optimizations when
+  // constructing the blob (optional).
+  'perBuyerConfig': {
+    'https://buyer1.origin.example.com': {
+      // 'targetSize' specifies the size of the blob to devote to this buyer
+      // (optional).
+      'targetSize': 8192,
+    },
+    'https://buyer2.origin.example.com': {}
+  }
+});
+
+const requestId = results.requestId;
+let requests = {}
+requests[results.requests[0].seller] = results.requests[0].request;
+requests[results.requests[1].seller] = results.requests[1].request;
+```
+
+In this case, `navigator.getInterestGroupAdAuctionData()` returns a Promise that
+will resolve to an `AdAuctionData` object - `results` in this example. This object
+will only have the `requestId` and `requests` fields set. The `requests` field
+is a list of `AdAuctionPerSellerData` objects, identified by their `seller` field.
+For each component seller, the `AdAuctionPerSellerData` object will also contain
+a `request` field if the request was completed successfully. `request` is a
+`Uint8Array` containing the information needed for the [ProtectedAudienceInput](https://github.com/privacysandbox/fledge-docs/blob/main/bidding_auction_services_api.md#protectedaudienceinput) in a `SelectAd` B&A call. In the event that the request for a particular seller failed,
+the `AdAuctionPerSellerData` will contain an `error` field describing the nature
+of the failure instead of a `request` field.
+
 Auctions run using the Bidding and Auction servers can be mixed with on-device
 auctions using [component auctions](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#24-scoring-bids-in-component-auctions:~:text=In%20some%20cases,seller%27s%20%22component%20auction%22). The top-level scoring script will decide
 between the top scoring bidders from the component auctions.
@@ -137,10 +222,16 @@ const myAuctionConfig = {
            'interestGroupBuyers': ...,
       ...},
         { // B&A auction
-          'seller': 'https://www.example-ssp.com',
-          'interestGroupBuyers': ['https://www.example-dsp.com'],
+          'seller': 'https://www.component-ssp1.example.com',
+          'interestGroupBuyers': ['https://buyer1.origin.example.com', 'https://buyer2.origin.example.com'],
           'requestId': requestId,
-          'serverResponse': response_blob
+          'serverResponse': response_blob1
+        },
+        { // B&A auction
+          'seller': 'https://www.component-ssp2.example.com',
+          'interestGroupBuyers': ['https://buyer1.origin.example.com', 'https://buyer2.origin.example.com'],
+          'requestId': requestId,
+          'serverResponse': response_blob2
         },
     ...
   }
@@ -384,7 +475,7 @@ Then the request is zero padded to a set of pre-configured lengths (TBD).
 
 ### Example
 
-The JSON equivalent of an example `auctionBlob` would look like this:
+The JSON equivalent of an example `request` would look like this:
 
 ```json
 {
@@ -427,8 +518,8 @@ The JSON equivalent of the interest group would look like the following example:
 
 The response blob from a B&A auction contains an HPKE encrypted message containing the information from [AuctionResult](https://github.com/privacysandbox/bidding-auction-servers/blob/main/api/bidding_auction_servers.proto#L193).
 This response has an encryption header like that
-used in OHTTP and serves as the response for the encryption context started by the `auctionBlob` from `navigator.getInterestGroupAdAuctionData`.
-The response contains a framing header like the request and contains a blob of compressed data, using the same schema version and same compression algorithm as specified in the `auctionBlob`.
+used in OHTTP and serves as the response for the encryption context started by the `request` from `navigator.getInterestGroupAdAuctionData`.
+The response contains a framing header like the request and contains a blob of compressed data, using the same schema version and same compression algorithm as specified in the `request`.
 The response needs to be padded to a set of sizes to limit the amount of information leaking from the auction.
 
 Prior to compression and encryption, the AuctionResult is encoded as CBOR with the following schema (specified using [JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
@@ -527,7 +618,63 @@ Prior to compression and encryption, the AuctionResult is encoded as CBOR with t
       "description": "Boolean to indicate that there is no remarketing winner from the auction. AuctionResult may be ignored by the client (after decryption) if this is set to true."
     },
     "winReportingUrls": { "$ref": "#/$defs/winReportingUrlsDef" },
-    "error": { "$ref": "#/$defs/errorDef" }
+    "error": { "$ref": "#/$defs/errorDef" },
+    "nonce": {
+      "type": "string",
+      "description": "UUIDv4 nonce that was passed to SelectAdRequest, in standard UUIDv4 string representation: 32 lower-case hexadecimal characters with blocks of 8, 4, 4, 4, and 12 separated by dashes as per RFC4122. Browser enforces that this matches exactly the string passed via the Ad-Auction-Result-Nonce header."
+    }
   }
 }
+```
+
+## Coordinator Keys
+
+The browser fetches the public keys used for encryption from the specified
+coordinator. These keys are hosted by the coordinators at the path
+`.well-known/protected-auction/v1/public-keys` in JSON format.
+
+Chrome currently supports these coordinator origins:
+
+*   `https://publickeyservice.pa.gcp.privacysandboxservices.com`
+*   `https://publickeyservice.pa.aws.privacysandboxservices.com`
+
+The keys are served in JSON format with the following schema (in
+[JSON Schema](https://datatracker.ietf.org/doc/html/draft-bhutton-json-schema-01)):
+
+
+```
+{
+  "type": "object",
+  "properties": {
+    "keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "A base-64 encoded string containing the 256-bit HPKE public key"
+          },
+          "id": {
+            "type": "string"
+            "description": "An uppercase hexadecimal string serving as the identifier for the key"
+}}}}}}
+```
+
+
+The leading byte in the `id` field is used as the
+[key ID](https://wicg.github.io/turtledove/#auction-data-config-encryption-key-id)
+for that [key](https://wicg.github.io/turtledove/#auction-data-config-encryption-key).
+The coordinator makes sure that the leading byte in these IDs are sufficiently unique.
+The browser chooses a random key from the list of keys to use in each request.
+
+An example key response is shown below:
+
+
+```
+{
+  "keys": [{
+    "key": "87ey8XZPXAd+/+ytKv2GFUWW5j9zdepSJ2G4gebDwyM\u003d",
+    "id": "123A000000000000"
+}]}
 ```
