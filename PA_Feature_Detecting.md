@@ -139,11 +139,29 @@ navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
 ```
 
 ## Selectable Reporting IDs
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/1cWqBPHngd0)
 
 From context of a web page:
 ```
 navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
     "selectableReportingIds")
+```
+
+## Seller Nonce
+[Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/jjFGRDm2Dr4)
+
+From context of a web page:
+```
+navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
+    "sellerNonce")
+```
+
+## [Trusted Key-Value Server Support](https://chromestatus.com/feature/5072384013631488)
+
+From context of a web page:
+```
+navigator.protectedAudience && navigator.protectedAudience.queryFeatureSupport(
+    "trustedSignalsKVv2")
 ```
 
 ## Getting browser-side detectable features as an object
