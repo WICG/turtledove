@@ -60,7 +60,7 @@ fields in the auction configuration:
 
 ## **On-device auction `sellerTKVSignals` design**
 
-![Example flow related to the seller's KV server](assets/fledge_kv_server_sellertkvsignals_example_flow.png)
+![Example flow related to the seller's KV server](assets/pa_kv_server_sellertkvsignals_example_flow.png)
 
 _Diagram: example flow related to the seller's KV server_
 
@@ -78,7 +78,7 @@ The rest of the flow stays as it is today.
 
 ## **On-device auction `perBuyerTKVSignals` design**
 
-![Example flow related to the buyer's KV server](assets/fledge_kv_server_buyertkvsignals_example_flow.png)
+![Example flow related to the buyer's KV server](assets/pa_kv_server_buyertkvsignals_example_flow.png)
 
 _Diagram: example flow related to the buyer KV server_
 
