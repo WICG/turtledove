@@ -96,6 +96,12 @@ spec: private-aggregation-api; urlPrefix: https://patcg-individual-drafts.github
     text: contribution cache entry; url: #contribution-cache-entry
     text: contribution cache; url: #contribution-cache
     text: default filtering id max bytes; url: #default-filtering-id-max-bytes
+    text: pre-specified report parameters
+    for: pre-specified report parameters
+      text: context ID
+      text: filtering ID max bytes
+      text: max contributions
+    text: set the pre-specified report parameters for a batching scope
 spec: Shared Storage API; urlPrefix: https://wicg.github.io/shared-storage
   type: dfn
     text: shared-storage; url: #permissionspolicy-shared-storage
@@ -253,7 +259,12 @@ dictionary GenerateBidInterestGroup {
   record<DOMString, sequence<DOMString>> sizeGroups;
 };
 
-dictionary ProtectedAudiencePrivateAggregationConfig {
+dictionary ProtectedAudienceAuctionPrivateAggregationConfig {
+  USVString aggregationCoordinatorOrigin;
+  [EnforceRange] unsigned long long maxContributions;
+};
+
+dictionary ProtectedAudienceInterestGroupPrivateAggregationConfig {
   USVString aggregationCoordinatorOrigin;
 };
 
@@ -262,7 +273,7 @@ dictionary AuctionAdInterestGroup : GenerateBidInterestGroup {
   record<DOMString, double> prioritySignalsOverrides;
   required double lifetimeMs;
   DOMString additionalBidKey;
-  ProtectedAudiencePrivateAggregationConfig privateAggregationConfig;
+  ProtectedAudienceInterestGroupPrivateAggregationConfig privateAggregationConfig;
 };
 </xmp>
 
@@ -781,7 +792,7 @@ dictionary AuctionAdConfig {
   record<DOMString, AuctionReportBuyersConfig> auctionReportBuyers;
   AuctionReportBuyerDebugModeConfig auctionReportBuyerDebugModeConfig;
   sequence<DOMString> requiredSellerCapabilities;
-  ProtectedAudiencePrivateAggregationConfig privateAggregationConfig;
+  ProtectedAudienceAuctionPrivateAggregationConfig privateAggregationConfig;
 
   record<DOMString, DOMString> requestedSize;
   sequence<record<DOMString, DOMString>> allSlotsRequestedSizes;
@@ -1757,14 +1768,28 @@ To <dfn>check if required seller capabilities are permitted</dfn> given an [=auc
 </div>
 
 <div algorithm>
-To <dfn>obtain the coordinator from a Private Aggregation config</dfn> given a
-{{ProtectedAudiencePrivateAggregationConfig}} |config|, perform the following
-steps. They return an [=aggregation coordinator=], null or a {{DOMException}}.
 
-1. If |config|["{{ProtectedAudiencePrivateAggregationConfig/aggregationCoordinatorOrigin}}"]
-    does not [=map/exist=], return null.
+To <dfn>obtain the coordinator from a Private Aggregation config</dfn> given a
+{{ProtectedAudienceAuctionPrivateAggregationConfig}} or
+{{ProtectedAudienceInterestGroupPrivateAggregationConfig=] |config|, perform the
+following steps. They return an [=aggregation coordinator=], null or a
+{{DOMException}}.
+
+1. Let |originString| be null.
+1. If |config| is a {{ProtectedAudienceAuctionPrivateAggregationConfig}}:
+  1. If
+     |config|["{{ProtectedAudienceAuctionPrivateAggregationConfig/aggregationCoordinatorOrigin}}"]
+     does not [=map/exist=], return null.
+  1. Set |originString| to
+     |config|["{{ProtectedAudienceAuctionPrivateAggregationConfig/aggregationCoordinatorOrigin}}"].
+1. If |config| is a {{ProtectedAudienceInterestGroupPrivateAggregationConfig}}:
+  1. If
+     |config|["{{ProtectedAudienceInterestGroupPrivateAggregationConfig/aggregationCoordinatorOrigin}}"]
+     does not [=map/exist=], return null.
+  1. Set |originString| to
+     |config|["{{ProtectedAudienceInterestGroupPrivateAggregationConfig/aggregationCoordinatorOrigin}}"].
 1. Return the result of [=obtaining the Private Aggregation coordinator=] given
-    |config|["{{ProtectedAudiencePrivateAggregationConfig/aggregationCoordinatorOrigin}}"].
+   |originString|.
 
 </div>
 
@@ -5000,6 +5025,21 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
 1. [=map/For each=] (|origin|, <var ignore>aggregationCoordinator</var>) →
     |batchingScope| of |reportingContext|'s [=reporting context/private aggregation batching
     scope map=]:
+  1. Let |preSpecifiedParams| be a new [=pre-specified report parameters=] with the items:
+      : <a spec="private-aggregation-api" for="pre-specified report parameters">context ID</a>
+      :: null
+      : [=pre-specified report parameters/filtering ID max bytes=]
+      :: [=default filtering ID max bytes=]
+      : <var ignore>max contributions</var>
+      :: |auctionConfig|'s [=auction config/max contributions=]
+
+        Issue: Remove the `ignore` tag on <var ignore>max contributions</var>
+               once Private Aggregation's [PR
+               #164](https://github.com/patcg-individual-drafts/private-aggregation-api/pull/164)
+               is merged.
+
+  1. [=Set the pre-specified report parameters for a batching scope=] given
+     |preSpecifiedParams| and |batchingScope|.
   1. [=Process contributions for a batching scope=] given |batchingScope|, |origin|,
     "<code>protected-audience</code>" and null.
 
@@ -8594,6 +8634,10 @@ An <dfn export>auction config</dfn> is a [=struct=] with the following [=struct/
   :: A [=map=] from [=strings=] to {{AuctionReportBuyersConfig}}s. For buyer metrics delegated to be
     reported to the seller via the [Private Aggregation API](https://github.com/patcg-individual-drafts/private-aggregation-api),
     this determines how each metric bucket is chosen inside the buyer's space, and how to scale it.
+  : <dfn>max contributions</dfn>
+  :: Null or a positive integer. Used to override [Private Aggregation
+    API](https://github.com/patcg-individual-drafts/private-aggregation-api)'s
+    default number of contributions per report.
     <!-- TODO: this should probably use enums instead -->
   : <dfn>auction report buyer debug details</dfn>
   :: A [=debug details=], initially a new one. Configures
