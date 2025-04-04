@@ -2,8 +2,8 @@
 
 Authors:
 
-- Peiwen Hu
-- Russ Hamilton
+* Peiwen Hu
+* Russ Hamilton
 
 ## Summary
 
@@ -33,8 +33,8 @@ Keys may exist in different namespaces. The namespaces help the server identify
 keys needed from request query strings and prevent potential key collision, even
 though the keys may be unique across namespaces in today’s use cases.
 
-- For a DSP, there are: `keys` and `interestGroupNames`.
-- For an SSP, there are `renderURLs` and `adComponentRenderURLs`.
+*   For a DSP, there are: `keys` and `interestGroupNames`.
+*   For an SSP, there are `renderURLs` and `adComponentRenderURLs`.
 
 The
 [Protected Audience explainer](https://github.com/WICG/turtledove/blob/main/FLEDGE.md#31-fetching-real-time-data-from-a-trusted-server)
@@ -42,7 +42,7 @@ provides more context about these namespaces.
 
 ## Query API version 2
 
-**Query versions 2 and beyond are specifically designed for the trusted TEE key/value service as part of the trust model, published here for explanatory purposes. BYOS servers do not need to implement these.**
+__Query versions 2 and beyond are specifically designed for the trusted TEE key/value service as part of the trust model, published here for explanatory purposes. BYOS servers do not need to implement these.__
 
 ### Background
 
@@ -84,7 +84,6 @@ We will use [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-oh
 *   AES256GCM for AEAD scheme.
 
 Since we are [repurposing the OHTTP encapsulation mechanism, we are required to define new media types](https://www.rfc-editor.org/rfc/rfc9458.html#name-repurposing-the-encapsulati):
-
 * The OHTTP request media type is “message/ad-auction-trusted-signals-request”
 * The OHTTP response media type is “message/ad-auction-trusted-signals-response”
 
