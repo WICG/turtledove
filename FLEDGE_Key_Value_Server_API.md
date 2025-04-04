@@ -169,16 +169,24 @@ In addition, Chrome may only pass [contextual signals](https://github.com/WICG/t
           "description":"Contextual signals (buyerTKVSignals or sellerTKVSignals) to the trusted Key/Value server.",
           "type": "array",
           "items": {
-            "description": "Metadata value configuration object specifying which value applies to which partitions.",
+            "description": "Metadata value configuration object specifying which value applies to which partitions.
+                            Duplicate partition-level metadata specification
+                            for a single partition will result in an error.",
             "type": "object",
             "properties": {
               "value": {
-                "description": "Metadata value",
+                "description": "Metadata value to apply to specified partitions in `ids`. 
+                                If `ids` is not present, apply the value to all partitions.
+                                The metadata value may be a serialized JSON string.
+                                Duplicate partition-level metadata specification
+                                for a single partition will result in an error. ",
                 "type": "string"
               },
               "ids": {
-                "description": "Array of [compression group id, partition id] to uniquely identify a partition."
-                               "If `ids` is not present, apply the value to all partitions.",
+                "description": "Array of [compression group id, partition id] to uniquely identify a partition.
+                                If `ids` is not present, apply the value to all partitions.
+                                Duplicate partition-level metadata specification for
+                                a single partition will result in an error.",
                 "type": "array",
                 "items": {
                   "type": "array",
