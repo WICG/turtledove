@@ -128,7 +128,7 @@ In the request, one major difference from V1/BYOS is that the keys are now group
 
 ![request structure](assets/fledge_kv_server_v2_req_structure.jpeg)
 
-In addition, Chrome may only pass [contextual signals](https://github.com/WICG/turtledove/blob/main/PA_Key_Value_Server_Contextual_Signals.md) (`sellerTKVSignals` and `buyerTKVSignals`) to a trusted key/value service.
+In addition, the browser may only pass [contextual signals](https://github.com/WICG/turtledove/blob/main/PA_Key_Value_Server_Contextual_Signals.md) (`sellerTKVSignals` and `buyerTKVSignals`) to a trusted key/value service.
 
 #### Schema of the request
 
