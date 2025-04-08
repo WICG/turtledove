@@ -193,3 +193,15 @@ An example return value would be:
   "reportingTimeout":true
 }
 ```
+
+## Text conversion helpers
+Intent to Ship: TBD
+
+Inside a bidding, scoring or reporting script:
+
+```
+globalThis.protectedAudience && protectedAudience.encodeUtf8
+```
+
+If `encodeUtf8` exists, so will `decodeUtf8`, and vice versa; but it's not impossible that in the
+future the `protectedAudience` object will exist when the text conversion functions don't.
