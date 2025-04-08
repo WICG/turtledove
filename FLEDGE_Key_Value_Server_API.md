@@ -63,7 +63,6 @@ For more information on the design, please refer to [the trust model explainer](
 
 The request contains an outer HTTP layer with an inner [Oblivious HTTP](https://datatracker.ietf.org/doc/draft-ietf-ohai-ohttp/) layer.
 
-
 ### Outer HTTP layer
 For the outer HTTP layer:
 * HTTPS is used to transport data.
@@ -129,6 +128,8 @@ In the request, one major difference from V1/BYOS is that the keys are now group
 
 ![request structure](assets/fledge_kv_server_v2_req_structure.jpeg)
 
+In addition, the browser may only pass [contextual signals](https://github.com/WICG/turtledove/blob/main/PA_Key_Value_Server_Contextual_Signals.md) (`sellerTKVSignals` and `buyerTKVSignals`) to a trusted key/value service.
+
 #### Schema of the request
 
 ```json
@@ -158,6 +159,51 @@ In the request, one major difference from V1/BYOS is that the keys are now group
         }
       }
     },
+    "perPartitionMetadata":{
+      "title": "tkv.request.v2.PerPartitionMetadata",
+      "description": "Partition-level metadata, batched to avoid duplicating values in the request.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contextualData": {
+          "description":"Contextual signals (buyerTKVSignals or sellerTKVSignals) to the trusted Key/Value server.",
+          "type": "array",
+          "items": {
+            "description": "Metadata value configuration object specifying which "
+                           "value applies to which partitions. "
+                           "Duplicate partition-level metadata specification "
+                           "for a single partition will result in an error.",
+            "type": "object",
+            "properties": {
+              "value": {
+                "description": "Metadata value to apply to specified partitions in `ids`. "
+                               "If `ids` is not present, apply the value to all partitions. "
+                               "The metadata value may be a serialized JSON string.",
+                "type": "string"
+              },
+              "ids": {
+                "description": "Array of [compression group id, partition id] to uniquely identify a partition. "
+                               "The metadata value is applied to all partitions with a matching ID. "
+                               "If `ids` is not present, apply the value to all partitions.",
+                "type": "array",
+                "items": {
+                  "description": "Id comprised of [compression group id, partition id] to uniquely identify a partition.",
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        }
+      }
+    },
     "partitions": {
       "description": "A list of partitions. Each must be processed independently. Accessible by UDF.",
       "type": "array",
@@ -168,11 +214,11 @@ In the request, one major difference from V1/BYOS is that the keys are now group
         "additionalProperties": false,
         "properties": {
           "id": {
-            "description": "Unique id of the partition in this request",
+            "description": "Id of the partition. [compressionGroupId,id] must be unique across the request.",
             "type": "unsigned integer"
           },
           "compressionGroupId": {
-            "description": "Unique id of a compression group in this request. Only partitions belonging to the same compression group will be compressed together in the response",
+            "description": "Unique id of the compression group. Only partitions belonging to the same compression group will be compressed together in the response",
             "type": "unsigned integer"
           },
           "metadata": {
