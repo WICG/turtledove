@@ -437,11 +437,11 @@ The schema for the CBOR encoding of the interest group (specified using [JSON Sc
       "properties": {
         "joinCount": {
           "type": "number",
-          "description": "Number of times the group was joined in the last 30 days."
+          "description": "Number of times the group was joined in the last 90 days."
         },
         "bidCount": {
           "type": "number",
-          "description": "Number of times the group bid in an auction in the last 30 days."
+          "description": "Number of times the group bid in an auction in the last 90 days."
         },
         "recency": {
           "type": "number",
@@ -452,7 +452,7 @@ The schema for the CBOR encoding of the interest group (specified using [JSON Sc
           "items": {
             "type": "array",
             "description":
-              "Tuple of time-ad pairs for a previous win for this interest group that occurred in the last 30 days. The time is specified in seconds before the containing auctionBlob was requested.",
+              "Tuple of time-ad pairs for a previous win for this interest group that occurred in the last 90 days. The time is specified in seconds before the containing auctionBlob was requested.",
             "items": false,
             "prefixItems": [
               {
