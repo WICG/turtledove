@@ -1476,7 +1476,7 @@ navigator.runAdAuction({
 To prevent unintended replaying of additional bids, any auction config, whether top-level or component auction config, must include an auction nonce value if it includes additional bids.  The auction nonce is created and provided like so:
 
 ```
-const auctionNonce = navigator.createAuctionNonce();
+const auctionNonce = await navigator.createAuctionNonce();
 navigator.runAdAuction({
   // ...
   'auctionNonce':  auctionNonce,
@@ -1484,7 +1484,7 @@ navigator.runAdAuction({
 });
 ```
 
-The auction nonce returned by the browser will be a string representation of a [UUIDv4](https://datatracker.ietf.org/doc/html/rfc4122). A seller may optionally create a second UUIDv4, referred to as the seller nonce. The seller can then combine the auction and seller nonces to produce a bid nonce, which it will need to send to each buyer that may provide additional bids. That bid nonce would then need to appear in the `bidNonce` field of each [additional bid](#6-additional-bids) returned from the buyer to seller, and then from the seller to the browser's `runAdAuction()` invocation.
+`createAuctionNonce()` returns a `Promise` that resolves to the a string representation of a [UUIDv4](https://datatracker.ietf.org/doc/html/rfc4122). A seller may optionally create a second UUIDv4, referred to as the seller nonce. The seller can then combine the auction and seller nonces to produce a bid nonce, which it will need to send to each buyer that may provide additional bids. That bid nonce would then need to appear in the `bidNonce` field of each [additional bid](#6-additional-bids) returned from the buyer to seller, and then from the seller to the browser's `runAdAuction()` invocation.
 
 The seller must combine the auction and seller nonces to construct a bid nonce by concatenating the [standard UUIDv4 string representation](https://datatracker.ietf.org/doc/html/rfc4122) - 32 lower-case hexadecimal characters with blocks of 8, 4, 4, 4, and 12 separated by dashes - of the auction and seller nonces, and computing the SHA-256 hash of the resulting string. The bid nonce would be the result of this hash function expressed as a base64 string.
 
