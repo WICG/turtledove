@@ -11,7 +11,7 @@ The usefulness of this page depends on testers sharing information and updates.
 
 - Not a complete list. Participants are strongly encouraged to share their activities and insights publicly for the benefit of the broader community, but sharing is voluntary and therefore this page is not expected to reflect all activity.
 
-- Not evaluative. The purpose of this page is to consolidate links to information published by Privacy Sandbox participants. Editors will review submissions for relevance and to ensure general conformance to the guidelines above, but are not evaluating or endorsing the information provided.
+- The purpose of this page is to consolidate links to information published by Privacy Sandbox participants. Editors will review submissions for relevance and to ensure general conformance to the guidelines above, but are not evaluating or endorsing the information provided.
 
 - Editors will regularly review and approve submissions that meet the guidelines below. If you believe that an error has been submitted, please create an issue in the FLEDGE repository with the words ‘[Tester List]‘ in the subject and the Editors will respond in short order.
 
