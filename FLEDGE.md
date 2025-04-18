@@ -57,6 +57,8 @@ See [the Protected Audience API specification](https://wicg.github.io/turtledove
       - [7.1.1 Post Auction Signals](#711-post-auction-signals)
       - [7.1.2 Downsampling](#712-downsampling)
     - [7.2 deprecatedReplaceInURN()](#72-navigatordeprecatedreplaceinurn)
+  - [8. Common Utilities](#8-common-utilities)
+    - [8.1 String and Uint8Array conversion](#81-string-and-uint8array-conversion)
 
 
 ## Summary
@@ -1733,4 +1735,35 @@ await navigator.deprecatedReplaceInURN(
    result, {'${INTEREST_GROUP_NAME}': 'render_cars', '%%echo%%': 'echo'});
 
 
+```
+
+### 8. Common Utilities
+
+#### 8.1 String and Uint8Array conversion
+
+Any bidding, scoring or reporting script can convert from a `String` to a `Uint8Array` by calling
+`protectedAudience.encodeUtf8(someString)`, which will return a `UInt8Array` containing the contents
+of the string encoded as UTF-8.
+
+Similarly, a `Uint8Array` containing UTF-8 data can be converted to a `String` by calling
+`protectedAudience.decodeUtf8(someArray)`. Note that this is specifically for `Uint8Array`s, and
+will not handle other, similar, types.
+
+Tools like [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) frequently perform these
+conversions using [TextEncoder](https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder) and
+[TextDecoder](https://developer.mozilla.org/en-US/docs/Web/API/TextDecoder) interfaces
+in order to pass Strings between JavaScript and WASM efficiently. Since these interfaces are not
+available in the bidder, seller, or reporting script environments,
+`protectedAudience.encodeUtf8` and `decodeUtf8` functions provide a way of efficiently polyfilling
+the minimum needed subset of their functionality. For example, a version incorporating feature
+detection:
+
+```
+TextEncoder = function() {}
+TextEncoder.prototype = {}
+if (globalThis.protectedAudience && protectedAudience.encodeUtf8) {
+   TextEncoder.prototype.encode = protectedAudience.encodeUtf8;
+} else {
+   TextEncoder.prototype.encode = slowerJavaScriptEncodeImplementation;
+}
 ```
