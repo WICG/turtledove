@@ -4974,32 +4974,20 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
 1. If |auctionConfig|'s [=auction config/aborted=] is true, return.
 1. Let |winnerId| be |reportingContext|'s [=reporting context/winner reporting id=]
 1. Let |leadingBidInfo| be |reportingContext|'s [=reporting context/local leader info=].
-1. Let |bidderOnceRep| be null.
-1. If |reportingContext|'s [=reporting context/bidder participants=] [=set/is not empty=],
-  set |bidderOnceRep| to a random [=set/item=] of [=reporting context/bidder participants=].
-1. Let |sellerOnceRep| be null.
-1. If |reportingContext|'s [=reporting context/seller participants=] [=set/is not empty=],
-  set |sellerOnceRep| to a random [=set/item=] of [=reporting context/seller participants=].
-1. Let |bidderErrorReps| be a new [=map=].
-1. Let |sellerErrorReps| be a new [=map=].
+1. Let |bidderOnceReps| be a new [=map=].
 1. [=list/For each=] |interestGroupBuyer| of |auctionConfig|'s [=auction config/
     interest group buyer=]:
-    1. [=map/Set=] |bidderErrorReps|[|interestGroupBuyer|] to null.
+    1. [=map/Set=] |bidderOnceReps|[|interestGroupBuyer|] to null.
     1. Let |bidderParticipants| be a [=set/clone=] of |reportingContext|'s
         [=reporting context/bidder participants=].
     1. [=set/Remove=] all items with a [=reporting bid key/bidder origin=] that
         is not |interestGroupBuyer| from |bidderParticipants|.
     1. If |bidderParticipants| [=set/is not empty=], [=map/set=]
-        |bidderErrorReps|[|interestGroupBuyer|] to a random [=set/item=] of
+        |bidderOnceReps|[|interestGroupBuyer|] to a random [=set/item=] of
         |bidderParticipants|.
-    1. [=map/Set=] |sellerErrorReps|[|interestGroupBuyer|] to null.
-    1. Let |sellerParticipants| be a [=set/clone=] of |reportingContext|'s
-        [=reporting context/seller participants=].
-    1. [=set/Remove=] all items with a [=reporting bid key/bidder origin=] that
-        is not |interestGroupBuyer| from |sellerParticipants|.
-    1. If |sellerParticipants| [=set/is not empty=], [=map/set=]
-        |sellerErrorReps|[|interestGroupBuyer|] to a random [=set/item=] of
-        |sellerParticipants|.
+1. Let |sellerOnceRep| be null.
+1. If |reportingContext|'s [=reporting context/seller participants=] [=set/is not empty=],
+  set |sellerOnceRep| to a random [=set/item=] of [=reporting context/seller participants=].
 1. [=map/For each=] (|bidId|, |event|) → |contributions| of |reportingContext|'s
   [=reporting context/private aggregation on event contributions=]:
   1. Let |bidderOrigin| be |bidId|'s [=reporting bid key/bidder origin=].
@@ -5008,36 +4996,26 @@ an [=auction config=] |auctionConfig| and a [=reporting context=] |reportingCont
       * |event| is "`reserved.win`" and |bidId| is not |winnerId|;
       * |event| does not [=string/start with=] "`reserved.`" and |bidId| is not |winnerId|;
       * |event| is "`reserved.loss`" and |bidId| is |winnerId|.
-    1. If |event| is "`reserved.once`":
-      1. If |onEventEntry|'s [=on event contribution entry/worklet function=] is [=worklet function/
-        generate-bid=]:
-        1. If |bidId| &ne; |bidderOnceRep|, [=iteration/continue=].
-      1. Otherwise:
-        1. If |bidId| &ne; |sellerOnceRep|, [=iteration/continue=].
     1. Let |unprefixedEvent| be null.
     1. If |event| [=string/starts with=] "`reserved.`":
         1. Set |unprefixedEvent| to the [=code unit substring=] from
             "<code>reserved.</code>"'s [=string/length=] to |event|'s [=string/
             length=] within |event|.
-    1. If |unprefixedEvent| [=string/is=] any of the [=internal error events=],
-        switch on |onEventEntry|'s [=on event contribution entry/worklet
-        function=]:
-      1. If |onEventEntry|'s [=on event contribution entry/worklet function=] is
-          [=worklet function/generate-bid=]:
-        1. If |bidId| &ne; |bidderErrorReps|[|bidderOrigin|], [=iteration/continue=].
-      1. If |onEventEntry|'s [=on event contribution entry/worklet function=] is
-          [=worklet function/score-ad=]:
-        1. If |bidId| &ne; |sellerErrorReps|[|bidderOrigin|], [=iteration/continue=].
-
-      Issue: Consider aligning reserved.once and error event selection logic.
+    1. If |unprefixedEvent| [=string/is=] "`once`" or [=string/is=] any of the
+        [=internal error events=]:
+      1. If |onEventEntry|'s [=on event contribution entry/worklet function=] is [=worklet function/
+        generate-bid=]:
+        1. If |bidId| &ne; |bidderOnceReps|[|bidderOrigin|], [=iteration/continue=].
+      1. Otherwise:
+        1. If |bidId| &ne; |sellerOnceRep|, [=iteration/continue=].
     1. Let |errorEvent| be null.
     1. If |unprefixedEvent| [=string/is=] any of the [=internal error events=],
         set |errorEvent| to |unprefixedEvent|.
     1. If |unprefixedEvent| is "`uncaught-error`", set |errorEvent| to
         [=already triggered external error=].
 
-        Note: If this error was not triggered, the conditional contributions will
-            have been already dropped.
+        Note: If this error event was not triggered, the conditional contributions
+            will have been already dropped.
     1. Let |filledInContribution| be the result of [=filling in the contribution=] given
       |reportingContext|, |onEventEntry| and |leadingBidInfo|.
 
