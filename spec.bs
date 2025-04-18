@@ -107,6 +107,18 @@ spec: webdriver; urlPrefix: https://w3c.github.io/webdriver/
   type: dfn
     text: getting a property; url: dfn-getting-properties
     text: undefined; url: dfn-undefined
+spec: encoding; urlPrefix: https://encoding.spec.whatwg.org/
+  type: dfn
+    text: UTF-8; url: utf-8
+    text: decoder; url: utf-8-decoder
+    text: I/O queue; url: concept-stream
+    text: encoding-error; url: error
+    text: encoding-finished; url: finished
+    text: process an item; url: concept-encoding-process
+    text: serialize I/O queue; url: concept-td-serialize
+    text: TextDecoderCommon-encoding; url: textdecoder-encoding
+    text: TextDecoderCommon-ignore BOM; url: textdecoder-ignore-bom-flag
+    text: TextDecoderCommon-decoder; url: textdecodercommon-decoder
 </pre>
 
 <pre class=link-defaults>
@@ -6487,6 +6499,7 @@ specification are those that explicitly list the global names provided here.
 [Exposed=InterestGroupScriptRunnerGlobalScope]
 interface InterestGroupScriptRunnerGlobalScope {
   readonly attribute PrivateAggregation? privateAggregation;
+  readonly attribute ProtectedAudienceUtilities protectedAudience;
 };
 
 dictionary PASignalValue {
@@ -6501,12 +6514,20 @@ dictionary PAExtendedHistogramContribution {
   bigint filteringId = 0;
 };
 
+[Exposed=InterestGroupScriptRunnerGlobalScope]
+interface ProtectedAudienceUtilities {
+  Uint8Array encodeUtf8(USVString input);
+  USVString decodeUtf8(Uint8Array bytes);
+};
+
 </pre>
 
 Each {{InterestGroupScriptRunnerGlobalScope}} has a
 <dl dfn-for="InterestGroupScriptRunnerGlobalScope">
   : <dfn>private aggregation</dfn>
   :: Null, or a [=PrivateAggregation=]. Initially null.
+  : <dfn>protected audience utilities</dfn>
+  :: Initially a {{ProtectedAudienceUtilities}}.
   : <dfn>on event contribution map</dfn>
   :: A [=map=] from [=string=] to a [=list=] of [=on event contribution entries=].
   : <dfn>worklet function</dfn>
@@ -6520,9 +6541,49 @@ Each {{InterestGroupScriptRunnerGlobalScope}} has a
 <div algorithm>
 The <dfn attribute for=InterestGroupScriptRunnerGlobalScope>privateAggregation</dfn> [=getter
   steps=] are:
-
   1. Return [=this=]'s [=relevant global object=]'s
     [=InterestGroupScriptRunnerGlobalScope/private aggregation=].
+</div>
+
+<div algorithm>
+The <dfn attribute for=InterestGroupScriptRunnerGlobalScope>protectedAudience</dfn> [=getter
+  steps=] are:
+  1. Return [=this=]'s [=relevant global object=]'s
+    [=InterestGroupScriptRunnerGlobalScope/protected audience utilities=].
+</div>
+
+<div algorithm>
+The <dfn method for="ProtectedAudienceUtilities">encodeUtf8(USVString input)</dfn> method steps are:
+1. Follow the steps of {{TextEncoder/encode(input)|TextEncoder.encode(input)}}.
+
+</div>
+
+<div algorithm>
+The <dfn method for="ProtectedAudienceUtilities">decodeUtf8(Uint8Array bytes)</dfn> method steps are
+a simplified version of {{TextDecoder/decode(input, options)|TextDecoder.decode(bytes)}},
+with a UTF-8 decoder and {{TextDecoderOptions/ignoreBOM}} set to true:
+1. Let |decoder| be a new instance of [=UTF-8=]'s [=decoder=].
+1. Let |ioQueue| be an <a for=/>I/O queue</a> of bytes « [=end-of-queue=] ».
+1. [=I/O queue/Push=] <var ignore>bytes</var> to |ioQueue|.
+1. Let |output| be an <a for=/>I/O queue</a> of bytes « [=end-of-queue=] ».
+1. While true:
+  1. Let |item| be the result of [=I/O queue/reading=] from |ioQueue|.
+  1. Let |result| be the result of [=processing an item=] with |item|, |decoder|, |ioQueue|,
+    |output|, and "<code>replacement</code>".
+  1. [=Assert=] that |result| is not an [=encoding-error|error=].
+  1. If |result| is [=encoding-finished|finished=], [=iteration/break=].
+1. Let |serializationSettings| be a new {{TextDecoderCommon}} with following fields:
+    <dl>
+      <dt>[=TextDecoderCommon-encoding|encoding=]
+      <dd>[=UTF-8=]
+      <dt>[=TextDecoderCommon-ignore BOM|ignore BOM=]
+      <dd>true
+      <dt>[=TextDecoderCommon-decoder|decoder=]
+      <dd>|decoder|
+    </dl>
+1. Return the result of running <a for=/>serialize I/O queue</a> with |serializationSettings|
+  and |output|.
+
 </div>
 
 <pre class="idl">
