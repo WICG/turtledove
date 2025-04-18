@@ -1645,18 +1645,40 @@ In a multi-seller auction, the following forDebuggingOnly win reports may be sen
 *   forDebuggingOnly *win* report from `scoreAd()` of the top-level seller when scoring the bid from the component auction that wins the whole auction.
 *   forDebuggingOnly *loss* report from all other `generateBid()` and `scoreAd()` invocations.
 
-In order to accomplish our dual goals of helping with adoption and preserving user privacy, we plan to keep the forDebuggingOnly APIs available post third-party cookie deprecation, albeit in a heavily downsampled fashion (as described in [section 7.1.2](#712-downsampling)) to address the re-identification risk. While third-party cookies are available, they will remain unsampled to help with adoption. A label `browserSignals.forDebuggingOnlyInCooldownOrLockout` is exposed in `generateBid()` and `scoreAd()`, to indicate whether the particular report would have been unavailable due to cooldown or lockout.
+In order to accomplish our dual goals of helping with adoption and preserving
+user privacy, we plan to keep the forDebuggingOnly APIs available post
+third-party cookie deprecation, albeit in a heavily downsampled fashion (as
+described in [section 7.1.2](#712-downsampling)) to address the
+re-identification risk. While third-party cookies are available, they will
+remain unsampled to help with adoption. A label
+`browserSignals.forDebuggingOnlyInCooldownOrLockout` is exposed in
+`generateBid()` and `scoreAd()`, to indicate whether the particular report
+would have been unavailable due to cooldown or lockout.
 
-The URL passed to forDebuggingOnly.reportAdAuctionLoss() or forDebuggingOnly.reportAdAuctionWin() is not required to be same origin with the calling buyer or seller, but is required to have its [site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site) (scheme, eTLD+1) attested for Protected Audience API. Please see [the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model).
+The URL passed to `forDebuggingOnly.reportAdAuctionLoss()` or
+`forDebuggingOnly.reportAdAuctionWin()` is not required to be same-origin with
+the calling buyer or seller, but is required to have its
+[site](https://html.spec.whatwg.org/multipage/browsers.html#obtain-a-site)
+(scheme, eTLD+1) attested for Protected Audience API. Please see
+[the Privacy Sandbox enrollment attestation model](https://github.com/privacysandbox/attestation#the-privacy-sandbox-enrollment-attestation-model).
 
 ##### 7.1.1 Post Auction Signals
 
 A post auction signal is a signal which is only available after the auction completes, such as the highest scoring other bid. The forDebuggingOnly APIs support the text placeholders below, which will be replaced with the corresponding value from the auction when found in the reporting URL's query parameters.
 
-*   "${winningBid}" - The value of the winning bid. In component auctions, this value comes from the component auction and not the top-level auction, and is the original bid from `generateBid()`, rather than the modified bid from `scoreAd()` even if there is one.
+*   "${winningBid}" - The value of the winning bid. In component auctions, this
+value comes from the component auction and not the top-level auction, and is
+the original bid from `generateBid()`, rather than any possible modified bid returned
+from `scoreAd()`.
 *   "${winningBidCurrency}" - If the auction has a `sellerCurrency` configured, this will be its currency tag; otherwise it is `'???'` to denote that it's in the bidder's original currency.
 *   "${madeWinningBid}" - A [Boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) value representing whether the owner of this interest group made the winning bid, either via this interest group, or another interest group with the same owner. In component auctions, this value comes from the component auction and not the top-level auction.
-*   "${highestScoringOtherBid}" - The value of the bid that was scored as second highest by the seller’s scoreAd script. Note that this may not be the second highest bid value, since scores and bids may be independent. This value comes from and is only reported in component auctions but not top-level auctions, and is not reported to losing bidders. The value is the original bid from `generateBid()`, rather than the modified bid from `scoreAd()` even if there is one.
+*   "${highestScoringOtherBid}" - The value of the bid that was scored as
+second highest by the seller’s scoreAd script. Note that this may not be the
+second highest bid value, since scores and bids may be independent. This value
+comes from and is only reported in component auctions but not top-level
+auctions, and is not reported to losing bidders. The value is the original bid
+from `generateBid()`, rather than the any possible modified bid returned 
+from `scoreAd()`.
 *   "${highestScoringOtherBidCurrency}" - The currency `highestScoringOtherBid` is in. If the auction has a `sellerCurrency` configured, this will be its currency tag; otherwise it is `'???'` to denote that it's in the bidder's original currency.
 *   "${madeHighestScoringOtherBid}" - A [Boolean](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean) value representing whether the owner of this interest group made the ${highestScoringOtherBid} bid, either via this interest group, or another interest group with the same owner. This value comes from and is only reported in component auctions but not top-level auctions, and is not reported to losing bidders. If there’s a tie for ${highestScoringOtherBid} from more than one owner, this is false for all.
 *   "${topLevelWinningBid}" - The value of the bid that won the top-level auction. This value is only reported to component sellers.
