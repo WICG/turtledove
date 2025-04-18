@@ -1727,4 +1727,21 @@ Similarly, a `Uint8Array` containing UTF-8 data can be converted to a `String` b
 `protectedAudience.decodeUtf8(someArray)`. Note that this is specifically for `Uint8Array`s, and
 will not handle other, similar, types.
 
-These utility functions are useful for passing `String`s into and out of WebAssembly.
+Tools like [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) frequently perform these
+conversions using [TextEncoder](https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder) and
+[TextDecoder](https://developer.mozilla.org/en-US/docs/Web/API/TextDecoder) interfaces
+in order to pass Strings between JavaScript and WASM efficiently. Since these interfaces are not
+available in the bidder, seller, or reporting script environments,
+`protectedAudience.encodeUtf8` and `decodeUtf8` functions provide a way of efficiently polyfilling
+the minimum needed subset of their functionality. For example, a version incorporating feature
+detection:
+
+```
+TextEncoder = function() {}
+TextEncoder.prototype = {}
+if (globalThis.protectedAudience && protectedAudience.encodeUtf8) {
+   TextEncoder.prototype.encode = protectedAudience.encodeUtf8;
+} else {
+   TextEncoder.prototype.encode = slowerJavaScriptEncodeImplementation;
+}
+```
