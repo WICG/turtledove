@@ -3785,8 +3785,11 @@ A <dfn>server auction interest group</dfn> is a [=struct=] with the following [=
   :: A [=list=] of [=strings=] containing the corresponding [=interest group ad/ad render IDs=]
     from the [=interest group/ads=] field.
   : <dfn>components</dfn>
-  ::  A [=list=] of [=strings=] containing the corresponding [=interest group ad/ad render IDs=]
+  :: A [=list=] of [=strings=] containing the corresponding [=interest group ad/ad render IDs=]
     from the [=interest group/ad components=] field.
+  : <dfn>in cooldown or lockout</dfn>
+  :: A [=boolean=]. Set to the result of running [=is debugging only in cooldown or lockout=] with
+    this interest group's [=interest group/owner=].
   : <dfn>browser signals</dfn>
   :: A [=server auction browser signals=].
   : <dfn>priority</dfn>
@@ -3827,7 +3830,7 @@ A <dfn>server auction request context</dfn> is a [=struct=] with the following [
     used to look-up a specific request context.
   : <dfn>request context</dfn>
   :: An opaque context used to handle the request, such as that returned from
-     [Section 2.2.4 of Bidding and Auction Services](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-generating-a-request)
+    [Section 2.2.4.2 of Bidding and Auction Services](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-serializing-a-request)
 </dl>
 
 A <dfn>server auction response</dfn> is a [=struct=] that contains auction result from a
@@ -4059,6 +4062,8 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
       :: |ads|
       : [=server auction interest group/components=]
       :: |components|
+      : [=server auction interest group/in cooldown or lockout=]
+      :: the result of running [=is debugging only in cooldown or lockout=] with |owner|
       : [=server auction interest group/browser signals=]
       :: |browserSignals|
       : [=server auction interest group/priority=]
@@ -4068,6 +4073,9 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
       |igPAggCoordinatorMap|[(|owner|, |name|)] to it.
   1. Let |results| be a new [=list=] of [=auction data per seller results=].
   1. Let |requestId| be the [=string representation=] of a [=version 4 UUID=].
+  1. Let |formRequestResult| be the result of forming a request message with |igMap|,
+    |igPAggCoordinatorMap|, and |config|. The method may follow that described in
+    [Section 2.2.4.1 of Bidding and Auction Services](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-forming-a-request-message).
   1. [=list/For each=] |config| of |configs|:
     1. Let |seller| be |config|'s [=auction data config/seller=].
     1. If |config|'s [=auction data config/coordinator=] is not one of the [=implementation-defined=]
@@ -4089,12 +4097,23 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
         :: "key lookup failed"
       1. [=list/Append=] |result| to |results|.
       1. [=iteration/Continue=].
-    1. Let (|key|, |keyId|) be |keyInfo|.
-    1. Set |config|'s [=auction data config/encryption key=] to |key|.
-    1. Set |config|'s [=auction data config/encryption key id=] to |keyId|.
-    1. Let (|requestBlob|, |context|) be the result of serializing |igMap| with |config| and
-      |igPAggCoordinatorMap|. The serialization method may follow that described in
-      [Section 2.2.4 of Bidding and Auction Services](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-generating-a-request).
+    1. Let (|encryptionKey|, |encryptionKeyId|) be |keyInfo|.
+    1. If |formRequestResult| is failure:
+      1. Let |result| be a new [=auction data per seller result=] with the following [=struct/items=]:
+        : [=auction data per seller result/seller=]
+        :: |seller|
+        : [=auction data per seller result/request=]
+        :: empty [=byte sequence=]
+      1. [=list/Append=] |result| to |results|.
+      1. [=iteration/Continue=].
+    1. Let |sellerInCooldownOrLockout| be the result of running
+      [=is debugging only in cooldown or lockout=] with |seller|.
+    1. Let (|requestMessage|, |includedGroups|, |desiredTotalSize|) be |formRequestResult|.
+    1. Let (|requestBlob|, |context|) be the result of serializing |requestMessage| with 
+      |includedGroups|, |desiredTotalSize|, |encryptionKey|, |encryptionKeyId|, |includedGroups|,
+      |igPAggCoordinatorMap|, and |sellerInCooldownOrLockout|.
+      The serialization method may follow that described in
+      [Section 2.2.4.2 of Bidding and Auction Services](https://privacysandbox.github.io/draft-ietf-bidding-and-auction-services/draft-ietf-bidding-and-auction-services.html#name-serializing-a-request).
     1. Let |result| be a new [=auction data per seller result=] with the following [=struct/items=]:
         : [=auction data per seller result/seller=]
         :: |seller|
@@ -4213,8 +4232,10 @@ The <dfn for=Navigator method>getInterestGroupAdAuctionData(|configIDL|)</dfn> m
 </div>
 
 <div algorithm>
-  To <dfn>look up the server encryption key</dfn> given an [=origin=] |origin|
-  and an [=origin=] |coordinator|:
+  To <dfn>look up the server encryption key</dfn> given an [=origin=] |origin| and an [=origin=]
+  |coordinator|, perform the following steps. They return a [=tuple=] of ([=byte sequence=], [=byte=]),
+  or failure:
+
   1. Let |keys| be a [=list=] of ([=byte sequence=], [=byte=]) [=tuples=] returned
      from looking up the [[RFC9180|HPKE]] public key encryption keys and their
      corresponding key IDs for |origin| specified by |coordinator|. The actual
@@ -10438,11 +10459,6 @@ An <dfn>auction data config</dfn> is a [=struct=] with the following [=struct/it
   :  <dfn>coordinator</dfn>
   :: The origin of the coordinator hosting public encryption keys for the server
     running the ad auction. The [=origin/scheme=] must be "`https`".
-  :  <dfn>encryption key</dfn>
-  :: Null or a [=byte sequence=]. The public [[RFC9180|HPKE]] encryption key to be used
-     to encrypt the request.
-  : <dfn>encryption key id</dfn>
-  :: Null or a [=byte=] containing the key ID corresponding to the [=auction data config/encryption key=].
   :  <dfn>request size</dfn>
   :: {{unsigned long}} or null. An optional field, containing the desired size
     for the returned encrypted request blob.
