@@ -440,6 +440,7 @@ const myAuctionConfig = {
   'perBuyerTKVSignals': {'https://example.co.uk': {'signal1': 2.5,
                                                    'signal2': 'foo'},
                          'https://www.another-buyer.com': <Promise>,
+                         'https://www.some-other-buyer.com': 'Data',
                          '*': {...}},
   'sellerTKVSignals': {'signal1': 2.5, 'signal2': 'foo'}
   'reportingTimeout' : 200,
@@ -523,7 +524,7 @@ In the case of a component auction, all `AuctionConfig` parameters for that comp
 
 ##### 2.1.1 Providing Signals Asynchronously
 
-The values of some signals (those configured by fields `auctionSignals`, `sellerSignals`, `perBuyerSignals`, `perBuyerTimeouts`, `deprecatedRenderURLReplacements`, `directFromSellerSignalsHeaderAdSlot`, `sellerTKVSignals`, and per-buyer values in `perBuyerTKVSignals`, though not the entire `perBuyerTKVSignals` values itself) can optionally be provided not as concrete values, but as [Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).  This permits some parts of the auction, such as loading of scripts and trusted signals, and launching of isolated worklet processes, to overlap the computation (or network retrieval) of those values.  The worklet scripts will only see the resolved values; if any such Promise rejects the auction will be aborted (unless it managed to fail already or get otherwise aborted anyway). The sole exception to this is `perBuyerTKVSignals` - if a particular buyer's signals Promise rejects, then the (component) auction will run as normal, only without that buyer being given a chance to bid.
+The values of some signals (those configured by fields `auctionSignals`, `sellerSignals`, `perBuyerSignals`, `perBuyerTimeouts`, `deprecatedRenderURLReplacements`, `directFromSellerSignalsHeaderAdSlot`, `sellerTKVSignals`, and per-buyer values in `perBuyerTKVSignals`, though not the entire `perBuyerTKVSignals` values itself) can optionally be provided not as concrete values, but as [Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).  This permits some parts of the auction, such as loading of scripts and trusted signals, and launching of isolated worklet processes, to overlap the computation (or network retrieval) of those values.  The worklet scripts will only see the resolved values; if any such Promise rejects the auction will be aborted (unless it managed to fail already or get otherwise aborted anyway). The sole exception to this is `perBuyerTKVSignals` - if a particular buyer's signals Promise rejects, then the (component) auction will run as normal, only without that buyer's interest groups that use a trusted signals version 2 fetch being given a chance to bid.
 
 ##### 2.1.2 Seller Security Considerations
 
@@ -820,7 +821,7 @@ For detailed specification and explainers of the trusted key-value server, see a
 
 If `trustedBiddingSignalsCoordinator` or `trustedScoringSignalsCoordinator` is specified, the bidding or scoring signals request will be sent to a trusted key-value-type server running in a TEE using [the version 2 protocol](https://github.com/WICG/turtledove/blob/main/FLEDGE_Key_Value_Server_API.md#query-api-version-2).
 
-If an auction specifies `perBuyerTKVSignals` or `sellerTKVsignals`, they will be serialized as JSON and included in the signals request.
+If an auction specifies `perBuyerTKVSignals` or `sellerTKVsignals`, they will be serialized as JSON and included in the signals requests to the corresponding buyer or the seller, respectively.
 
 Once an on-device auction is initiated, the browser will make an HTTP POST request to a base URL such as `https://www.kv-server.example/getvalues`, which comes from the interest group's `trustedBiddingSignalsURL` or auction config's `trustedScoringSignalsURL`. The other information for the trusted signals request will be put into the request body, with CBOR encoding and HPKE encryption as described in [FLEDGE Key/Value Server APIs Explainer](https://github.com/WICG/turtledove/blob/master/FLEDGE_Key_Value_Server_API.md).
 
