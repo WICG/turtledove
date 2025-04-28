@@ -437,6 +437,12 @@ const myAuctionConfig = {
                          '*': 'USD'},
   'perBuyerMultiBidLimits': {'https://example.com': 10, '*': 5},
   'sellerCurrency:' : 'CAD',
+  'perBuyerTKVSignals': {'https://example.co.uk': {'signal1': 2.5,
+                                                   'signal2': 'foo'},
+                         'https://www.another-buyer.com': <Promise>,
+                         'https://www.some-other-buyer.com': 'Data',
+                         '*': {...}},
+  'sellerTKVSignals': {'signal1': 2.5, 'signal2': 'foo'}
   'reportingTimeout' : 200,
   'deprecatedRenderURLReplacements':{'${SELLER}':'exampleSSP',
                                     '%%SELLER_ALT%%':'exampleSSP'},
@@ -476,7 +482,7 @@ The promise returned from `runAdAuction()` is _opaque_. Specifically, it resolve
 
 Optionally, `sellerTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `scoreAd()` script, and `perBuyerTimeouts` can be specified to restrict the runtime (in milliseconds) of particular buyer's `generateBid()` scripts. If no value is specified for the seller or a particular buyer, a default timeout of 50 ms will be selected. Any timeout higher than 500 ms will be clamped to 500 ms. A key of `'*'` in `perBuyerTimeouts` is used to change the default of unspecified buyers.
 
-Optionally, `perBuyerCumulativeTimeouts` is structured like `perBuyerTimeouts`, but the values cover the entirety of the time it takes to generate bids for all interest groups for each buyer, including downloading resources, starting processes, and all generate bid calls. The single limit applies collectively across all interest groups with the same owner. It's measured as wall clock time starting when dedicated tasks needed to generate a bid for a particular buyer start. Timers may be running for multiple bidders simultaneously.  It does not include time taken by the seller to score the buyer's bids. Once the timer expires, the affected buyer's interest groups may no longer generate any bids. Scripts may be unloaded, fetches cancelled, etc. All bids generated before the timeout will continue to participate in the auction. Protected Audience implementations should attempt, on a best-effort basis, to generate bids for each buyer in priority order, so lower priority interest groups are the ones more likely to be timed out. If promises are passed in to the auction config for fields that support them, the timer for a buyer only starts once all promises blocking that buyer's bidding scripts from running have been resolved.
+Optionally, `perBuyerCumulativeTimeouts` is structured like `perBuyerTimeouts`, but the values cover the entirety of the time it takes to generate bids for all interest groups for each buyer, including downloading resources, starting processes, and all generate bid calls. The single limit applies collectively across all interest groups with the same owner. It's measured as wall clock time starting when dedicated tasks needed to generate a bid for a particular buyer start. Timers may be running for multiple bidders simultaneously.  It does not include time taken by the seller to score the buyer's bids. Once the timer expires, the affected buyer's interest groups may no longer generate any bids. Scripts may be unloaded, fetches cancelled, etc. All bids generated before the timeout will continue to participate in the auction. Protected Audience implementations should attempt, on a best-effort basis, to generate bids for each buyer in priority order, so lower priority interest groups are the ones more likely to be timed out. If promises are passed in to the auction config for fields that support them, the timer for a buyer only starts once all promises blocking that buyer's bidding scripts from running have been resolved, except for per-buyer promises uniquely blocking that bidder (e.g. a promise for a non-asterisk entry in `perBuyerTKVSignals`).
 
 Optionally, `reportingTimeout` can be specified to restrict the runtime (in milliseconds) of the seller's `reportResult()` and winning buyer’s `reportWin()` scripts. If no value is specified, a default timeout of 50 ms will be selected. Any timeout higher than 5000 ms will be clamped to 5000 ms.
 
@@ -491,6 +497,8 @@ Optionally, `sellerExperimentGroupId` can be specified by the seller to support 
 Optionally, `perBuyerPrioritySignals` is an object mapping string keys to Javascript numbers that can be used to dynamically compute interest group priorities before `perBuyerGroupLimits` are applied. See [Filtering and Prioritizing Interest Groups](#35-filtering-and-prioritizing-interest-groups) for more information.
 
 Optionally, `perBuyerCurrencies` and `sellerCurrency` are used for [currency-checking](#36-currency-checking). `sellerCurrency` also affects how [currencies behave in reporting](#53-currencies-in-reporting).
+
+Optionally, `perBuyerTKVSignals` and `sellerTKVSignals` may be specified to provide contextual information to both the buyer and seller trusted key value server. It may contain arbitrary JSON-serializeable data. A key of `*` in `perBuyerTKVSignals` may be used to set a value to send in TVK feteches to buyers not specifically listed by origin. This data will only be included in signals requests send to a version 2 TKV server running in a TEE, so it will not be included in signals requests sent to BYOS servers.  See [Trusted Signals Server In TEE](#312-trusted-signals-server-in-tee) for more information.
 
 Optionally, `deprecatedRenderURLReplacements` can be specified to allow replacing macros within the URN or `src` of the `FencedFrameConfig` returned by `runAdAuction`. These replacements must be in the format of `${...}` or `%%...%%`. The mapping specified here works similar to the second parameter of [navigator.deprecatedReplaceInURN()](#72-navigatordeprecatedreplaceinurn), but within the auction config. This allows for replacements within top level seller auction configs where there are no component seller auction configs, or within component auction configs. Note that when making replacements within the URL host, be sure to use `${...}`, as `%` symbols are not permitted directly in the host.
 
@@ -516,7 +524,7 @@ In the case of a component auction, all `AuctionConfig` parameters for that comp
 
 ##### 2.1.1 Providing Signals Asynchronously
 
-The values of some signals (those configured by fields `auctionSignals`, `sellerSignals`, `perBuyerSignals`, `perBuyerTimeouts`, `deprecatedRenderURLReplacements`, and `directFromSellerSignalsHeaderAdSlot`) can optionally be provided not as concrete values, but as [Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).  This permits some parts of the auction, such as loading of scripts and trusted signals, and launching of isolated worklet processes, to overlap the computation (or network retrieval) of those values.  The worklet scripts will only see the resolved values; if any such Promise rejects the auction will be aborted (unless it managed to fail already or get otherwise aborted anyway).
+The values of some signals (those configured by fields `auctionSignals`, `sellerSignals`, `perBuyerSignals`, `perBuyerTimeouts`, `deprecatedRenderURLReplacements`, `directFromSellerSignalsHeaderAdSlot`, `sellerTKVSignals`, and per-buyer values in `perBuyerTKVSignals`, though not the entire `perBuyerTKVSignals` values itself) can optionally be provided not as concrete values, but as [Promises](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise).  This permits some parts of the auction, such as loading of scripts and trusted signals, and launching of isolated worklet processes, to overlap the computation (or network retrieval) of those values.  The worklet scripts will only see the resolved values; if any such Promise rejects the auction will be aborted (unless it managed to fail already or get otherwise aborted anyway). The sole exception to this is `perBuyerTKVSignals` - if a particular buyer's signals Promise rejects, then the (component) auction will run as normal, only without that buyer's interest groups that use a trusted signals version 2 fetch being given a chance to bid.
 
 ##### 2.1.2 Seller Security Considerations
 
@@ -812,6 +820,8 @@ For detailed specification and explainers of the trusted key-value server, see a
 ##### 3.1.2 Trusted Signals Server in TEE
 
 If `trustedBiddingSignalsCoordinator` or `trustedScoringSignalsCoordinator` is specified, the bidding or scoring signals request will be sent to a trusted key-value-type server running in a TEE using [the version 2 protocol](https://github.com/WICG/turtledove/blob/main/FLEDGE_Key_Value_Server_API.md#query-api-version-2).
+
+If an auction specifies `perBuyerTKVSignals` or `sellerTKVsignals`, they will be serialized as JSON and included in the signals requests to the corresponding buyer or the seller, respectively.
 
 Once an on-device auction is initiated, the browser will make an HTTP POST request to a base URL such as `https://www.kv-server.example/getvalues`, which comes from the interest group's `trustedBiddingSignalsURL` or auction config's `trustedScoringSignalsURL`. The other information for the trusted signals request will be put into the request body, with CBOR encoding and HPKE encryption as described in [FLEDGE Key/Value Server APIs Explainer](https://github.com/WICG/turtledove/blob/master/FLEDGE_Key_Value_Server_API.md).
 
