@@ -1,7 +1,5 @@
-> FLEDGE has been renamed to Protected Audience API. To learn more about the name change, see the [blog post](https://privacysandbox.com/intl/en_us/news/protected-audience-api-our-new-name-for-fledge)
+**The Protecte Audience API is deprecated and planned for removal from Chrome.  As a result, this repository will be archived and will no longer be updated.**
 
-We are holding regular phone calls to resolve the details of the FLEDGE proposal.  These calls should be good places for a dedicated group to address open issues and suggest technical fixes, or to talk about particular use cases and how they can be met using FLEDGE.
+See our [Update on Plans for Privacy Sandbox Technologies](https://privacysandbox.com/news/update-on-plans-for-privacy-sandbox-technologies/).
 
-Calls generally take place every Wednesday, at 11am US Eastern time.  For call details see https://github.com/WICG/turtledove/issues/88.
-
-The minutes of each call are posted in this directory.
+[Privacy Sandbox feature status](https://privacysandbox.google.com/overview/status) provides more information about the status of individual APIs and platform features.
